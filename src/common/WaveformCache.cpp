@@ -8,7 +8,6 @@
 #include <QElapsedTimer>
 #include <QFile>
 #include <QFileInfo>
-#include <QMutex>
 #include <QMetaObject>
 #include <QPointer>
 #include <QSaveFile>
@@ -16,13 +15,8 @@
 #include <QtMath>
 
 #include "audio/OfflineAudioDecoder.h"
-#include "audio/PreviewBassDeviceLease.h"
 #include "common/DebugLog.h"
 #include "common/DebugOptions.h"
-
-#ifdef MIACODE_HAS_BASS_AUDIO
-#include "bass.h"
-#endif
 
 namespace miacode::waveform {
 
@@ -34,57 +28,6 @@ constexpr double kWaveformDiagThresholdLow = 0.02;
 constexpr double kWaveformDiagThresholdMid = 0.05;
 constexpr double kWaveformDiagThresholdHigh = 0.10;
 constexpr quint32 kMaximumWaveformCacheLevelCount = 64;
-
-#ifdef MIACODE_HAS_BASS_AUDIO
-QMutex& bassWaveformDecodeMutex()
-{
-    static QMutex mutex;
-    return mutex;
-}
-
-class ScopedBassWaveformDecodeDevice
-{
-public:
-    ScopedBassWaveformDecodeDevice()
-        : previousDevice_(BASS_GetDevice())
-        , lease_(miacode::preview_audio::PreviewBassDeviceLease::acquire({
-              [] {
-                  return BASS_SetDevice(0)
-                      ? static_cast<miacode::preview_audio::BassDeviceLeaseApi::DeviceId>(0)
-                      : miacode::preview_audio::BassDeviceLeaseApi::kNoDevice;
-              },
-              [] {
-                  return BASS_Init(
-                             0,
-                             kWaveformDecodeSampleRate,
-                             BASS_DEVICE_NOSPEAKER,
-                             nullptr,
-                             nullptr) != FALSE;
-              },
-              [] {
-                  BASS_SetDevice(0);
-                  BASS_Free();
-              },
-              miacode::preview_audio::BassDeviceLeaseDomain::NoSound,
-          }))
-    {
-    }
-
-    ~ScopedBassWaveformDecodeDevice()
-    {
-        lease_.release();
-        if (previousDevice_ != static_cast<DWORD>(-1)) {
-            BASS_SetDevice(previousDevice_);
-        }
-    }
-
-    bool available() const { return lease_.acquired(); }
-
-private:
-    DWORD previousDevice_ = static_cast<DWORD>(-1);
-    miacode::preview_audio::PreviewBassDeviceLease lease_;
-};
-#endif
 
 void appendWaveformDebugLog(const QString& payload)
 {
@@ -240,22 +183,9 @@ WaveformDataPtr buildWaveformData(
 
 miacode::audio_decode::DecodedMonoAudio decodeMonoSamples(const QString& trackPath)
 {
-#ifdef MIACODE_HAS_BASS_AUDIO
-    QMutexLocker locker(&bassWaveformDecodeMutex());
-    ScopedBassWaveformDecodeDevice device;
-    if (!device.available()) {
-        return {};
-    }
     return miacode::audio_decode::decodeFileToMono(
         trackPath,
-        kWaveformDecodeSampleRate,
-        miacode::audio_decode::BackendPreference::Bass);
-#else
-    return miacode::audio_decode::decodeFileToMono(
-        trackPath,
-        kWaveformDecodeSampleRate,
-        miacode::audio_decode::BackendPreference::Miniaudio);
-#endif
+        kWaveformDecodeSampleRate);
 }
 
 }  // namespace
@@ -409,7 +339,7 @@ WaveformDataPtr buildWaveformDataFromFile(
         decoded.durationSeconds);
     appendWaveformDebugLog(
         QStringLiteral("event=build decoder=%1 samples=%2 elapsed_ms=%3 %4")
-            .arg(miacode::audio_decode::backendLabel(decoded.backend))
+            .arg(QStringLiteral("bass"))
             .arg(decoded.samples.size())
             .arg(timer.nsecsElapsed() / 1000000.0, 0, 'f', 3)
             .arg(data ? waveformDataDebugSummary(*data) : QStringLiteral("data=0")));

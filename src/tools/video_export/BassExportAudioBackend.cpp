@@ -16,14 +16,12 @@
 #include <memory>
 #include <vector>
 
-#ifdef MIACODE_HAS_BASS_AUDIO
 #ifdef Q_OS_WIN
 #include <windows.h>
 #endif
 
 #include "bass.h"
 #include "bassmix.h"
-#endif
 
 namespace {
 
@@ -122,7 +120,6 @@ private:
     QDataStream stream_;
 };
 
-#ifdef MIACODE_HAS_BASS_AUDIO
 enum class SourceStorage {
     File,
     Memory,
@@ -139,7 +136,6 @@ struct ScheduledSource {
         }
     }
 };
-#endif
 
 }  // namespace
 
@@ -162,11 +158,11 @@ bool BassExportAudioBackend::runtimeLibrariesPresent() const
 #if defined(Q_OS_WIN)
     return runtimeLibraryExists(QStringLiteral("bass.dll"))
         && runtimeLibraryExists(QStringLiteral("bassmix.dll"));
-#elif defined(Q_OS_MACOS) && defined(MIACODE_HAS_BASS_AUDIO)
+#elif defined(Q_OS_MACOS)
     return runtimeLibraryExists(QStringLiteral("libbass.dylib"))
         && runtimeLibraryExists(QStringLiteral("libbassmix.dylib"))
         && runtimeLibraryExists(QStringLiteral("libbassopus.dylib"));
-#elif defined(Q_OS_LINUX) && defined(MIACODE_HAS_BASS_AUDIO)
+#elif defined(Q_OS_LINUX)
     return runtimeLibraryExists(QStringLiteral("libbass.so"))
         && runtimeLibraryExists(QStringLiteral("libbassmix.so"));
 #else
@@ -176,7 +172,6 @@ bool BassExportAudioBackend::runtimeLibrariesPresent() const
 
 bool BassExportAudioBackend::isSupported(QString* reason) const
 {
-#ifdef MIACODE_HAS_BASS_AUDIO
     if (!runtimeLibrariesPresent()) {
         if (reason != nullptr) {
             *reason = QStringLiteral("BASS runtime libraries are missing");
@@ -187,22 +182,10 @@ bool BassExportAudioBackend::isSupported(QString* reason) const
         *reason = QStringLiteral("BASS export backend is available");
     }
     return true;
-#else
-    if (reason != nullptr) {
-        *reason = QStringLiteral("BASS export backend is unavailable in this build");
-    }
-    return false;
-#endif
 }
 
 bool BassExportAudioBackend::initializeBass(QString* errorMessage)
 {
-#ifndef MIACODE_HAS_BASS_AUDIO
-    if (errorMessage != nullptr) {
-        *errorMessage = QStringLiteral("BASS export backend is unavailable");
-    }
-    return false;
-#else
     if (bassDeviceLease_.acquired()) {
         return true;
     }
@@ -226,14 +209,11 @@ bool BassExportAudioBackend::initializeBass(QString* errorMessage)
         return false;
     }
     return true;
-#endif
 }
 
 void BassExportAudioBackend::shutdownBass()
 {
-#ifdef MIACODE_HAS_BASS_AUDIO
     bassDeviceLease_.release();
-#endif
 }
 
 bool BassExportAudioBackend::renderMixedTrackToWav(
@@ -242,12 +222,6 @@ bool BassExportAudioBackend::renderMixedTrackToWav(
     QString* errorMessage
 )
 {
-#ifndef MIACODE_HAS_BASS_AUDIO
-    if (errorMessage != nullptr) {
-        *errorMessage = QStringLiteral("BASS export backend is unavailable");
-    }
-    return false;
-#else
     QString supportReason;
     if (!isSupported(&supportReason)) {
         if (errorMessage != nullptr) {
@@ -430,8 +404,8 @@ bool BassExportAudioBackend::renderMixedTrackToWav(
                 && sourcePosition >= sourceLengthBytes) {
                 // A one-shot sample asked to start past its own end has nothing to
                 // contribute — this is how a touch-hold that outlives the riser
-                // behaves in preview too (miniaudio stops the voice once the offset
-                // passes the sample length). Skip it instead of failing the export.
+                // behaves in preview too: the voice ends once the offset passes the
+                // sample length. Skip it instead of failing the export.
                 appendExportLog(
                     QStringLiteral("audio_backend_source_skip"),
                     QStringLiteral("backend=%1 tag=%2 path=%3 reason=source_start_past_end source_start=%4")
@@ -585,7 +559,6 @@ bool BassExportAudioBackend::renderMixedTrackToWav(
             .arg(totalFrames)
             .arg(plan.alignedTotalSeconds, 0, 'f', 6));
     return true;
-#endif
 }
 
 }  // namespace miacode::video_export

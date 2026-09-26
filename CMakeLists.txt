@@ -516,8 +516,6 @@ add_executable(MiaCode WIN32 MACOSX_BUNDLE
     src/audio/PreviewBassEmergencyPause.cpp
     src/audio/PreviewAudioSettings.h
     src/audio/PreviewAudioSettings.cpp
-    src/audio/MiniaudioPreviewAudioBackend.h
-    src/audio/MiniaudioPreviewAudioBackend.cpp
     src/audio/PreviewAudioDeviceChangePolicy.h
     src/audio/PreviewAudioDeviceCutoff.h
     src/audio/PreviewAudioDeviceWatcher.h
@@ -994,24 +992,19 @@ target_sources(MiaCode PRIVATE
     src/tools/video_export/VideoExportAudioRenderPlan.h
     src/tools/video_export/VideoExportAudioRenderPlan.cpp
     src/tools/video_export/VideoExportAudioBackend.h
-    src/tools/video_export/LegacyExportAudioBackend.h
-    src/tools/video_export/LegacyExportAudioBackend.cpp
 )
 
-if (WIN32 OR APPLE OR CMAKE_SYSTEM_NAME STREQUAL "Linux")
-    target_sources(MiaCode PRIVATE
-        src/audio/BassPreviewAudioBackend.h
-        src/audio/BassPreviewAudioBackend.cpp
-        src/audio/BassPreviewAudioBackend_EngineInit.cpp
-        src/audio/BassPreviewAudioBackend_Assets.cpp
-        src/audio/BassPreviewAudioBackend_Transport.cpp
-        src/audio/BassPreviewAudioBackend_PlaybackClock.cpp
-        src/audio/BassPreviewAudioBackend_EventDrain.cpp
-        src/tools/video_export/BassExportAudioBackend.h
-        src/tools/video_export/BassExportAudioBackend.cpp
-    )
-    target_compile_definitions(MiaCode PRIVATE MIACODE_HAS_BASS_AUDIO=1)
-endif()
+target_sources(MiaCode PRIVATE
+    src/audio/BassPreviewAudioBackend.h
+    src/audio/BassPreviewAudioBackend.cpp
+    src/audio/BassPreviewAudioBackend_EngineInit.cpp
+    src/audio/BassPreviewAudioBackend_Assets.cpp
+    src/audio/BassPreviewAudioBackend_Transport.cpp
+    src/audio/BassPreviewAudioBackend_PlaybackClock.cpp
+    src/audio/BassPreviewAudioBackend_EventDrain.cpp
+    src/tools/video_export/BassExportAudioBackend.h
+    src/tools/video_export/BassExportAudioBackend.cpp
+)
 
 if (WIN32)
     if (CMAKE_SYSTEM_PROCESSOR MATCHES "^(aarch64|arm64|ARM64)$")
@@ -1553,8 +1546,6 @@ if (MIACODE_BUILD_DEV_TOOLS)
             src/tools/probe/SoundtouchProbe.cpp
             src/audio/PreviewAudioSettings.h
             src/audio/PreviewAudioSettings.cpp
-            src/audio/MiniaudioPreviewAudioBackend.h
-            src/audio/MiniaudioPreviewAudioBackend.cpp
             src/audio/QtPreviewSfxRuntime.h
             src/audio/QtPreviewSfxRuntime.cpp
             src/common/Mmcss.h
@@ -1565,18 +1556,17 @@ if (MIACODE_BUILD_DEV_TOOLS)
             src src/preview src/audio
             src/core/video src/timeline src/tools
     )
+    target_sources(soundtouch_probe PRIVATE
+        src/audio/BassPreviewAudioBackend.h
+        src/audio/BassPreviewAudioBackend.cpp
+        src/audio/BassPreviewAudioBackend_EngineInit.cpp
+        src/audio/BassPreviewAudioBackend_Assets.cpp
+        src/audio/BassPreviewAudioBackend_Transport.cpp
+        src/audio/BassPreviewAudioBackend_PlaybackClock.cpp
+        src/audio/BassPreviewAudioBackend_EventDrain.cpp
+    )
+    target_include_directories(soundtouch_probe PRIVATE third_party/bass/include)
     if (WIN32)
-        target_sources(soundtouch_probe PRIVATE
-            src/audio/BassPreviewAudioBackend.h
-            src/audio/BassPreviewAudioBackend.cpp
-            src/audio/BassPreviewAudioBackend_EngineInit.cpp
-            src/audio/BassPreviewAudioBackend_Assets.cpp
-            src/audio/BassPreviewAudioBackend_Transport.cpp
-            src/audio/BassPreviewAudioBackend_PlaybackClock.cpp
-            src/audio/BassPreviewAudioBackend_EventDrain.cpp
-        )
-        target_compile_definitions(soundtouch_probe PRIVATE MIACODE_HAS_BASS_AUDIO=1)
-        target_include_directories(soundtouch_probe PRIVATE third_party/bass/include)
         target_link_libraries(soundtouch_probe PRIVATE
             "${MIACODE_BASS_WINDOWS_LIB_DIR}/bass.lib"
             "${MIACODE_BASS_WINDOWS_LIB_DIR}/bassmix.lib"
@@ -1588,23 +1578,70 @@ if (MIACODE_BUILD_DEV_TOOLS)
                 $<TARGET_FILE_DIR:soundtouch_probe>
             WORKING_DIRECTORY "${MIACODE_BASS_WINDOWS_BIN_DIR}"
         )
+    elseif (APPLE)
+        target_link_libraries(soundtouch_probe PRIVATE
+            "${MIACODE_BASS_MACOS_DIR}/libbass.dylib"
+            "${MIACODE_BASS_MACOS_DIR}/libbassmix.dylib")
+        set_target_properties(soundtouch_probe PROPERTIES
+            BUILD_RPATH "@executable_path")
+        add_custom_command(TARGET soundtouch_probe POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                ${MIACODE_BASS_MACOS_LIBRARIES}
+                $<TARGET_FILE_DIR:soundtouch_probe>)
+    elseif (CMAKE_SYSTEM_NAME STREQUAL "Linux")
+        target_link_libraries(soundtouch_probe PRIVATE
+            "${MIACODE_BASS_LINUX_DIR}/libbass.so"
+            "${MIACODE_BASS_LINUX_DIR}/libbassmix.so"
+            ${CMAKE_DL_LIBS})
+        set_target_properties(soundtouch_probe PROPERTIES BUILD_RPATH "$ORIGIN")
+        add_custom_command(TARGET soundtouch_probe POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                ${MIACODE_BASS_LINUX_LIBRARIES}
+                $<TARGET_FILE_DIR:soundtouch_probe>)
     endif()
 
     # Batch offset-detection evaluator. Walks a chart corpus and scores the
     # offset detector against each chart's &first (error folded mod one
     # 8th-note). Manual diagnostic — needs a real corpus, so NOT a CTest case.
-    # Links only LatencyAnalysis + its own miniaudio impl TU (decode-only).
     miacode_add_dev_tool(latency_offset_batch
         SOURCES
             src/tools/latency/LatencyBatchTest.cpp
-            src/tools/latency/LatencyBatchAudioImpl.cpp
             src/tools/latency/LatencyAnalysis.h
             src/tools/latency/LatencyAnalysis.cpp
             src/audio/OfflineAudioDecoder.h
             src/audio/OfflineAudioDecoder.cpp
+            src/audio/PreviewBassDeviceLease.h
+            src/audio/PreviewBassDeviceLease.cpp
         LIBS Qt6::Core
         INCLUDES src src/tools/latency
     )
+    target_include_directories(latency_offset_batch PRIVATE third_party/bass/include)
+    if (WIN32)
+        target_link_libraries(latency_offset_batch PRIVATE
+            "${MIACODE_BASS_WINDOWS_LIB_DIR}/bass.lib")
+        add_custom_command(TARGET latency_offset_batch POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                ${MIACODE_BASS_WINDOWS_DLLS}
+                $<TARGET_FILE_DIR:latency_offset_batch>
+            WORKING_DIRECTORY "${MIACODE_BASS_WINDOWS_BIN_DIR}")
+    elseif (APPLE)
+        target_link_libraries(latency_offset_batch PRIVATE
+            "${MIACODE_BASS_MACOS_DIR}/libbass.dylib")
+        set_target_properties(latency_offset_batch PROPERTIES
+            BUILD_RPATH "@executable_path")
+        add_custom_command(TARGET latency_offset_batch POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                ${MIACODE_BASS_MACOS_LIBRARIES}
+                $<TARGET_FILE_DIR:latency_offset_batch>)
+    elseif (CMAKE_SYSTEM_NAME STREQUAL "Linux")
+        target_link_libraries(latency_offset_batch PRIVATE
+            "${MIACODE_BASS_LINUX_DIR}/libbass.so")
+        set_target_properties(latency_offset_batch PROPERTIES BUILD_RPATH "$ORIGIN")
+        add_custom_command(TARGET latency_offset_batch POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                ${MIACODE_BASS_LINUX_LIBRARIES}
+                $<TARGET_FILE_DIR:latency_offset_batch>)
+    endif()
 
     include(cmake/devtools/MiaCodeSpecRegistry.cmake)
     include(cmake/devtools/specs/index.cmake)

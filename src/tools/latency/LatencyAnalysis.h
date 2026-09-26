@@ -100,9 +100,7 @@ struct OffsetDetectionInputs {
 // Returns an empty DecodedAudio on failure (missing file, decoder error).
 DecodedAudio decodeMonoTrack(
     const QString& trackPath,
-    int sampleRate = kAnalysisSampleRate,
-    miacode::audio_decode::BackendPreference backend =
-        miacode::audio_decode::BackendPreference::Miniaudio);
+    int sampleRate = kAnalysisSampleRate);
 
 // Energy-flux envelope used as the primary signal for BPM detection.
 // `tuning` controls the energy mix + baseline decay; defaults reproduce the

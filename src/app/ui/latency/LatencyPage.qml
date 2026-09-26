@@ -99,16 +99,6 @@ Rectangle {
                     }
                     Item { Layout.fillWidth: true }
                 }
-
-                LabeledCombo {
-                    objectName: "latencyDecoderCombo"
-                    label: qsTrId("qml.decoder")
-                    labelWidth: root.labelWidth
-                    spacing: 8
-                    options: root.latency.audioDecoderOptions
-                    currentValue: root.latency.audioDecoder
-                    onPicked: function(value) { root.latency.audioDecoder = value }
-                }
             }
 
             SettingsSection {

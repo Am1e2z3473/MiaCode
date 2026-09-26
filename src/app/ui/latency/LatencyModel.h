@@ -2,7 +2,6 @@
 
 #include <QObject>
 #include <QString>
-#include <QVariantList>
 
 #include "tools/latency/LatencyAnalysis.h"
 
@@ -32,8 +31,6 @@ class LatencyModel final : public QObject
     Q_PROPERTY(bool trackAvailable READ trackAvailable NOTIFY valuesChanged)
     Q_PROPERTY(QString bpmDetectResult READ bpmDetectResult NOTIFY detectionChanged)
     Q_PROPERTY(QString offsetDetectResult READ offsetDetectResult NOTIFY detectionChanged)
-    Q_PROPERTY(QVariantList audioDecoderOptions READ audioDecoderOptions CONSTANT)
-    Q_PROPERTY(QString audioDecoder READ audioDecoder WRITE setAudioDecoder NOTIFY valuesChanged)
 
 public:
     // No MainWindow: 延迟检测 reaches everything it needs through the engine
@@ -58,9 +55,6 @@ public:
     bool trackAvailable() const;
     QString bpmDetectResult() const { return bpmDetectResult_; }
     QString offsetDetectResult() const { return offsetDetectResult_; }
-    QVariantList audioDecoderOptions() const;
-    QString audioDecoder() const { return audioDecoder_; }
-    void setAudioDecoder(const QString& token);
 
     // Page lifecycle: installs / restores the sandbox preview scene.
     Q_INVOKABLE void enter();
@@ -79,7 +73,6 @@ signals:
 private:
     bool ensureAudioEnvelopeReady();
     void clearAudioEnvelopeCache();
-    miacode::audio_decode::BackendPreference decodeBackend() const;
     miacode::latency::LatencySandboxController* sandbox() const;
 
     // Bound to the assembly's slot, not a snapshot.
@@ -92,7 +85,6 @@ private:
     double offsetSeconds_ = 0.0;
     int clockCount_ = 4;
     double playheadSeconds_ = 0.0;
-    QString audioDecoder_ = QStringLiteral("miniaudio");
     QString bpmDetectResult_;
     QString offsetDetectResult_;
 

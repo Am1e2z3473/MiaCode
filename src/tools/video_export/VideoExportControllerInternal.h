@@ -15,7 +15,6 @@
 #include "VideoExportController.h"
 
 #include "BassExportAudioBackend.h"
-#include "LegacyExportAudioBackend.h"
 #include "RawVideoPipeTransport.h"
 #include "VideoExportAudioRenderPlan.h"
 #include "VideoExportPendingFrameRedraw.h"
