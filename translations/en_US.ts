@@ -4241,10 +4241,6 @@ The file may be open in preview, a media player, File Explorer preview pane, or 
         <source>Custom</source>
         <translation>Custom</translation>
     </message>
-    <message id="qml.decoder">
-        <source>Decoder</source>
-        <translation>Decoder</translation>
-    </message>
     <message id="qml.delete_current_difficulty">
         <source>Delete current difficulty</source>
         <translation>Delete current difficulty</translation>

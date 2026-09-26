@@ -2,7 +2,7 @@
 
 #include <QtGlobal>
 
-#if defined(MIACODE_HAS_BASS_AUDIO) && defined(Q_OS_WIN)
+#ifdef Q_OS_WIN
 #include <mutex>
 
 #include "bass.h"
@@ -10,7 +10,7 @@
 
 namespace miacode::preview_audio {
 
-#if defined(MIACODE_HAS_BASS_AUDIO) && defined(Q_OS_WIN)
+#ifdef Q_OS_WIN
 namespace {
 
 struct DefaultDeviceEntryState {
@@ -30,7 +30,7 @@ DefaultDeviceEntryState& defaultDeviceEntryState()
 
 bool disableBassDefaultDeviceEntry(int* errorCode)
 {
-#if defined(MIACODE_HAS_BASS_AUDIO) && defined(Q_OS_WIN)
+#ifdef Q_OS_WIN
     // One attempt per process: once the window has closed a retry cannot succeed,
     // and it would overwrite the error code of the attempt that mattered.
     DefaultDeviceEntryState& state = defaultDeviceEntryState();

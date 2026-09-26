@@ -110,7 +110,7 @@ public:
     // alone. Only the audio-device auto-pause calls this. A manual pause deliberately
     // lets one-shots ring out (see suspendPlaybackTransport), but on a device change
     // that tail outlives the route switch and is heard as a stray note AFTER the
-    // preview has visibly stopped. Default no-op, so the miniaudio backend is unchanged.
+    // preview has visibly stopped. Default no-op keeps alternate test backends lightweight.
     virtual void stopSfxVoices() {}
     // A physical output-route change invalidates the old transport. Backends that own
     // a concrete endpoint release it here; the next explicit play rebuilds on the

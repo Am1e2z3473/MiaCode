@@ -21,10 +21,8 @@
 
 #include <cstdio>   // G1 Commit 8 followup: std::snprintf for startup-beacon lines
 
-#ifdef MIACODE_HAS_BASS_AUDIO
 #include "bass.h"
 #include "bassmix.h"
-#endif
 
 #include "BassPreviewAudioBackendImpl.h"
 #include "BassPreviewAudioBackendSample.h"
@@ -39,7 +37,6 @@ void BassPreviewAudioBackend::refreshPreparedAssets()
 
 void BassPreviewAudioBackend::resetAssets()
 {
-#ifdef MIACODE_HAS_BASS_AUDIO
     disarmSfxScheduler("reset_assets");
     int releasedSampleCount = 0;
     samplesByKind_.clear();
@@ -78,13 +75,11 @@ void BassPreviewAudioBackend::resetAssets()
         miacode::preview_audio::bass::BassDebugOperation::ResetAssets,
         QString("released=%1").arg(releasedSampleCount),
         true);
-#endif
 }
 
 void BassPreviewAudioBackend::initializeAssets()
 {
     MC_OP("BassPreviewAudioBackend::initializeAssets");
-#ifdef MIACODE_HAS_BASS_AUDIO
     QElapsedTimer timer;
     timer.start();
     resetAssets();
@@ -192,12 +187,10 @@ void BassPreviewAudioBackend::initializeAssets()
             .arg(loadedSampleCount)
             .arg(backgroundTrackSample_ != nullptr ? 1 : 0),
         true);
-#endif
 }
 
 void BassPreviewAudioBackend::applySampleLevels()
 {
-#ifdef MIACODE_HAS_BASS_AUDIO
     const auto apply = [](Sample* sample, double volume) {
         if (sample != nullptr) {
             sample->baseVolume = clampSampleVolume(volume);
@@ -221,7 +214,6 @@ void BassPreviewAudioBackend::applySampleLevels()
     apply(clockSample_.get(), previewSfxVolumeForKind(settings_, QStringLiteral("clock")));
     apply(trackStartSample_.get(), previewSfxVolumeForKind(settings_, QStringLiteral("track_start")));
     apply(backgroundTrackSample_, previewTrackVolume(settings_));
-#endif
 }
 
 BassPreviewAudioBackend::Sample* BassPreviewAudioBackend::sampleForKind(const QString& kind) const

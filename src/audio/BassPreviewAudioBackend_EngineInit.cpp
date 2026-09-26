@@ -25,7 +25,6 @@
 #include <cstdio>
 #include <cstring>
 
-#ifdef MIACODE_HAS_BASS_AUDIO
 #ifdef Q_OS_WIN
 #include <windows.h>
 #include <mmdeviceapi.h>
@@ -36,14 +35,13 @@
 
 #include "bass.h"
 #include "bassmix.h"
-#endif
 
 #include "BassPreviewAudioBackendImpl.h"
 #include "BassPreviewAudioBackendSample.h"
 
 using namespace miacode::audio::bass_detail;
 
-#if defined(MIACODE_HAS_BASS_AUDIO) && defined(Q_OS_WIN)
+#ifdef Q_OS_WIN
 namespace {
 
 struct DefaultBassEndpoint {
@@ -103,7 +101,7 @@ DefaultBassEndpoint resolveDefaultBassEndpoint()
 }  // namespace
 #endif
 
-#if defined(MIACODE_HAS_BASS_AUDIO) && defined(Q_OS_LINUX)
+#ifdef Q_OS_LINUX
 namespace {
 
 int selectLinuxOutputDevice()
@@ -147,7 +145,6 @@ bool initLinuxOutputDevice(quint32 sampleRate, int* selectedDeviceOut)
 }  // namespace
 #endif
 
-#ifdef MIACODE_HAS_BASS_AUDIO
 namespace {
 
 // Output-glitch DSP callback. Runs on BASS's own mixing thread (there is no
@@ -239,11 +236,9 @@ void CALLBACK outputGlitchDspProc(HDSP handle, DWORD channel, void* buffer, DWOR
 }
 
 }  // namespace
-#endif  // MIACODE_HAS_BASS_AUDIO
 
 void BassPreviewAudioBackend::attachOutputGlitchProbe()
 {
-#ifdef MIACODE_HAS_BASS_AUDIO
     outputGlitchProbeState_.reset();
     outputGlitchProbeState_.sampleRateHz = deviceSampleRate_;
     outputGlitchProbeState_.channelCount = miacode::preview_audio::kMixChannels;
@@ -254,12 +249,10 @@ void BassPreviewAudioBackend::attachOutputGlitchProbe()
         /*priority=*/0,
         BASS_DSP_READONLY);
     noteBassErr("engine_init/output_glitch_dsp_attach");
-#endif
 }
 
 void BassPreviewAudioBackend::detachOutputGlitchProbe()
 {
-#ifdef MIACODE_HAS_BASS_AUDIO
     // Drain before tearing the state down so an in-flight event from the last
     // block is not silently lost.
     drainOutputGlitchEvents();
@@ -269,7 +262,6 @@ void BassPreviewAudioBackend::detachOutputGlitchProbe()
     }
     outputGlitchDspHandle_ = 0;
     outputGlitchProbeState_.reset();
-#endif
 }
 
 bool BassPreviewAudioBackend::ensureBassFxLoaded()
@@ -303,7 +295,7 @@ bool BassPreviewAudioBackend::ensureBassFxLoaded()
     bassFxModule_ = module;
     bassFxTempoCreate_ = reinterpret_cast<void*>(proc);
     return true;
-#elif (defined(Q_OS_MACOS) || defined(Q_OS_LINUX)) && defined(MIACODE_HAS_BASS_AUDIO)
+#elif (defined(Q_OS_MACOS) || defined(Q_OS_LINUX))
 #ifdef Q_OS_MACOS
     const QString libraryName = QStringLiteral("libbass_fx.dylib");
 #else
@@ -345,7 +337,7 @@ void BassPreviewAudioBackend::unloadBassFx()
     if (bassFxModule_ != nullptr) {
         FreeLibrary(static_cast<HMODULE>(bassFxModule_));
     }
-#elif (defined(Q_OS_MACOS) || defined(Q_OS_LINUX)) && defined(MIACODE_HAS_BASS_AUDIO)
+#elif (defined(Q_OS_MACOS) || defined(Q_OS_LINUX))
     if (bassFxModule_ != nullptr) {
         dlclose(bassFxModule_);
     }
@@ -356,7 +348,6 @@ void BassPreviewAudioBackend::unloadBassFx()
 
 void BassPreviewAudioBackend::loadOptionalPlugins()
 {
-#ifdef MIACODE_HAS_BASS_AUDIO
 #ifdef Q_OS_WIN
     if (pluginAac_ == 0) {
         const QString aacPath = runtimeFilePath(QStringLiteral("bass_aac.dll"));
@@ -380,12 +371,10 @@ void BassPreviewAudioBackend::loadOptionalPlugins()
         }
     }
 #endif
-#endif
 }
 
 void BassPreviewAudioBackend::unloadOptionalPlugins()
 {
-#ifdef MIACODE_HAS_BASS_AUDIO
     if (pluginAac_ != 0) {
         BASS_PluginFree(pluginAac_);
         noteBassErr("plugin_free_aac");
@@ -396,16 +385,11 @@ void BassPreviewAudioBackend::unloadOptionalPlugins()
         noteBassErr("plugin_free_opus");
         pluginOpus_ = 0;
     }
-#endif
 }
 
 bool BassPreviewAudioBackend::initializeAudioEngine()
 {
     MC_OP("BassPreviewAudioBackend::initializeAudioEngine");
-#ifndef MIACODE_HAS_BASS_AUDIO
-    _mc_op_.fail(QStringLiteral("BASS backend unavailable"));
-    return false;
-#else
     if (engineInitialized_ && masterMixer_ != 0) {
         return true;
     }
@@ -646,7 +630,6 @@ bool BassPreviewAudioBackend::initializeAudioEngine()
             .arg(deviceSampleRate_),
         true);
     return true;
-#endif
 }
 
 
@@ -658,7 +641,6 @@ bool BassPreviewAudioBackend::audioEngineInitialized() const
 void BassPreviewAudioBackend::invalidateOutputDevice()
 {
     MC_OP("BassPreviewAudioBackend::invalidateOutputDevice");
-#ifdef MIACODE_HAS_BASS_AUDIO
     // DeviceChangePause runs on the backend-owning worker, after the transport has
     // already been paused and its SFX voices stopped.  Destroying every stream here
     // is intentional: retaining a stream that lost its endpoint allows BASS/Windows
@@ -695,5 +677,4 @@ void BassPreviewAudioBackend::invalidateOutputDevice()
         QString("bass_output_invalidated previous_index=%1 previous_endpoint=%2 next_play_rebuild=1")
             .arg(previousDeviceIndex)
             .arg(previousEndpointId.isEmpty() ? QStringLiteral("(none)") : previousEndpointId));
-#endif
 }

@@ -2,9 +2,9 @@
 
 #include "app/services/ApplicationServices.h"
 
+#include "audio/OfflineAudioDecoder.h"
 #include "common/DebugLog.h"
 #include "common/DebugOptions.h"
-#include "common/MiniaudioFileAccess.h"
 #include "common/WaveformCache.h"
 
 #include <QCryptographicHash>
@@ -143,25 +143,7 @@ qint64 fileLastModifiedMs(const QFileInfo& fileInfo)
 
 double probeAudioDurationSeconds(const QString& trackPath)
 {
-    if (trackPath.isEmpty() || !QFileInfo::exists(trackPath)) {
-        return 0.0;
-    }
-
-    ma_decoder_config config = ma_decoder_config_init(ma_format_f32, 1, 48000);
-    ma_decoder decoder;
-    if (miacode::audio_io::decoderInitFile(trackPath, &config, &decoder) != MA_SUCCESS) {
-        return 0.0;
-    }
-
-    ma_uint64 totalFrames = 0;
-    const bool ok = ma_decoder_get_length_in_pcm_frames(&decoder, &totalFrames) == MA_SUCCESS
-        && totalFrames > 0;
-    ma_decoder_uninit(&decoder);
-    if (!ok) {
-        return 0.0;
-    }
-
-    return static_cast<double>(totalFrames) / 48000.0;
+    return miacode::audio_decode::probeFileDurationSeconds(trackPath);
 }
 
 // See the declaration in Shared.h for why this must stay the only writer of

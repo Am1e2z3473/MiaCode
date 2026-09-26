@@ -302,13 +302,12 @@ miacode_add_spec(preview_audio_playback_flow_policy_spec
     LIBS Qt6::Core
     INCLUDES src src/common src/audio src/timeline
 )
-# Keep this copy of the production factory on the no-BASS route even when
-# the worker spec also compiles the platform BASS backend sources.
-add_library(preview_audio_worker_spec_miniaudio_factory OBJECT
+add_library(preview_audio_worker_spec_production_factory OBJECT
     src/audio/PreviewAudioWorkerFactory.cpp
 )
-target_link_libraries(preview_audio_worker_spec_miniaudio_factory PRIVATE Qt6::Core)
-target_include_directories(preview_audio_worker_spec_miniaudio_factory PRIVATE src src/audio)
+target_link_libraries(preview_audio_worker_spec_production_factory PRIVATE Qt6::Core)
+target_include_directories(preview_audio_worker_spec_production_factory PRIVATE
+    src src/audio third_party/bass/include)
 
 miacode_add_spec(preview_audio_worker_spec
     OWNER src/audio
@@ -322,8 +321,6 @@ miacode_add_spec(preview_audio_worker_spec
         src/common/Mmcss.cpp
         src/audio/PreviewAudioSettings.h
         src/audio/PreviewAudioSettings.cpp
-        src/audio/MiniaudioPreviewAudioBackend.h
-        src/audio/MiniaudioPreviewAudioBackend.cpp
         src/audio/PreviewAudioCommandQueue.h
         src/audio/PreviewAudioCommandQueue.cpp
         src/audio/PreviewAudioWorkerProtocol.h
@@ -342,54 +339,51 @@ miacode_add_spec(preview_audio_worker_spec
     INCLUDES src src/audio src/common src/preview src/timeline
 )
 target_sources(preview_audio_worker_spec PRIVATE
-    $<TARGET_OBJECTS:preview_audio_worker_spec_miniaudio_factory>
+    $<TARGET_OBJECTS:preview_audio_worker_spec_production_factory>
 )
 target_compile_definitions(preview_audio_worker_spec PRIVATE
     "MIACODE_SOURCE_ROOT=\"${CMAKE_CURRENT_SOURCE_DIR}\"")
-if (WIN32 OR APPLE OR CMAKE_SYSTEM_NAME STREQUAL "Linux")
-    target_sources(preview_audio_worker_spec PRIVATE
-        src/audio/BassPreviewAudioBackend.h
-        src/audio/BassPreviewAudioBackend.cpp
-        src/audio/BassPreviewAudioBackend_EngineInit.cpp
-        src/audio/BassPreviewAudioBackend_Assets.cpp
-        src/audio/BassPreviewAudioBackend_Transport.cpp
-        src/audio/BassPreviewAudioBackend_PlaybackClock.cpp
-        src/audio/BassPreviewAudioBackend_EventDrain.cpp
+target_sources(preview_audio_worker_spec PRIVATE
+    src/audio/BassPreviewAudioBackend.h
+    src/audio/BassPreviewAudioBackend.cpp
+    src/audio/BassPreviewAudioBackend_EngineInit.cpp
+    src/audio/BassPreviewAudioBackend_Assets.cpp
+    src/audio/BassPreviewAudioBackend_Transport.cpp
+    src/audio/BassPreviewAudioBackend_PlaybackClock.cpp
+    src/audio/BassPreviewAudioBackend_EventDrain.cpp
+)
+target_include_directories(preview_audio_worker_spec PRIVATE third_party/bass/include)
+# The BASS backend resolves track paths through common/ChartAssetPaths.h, whose
+# background helpers include <QImage>.
+target_link_libraries(preview_audio_worker_spec PRIVATE Qt6::Gui)
+if (WIN32)
+    target_link_libraries(preview_audio_worker_spec PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}/third_party/bass/lib/win64/bass.lib"
+        "${CMAKE_CURRENT_SOURCE_DIR}/third_party/bass/lib/win64/bassmix.lib"
+        avrt
     )
-    target_compile_definitions(preview_audio_worker_spec PRIVATE MIACODE_HAS_BASS_AUDIO=1)
-    target_include_directories(preview_audio_worker_spec PRIVATE third_party/bass/include)
-    # The BASS backend resolves track paths through common/ChartAssetPaths.h, whose
-    # background helpers include <QImage>.
-    target_link_libraries(preview_audio_worker_spec PRIVATE Qt6::Gui)
-    if (WIN32)
-        target_link_libraries(preview_audio_worker_spec PRIVATE
-            "${CMAKE_CURRENT_SOURCE_DIR}/third_party/bass/lib/win64/bass.lib"
-            "${CMAKE_CURRENT_SOURCE_DIR}/third_party/bass/lib/win64/bassmix.lib"
-            avrt
-        )
-        add_custom_command(TARGET preview_audio_worker_spec POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E copy_if_different
-                "${CMAKE_CURRENT_SOURCE_DIR}/third_party/bass/bin/win64/bass.dll"
-                "${CMAKE_CURRENT_SOURCE_DIR}/third_party/bass/bin/win64/bassmix.dll"
-                $<TARGET_FILE_DIR:preview_audio_worker_spec>
-        )
-    elseif (APPLE)
-        target_link_libraries(preview_audio_worker_spec PRIVATE
-            "${MIACODE_BASS_MACOS_DIR}/libbass.dylib"
-            "${MIACODE_BASS_MACOS_DIR}/libbassmix.dylib"
-        )
-    elseif (CMAKE_SYSTEM_NAME STREQUAL "Linux")
-        target_link_libraries(preview_audio_worker_spec PRIVATE
-            "${MIACODE_BASS_LINUX_DIR}/libbass.so"
-            "${MIACODE_BASS_LINUX_DIR}/libbassmix.so"
-            ${CMAKE_DL_LIBS}
-        )
-        add_custom_command(TARGET preview_audio_worker_spec POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E copy_if_different
-                ${MIACODE_BASS_LINUX_LIBRARIES}
-                $<TARGET_FILE_DIR:preview_audio_worker_spec>
-        )
-    endif()
+    add_custom_command(TARGET preview_audio_worker_spec POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${CMAKE_CURRENT_SOURCE_DIR}/third_party/bass/bin/win64/bass.dll"
+            "${CMAKE_CURRENT_SOURCE_DIR}/third_party/bass/bin/win64/bassmix.dll"
+            $<TARGET_FILE_DIR:preview_audio_worker_spec>
+    )
+elseif (APPLE)
+    target_link_libraries(preview_audio_worker_spec PRIVATE
+        "${MIACODE_BASS_MACOS_DIR}/libbass.dylib"
+        "${MIACODE_BASS_MACOS_DIR}/libbassmix.dylib"
+    )
+elseif (CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    target_link_libraries(preview_audio_worker_spec PRIVATE
+        "${MIACODE_BASS_LINUX_DIR}/libbass.so"
+        "${MIACODE_BASS_LINUX_DIR}/libbassmix.so"
+        ${CMAKE_DL_LIBS}
+    )
+    add_custom_command(TARGET preview_audio_worker_spec POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            ${MIACODE_BASS_LINUX_LIBRARIES}
+            $<TARGET_FILE_DIR:preview_audio_worker_spec>
+    )
 endif()
 
 miacode_add_spec(preview_audio_non_gui_barrier_spec

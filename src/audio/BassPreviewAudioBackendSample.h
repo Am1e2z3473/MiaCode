@@ -23,16 +23,13 @@
 
 #include <cstdio>   // G1 Commit 8 followup: std::snprintf for startup-beacon lines
 
-#ifdef MIACODE_HAS_BASS_AUDIO
 #include "bass.h"
 #include "bassmix.h"
-#endif
 
 #include "BassPreviewAudioBackendImpl.h"
 
 using namespace miacode::audio::bass_detail;
 
-#ifdef MIACODE_HAS_BASS_AUDIO
 
 struct BassPreviewAudioBackend::Sample {
     QString name;
@@ -624,5 +621,3 @@ struct BassPreviewAudioBackend::Sample {
         noteBassErr("sample_stop/seek_zero");
     }
 };
-
-#endif

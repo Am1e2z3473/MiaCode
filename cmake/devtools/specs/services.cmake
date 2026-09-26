@@ -416,7 +416,7 @@ target_compile_definitions(playback_coordinator_spec PRIVATE
 # symbols; round 2, adding all 30, still leaves 171 undefined symbols
 # (PreviewStageMediaHost's whole video-decode surface, MuriAnalyzer,
 # QuickShellPreviewCompositeSurface, DocumentSessionHost's vtable, a
-# miniaudio implementation TU, ...) and was still growing. A symbol-closure
+# audio implementation TU, ...) and was still growing. A symbol-closure
 # projection over the full object graph (nm on the already-built MiaCode
 # objects) shows the same trajectory does not converge before pulling in
 # SessionBootstrap.cpp: 2 -> 32 -> 75 -> 166 -> 246 files across five
