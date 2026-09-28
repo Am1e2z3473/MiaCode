@@ -1284,7 +1284,10 @@ Map a user-facing feature to the files / classes / functions that own it. Paths 
   (Stage 2: `buildOverlayActions` pad-windows/trails + `buildSlideState`/`buildWifiState`),
   `MuriSlideWifiJudge.*` (Stage 3: `simulateRuntimeSlideAndWifiJudgments` tick-stepped
   "judged-too-fast" simulation), `MuriSimpleNoteJudge.*` (Stage 4: `collectSimpleNoteRuntimeDiagnostics`
-  — simple-note judging + multi-touch + tap-on-slide/overlap diagnostics), `MuriDiagnosticLabels.*`
+  — simple-note judging + multi-touch + tap-on-slide/overlap diagnostics; same-head slides
+  currently merged along their shared start plus an independent press produce Warning;
+  actual three-or-more-hand demand retains Muri severity, upgrading an earlier Warning
+  for the same contributing notes when they split), `MuriDiagnosticLabels.*`
   (diagnostic vocabulary: labels / source anchors / alert text / marker lookups),
   `MuriDiagnosticCollector.*` (Stage 5: output-owning collector — `addDiagnostic`/`add*SpriteEvent`
   + `finalize()` sort/dedupe). Remaining cross-stage primitives (slide predicates, pad geometry,

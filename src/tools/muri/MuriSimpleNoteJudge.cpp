@@ -337,8 +337,9 @@ void collectSimpleNoteMultiTouchDiagnostics(
         maxTick = qMax(maxTick, judgeTickForPadActiveEnd(action.endSecond));
     }
     QVector<int> activeActionIndices;
-    QSet<QString> seenSignatures;
+    QHash<QString, int> diagnosticIndexBySignature;
     QSet<quint64> previousMergedSlidePairs;
+    QSet<QPair<QString, QString>> initiallyMergedSameHeadSlides;
     int actionPointer = 0;
     for (int tick = 0; tick <= maxTick; ++tick) {
         const double nowSecond = tickToSecond(tick);
@@ -359,6 +360,24 @@ void collectSimpleNoteMultiTouchDiagnostics(
                 nowSecond,
                 &previousMergedSlidePairs,
                 &currentMergedSlidePairs);
+        for (quint64 pairKey : currentMergedSlidePairs) {
+            const RuntimeHandAction& left = actions.at(static_cast<int>(pairKey >> 32));
+            const RuntimeHandAction& right = actions.at(static_cast<int>(pairKey & 0xffffffffULL));
+            const TimelineNoteMarker* leftMarker = markerLookup.value(left.markerKey, nullptr);
+            const TimelineNoteMarker* rightMarker = markerLookup.value(right.markerKey, nullptr);
+            // Only remember a shared start, not later crossings or chained segment starts.
+            if (left.sourceType == QLatin1String("slide")
+                && right.sourceType == QLatin1String("slide")
+                && leftMarker != nullptr && rightMarker != nullptr
+                && leftMarker->lane == rightMarker->lane
+                && qAbs(leftMarker->second - rightMarker->second) <= kPadTimeEpsilon
+                && qAbs(left.startSecond - right.startSecond) <= kPadTimeEpsilon
+                && qAbs(left.startSecond - leftMarker->slideTraceSecond) <= kPadTimeEpsilon
+                && qAbs(right.startSecond - rightMarker->slideTraceSecond) <= kPadTimeEpsilon
+                && tick == judgeTickForPadActiveStart(left.startSecond)) {
+                initiallyMergedSameHeadSlides.insert(qMakePair(left.markerKey, right.markerKey));
+            }
+        }
         const QVector<MultiTouchActionCluster> touchClusters =
             buildMultiTouchActionClusters(touchPoints, actions);
         int handCount = 0;
@@ -394,7 +413,30 @@ void collectSimpleNoteMultiTouchDiagnostics(
             }
             touchPointActionIndices.append(cluster.representativePoint.actionIndex);
         }
-        if (handCount > 2 && !touchPointActionIndices.isEmpty()) {
+        bool involvesMergedSharedStart = false;
+        if (handCount == 2) {
+            const bool hasIndependentPress = std::any_of(
+                touchPointActionIndices.cbegin(), touchPointActionIndices.cend(),
+                [&actions](int index) { return actions.at(index).kind == RuntimeHandActionKind::Press; });
+            if (hasIndependentPress) {
+                for (quint64 pairKey : currentMergedSlidePairs) {
+                    const int leftIndex = static_cast<int>(pairKey >> 32);
+                    const int rightIndex = static_cast<int>(pairKey & 0xffffffffULL);
+                    if (!initiallyMergedSameHeadSlides.contains(
+                            qMakePair(actions.at(leftIndex).markerKey, actions.at(rightIndex).markerKey))) {
+                        continue;
+                    }
+                    involvesMergedSharedStart = true;
+                    if (!touchPointActionIndices.contains(leftIndex)) {
+                        touchPointActionIndices.append(leftIndex);
+                    }
+                    if (!touchPointActionIndices.contains(rightIndex)) {
+                        touchPointActionIndices.append(rightIndex);
+                    }
+                }
+            }
+        }
+        if ((handCount > 2 || involvesMergedSharedStart) && !touchPointActionIndices.isEmpty()) {
             std::sort(touchPointActionIndices.begin(), touchPointActionIndices.end(), [&actions](int a, int b) {
                 const RuntimeHandAction& left = actions.at(a);
                 const RuntimeHandAction& right = actions.at(b);
@@ -433,8 +475,14 @@ void collectSimpleNoteMultiTouchDiagnostics(
                     formatMultiTouchActionLabel(action, markerLookup, syntheticSlideHeadOwnerKeys));
             }
             const QString signature = signatureParts.join(QLatin1Char('|'));
-            if (!seenSignatures.contains(signature)) {
-                seenSignatures.insert(signature);
+            const MuriAlertLevel alertLevel = (involvesMergedSharedStart
+                                              || (involvesTouch && nonTouchHandCount <= 2))
+                ? MuriAlertLevel::Warning
+                : MuriAlertLevel::Muri;
+            const int existingIndex = diagnosticIndexBySignature.value(signature, -1);
+            if (existingIndex < 0
+                || (diagnostics->at(existingIndex).alertLevel == MuriAlertLevel::Warning
+                    && alertLevel == MuriAlertLevel::Muri)) {
 
                 int anchorActionIndex = causeActionIndices.constFirst();
                 DiagnosticAnchor anchorInfo = diagnosticAnchorFromAction(actions.at(anchorActionIndex));
@@ -454,9 +502,7 @@ void collectSimpleNoteMultiTouchDiagnostics(
                 diagnostic.col = anchorInfo.valid ? anchorInfo.col : 1;
                 diagnostic.markerKey = actions.at(anchorActionIndex).markerKey;
                 diagnostic.title = muriKindDisplayName(MuriKind::MultiTouch, true);
-                diagnostic.alertLevel = (involvesTouch && nonTouchHandCount <= 2)
-                    ? MuriAlertLevel::Warning
-                    : MuriAlertLevel::Muri;
+                diagnostic.alertLevel = alertLevel;
                 diagnostic.detailKind = MuriDetailKind::MultiTouchFormedBy;
                 diagnostic.detailArgs.actions = detailParts.join(QStringLiteral(", "));
                 diagnostic.detailArgs.alert = diagnostic.alertLevel;
@@ -464,7 +510,12 @@ void collectSimpleNoteMultiTouchDiagnostics(
                     diagnostic.detailKind,
                     diagnostic.detailArgs,
                     SimaiNativeValidationLocale::English);
-                diagnostics->append(diagnostic);
+                if (existingIndex >= 0) {
+                    (*diagnostics)[existingIndex] = diagnostic;
+                } else {
+                    diagnosticIndexBySignature.insert(signature, diagnostics->size());
+                    diagnostics->append(diagnostic);
+                }
             }
         }
 

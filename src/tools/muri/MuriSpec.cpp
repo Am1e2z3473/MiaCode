@@ -872,6 +872,77 @@ int main(int argc, char** argv)
     }
 
     {
+        const auto expectSharedStartMultiTouch = [&](const QString& chart, const QString& label,
+                                                    int warningCount, int errorCount) {
+            const AnalyzedChart analyzed = analyzeChart(chart);
+            expect(analyzed.parsed.ok, label + QStringLiteral(" parses"));
+            expect(countDiagnostics(analyzed.report.diagnostics, MuriKind::MultiTouch)
+                       == warningCount + errorCount,
+                label + QStringLiteral(" has no duplicate multitouch diagnostic"));
+            expect(countDiagnosticsWithAlertLevel(
+                       analyzed.report.diagnostics, MuriKind::MultiTouch, MuriAlertLevel::Warning)
+                       == warningCount,
+                label + QStringLiteral(" runtime warning count"));
+            expect(countDiagnosticsWithAlertLevel(
+                       analyzed.report.diagnostics, MuriKind::MultiTouch, MuriAlertLevel::Muri)
+                       == errorCount,
+                label + QStringLiteral(" runtime error count"));
+            expect(countVisibleEntriesWithAlertLevel(
+                       analyzed.visibleEntries, MuriKind::MultiTouch, MuriAlertLevel::Warning)
+                       == warningCount,
+                label + QStringLiteral(" visible warning count"));
+            expect(countVisibleEntriesWithAlertLevel(
+                       analyzed.visibleEntries, MuriKind::MultiTouch, MuriAlertLevel::Muri)
+                       == errorCount,
+                label + QStringLiteral(" visible error count"));
+        };
+        expectSharedStartMultiTouch(
+            QStringLiteral("(120){4}8v3[4:2]*v5[4:2],1,,,,E"),
+            QStringLiteral("shared-start tap before split"), 1, 0);
+        expectSharedStartMultiTouch(
+            QStringLiteral("(120){4}123,E"),
+            QStringLiteral("ordinary triple tap retains error severity"), 0, 1);
+        expectSharedStartMultiTouch(
+            QStringLiteral("(120){4}8v3[4:2]*v5[4:2],,1,,,E"),
+            QStringLiteral("shared-start tap after split"), 0, 1);
+        expectSharedStartMultiTouch(
+            QStringLiteral("(120){4}8v3[4:2]*v5[4:2],1h[4:1],,,,E"),
+            QStringLiteral("shared-start hold crosses split"), 0, 1);
+        expectSharedStartMultiTouch(
+            QStringLiteral("(120){4}8v3[4:2]/8v5[4:2],,1,,,E"),
+            QStringLiteral("shared-start slash notation parity"), 0, 1);
+        expectSharedStartMultiTouch(
+            QStringLiteral("(120){4}8v3[4:2]*v5[4:2],,,,,E"),
+            QStringLiteral("shared-start slides without extra press"), 0, 0);
+        expectSharedStartMultiTouch(
+            QStringLiteral("(120){4}8-3[4:2]*-5[4:2],1,,,,E"),
+            QStringLiteral("same-head slides without shared path"), 0, 1);
+        expectSharedStartMultiTouch(
+            QStringLiteral("(120){4}8v3[4:2]*v5[4:2],,,,,,123,E"),
+            QStringLiteral("unrelated triple press after shared slides"), 0, 1);
+        expectSharedStartMultiTouch(
+            QStringLiteral("(120){4}8v3[4:2]*v5[4:2],,1/2,,,E"),
+            QStringLiteral("shared-start four-hand demand"), 0, 1);
+        expectSharedStartMultiTouch(
+            QStringLiteral("(120){4}8v3[1##1],8v5[4:2],,1,,,E"),
+            QStringLiteral("different head times with simultaneous slide motion"), 0, 1);
+        expectSharedStartMultiTouch(
+            QStringLiteral("(120){4}8-2[4:1]-4[4:1]v1[4:2]*-6[4:1]-4[4:1]v3[4:2],,,,,8,,,E"),
+            QStringLiteral("later chain overlap without shared start"), 0, 1);
+        expectSharedStartMultiTouch(
+            QStringLiteral("(120){4}8v3[4:2]-7[4:2]*v5[4:2]-1[4:2],,,,8,,,E"),
+            QStringLiteral("split shared-start later chain segments retain error severity"), 0, 1);
+        const AnalyzedChart split = analyzeChart(
+            QStringLiteral("(120){4}8v3[4:2]*v5[4:2],,1,,,E"));
+        if (const MuriDiagnostic* diagnostic = firstDiagnostic(split.report.diagnostics, MuriKind::MultiTouch)) {
+            expect(nearlyEqual(diagnostic->second, 1.0),
+                QStringLiteral("shared-start error occurs at the actual triple-hand demand"));
+            expect(diagnostic->detailArgs.alert == MuriAlertLevel::Muri,
+                QStringLiteral("shared-start error detail uses the error severity"));
+        }
+    }
+
+    {
         const AnalyzedChart analyzed = analyzeChart(
             QStringLiteral("(240){16}\n123,\nE\n"));
         expect(analyzed.parsed.ok, QStringLiteral("plain multitouch repro chart parses"));
