@@ -44,6 +44,19 @@ if (MSVC)
     endif()
 endif()
 
+# <windows.h> defines min/max as function-like macros unless NOMINMAX is set,
+# which mangles `std::numeric_limits<T>::max()` into a macro invocation and
+# fails to compile (C4003/C2589/C2059). Vendored headers pull <windows.h> in
+# without the guard — third_party/bass/include/bass.h does — so whether a
+# translation unit breaks depends on include order alone: any TU that reaches a
+# Bass* header before common/DebugOptions.h gets the macros, and the
+# `#define NOMINMAX` inside DebugOptions.h is then too late to help. Defining it
+# for every target up front makes the outcome order-independent. (Qt does the
+# same thing in QtCore/qt_windows.h.)
+if (WIN32)
+    add_compile_definitions(NOMINMAX)
+endif()
+
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTORCC ON)
