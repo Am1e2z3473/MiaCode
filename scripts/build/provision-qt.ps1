@@ -233,8 +233,22 @@ try {
         } else {
             $pythonCommand = Get-Command python.exe -ErrorAction SilentlyContinue
             if ($null -eq $pythonCommand) { $pythonCommand = Get-Command py.exe -ErrorAction SilentlyContinue }
-            if ($null -eq $pythonCommand) { throw "7z.exe not found and Python is unavailable for the py7zr fallback." }
-            & $pythonCommand.Source -m py7zr x $localArchive "-o$targetRoot" | Out-Null
+            if ($null -eq $pythonCommand) {
+                throw "7z.exe not found and Python is unavailable for the py7zr fallback. Install 7-Zip (winget install 7zip.7zip) or Python with py7zr."
+            }
+            # Probe the interpreter before extracting. A Windows "app execution
+            # alias" python.exe (the Microsoft Store stub) is found by Get-Command
+            # but exits with "Python was not found", and a real interpreter may
+            # simply lack py7zr; both otherwise surface as "py7zr extraction
+            # failed", which names the wrong culprit. Report what is missing.
+            $probe = & $pythonCommand.Source -c "import py7zr" 2>&1
+            if ($LASTEXITCODE -ne 0) {
+                throw "$($pythonCommand.Source) has no usable py7zr ($(($probe -join ' ').Trim())). Run '$($pythonCommand.Source) -m pip install py7zr', or install 7-Zip for the faster native extractor."
+            }
+            # py7zr 1.x takes the output directory as a positional argument (older
+            # releases used -o), so drive the stable Python API instead of a CLI
+            # whose flag layout moves between releases.
+            & $pythonCommand.Source -c "import sys, py7zr; py7zr.SevenZipFile(sys.argv[1]).extractall(path=sys.argv[2])" $localArchive $targetRoot | Out-Null
             if ($LASTEXITCODE -ne 0) { throw "py7zr extraction failed for $($entry.Name)" }
         }
         Remove-Item -LiteralPath $localArchive -Force
