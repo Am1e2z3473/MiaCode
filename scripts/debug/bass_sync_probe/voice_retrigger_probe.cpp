@@ -1,5 +1,5 @@
 // Probe 3: the SFX voice path exactly as BassPreviewAudioBackend::Sample builds it.
-//   source (memory WAV, DECODE|PRESCAN|ASYNCFILE) -> resampler mixer (DECODE|FLOAT|NONSTOP)
+//   source (memory WAV, DECODE|PRESCAN) -> resampler mixer (DECODE|FLOAT|NONSTOP)
 //   -> master mixer (FLOAT|NONSTOP|POSEX, buffer 0, 4 threads, playing)
 // playOneShot = SetAttribute(VOL) + BASS_Mixer_ChannelSetPosition(source,0) + clear CHAN_PAUSE.
 // We retrigger many times, from the worker thread and from inside a master POS|MIXTIME sync
@@ -60,7 +60,7 @@ struct Voice {
     bool create(int srcRate)
     {
         bytes = makeWav(srcRate, 2, 0.120, 880.0, 0.8f);
-        source = BASS_StreamCreateFile(TRUE, bytes.data(), 0, bytes.size(), BASS_STREAM_DECODE | BASS_STREAM_PRESCAN | BASS_ASYNCFILE);
+        source = BASS_StreamCreateFile(BASS_FILE_MEM, bytes.data(), 0, bytes.size(), BASS_STREAM_DECODE | BASS_STREAM_PRESCAN);
         if (!source) { std::printf("source create failed %d\n", BASS_ErrorGetCode()); return false; }
         float freq = 48000; BASS_ChannelGetAttribute(source, BASS_ATTRIB_FREQ, &freq);
         resampler = BASS_Mixer_StreamCreate((DWORD)freq, 2, BASS_STREAM_DECODE | BASS_SAMPLE_FLOAT | BASS_MIXER_NONSTOP);

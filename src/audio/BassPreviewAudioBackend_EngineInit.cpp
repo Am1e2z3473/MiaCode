@@ -1,6 +1,7 @@
 #include "BassPreviewAudioBackend.h"
 
 #include "BassPreviewDebugLogRouting.h"
+#include "BassFlacPlugin.h"
 #include "BassPreviewRetainedState.h"
 #include "PreviewBassDefaultDevice.h"
 #include "PreviewBassEmergencyPause.h"
@@ -348,6 +349,10 @@ void BassPreviewAudioBackend::unloadBassFx()
 
 void BassPreviewAudioBackend::loadOptionalPlugins()
 {
+    int flacError = 0;
+    if (!miacode::audio::ensureBassFlacPluginLoaded(&flacError)) {
+        appendAudioDebugLog(QString("bass_flac_plugin_load_failed err=%1").arg(flacError));
+    }
 #ifdef Q_OS_WIN
     if (pluginAac_ == 0) {
         const QString aacPath = runtimeFilePath(QStringLiteral("bass_aac.dll"));

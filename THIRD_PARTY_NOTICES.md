@@ -17,7 +17,7 @@ This file inventories libraries, tools, fonts, media assets, and reference proje
 | QtAVPlayer | Vendored preview video decode backend under [third_party/QtAVPlayer](third_party/QtAVPlayer) | MIT License, see [third_party/QtAVPlayer/LICENSE](third_party/QtAVPlayer/LICENSE). |
 | SoundTouch | Audio processing under [third_party/soundtouch](third_party/soundtouch) | LGPL 2.1, see [third_party/soundtouch/COPYING.TXT](third_party/soundtouch/COPYING.TXT). Static linking and redistribution obligations need review before public release. |
 | miniz | ZIP packaging under [third_party/miniz](third_party/miniz) | MIT License, see [third_party/miniz/LICENSE](third_party/miniz/LICENSE). |
-| BASS, BASSmix, BASS_FX, BASS_AAC, BASSOPUS | Cross-platform audio backend, offline export mixing, and waveform decoding; packaged native runtimes | Kept for non-commercial MiaCode builds/releases. BASS is not a general open-source dependency; do not use MiaCode's bundled BASS files for commercial redistribution without appropriate BASS licensing. |
+| BASS, BASSmix, BASS_FX, BASS_AAC, BASSOPUS, BASSFLAC | Cross-platform audio backend, offline export mixing, and waveform decoding; packaged native runtimes | Kept for non-commercial MiaCode builds/releases. BASS is not a general open-source dependency; do not use MiaCode's bundled BASS files for commercial redistribution without appropriate BASS licensing. |
 | Lucide Icons | Utility UI SVGs under `src/app/ui/resources/icons/` and the checkbox mark under `resources/icons/checkmark.svg` | ISC License; see [licenses/Lucide-ISC.txt](licenses/Lucide-ISC.txt) and the upstream [Lucide repository](https://github.com/lucide-icons/lucide). |
 
 ## Fonts

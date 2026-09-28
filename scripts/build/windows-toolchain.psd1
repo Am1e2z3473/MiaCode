@@ -91,8 +91,8 @@
         }
         # un4seen ships bass_aac for x86/x64 only.
         RuntimeDllsByArch = @{
-            x64   = @('bass.dll', 'bassmix.dll', 'bass_fx.dll', 'bass_aac.dll', 'bassopus.dll')
-            arm64 = @('bass.dll', 'bassmix.dll', 'bass_fx.dll', 'bassopus.dll')
+            x64   = @('bass.dll', 'bassmix.dll', 'bass_fx.dll', 'bass_aac.dll', 'bassopus.dll', 'bassflac.dll')
+            arm64 = @('bass.dll', 'bassmix.dll', 'bass_fx.dll', 'bassopus.dll', 'bassflac.dll')
         }
     }
 
@@ -185,7 +185,7 @@
             'app-qt:Qt6QuickControls2', 'app-qt:Qt6Svg',
             'app-qt:Qt6Quick3D', 'app-qt:Qt6Quick3DRuntimeRender', 'app-qt:Qt6Quick3DUtils',
             'app\bass.dll', 'app\bassmix.dll', 'app\bass_fx.dll',
-            'app\bassopus.dll',
+            'app\bassopus.dll', 'app\bassflac.dll',
             'app\platforms\qwindows.dll',
             'app\qml\QtQuick\qtquick2plugin.dll',
             'app\qml\QtQuick\Controls\qtquickcontrols2plugin.dll',

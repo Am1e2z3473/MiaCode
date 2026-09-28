@@ -1018,7 +1018,7 @@ if (WIN32)
         "${CMAKE_CURRENT_SOURCE_DIR}/third_party/bass/bin/${MIACODE_BASS_WINDOWS_ARCH}")
     # bass_aac ships for x86/x64 only; the arm64 runtime uses the remaining
     # plugins and the audio backend already tolerates a missing add-on.
-    set(MIACODE_BASS_WINDOWS_DLLS bass.dll bassmix.dll bass_fx.dll bassopus.dll)
+    set(MIACODE_BASS_WINDOWS_DLLS bass.dll bassmix.dll bass_fx.dll bassopus.dll bassflac.dll)
     if (MIACODE_BASS_WINDOWS_ARCH STREQUAL "win64")
         list(APPEND MIACODE_BASS_WINDOWS_DLLS bass_aac.dll)
     endif()
@@ -1070,6 +1070,7 @@ elseif (APPLE)
         "${MIACODE_BASS_MACOS_DIR}/libbassmix.dylib"
         "${MIACODE_BASS_MACOS_DIR}/libbass_fx.dylib"
         "${MIACODE_BASS_MACOS_DIR}/libbassopus.dylib"
+        "${MIACODE_BASS_MACOS_DIR}/libbassflac.dylib"
     )
     foreach(MIACODE_BASS_LIBRARY IN LISTS MIACODE_BASS_MACOS_LIBRARIES)
         if (NOT EXISTS "${MIACODE_BASS_LIBRARY}")
@@ -1117,6 +1118,7 @@ elseif (CMAKE_SYSTEM_NAME STREQUAL "Linux")
         "${MIACODE_BASS_LINUX_DIR}/libbass.so"
         "${MIACODE_BASS_LINUX_DIR}/libbassmix.so"
         "${MIACODE_BASS_LINUX_DIR}/libbass_fx.so"
+        "${MIACODE_BASS_LINUX_DIR}/libbassflac.so"
     )
     foreach(MIACODE_BASS_LIBRARY IN LISTS MIACODE_BASS_LINUX_LIBRARIES)
         if (NOT EXISTS "${MIACODE_BASS_LIBRARY}")

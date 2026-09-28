@@ -9,6 +9,7 @@
 #include <QtMath>
 
 #include "audio/PreviewBassDeviceLease.h"
+#include "audio/BassFlacPlugin.h"
 
 #include "bass.h"
 
@@ -92,6 +93,7 @@ DecodedMonoAudio decodeWithBass(const QString& path, int targetSampleRate)
     if (!device.available()) {
         return decoded;
     }
+    miacode::audio::ensureBassFlacPluginLoaded();
     QFile file(path);
     if (!file.open(QIODevice::ReadOnly)) {
         return decoded;
@@ -102,7 +104,7 @@ DecodedMonoAudio decodeWithBass(const QString& path, int targetSampleRate)
     }
 
     const HSTREAM stream = BASS_StreamCreateFile(
-        TRUE,
+        BASS_FILE_MEM,
         bytes.constData(),
         0,
         static_cast<QWORD>(bytes.size()),
@@ -175,6 +177,7 @@ double probeFileDurationSeconds(const QString& path)
     if (!device.available()) {
         return 0.0;
     }
+    miacode::audio::ensureBassFlacPluginLoaded();
     QFile file(path);
     if (!file.open(QIODevice::ReadOnly)) {
         return 0.0;
@@ -184,7 +187,7 @@ double probeFileDurationSeconds(const QString& path)
         return 0.0;
     }
     const HSTREAM stream = BASS_StreamCreateFile(
-        TRUE,
+        BASS_FILE_MEM,
         bytes.constData(),
         0,
         static_cast<QWORD>(bytes.size()),

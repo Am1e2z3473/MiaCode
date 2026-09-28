@@ -111,6 +111,7 @@ third_party/**/*.a
 !third_party/bass/bin/win64/bass_fx.dll
 !third_party/bass/bin/win64/bass_aac.dll
 !third_party/bass/bin/win64/bassopus.dll
+!third_party/bass/bin/win64/bassflac.dll
 # Windows arm64 carries no bass_aac: un4seen publishes that add-on for
 # x86/x64 only.
 !third_party/bass/bin/winarm64/
@@ -118,21 +119,25 @@ third_party/**/*.a
 !third_party/bass/bin/winarm64/bassmix.dll
 !third_party/bass/bin/winarm64/bass_fx.dll
 !third_party/bass/bin/winarm64/bassopus.dll
+!third_party/bass/bin/winarm64/bassflac.dll
 !third_party/bass/lib/macos/
 !third_party/bass/lib/macos/universal/
 !third_party/bass/lib/macos/universal/libbass.dylib
 !third_party/bass/lib/macos/universal/libbassmix.dylib
 !third_party/bass/lib/macos/universal/libbass_fx.dylib
 !third_party/bass/lib/macos/universal/libbassopus.dylib
+!third_party/bass/lib/macos/universal/libbassflac.dylib
 !third_party/bass/lib/linux/
 !third_party/bass/lib/linux/x86_64/
 !third_party/bass/lib/linux/x86_64/libbass.so
 !third_party/bass/lib/linux/x86_64/libbassmix.so
 !third_party/bass/lib/linux/x86_64/libbass_fx.so
+!third_party/bass/lib/linux/x86_64/libbassflac.so
 !third_party/bass/lib/linux/aarch64/
 !third_party/bass/lib/linux/aarch64/libbass.so
 !third_party/bass/lib/linux/aarch64/libbassmix.so
 !third_party/bass/lib/linux/aarch64/libbass_fx.so
+!third_party/bass/lib/linux/aarch64/libbassflac.so
 
 # scripts whitelist: ignore all by default, allow only release/infra scripts.
 scripts/*

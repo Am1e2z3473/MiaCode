@@ -221,11 +221,11 @@ struct BassPreviewAudioBackend::Sample {
         // `stream` is overwritten by the tempo wrapper. decode_handle stays
         // valid for as long as the tempo stream owns it via BASS_FX_FREESOURCE.
         DWORD stream = BASS_StreamCreateFile(
-            TRUE,
+            BASS_FILE_MEM,
             bytes.constData(),
             0,
             static_cast<QWORD>(bytes.size()),
-            BASS_STREAM_DECODE | BASS_STREAM_PRESCAN | BASS_ASYNCFILE
+            BASS_STREAM_DECODE | BASS_STREAM_PRESCAN
         );
         if (stream == 0) {
             appendAudioDebugLog(

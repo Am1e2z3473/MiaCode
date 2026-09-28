@@ -619,6 +619,7 @@ required_bass_libraries=(
   "libbassmix.dylib"
   "libbass_fx.dylib"
   "libbassopus.dylib"
+  "libbassflac.dylib"
 )
 for bass_library in "${required_bass_libraries[@]}"; do
   bass_path="$bass_frameworks_dir/$bass_library"
