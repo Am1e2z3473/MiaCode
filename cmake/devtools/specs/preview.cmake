@@ -366,6 +366,7 @@ if (WIN32)
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
             "${CMAKE_CURRENT_SOURCE_DIR}/third_party/bass/bin/win64/bass.dll"
             "${CMAKE_CURRENT_SOURCE_DIR}/third_party/bass/bin/win64/bassmix.dll"
+            "${CMAKE_CURRENT_SOURCE_DIR}/third_party/bass/bin/win64/bassflac.dll"
             $<TARGET_FILE_DIR:preview_audio_worker_spec>
     )
 elseif (APPLE)

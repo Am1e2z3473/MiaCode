@@ -1,5 +1,7 @@
 #include "BassExportAudioBackend.h"
 
+#include "audio/BassFlacPlugin.h"
+
 #include "common/DebugLog.h"
 #include "common/PreviewAudioMixConfig.h"
 #include "common/PreviewSfxAssets.h"
@@ -120,11 +122,6 @@ private:
     QDataStream stream_;
 };
 
-enum class SourceStorage {
-    File,
-    Memory,
-};
-
 struct ScheduledSource {
     DWORD stream = 0;
     QByteArray backingData;
@@ -160,8 +157,7 @@ bool BassExportAudioBackend::runtimeLibrariesPresent() const
         && runtimeLibraryExists(QStringLiteral("bassmix.dll"));
 #elif defined(Q_OS_MACOS)
     return runtimeLibraryExists(QStringLiteral("libbass.dylib"))
-        && runtimeLibraryExists(QStringLiteral("libbassmix.dylib"))
-        && runtimeLibraryExists(QStringLiteral("libbassopus.dylib"));
+        && runtimeLibraryExists(QStringLiteral("libbassmix.dylib"));
 #elif defined(Q_OS_LINUX)
     return runtimeLibraryExists(QStringLiteral("libbass.so"))
         && runtimeLibraryExists(QStringLiteral("libbassmix.so"));
@@ -233,6 +229,8 @@ bool BassExportAudioBackend::renderMixedTrackToWav(
         return false;
     }
 
+    miacode::audio::ensureBassFlacPluginLoaded();
+
     HPLUGIN pluginAac = 0;
     HPLUGIN pluginOpus = 0;
 #ifdef Q_OS_WIN
@@ -255,6 +253,7 @@ bool BassExportAudioBackend::renderMixedTrackToWav(
     const DWORD mixerFlags = BASS_STREAM_DECODE | BASS_SAMPLE_FLOAT | BASS_MIXER_NONSTOP | BASS_MIXER_NOSPEAKER;
     const HSTREAM masterMixer = BASS_Mixer_StreamCreate(kMixSampleRate, kMixChannels, mixerFlags);
     if (masterMixer == 0) {
+        const int mixerError = static_cast<int>(BASS_ErrorGetCode());
         if (pluginOpus != 0) {
             BASS_PluginFree(pluginOpus);
         }
@@ -263,12 +262,15 @@ bool BassExportAudioBackend::renderMixedTrackToWav(
         }
         if (errorMessage != nullptr) {
             *errorMessage = QStringLiteral("BASS_Mixer_StreamCreate failed err=%1")
-                .arg(static_cast<int>(BASS_ErrorGetCode()));
+                .arg(mixerError);
         }
         return false;
     }
 
+    QHash<QString, QByteArray> sourceDataByPath;
+    std::vector<std::unique_ptr<ScheduledSource>> sources;
     auto cleanupPlugins = [&]() {
+        sources.clear();
         if (pluginOpus != 0) {
             BASS_PluginFree(pluginOpus);
             pluginOpus = 0;
@@ -279,15 +281,12 @@ bool BassExportAudioBackend::renderMixedTrackToWav(
         }
     };
 
-    QHash<QString, QByteArray> sourceDataByPath;
-    std::vector<std::unique_ptr<ScheduledSource>> sources;
     auto addScheduledFile = [&](const QString& path,
                                 double mixStartSecond,
                                 double sourceStartSecond,
                                 double durationSeconds,
                                 double gain,
-                                const QString& tag,
-                                SourceStorage storage) -> bool {
+                                const QString& tag) -> bool {
         if (path.isEmpty() || !QFileInfo::exists(path) || gain <= 0.0 || durationSeconds <= 0.0) {
             return true;
         }
@@ -295,46 +294,37 @@ bool BassExportAudioBackend::renderMixedTrackToWav(
         const DWORD sourceFlags = BASS_STREAM_DECODE | BASS_STREAM_PRESCAN;
         auto source = std::make_unique<ScheduledSource>();
         HSTREAM stream = 0;
-        if (storage == SourceStorage::Memory) {
-            auto cached = sourceDataByPath.constFind(path);
-            if (cached == sourceDataByPath.cend()) {
-                QFile file(path);
-                if (!file.open(QIODevice::ReadOnly)) {
-                    if (errorMessage != nullptr) {
-                        *errorMessage = QStringLiteral("failed to read audio source tag=%1 path=%2 error=%3")
-                            .arg(tag)
-                            .arg(path)
-                            .arg(file.errorString());
-                    }
-                    return false;
+        auto cached = sourceDataByPath.constFind(path);
+        if (cached == sourceDataByPath.cend()) {
+            QFile file(path);
+            if (!file.open(QIODevice::ReadOnly)) {
+                if (errorMessage != nullptr) {
+                    *errorMessage = QStringLiteral("failed to read audio source tag=%1 path=%2 error=%3")
+                        .arg(tag)
+                        .arg(path)
+                        .arg(file.errorString());
                 }
-                QByteArray data = file.readAll();
-                if (file.error() != QFileDevice::NoError) {
-                    if (errorMessage != nullptr) {
-                        *errorMessage = QStringLiteral("failed to read audio source tag=%1 path=%2 error=%3")
-                            .arg(tag)
-                            .arg(path)
-                            .arg(file.errorString());
-                    }
-                    return false;
-                }
-                cached = sourceDataByPath.insert(path, std::move(data));
+                return false;
             }
-            source->backingData = cached.value();
-            stream = BASS_StreamCreateFile(
-                BASS_FILE_MEM,
-                source->backingData.constData(),
-                0,
-                static_cast<QWORD>(source->backingData.size()),
-                sourceFlags);
-        } else {
-#ifdef Q_OS_WIN
-            stream = BASS_StreamCreateFile(FALSE, reinterpret_cast<const WCHAR*>(path.utf16()), 0, 0, sourceFlags);
-#else
-            const QByteArray encodedPath = QFile::encodeName(path);
-            stream = BASS_StreamCreateFile(FALSE, encodedPath.constData(), 0, 0, sourceFlags);
-#endif
+            QByteArray data = file.readAll();
+            if (file.error() != QFileDevice::NoError) {
+                if (errorMessage != nullptr) {
+                    *errorMessage = QStringLiteral("failed to read audio source tag=%1 path=%2 error=%3")
+                        .arg(tag)
+                        .arg(path)
+                        .arg(file.errorString());
+                }
+                return false;
+            }
+            cached = sourceDataByPath.insert(path, std::move(data));
         }
+        source->backingData = cached.value();
+        stream = BASS_StreamCreateFile(
+            BASS_FILE_MEM,
+            source->backingData.constData(),
+            0,
+            static_cast<QWORD>(source->backingData.size()),
+            sourceFlags);
         if (stream == 0) {
             const int bassError = static_cast<int>(BASS_ErrorGetCode());
             appendExportLog(
@@ -456,8 +446,7 @@ bool BassExportAudioBackend::renderMixedTrackToWav(
                 plan.backgroundTrack.sourceStartSecond,
                 plan.backgroundTrack.durationSeconds,
                 plan.backgroundTrack.gain,
-                QStringLiteral("bgm"),
-                SourceStorage::File)) {
+                QStringLiteral("bgm"))) {
             BASS_StreamFree(masterMixer);
             cleanupPlugins();
             return false;
@@ -476,8 +465,7 @@ bool BassExportAudioBackend::renderMixedTrackToWav(
                 0.0,
                 durationSeconds,
                 playback.gain,
-                QStringLiteral("sfx:%1:%2").arg(index).arg(playback.kind),
-                SourceStorage::Memory)) {
+                QStringLiteral("sfx:%1:%2").arg(index).arg(playback.kind))) {
             BASS_StreamFree(masterMixer);
             cleanupPlugins();
             return false;
@@ -493,8 +481,7 @@ bool BassExportAudioBackend::renderMixedTrackToWav(
                 span.sourceStartSecond,
                 span.durationSeconds,
                 span.gain,
-                QStringLiteral("touchhold:%1").arg(index),
-                SourceStorage::Memory)) {
+                QStringLiteral("touchhold:%1").arg(index))) {
             BASS_StreamFree(masterMixer);
             cleanupPlugins();
             return false;

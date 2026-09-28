@@ -135,7 +135,6 @@ Freeze / contention diagnostics (debug mode only; the probes below are on by def
 Other `MIACODE_*` tokens seen by the source-index guard but not runtime flags:
 
 - `MIACODE_GIT_REVISION` / `MIACODE_GIT_DIRTY` — CMake-generated build identity macros embedded in `startup/process_identity`.
-- `MIACODE_HAS_BASS_AUDIO` — build-time compile definition for BASS support.
 - `MIACODE_EXTENSION_DEV_PATHS` — test-only environment literal used by `ExtensionManifestSpec`; production extension discovery does not read it.
 
 ## Category Gates
@@ -393,10 +392,6 @@ The DirectComposition / D3D11 preview and timeline backend was **removed on 2026
 Launch the default Quick Shell app in debug mode:
 
 - `MiaCode.exe --debug`
-
-Launch the legacy Qt native widget shell in debug mode:
-
-- `MiaCode.exe --qt-native --debug`
 
 Force export logging into a local directory:
 
