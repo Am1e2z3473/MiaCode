@@ -21,17 +21,6 @@
 
 #include <QString>
 
-#ifdef Q_OS_WIN
-#ifndef NOMINMAX
-#define NOMINMAX
-#endif
-#include <windows.h>
-#endif
-
-#if defined(HAVE_QT_MULTIMEDIA) && !defined(MIACODE_USE_QTAVPLAYER)
-#include <QMediaPlayer>
-#endif
-
 namespace miacode {
 namespace preview {
 namespace psmh_detail {
@@ -40,15 +29,6 @@ inline constexpr qint64 kPausedSeekAckToleranceMs = 80;
 
 // 播放控制中的相邻定位请求使用此容差；暂停拖动的复用依据为显示帧时间范围。
 inline constexpr qint64 kSeekCoalesceToleranceMs = 40;
-
-inline unsigned long currentBeaconTid() noexcept
-{
-#ifdef Q_OS_WIN
-    return static_cast<unsigned long>(::GetCurrentThreadId());
-#else
-    return 0;
-#endif
-}
 
 inline void appendPreviewStageMediaLog(const QString& action, const QString& payload = QString())
 {
@@ -62,34 +42,6 @@ inline void appendPreviewStageMediaLog(const QString& action, const QString& pay
         text
     );
 }
-
-#if defined(HAVE_QT_MULTIMEDIA) && !defined(MIACODE_USE_QTAVPLAYER)
-inline QString playbackStateName(QMediaPlayer::PlaybackState state)
-{
-    switch (state) {
-    case QMediaPlayer::StoppedState:
-        return QStringLiteral("StoppedState");
-    case QMediaPlayer::PlayingState:
-        return QStringLiteral("PlayingState");
-    case QMediaPlayer::PausedState:
-        return QStringLiteral("PausedState");
-    default:
-        return QStringLiteral("UnknownState");
-    }
-}
-
-inline QMediaPlayer::PlaybackState playerPlaybackState(const QMediaPlayer* player)
-{
-    if (player == nullptr) {
-        return QMediaPlayer::StoppedState;
-    }
-#if QT_VERSION >= QT_VERSION_CHECK(6, 5, 0)
-    return player->playbackState();
-#else
-    return player->state();
-#endif
-}
-#endif
 
 }  // namespace psmh_detail
 }  // namespace preview

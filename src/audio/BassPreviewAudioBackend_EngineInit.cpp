@@ -608,8 +608,6 @@ bool BassPreviewAudioBackend::initializeAudioEngine()
     // can now pause this output immediately without touching worker-owned streams.
     miacode::preview_audio::PreviewBassEmergencyPause::arm(bassOutputDeviceIndex_);
 #endif
-    // Started after engineInitialized_, so the sampler never queries a half-built engine.
-    startAudioHealthSampler();
     appendAudioDebugLog(
         QString("bass_engine_ready sample_rate=%1 output_index=%2 output_endpoint=%3 master_buffer_requested_ms=%4 master_buffer_effective_ms=%5 master_buffer_set=%6 master_buffer_read=%7 master_buffer_override_set=%8 master_buffer_override_valid=%9 master_threads_requested=%10 master_threads_effective=%11 master_threads_set=%12 master_threads_read=%13 master_threads_override_set=%14 master_threads_override_valid=%15")
             .arg(deviceSampleRate_)
@@ -657,7 +655,6 @@ void BassPreviewAudioBackend::invalidateOutputDevice()
     invalidateRetainedPlaybackState(QStringLiteral("output_device_change"));
     preparedPlayback_ = PreparedPlaybackState();
     audioHealthPlaybackRunning_.store(false, std::memory_order_release);
-    stopAudioHealthSampler();
     resetAssets();
     // Diagnostic-only: drops the DSP handle before the stream it is attached to goes
     // away. BASS_StreamFree below would free it anyway, but detaching explicitly

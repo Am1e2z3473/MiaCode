@@ -57,7 +57,7 @@ bool helperInterfaceIsScalarOnly(QTextStream& err)
         }
         const QByteArray source = helperFile.readAll();
         if (!require(!source.contains("QVideoFrame") && !source.contains("QImage")
-                         && !source.contains("QVideoSink") && !source.contains("QMediaPlayer")
+                         && !source.contains("QVideoSink")
                          && !source.contains(".toImage("),
                      QStringLiteral("helper sources cannot receive media objects or invoke conversion"), err)) {
             return false;

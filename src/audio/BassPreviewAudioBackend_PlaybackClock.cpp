@@ -220,23 +220,6 @@ audio_health::BufferSnapshot bufferSnapshotFor(DWORD mixerHandle)
 
 }  // namespace
 
-// Retained as a no-op compatibility hook; health sampling now runs on the backend worker.
-void BassPreviewAudioBackend::publishAudioHealthHandles()
-{
-    // Sampling is serialized with every other backend operation by PreviewAudioWorker.
-    // There is no cross-thread handle publication in the worker-owned design.
-}
-
-void BassPreviewAudioBackend::startAudioHealthSampler()
-{
-    // PreviewAudioWorker owns the only scheduler and its health deadline.
-}
-
-void BassPreviewAudioBackend::stopAudioHealthSampler()
-{
-    // No independent producer remains to stop or join.
-}
-
 // Drains the lock-free ring the output-glitch DSP callback (masterMixer_, see
 // PreviewAudioOutputGlitchProbe.h / attachOutputGlitchProbe) fills, formatting each
 // event into the audio debug log. Runs on PreviewAudioWorker's thread, called from

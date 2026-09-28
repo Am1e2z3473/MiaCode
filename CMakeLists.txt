@@ -127,9 +127,7 @@ endif()
 # (qhwvideobuffer_p.h / qvideotexturehelper_p.h) that QtAVPlayer's
 # QAVVideoFrame -> QVideoFrame bridge needs. The Windows, macOS, and Linux
 # QtAVPlayer preview backends use it (see the QtAVPlayer block below).
-if (WIN32 OR APPLE OR CMAKE_SYSTEM_NAME STREQUAL "Linux")
-    find_package(Qt6 6.8 REQUIRED COMPONENTS MultimediaQuickPrivate)
-endif()
+find_package(Qt6 6.8 REQUIRED COMPONENTS MultimediaQuickPrivate)
 
 add_executable(MiaCode WIN32 MACOSX_BUNDLE
     src/app/main.cpp
@@ -1191,7 +1189,7 @@ target_compile_definitions(MiaCode PRIVATE HAVE_QT_MULTIMEDIA=1)
 # ---------------------------------------------------------------------------
 # QtAVPlayer (FFmpeg) — preview background-video decode backend.
 #
-# Replaces QMediaPlayer for PV/BG decoding inside PreviewStageMediaHost; see
+# Decodes PV/BG video inside PreviewStageMediaHost; see
 # docs/ops/DEBUG_INDEX.md. QtAVPlayer is the
 # MIT-licensed source vendored under third_party/QtAVPlayer, compiled straight
 # into MiaCode. Windows and macOS use the project-selected FFmpeg SDK through
@@ -1201,7 +1199,6 @@ target_compile_definitions(MiaCode PRIVATE HAVE_QT_MULTIMEDIA=1)
 # All desktop platforms use QtAVPlayer. Windows selects D3D11VA, macOS selects
 # VideoToolbox/Metal, and Linux selects VA-API through DRM/EGL.
 # ---------------------------------------------------------------------------
-if (WIN32 OR APPLE OR CMAKE_SYSTEM_NAME STREQUAL "Linux")
     if (WIN32)
         if (CMAKE_SYSTEM_PROCESSOR MATCHES "^(aarch64|arm64|ARM64)$")
             set(MIACODE_FFMPEG_DEV_DIR_DEFAULT
@@ -1291,14 +1288,12 @@ if (WIN32 OR APPLE OR CMAKE_SYSTEM_NAME STREQUAL "Linux")
     endif()
     # QT_AVPLAYER_MULTIMEDIA : build the QAVVideoFrame -> QVideoFrame bridge.
     # QT_BUILD_QTAVPLAYER_LIB: export QtAVPlayer symbols (sources live in the exe).
-    # MIACODE_USE_QTAVPLAYER  : switch PreviewStageMediaHost onto the new backend.
     # Re-asserted per-target because QtAVPlayer.cmake's add_compile_definitions
     # is directory-scoped and MiaCode is created earlier in this file.
     target_compile_definitions(MiaCode PRIVATE
         QT_AVPLAYER_MULTIMEDIA
         QT_BUILD_QTAVPLAYER_LIB
         QT_AVPLAYER_NO_AVDEVICE
-        MIACODE_USE_QTAVPLAYER=1
     )
     target_link_libraries(MiaCode PRIVATE
         Qt6::MultimediaQuickPrivate
@@ -1364,7 +1359,6 @@ if (WIN32 OR APPLE OR CMAKE_SYSTEM_NAME STREQUAL "Linux")
             VERBATIM
         )
     endif()
-endif()
 
 if (MSVC)
     target_compile_options(MiaCode PRIVATE /FS)

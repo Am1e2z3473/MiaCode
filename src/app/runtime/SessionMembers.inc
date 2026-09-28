@@ -173,7 +173,6 @@
         quint64 previewSfxRuntimePreparationSequence_ = 0;
         bool previewBackendRecoveryPending_ = false;
         quint64 previewWarmupGeneration_ = 0;
-        quint64 previewMediaWarmupAppliedGeneration_ = 0;
         quint64 previewSfxWarmupAppliedGeneration_ = 0;
         quint64 startupRestoreGeneration_ = 0;
         bool startupRestorePending_ = false;
@@ -188,9 +187,6 @@
         double deferredQuickShellStartupStageMediaPausedSecond_ = 0.0;
         bool pendingDeferredValidationUiRefresh_ = false;
         bool pendingDeferredMuriUiRefresh_ = false;
-        QString previewMediaWarmupChartPath_;
-        QString previewMediaWarmupResolvedPath_;
-        QString previewMediaWarmupTrackPath_;
         QString previewSfxWarmupChartPath_;
         QString previewSfxWarmupTrackPath_;
         QString previewSfxWarmupSfxDir_;
@@ -615,7 +611,6 @@
     quint64& previewSfxRuntimePreparationSequence_ = state_.previewSfxRuntimePreparationSequence_;
     bool& previewBackendRecoveryPending_ = state_.previewBackendRecoveryPending_;
     quint64& previewWarmupGeneration_ = state_.previewWarmupGeneration_;
-    quint64& previewMediaWarmupAppliedGeneration_ = state_.previewMediaWarmupAppliedGeneration_;
     quint64& previewSfxWarmupAppliedGeneration_ = state_.previewSfxWarmupAppliedGeneration_;
     quint64& startupRestoreGeneration_ = state_.startupRestoreGeneration_;
     bool& startupRestorePending_ = state_.startupRestorePending_;
@@ -628,9 +623,6 @@
     quint64& waveformRefreshGeneration_ = state_.waveformRefreshGeneration_;
     bool& pendingDeferredValidationUiRefresh_ = state_.pendingDeferredValidationUiRefresh_;
     bool& pendingDeferredMuriUiRefresh_ = state_.pendingDeferredMuriUiRefresh_;
-    QString& previewMediaWarmupChartPath_ = state_.previewMediaWarmupChartPath_;
-    QString& previewMediaWarmupResolvedPath_ = state_.previewMediaWarmupResolvedPath_;
-    QString& previewMediaWarmupTrackPath_ = state_.previewMediaWarmupTrackPath_;
     QString& previewSfxWarmupChartPath_ = state_.previewSfxWarmupChartPath_;
     QString& previewSfxWarmupTrackPath_ = state_.previewSfxWarmupTrackPath_;
     QString& previewSfxWarmupSfxDir_ = state_.previewSfxWarmupSfxDir_;
