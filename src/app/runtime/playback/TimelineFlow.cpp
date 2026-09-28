@@ -700,6 +700,9 @@ void miacode::runtime::PlaybackCoordinator::onTimelineCenterNavigateRequested(do
 {
     if (!state_.previewProgressFollowEnabled_) {
         Q_UNUSED(second);
+        if (ui_.previewSeekDebounceTimer_ != nullptr) {
+            ui_.previewSeekDebounceTimer_->stop();
+        }
         return;
     }
     const double clampedSecond = qBound(0.0, second, previewDurationSeconds());
@@ -722,16 +725,10 @@ void miacode::runtime::PlaybackCoordinator::onTimelineWheelNavigateRequested(dou
 {
     if (!state_.previewProgressFollowEnabled_) {
         Q_UNUSED(second);
-        if (ui_.previewSeekDebounceTimer_ != nullptr) {
-            ui_.previewSeekDebounceTimer_->stop();
-        }
         return;
     }
     const double clampedSecond = qBound(0.0, second, previewDurationSeconds());
-    if (ui_.previewSeekDebounceTimer_ != nullptr) {
-        ui_.previewSeekDebounceTimer_->stop();
-    }
-    seekPreviewToSecond(clampedSecond, false);
+    requestPausedPreviewSeek(clampedSecond, false, false, false);
 }
 
 void miacode::runtime::PlaybackCoordinator::onTimelineDragFinished(double second)
