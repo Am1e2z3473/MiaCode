@@ -406,16 +406,13 @@ Map a user-facing feature to the files / classes / functions that own it. Paths 
   caret token through `TimelineQuickModel::resolveTimelineSecondForCursor`, and seeks discretely to
   `max(0, tokenSecond - 1/60)`. The comma-delimited token is selected by the editor caret (caret
   immediately before a comma belongs to the left token); tokens containing only whitespace,
-  leading BPM/subdivision/`<HS*>` controls, and/or `||` comments are empty. Authoring never inserts
-  whitespace and never moves an edit across a comment or a line break. Left click receives the pad
-  flush after those controls (before the comment, on the token's last line) for an empty token and
-  appends `/pad` for a nonempty token; right click always opens a new comma-delimited token, writing
-  `,pad` where a left click would write, except in an empty token whose caret has controls on both
-  sides: there the beat ends at the caret (`{24}|{16},` → `{24},{16}pad,`);
-  Ctrl+Shift+left click appends `` `pad`` as a pseudo-double entry. A left or Ctrl+Shift click on an
-  ordinary exact pad already present in the token removes only its first occurrence together with
-  the adjacent separator (while preserving leading timing controls and trailing whitespace); right
-  click never removes. Items split on `/` and `` ` `` only — whitespace is not a separator. Press
+  leading BPM/subdivision/`<HS*>` controls, and/or `||` comments are empty. Left click receives
+  the pad flush after those controls for an empty token (using its last line) and appends `/pad`
+  for a nonempty token; Ctrl+Shift+left click appends `` `pad`` for a nonempty token. Both left
+  gestures scan the whole comma-delimited token across lines and remove the first matching ordinary
+  pad with its adjacent separator, preserving controls and whitespace. Items split on `/` and
+  `` ` `` only. Right click inserts `pad,` exactly at the text caret and leaves the caret after
+  the comma. Press
   must finish on the same pad; moving away, ungrab, focus/app deactivation, page/context
   invalidation, or Ctrl release cancels. Gesture/style and bookmark-marker source contracts are in
   `TouchPadAuthoringStateSpec`; token/undo coverage is in `PlainCodeEditorSpec`.
@@ -1305,6 +1302,13 @@ Map a user-facing feature to the files / classes / functions that own it. Paths 
   comments, and empty beats. MainWindow entries: `onMirror*`, `onRotate*`,
   `onNormalizeWholeChart`, `onToggle*Selection`, `onClearCompleteElementsSelection`, and
   `onResetTapNotesSelection`; shortcuts are registry-backed (`Ctrl+Q` / `Ctrl+W` defaults).
+
+- Break toggling includes touch holds (`B6h[8:1]` ↔ `B6bh[8:1]`) in both eligibility and rewriting.
+  Touch hold duration brackets are optional, matching ordinary holds (`B8h` ↔ `B8bh`);
+  the shared token recognition also applies to firework toggling and random rotation.
+- Random rotation uses a one-to-one lane map per comma-delimited beat and per touch ring, shared
+  across line breaks and comments. It preserves distinct source presses and repeated source pads;
+  slide heads and tracks rotate together, and center-touch aliases keep their position.
 
 ## 12. Toolbox media utilities
 
