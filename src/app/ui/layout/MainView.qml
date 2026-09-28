@@ -225,14 +225,13 @@ Item {
         Item {
             id: chromeHost
             width: parent.width
-            height: titleBar.height + platformMenuLoader.height
+            height: titleBar.height
                     + (root.platform.nativeMenuBar ? 0 : mainToolBar.height)
 
             WindowTitleBar {
                 id: titleBar
                 width: parent.width
                 height: visible ? implicitHeight : 0
-                visible: root.platform.customTitleBar
                 hostWindow: root.hostWindow
                 platform: root.platform
                 nativeHeight: root.platform.nativeMenuBar
@@ -260,36 +259,11 @@ Item {
                 normalizationEnabled: root.pages.activePageId !== "export"
             }
 
-            Loader {
-                id: platformMenuLoader
-                y: titleBar.height
-                width: parent.width
-                height: active ? 30 : 0
-                active: !root.platform.customTitleBar
-                sourceComponent: MainMenu {
-                    width: platformMenuLoader.width
-                    height: 30
-                    availableWidth: width
-                    commands: menuCommands
-                    shortcuts: root.applicationContext.shortcuts
-                    documentSession: root.documentSession
-                    pet: root.applicationContext.pet
-                    commandsEnabled: true
-                    saveEnabled: root.editorActive
-                    wholeDocumentSaveEnabled: root.documentSession.hasDocument
-                    documentAvailable: root.documentSession.hasDocument
-                    editorCommandsEnabled: root.editorActive
-                    chartCommandsEnabled: root.chartEditorActive
-                    toolCommandsEnabled: root.documentSession.hasDocument
-                    normalizationEnabled: root.pages.activePageId !== "export"
-                }
-            }
-
             MainToolBar {
                 id: mainToolBar
                 y: root.platform.nativeMenuBar
                    ? 0
-                   : titleBar.height + platformMenuLoader.height
+                   : titleBar.height
                 z: root.platform.nativeMenuBar ? 2 : 0
                 width: parent.width
                 height: root.platform.nativeMenuBar ? titleBar.height : implicitHeight

@@ -9,7 +9,6 @@
 #include "app/ui/preferences/PreferenceDocument.h"
 #include "preview/NoteImageProvider.h"
 #include "export/CoverExportWindow.h"
-#include "chrome/PlatformChrome.h"
 #include "chrome/WindowChrome.h"
 #include "MainEntrypoints.h"
 #include "runtime/Session.h"
@@ -238,14 +237,10 @@ bool Bootstrap::start(const QString& startupOpenTarget)
         miacode::app::entry::logQuickWindowGpuDevice(
             window, QStringLiteral("qml_ui_root_window"));
 
-        auto* platform = qobject_cast<PlatformChrome*>(applicationContext_->platform());
 #if defined(Q_OS_WIN) || defined(Q_OS_MACOS)
-        // Timing comes from applicationContext.platform (hide before / attach after show).
-        if (platform != nullptr && platform->hideBeforeChromeAttach()) {
-            window->setVisible(false);
-            windowChrome_->attach(window);
-            appendUiRuntimeLog(QStringLiteral("window_chrome_attached"));
-        }
+        window->setVisible(false);
+        windowChrome_->attach(window);
+        appendUiRuntimeLog(QStringLiteral("window_chrome_attached"));
 #endif
         NativeWindowTheme::applyToWindow(window);
         // The native frame is applied, not bound: without re-applying it the
@@ -264,13 +259,6 @@ bool Bootstrap::start(const QString& startupOpenTarget)
             return false;
         }
         window->show();
-#if defined(Q_OS_WIN) || defined(Q_OS_MACOS)
-        if (platform != nullptr && platform->attachChromeAfterShow()) {
-            windowChrome_->attach(window);
-            appendUiRuntimeLog(QStringLiteral("window_chrome_attached"));
-        }
-#endif
-
         // The stage-media route defers its first chart-path load until the
         // frontend window is ready. UIv2 has no native surface host to forward
         // that readiness notification, so release the shared backend gate here

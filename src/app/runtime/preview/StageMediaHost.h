@@ -10,7 +10,7 @@ public:
 
     void ensurePreviewSfxRuntimePrepared();
     void schedulePreviewSubsystemWarmup();
-    void schedulePreviewMediaWarmup(quint64 generation, const QString& chartPathSnapshot, const QString& trackPathSnapshot, const QString& chartVideoOverrideSnapshot = QString());
+    void schedulePreviewMediaWarmup(quint64 generation, const QString& chartPathSnapshot, const QString& chartVideoOverrideSnapshot = QString());
     void schedulePreviewSfxWarmup(
         quint64 generation,
         const QString& chartPathSnapshot,
@@ -21,8 +21,6 @@ public:
     void applyPreviewMediaWarmupResult(
         quint64 generation,
         const QString& chartPath,
-        const QString& resolvedMediaPath,
-        const QString& trackPath,
         qint64 workerElapsedMs
     );
     void applyPreviewSfxWarmupResult(
@@ -49,9 +47,7 @@ public:
     // PreviewStageMediaHost::releaseDecoderForFileReplace).
     void releasePreviewStageMediaDecoderForFileOperation();
     void applyPreviewMediaWarmupToStageMediaRoute(
-        const QString& chartPath,
-        const QString& resolvedMediaPath,
-        const QString& trackPath
+        const QString& chartPath
     );
     void resetPreviewStageMediaRouteTimelineOffset();
     void applyPreviewStageMediaRoutePlaybackRate(double rate, const char* site = nullptr);

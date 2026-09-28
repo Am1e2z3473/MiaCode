@@ -14,8 +14,8 @@ namespace miacode::preview {
 // bridge (and its render-thread AcquireSync(INFINITE) freeze) disappears.
 //
 // Returns a NULL QQuickGraphicsDevice when the feature is disabled
-// (MIACODE_PREVIEW_SINGLE_D3D11_DEVICE unset), when not built with the QtAVPlayer
-// backend, or when device creation fails — the caller then simply does NOT call
+// (MIACODE_PREVIEW_SINGLE_D3D11_DEVICE unset), on non-Windows platforms,
+// or when device creation fails — the caller then simply does NOT call
 // QQuickWindow::setGraphicsDevice(), letting Qt create its own device (the legacy
 // two-device bridge). Idempotent: the device is created at most once and reused.
 //
@@ -32,7 +32,7 @@ bool sharedPreviewD3D11DeviceActive();
 // runtime log) and publishes the resolved MIACODE_PREVIEW_DUMP_HWFRAMES budget + dump
 // directory into the decoder. Idempotent and cheap; call once on the GUI thread before
 // any media loads (works on BOTH the H2 single-device and legacy two-device paths). On
-// non-Windows / non-QtAVPlayer builds it is a no-op.
+// non-Windows builds it is a no-op.
 void installPreviewDecodeDiagnostics();
 
 // Drain any pending D3D11 debug-layer (ID3D11InfoQueue) messages from the H2 shared

@@ -311,7 +311,7 @@ int main(int argc, char* argv[])
 
     // (libmpv probe removed in beta20 — the "Phase 4 video source built on
     // top of this" never landed; chart-preview video backgrounds use Qt's
-    // QMediaPlayer + QVideoSink stack via PreviewStageMediaHost. Shipping
+    // QtAVPlayer + QVideoSink stack via PreviewStageMediaHost. Shipping
     // libmpv-2.dll cost ~113 MB to log a single startup version line.)
 
 #ifdef Q_OS_WIN

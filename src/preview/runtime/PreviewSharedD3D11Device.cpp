@@ -5,7 +5,7 @@
 
 #include <QtGlobal>
 
-#if defined(Q_OS_WIN) && defined(MIACODE_USE_QTAVPLAYER)
+#ifdef Q_OS_WIN
 #ifndef NOMINMAX
 #define NOMINMAX
 #endif
@@ -21,7 +21,7 @@
 
 namespace miacode::preview {
 
-#if defined(Q_OS_WIN) && defined(MIACODE_USE_QTAVPLAYER)
+#ifdef Q_OS_WIN
 
 namespace {
 
@@ -240,7 +240,7 @@ void drainSharedPreviewD3D11DebugMessages()
     g_infoQueue->ClearStoredMessages();
 }
 
-#else  // non-Windows or QtAVPlayer backend not built
+#else  // non-Windows
 
 QQuickGraphicsDevice sharedPreviewQuickGraphicsDevice()
 {

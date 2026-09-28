@@ -50,11 +50,7 @@ ApplicationWindow {
                     | Qt.WindowMaximizeButtonHint
                     | Qt.WindowCloseButtonHint
         }
-        if (window.platform.expandClientArea) {
-            value |= Qt.ExpandedClientAreaHint
-                    | Qt.NoTitleBarBackgroundHint
-        }
-        if (Qt.platform.os === "linux" && window.platform.customTitleBar) {
+        if (Qt.platform.os === "linux") {
             value |= Qt.FramelessWindowHint
         }
         return value
@@ -246,7 +242,7 @@ ApplicationWindow {
     }
 
     Loader {
-        active: Qt.platform.os === "linux" && window.platform.customTitleBar
+        active: Qt.platform.os === "linux"
         anchors.fill: parent
         sourceComponent: WindowResizeBorder {
             hostWindow: window

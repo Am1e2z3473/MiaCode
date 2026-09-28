@@ -19,7 +19,6 @@
 #pragma comment(lib, "dxgi.lib")
 #endif
 
-#ifdef MIACODE_USE_QTAVPLAYER
 // Windows preview decode backend: FFmpeg via QtAVPlayer. QT_AVPLAYER_MULTIMEDIA
 // turns on the QAVVideoFrame -> QVideoFrame bridge (the conversion we feed to
 // the QML VideoOutput sink). Still need QVideoFrame/QVideoSink for delivery.
@@ -32,12 +31,6 @@
 #include <QVideoSink>
 #if defined(Q_OS_WIN)
 #include <QtAVPlayer/qavd3d11sharedcontext_p.h>  // HW-decode diag counters / seek catch-up
-#endif
-#elif defined(HAVE_QT_MULTIMEDIA)
-#include <QAudioOutput>
-#include <QMediaPlayer>
-#include <QVideoFrame>
-#include <QVideoSink>
 #endif
 
 #include <QDateTime>
@@ -90,15 +83,6 @@ void PreviewStageMediaHost::shutdownForAppExit()
     shuttingDown_ = true;
     clearMedia();
     destroyPvMemorySource();
-}
-
-void PreviewStageMediaHost::setWarmupResolvedMediaPath(const QString& chartPath, const QString& mediaPath)
-{
-    // No-op: the resolved-media cache was removed (see resolveMediaPath). Media
-    // resolution is now always live; the warmup worker still byte-prefetches the
-    // file into the OS cache. Kept as a no-op to preserve the call interface.
-    Q_UNUSED(chartPath);
-    Q_UNUSED(mediaPath);
 }
 
 void PreviewStageMediaHost::attachVideoOutputObject(QObject* videoOutputObject)
