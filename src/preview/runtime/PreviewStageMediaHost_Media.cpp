@@ -20,7 +20,6 @@
 #pragma comment(lib, "dxgi.lib")
 #endif
 
-#ifdef MIACODE_USE_QTAVPLAYER
 // Windows preview decode backend: FFmpeg via QtAVPlayer. QT_AVPLAYER_MULTIMEDIA
 // turns on the QAVVideoFrame -> QVideoFrame bridge (the conversion we feed to
 // the QML VideoOutput sink). Still need QVideoFrame/QVideoSink for delivery.
@@ -33,12 +32,6 @@
 #include <QVideoSink>
 #if defined(Q_OS_WIN)
 #include <QtAVPlayer/qavd3d11sharedcontext_p.h>  // HW-decode diag counters / seek catch-up
-#endif
-#elif defined(HAVE_QT_MULTIMEDIA)
-#include <QAudioOutput>
-#include <QMediaPlayer>
-#include <QVideoFrame>
-#include <QVideoSink>
 #endif
 
 #include <QDateTime>
@@ -138,8 +131,7 @@ QImage PreviewStageMediaHost::currentBackgroundImage() const
 {
     // Phase 4c-8 (image) + 4c-9 (video) — return the cached bg image
     // for both kinds. For Image: loadImageMedia() seeds it once at
-    // chart-load. For Video: noteVideoFrameArrived() converts each
-    // QVideoFrame to a QImage and updates it as new frames flow in.
+    // chart-load. Video frames update the cached image as they arrive.
     if (mediaKind_ != MediaKind::Image && mediaKind_ != MediaKind::Video) {
         return QImage();
     }
@@ -217,12 +209,10 @@ PreviewStageMediaHost::InnerVideoSinkRefresh PreviewStageMediaHost::refreshInner
         return InnerVideoSinkRefresh::None;
     }
     if (innerVideoSinkActive()) {
-#ifdef MIACODE_USE_QTAVPLAYER
         if (lastVideoFrame_.isValid()) {
             innerVideoSink_->setVideoFrame(lastVideoFrame_);
             return InnerVideoSinkRefresh::Primed;
         }
-#endif
         // Entered the mode with nothing retained — the inner circle stays blank
         // until the next decoded frame lands.
         return InnerVideoSinkRefresh::None;
@@ -311,7 +301,6 @@ void PreviewStageMediaHost::setChartPath(const QString& chartPath,
 void PreviewStageMediaHost::clearMedia()
 {
     clearPvMemorySource();
-#ifdef MIACODE_USE_QTAVPLAYER
     if (videoFrameConnection_) {
         QObject::disconnect(videoFrameConnection_);
         videoFrameConnection_ = QMetaObject::Connection();
@@ -345,18 +334,6 @@ void PreviewStageMediaHost::clearMedia()
         player_->stop();
         player_->setSource(QString());
     }
-#elif defined(HAVE_QT_MULTIMEDIA)
-    if (videoSinkFrameConnection_) {
-        QObject::disconnect(videoSinkFrameConnection_);
-        videoSinkFrameConnection_ = QMetaObject::Connection();
-    }
-    videoSink_.clear();
-    if (player_ != nullptr) {
-        player_->setVideoOutput(static_cast<QObject*>(nullptr));
-        player_->stop();
-        player_->setSource(QUrl());
-    }
-#endif
     // Phase 4c-8 — clear the cached image so a chart switch from
     // image→video doesn't leave the old image visible behind the
     // new video.
@@ -395,8 +372,6 @@ void PreviewStageMediaHost::clearMedia()
     lastSeekMs_ = -1;
     videoPlaybackActive_ = false;
     videoPlaybackPendingStart_ = false;
-    ++videoPlaybackWatchdogSerial_;
-    consecutiveVideoBackendRecoveryCount_ = 0;
     observedPlayheadSecond_ = 0.0;
     clockDeltaSeconds_ = 0.0;
     resetVideoFrameDiagnostics();
@@ -429,12 +404,10 @@ bool PreviewStageMediaHost::releaseDecoderForFileReplace()
     recordPvMemoryBoundary(PvMemoryBoundary::PlayerDestroyBefore);
     clearMedia();
     destroyPvMemorySource();
-#ifdef MIACODE_USE_QTAVPLAYER
     // Destroy the player so ~QAVPlayer runs synchronously: it stops and JOINS the
     // demux/decode threads and releases the format context, so
     // avformat_close_input has executed by the time we return. This is the same
-    // hard teardown recoverVideoBackend uses; initializeBackendObjects() rebuilds
-    // a fresh player on the next load.
+    // hard teardown; initializeBackendObjects() rebuilds a fresh player on the next load.
     if (player_ != nullptr) {
         player_->stop();
         player_->setSource(QString());
@@ -442,22 +415,6 @@ bool PreviewStageMediaHost::releaseDecoderForFileReplace()
         player_ = nullptr;
     }
     videoBackendLoaded_ = false;
-#elif defined(HAVE_QT_MULTIMEDIA)
-    // POSIX rename-while-open is legal, so the file lock never bites here, but
-    // tear the backend down the same way for parity and a clean reload.
-    if (player_ != nullptr) {
-        player_->setVideoOutput(static_cast<QObject*>(nullptr));
-        player_->stop();
-        player_->setSource(QUrl());
-        player_->setAudioOutput(nullptr);
-        delete player_;
-        player_ = nullptr;
-    }
-    if (audioOutput_ != nullptr) {
-        delete audioOutput_;
-        audioOutput_ = nullptr;
-    }
-#endif
     appendPreviewStageMediaLog(
         QStringLiteral("release_decoder_for_file_replace"),
         QStringLiteral("player_destroyed=1"));
@@ -527,8 +484,6 @@ void PreviewStageMediaHost::loadImageMedia(const QString& path)
     lastSeekMs_ = -1;
     videoPlaybackActive_ = false;
     videoPlaybackPendingStart_ = false;
-    ++videoPlaybackWatchdogSerial_;
-    consecutiveVideoBackendRecoveryCount_ = 0;
     resetVideoFrameDiagnostics();
     resetStaleEndOfMediaRecovery();
     updateClockDelta();
@@ -541,7 +496,6 @@ void PreviewStageMediaHost::loadImageMedia(const QString& path)
 void PreviewStageMediaHost::loadVideoMedia(const QString& path)
 {
     MC_OP("PreviewStageMediaHost::loadVideoMedia");
-#ifdef MIACODE_USE_QTAVPLAYER
     initializeBackendObjects();
     if (player_ == nullptr) {
         return;
@@ -609,94 +563,11 @@ void PreviewStageMediaHost::loadVideoMedia(const QString& path)
     emit mediaStateChanged();
     emit diagnosticsChanged();
     return;
-#elif !defined(HAVE_QT_MULTIMEDIA)
-    Q_UNUSED(path);
-#else
-    initializeBackendObjects();
-    if (player_ == nullptr) {
-        return;
-    }
-
-    imageSource_ = QUrl();
-    // Phase 4c-9 — clear stale image bg from a prior chart so
-    // currentBackgroundImage() reports nothing until the first decoded
-    // video frame arrives via noteVideoFrameArrived(). Also invalidate
-    // the toImage() throttle so the very first frame after this
-    // chart switch is captured immediately (otherwise a recently-
-    // armed throttle from the previous chart could delay it up to
-    // 33ms on top of the QMediaPlayer prepare latency).
-    loadedBackgroundImage_ = QImage();
-    videoFrameToImageThrottle_.invalidate();
-    mediaKind_ = MediaKind::Video;
-    pausedSeekCompletionPending_ = false;
-    pausedSeekTargetMs_ = -1;
-    pausedSeekTargetSecond_ = 0.0;
-    pausedSeekGeneration_ = 0;
-    ++pausedSeekTimeoutSerial_;
-    preparedPlaybackPending_ = false;
-    preparedPlaybackReady_ = false;
-    preparedPlaybackLandingConfirmed_ = false;
-    preparedPlaybackTargetMs_ = -1;
-    preparedPlaybackTargetSecond_ = 0.0;
-    preparedPlaybackTransaction_ = 0;
-    ++preparedPlaybackTimeoutSerial_;
-    lastTimelineSecond_ = 0.0;
-    lastSeekMs_ = -1;
-    videoPlaybackActive_ = false;
-    videoPlaybackPendingStart_ = false;
-    ++videoPlaybackWatchdogSerial_;
-    consecutiveVideoBackendRecoveryCount_ = 0;
-    resetVideoFrameDiagnostics();
-    resetStaleEndOfMediaRecovery();
-    syncMediaStatusBeaconBudget_ = qMax(syncMediaStatusBeaconBudget_, 12);
-    syncVideoFrameBeaconBudget_ = qMax(syncVideoFrameBeaconBudget_, 8);
-    {
-        char buf[260];
-        std::snprintf(buf, sizeof(buf),
-            "preview/load_video/before_bind tid=%lu rate=%.3f status=%d state=%d",
-            currentBeaconTid(),
-            playbackRate_,
-            static_cast<int>(player_->mediaStatus()),
-            static_cast<int>(playerPlaybackState(player_)));
-        miacode::oplog::appendStartupBeaconLine(buf);
-    }
-    bindVideoOutput();
-    beginPvMemorySource();
-    miacode::oplog::appendStartupBeaconLine("preview/load_video/after_bind");
-    {
-        char buf[260];
-        std::snprintf(buf, sizeof(buf),
-            "preview/load_video/before_set_source tid=%lu rate=%.3f path_len=%d",
-            currentBeaconTid(),
-            playbackRate_,
-            static_cast<int>(path.size()));
-        miacode::oplog::appendStartupBeaconLine(buf);
-    }
-    player_->setSource(QUrl::fromLocalFile(path));
-    {
-        char buf[220];
-        std::snprintf(buf, sizeof(buf),
-            "preview/load_video/after_set_source tid=%lu status=%d state=%d",
-            currentBeaconTid(),
-            static_cast<int>(player_->mediaStatus()),
-            static_cast<int>(playerPlaybackState(player_)));
-        miacode::oplog::appendStartupBeaconLine(buf);
-    }
-    player_->pause();
-    miacode::oplog::appendStartupBeaconLine("preview/load_video/after_pause");
-    player_->setPosition(0);
-    miacode::oplog::appendStartupBeaconLine("preview/load_video/after_set_position_zero");
-    updateClockDelta();
-    emit imageSourceChanged();
-    emit mediaStateChanged();
-    emit diagnosticsChanged();
-#endif
 }
 
 
 void PreviewStageMediaHost::bindVideoOutput()
 {
-#ifdef MIACODE_USE_QTAVPLAYER
     // Push model: resolve the QVideoSink owned by the QML VideoOutput; decoded
     // frames are pushed into it from handleDecodedVideoFrame. The decoded-frame
     // signal connection itself is owned by loadVideoMedia (per source
@@ -732,58 +603,4 @@ void PreviewStageMediaHost::bindVideoOutput()
             .arg(innerVideoOutputObject_ != nullptr ? 1 : 0)
             .arg(innerVideoSink_ != nullptr ? 1 : 0));
     return;
-#elif !defined(HAVE_QT_MULTIMEDIA)
-    innerVideoSink_.clear();
-    return;
-#else
-    if (videoSinkFrameConnection_) {
-        QObject::disconnect(videoSinkFrameConnection_);
-        videoSinkFrameConnection_ = QMetaObject::Connection();
-    }
-    videoSink_.clear();
-    innerVideoSink_.clear();
-
-    if (player_ == nullptr) {
-        return;
-    }
-
-    if (videoOutputObject_ == nullptr) {
-        miacode::oplog::appendStartupBeaconLine("preview/bind_video_output/before_clear_output");
-        player_->setVideoOutput(static_cast<QObject*>(nullptr));
-        miacode::oplog::appendStartupBeaconLine("preview/bind_video_output/after_clear_output");
-        appendPreviewStageMediaLog(QStringLiteral("bind_video_output"), QStringLiteral("attached=0 sink=0"));
-        return;
-    }
-
-    miacode::oplog::appendStartupBeaconLine("preview/bind_video_output/before_set_output_object");
-    player_->setVideoOutput(videoOutputObject_);
-    miacode::oplog::appendStartupBeaconLine("preview/bind_video_output/after_set_output_object");
-
-    QObject* sinkObject = nullptr;
-    const QVariant sinkVariant = videoOutputObject_->property("videoSink");
-    if (sinkVariant.isValid()) {
-        sinkObject = sinkVariant.value<QObject*>();
-    }
-    videoSink_ = qobject_cast<QVideoSink*>(sinkObject);
-    if (videoSink_ != nullptr) {
-        const quint64 sourceGeneration = videoSourceGeneration_;
-        miacode::oplog::appendStartupBeaconLine("preview/bind_video_output/before_connect_sink");
-        videoSinkFrameConnection_ = QObject::connect(videoSink_, &QVideoSink::videoFrameChanged, this, [this, sourceGeneration](const QVideoFrame& frame) {
-            if (syncVideoFrameBeaconBudget_ > 0) {
-                char buf[180];
-                std::snprintf(buf, sizeof(buf),
-                    "preview/frame/sink_signal tid=%lu source_gen=%llu",
-                    currentBeaconTid(),
-                    static_cast<unsigned long long>(sourceGeneration));
-                miacode::oplog::appendStartupBeaconLine(buf);
-            }
-            noteVideoFrameArrived(frame, sourceGeneration);
-        });
-        miacode::oplog::appendStartupBeaconLine("preview/bind_video_output/after_connect_sink");
-        appendPreviewStageMediaLog(QStringLiteral("bind_video_output"), QStringLiteral("attached=1 sink=1"));
-        return;
-    }
-
-    appendPreviewStageMediaLog(QStringLiteral("bind_video_output"), QStringLiteral("attached=1 sink=0"));
-#endif
 }

@@ -50,8 +50,6 @@ constexpr auto kProjectAudioPreferencesKey = "preview_audio";
 struct PreviewMediaWarmupResult {
     quint64 generation = 0;
     QString chartPath;
-    QString trackPath;
-    QString resolvedMediaPath;
     qint64 workerElapsedMs = -1;
 };
 
@@ -140,45 +138,43 @@ void miacode::runtime::StageMediaHost::schedulePreviewSubsystemWarmup()
     // pre-resolves the right path (explicit override beats sibling).
     const QString chartVideoOverrideSnapshot = session_.applicationServices_.workspace().document().videoPath;
     const double playbackRateSnapshot = state_.previewPlaybackRate_;
-    schedulePreviewMediaWarmup(generation, chartPathSnapshot, trackPathSnapshot, chartVideoOverrideSnapshot);
+    schedulePreviewMediaWarmup(generation, chartPathSnapshot, chartVideoOverrideSnapshot);
     schedulePreviewSfxWarmup(generation, chartPathSnapshot, trackPathSnapshot, audioSettingsSnapshot, playbackRateSnapshot);
 }
 
 void miacode::runtime::StageMediaHost::schedulePreviewMediaWarmup(
     quint64 generation,
     const QString& chartPathSnapshot,
-    const QString& trackPathSnapshot,
     const QString& chartVideoOverrideSnapshot)
 {
     if (state_.previewWarmupPool_ == nullptr) {
         return;
     }
     QPointer<Session> guard(&session_);
-    state_.previewWarmupPool_->start([guard, generation, chartPathSnapshot, trackPathSnapshot, chartVideoOverrideSnapshot]() {
+    state_.previewWarmupPool_->start([guard, generation, chartPathSnapshot, chartVideoOverrideSnapshot]() {
         QElapsedTimer timer;
         timer.start();
         PreviewMediaWarmupResult result;
         result.generation = generation;
         result.chartPath = chartPathSnapshot;
-        result.trackPath = trackPathSnapshot;
         // Phase 4c — unified resolver honours `&video=` first, then
         // falls back to sibling `bg.mp4`/`pv.mp4`/`bg.png` etc. Same
         // file the live preview will load — pre-warming the OS cache
         // here so the host's first decode/load runs cheap.
 #ifdef HAVE_QT_MULTIMEDIA
-        result.resolvedMediaPath = miacode::chart_assets::resolveChartVideoPath(chartPathSnapshot, chartVideoOverrideSnapshot);
-        if (result.resolvedMediaPath.isEmpty()) {
-            result.resolvedMediaPath = miacode::chart_assets::resolveBackgroundMediaPath(chartPathSnapshot, true);
+        QString resolvedMediaPath = miacode::chart_assets::resolveChartVideoPath(chartPathSnapshot, chartVideoOverrideSnapshot);
+        if (resolvedMediaPath.isEmpty()) {
+            resolvedMediaPath = miacode::chart_assets::resolveBackgroundMediaPath(chartPathSnapshot, true);
         }
 #else
-        result.resolvedMediaPath = miacode::chart_assets::resolveBackgroundMediaPath(chartPathSnapshot, false);
+        QString resolvedMediaPath = miacode::chart_assets::resolveBackgroundMediaPath(chartPathSnapshot, false);
 #endif
-        if (!result.resolvedMediaPath.isEmpty()) {
-            const QString suffix = QFileInfo(result.resolvedMediaPath).suffix().toLower();
+        if (!resolvedMediaPath.isEmpty()) {
+            const QString suffix = QFileInfo(resolvedMediaPath).suffix().toLower();
             if (suffix == QStringLiteral("mp4")) {
-                warmupFileIntoOsCache(result.resolvedMediaPath, 256 * 1024);
+                warmupFileIntoOsCache(resolvedMediaPath, 256 * 1024);
             } else {
-                warmupFileIntoOsCache(result.resolvedMediaPath);
+                warmupFileIntoOsCache(resolvedMediaPath);
             }
         }
         result.workerElapsedMs = timer.elapsed();
@@ -194,8 +190,6 @@ void miacode::runtime::StageMediaHost::schedulePreviewMediaWarmup(
                 guard->applyPreviewMediaWarmupResult(
                     result.generation,
                     result.chartPath,
-                    result.resolvedMediaPath,
-                    result.trackPath,
                     result.workerElapsedMs
                 );
             },
@@ -260,19 +254,13 @@ void miacode::runtime::StageMediaHost::schedulePreviewSfxWarmup(
 void miacode::runtime::StageMediaHost::applyPreviewMediaWarmupResult(
     quint64 generation,
     const QString& chartPath,
-    const QString& resolvedMediaPath,
-    const QString& trackPath,
     qint64 workerElapsedMs)
 {
     if (generation != state_.previewWarmupGeneration_) {
         return;
     }
-    state_.previewMediaWarmupAppliedGeneration_ = generation;
-    state_.previewMediaWarmupChartPath_ = chartPath;
-    state_.previewMediaWarmupResolvedPath_ = resolvedMediaPath;
-    state_.previewMediaWarmupTrackPath_ = trackPath;
     appendStartupTimingStage("mainwindow/preview_media_data_warmup", workerElapsedMs, workerElapsedMs);
-    applyPreviewMediaWarmupToStageMediaRoute(chartPath, resolvedMediaPath, trackPath);
+    applyPreviewMediaWarmupToStageMediaRoute(chartPath);
 }
 
 void miacode::runtime::StageMediaHost::applyPreviewSfxWarmupResult(
@@ -904,15 +892,6 @@ void Session::schedulePreviewSubsystemWarmup()
     stageMedia_->schedulePreviewSubsystemWarmup();
 }
 
-void Session::schedulePreviewMediaWarmup(
-    quint64 generation,
-    const QString& chartPathSnapshot,
-    const QString& trackPathSnapshot,
-    const QString& chartVideoOverrideSnapshot)
-{
-    stageMedia_->schedulePreviewMediaWarmup(generation, chartPathSnapshot, trackPathSnapshot, chartVideoOverrideSnapshot);
-}
-
 void Session::schedulePreviewSfxWarmup(
     quint64 generation,
     const QString& chartPathSnapshot,
@@ -932,15 +911,11 @@ void Session::schedulePreviewSfxWarmup(
 void Session::applyPreviewMediaWarmupResult(
     quint64 generation,
     const QString& chartPath,
-    const QString& resolvedMediaPath,
-    const QString& trackPath,
     qint64 workerElapsedMs)
 {
     stageMedia_->applyPreviewMediaWarmupResult(
         generation,
         chartPath,
-        resolvedMediaPath,
-        trackPath,
         workerElapsedMs
     );
 }

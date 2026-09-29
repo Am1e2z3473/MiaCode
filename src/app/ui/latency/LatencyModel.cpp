@@ -2,7 +2,6 @@
 
 #include "tools/latency/LatencySandboxController.h"
 
-#include <QVariantMap>
 #include <QCoreApplication>
 
 namespace miacode::ui {
@@ -11,14 +10,6 @@ namespace {
 
 constexpr int kDecimalsBpm = 3;
 constexpr int kDecimalsOffset = 3;
-
-QVariantMap decoderOption(const QString& token, const QString& label)
-{
-    QVariantMap row;
-    row.insert(QStringLiteral("value"), token);
-    row.insert(QStringLiteral("label"), label);
-    return row;
-}
 
 }  // namespace
 
@@ -167,34 +158,6 @@ bool LatencyModel::trackAvailable() const
     return engine() != nullptr && !engine()->trackPath().isEmpty();
 }
 
-QVariantList LatencyModel::audioDecoderOptions() const
-{
-    return QVariantList{
-        decoderOption(QStringLiteral("miniaudio"), QStringLiteral("miniaudio")),
-        decoderOption(QStringLiteral("bass"), QStringLiteral("BASS")),
-    };
-}
-
-void LatencyModel::setAudioDecoder(const QString& token)
-{
-    if (token == audioDecoder_) {
-        return;
-    }
-    audioDecoder_ = token;
-    // The cache is keyed on the track path alone, so a decoder switch has to
-    // drop it explicitly or detection would keep using the previous backend's
-    // envelopes.
-    clearAudioEnvelopeCache();
-    emit valuesChanged();
-}
-
-miacode::audio_decode::BackendPreference LatencyModel::decodeBackend() const
-{
-    return audioDecoder_ == QStringLiteral("bass")
-        ? miacode::audio_decode::BackendPreference::Bass
-        : miacode::audio_decode::BackendPreference::Miniaudio;
-}
-
 bool LatencyModel::ensureAudioEnvelopeReady()
 {
     const QString trackPath = engine() != nullptr ? engine()->trackPath() : QString();
@@ -207,7 +170,7 @@ bool LatencyModel::ensureAudioEnvelopeReady()
         return true;
     }
     const auto decoded = miacode::latency_analysis::decodeMonoTrack(
-        trackPath, miacode::latency_analysis::kAnalysisSampleRate, decodeBackend());
+        trackPath, miacode::latency_analysis::kAnalysisSampleRate);
     if (decoded.samples.isEmpty() || decoded.sampleRate <= 0) {
         clearAudioEnvelopeCache();
         return false;

@@ -4065,21 +4065,13 @@ The file may be open in preview, a media player, File Explorer preview pane, or 
         <source>Pause</source>
         <translation>一時停止</translation>
     </message>
-    <message id="preview.range_pause">
-        <source>Pause range playback</source>
-        <translation>区間再生を一時停止</translation>
-    </message>
     <message id="preview.play">
         <source>Play</source>
         <translation>再生</translation>
     </message>
-    <message id="preview.range_play">
-        <source>Play export range</source>
-        <translation>出力区間を再生</translation>
-    </message>
-    <message id="preview.range_exit">
-        <source>Exit current mode</source>
-        <translation>現在のモードを終了</translation>
+    <message id="preview.range_mode">
+        <source>Range playback mode</source>
+        <translation>区間再生モード</translation>
     </message>
     <message id="qml.1">
         <source>%1%</source>
@@ -4249,10 +4241,6 @@ The file may be open in preview, a media player, File Explorer preview pane, or 
         <source>Custom</source>
         <translation>カスタム</translation>
     </message>
-    <message id="qml.decoder">
-        <source>Decoder</source>
-        <translation>デコーダー</translation>
-    </message>
     <message id="qml.delete_current_difficulty">
         <source>Delete current difficulty</source>
         <translation>現在の難易度を削除</translation>
@@ -4273,9 +4261,9 @@ The file may be open in preview, a media player, File Explorer preview pane, or 
         <source>Enable clock_count</source>
         <translation>clock_count を有効化</translation>
     </message>
-    <message id="qml.enter_to_jump_ctrl_shift_b_to_create_delete_to_remove_f2_to_rena">
-        <source>Enter to jump; Ctrl+Shift+B to create; Delete to remove; F2 to rename; right-click for the bookmark menu</source>
-        <translation>Enter で移動、Ctrl+Shift+B で作成、Delete で削除、F2 で名前変更、右クリックでブックマークメニュー</translation>
+    <message id="qml.enter_to_jump_delete_to_remove_f2_to_rename_right_click_for_the">
+        <source>Enter to jump; Delete to remove; F2 to rename; right-click for the bookmark menu</source>
+        <translation>Enter で移動、Delete で削除、F2 で名前変更、右クリックでブックマークメニュー</translation>
     </message>
     <message id="qml.errors">
         <source>Errors</source>

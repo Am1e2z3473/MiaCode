@@ -15,18 +15,12 @@
 #include <QString>
 
 class QVideoSink;
-#ifdef MIACODE_USE_QTAVPLAYER
 // Desktop preview decode backend: FFmpeg via QtAVPlayer (vendored under
 // third_party/QtAVPlayer).
 // QVideoFrame is included (not just forward-declared) because lastVideoFrame_
 // is held by value for frame-replay when a VideoOutput attaches late.
 #include <QVideoFrame>
 class QAVPlayer;
-#else
-class QAudioOutput;
-class QMediaPlayer;
-class QVideoFrame;
-#endif
 
 class PreviewStageMediaHost : public QObject
 {
@@ -57,7 +51,6 @@ public:
     ~PreviewStageMediaHost() override;
 
     void initializeBackendObjects();
-    void setWarmupResolvedMediaPath(const QString& chartPath, const QString& mediaPath);
     Q_INVOKABLE void attachVideoOutputObject(QObject* videoOutputObject);
     Q_INVOKABLE void attachVideoOutputObjects(QObject* videoOutputObject, QObject* innerVideoOutputObject);
     Q_INVOKABLE void detachVideoOutputObject(QObject* videoOutputObject);
@@ -123,8 +116,7 @@ public:
     // lastVideoFrame_) and DESTROYS the player so ~QAVPlayer joins its
     // demux/decode threads and releases the format context synchronously —
     // avformat_close_input has run by the time this returns. The backend is
-    // rebuilt lazily on the next load (initializeBackendObjects), exactly like
-    // recoverVideoBackend. See project_pv_file_lock_release.
+    // rebuilt lazily on the next load (initializeBackendObjects).
     bool releaseDecoderForFileReplace();
 
     double currentPlaybackSecond() const;
@@ -185,16 +177,9 @@ private:
     void loadImageMedia(const QString& path);
     void loadVideoMedia(const QString& path);
     void bindVideoOutput();
-    bool recoverVideoBackend(const QString& reason, double targetSecond, bool resumePlayback);
     void schedulePreparedPlaybackTimeout(quint64 transactionId, qint64 targetMs);
     void schedulePausedSeekTimeout(quint64 generation, qint64 targetMs);
-    void scheduleVideoPlaybackWatchdog(const QString& reason);
-    bool trySoftRecoverVideoPlayback(const QString& reason,
-                                     double targetSecond,
-                                     qint64 initialFrameCount,
-                                     qint64 ageMs);
     void updateClockDelta();
-    void noteVideoFrameArrived(const QVideoFrame& frame, quint64 sourceGeneration);
     // The inner-circle VideoOutput is only rendered in InnerCircleFitOuterFill
     // (background scale mode 3); in every other mode it is bound but invisible,
     // so feeding it decoded frames buys nothing and retains a decode-pool
@@ -214,7 +199,6 @@ private:
     // InnerCircleFitOuterFill shows the current frame without waiting for the
     // next decode; clear it when leaving the mode so nothing stays pinned.
     InnerVideoSinkRefresh refreshInnerVideoSinkForScaleMode();
-#ifdef MIACODE_USE_QTAVPLAYER
     // QtAVPlayer frame path: a decoded QAVVideoFrame (already converted to a
     // QVideoFrame and tagged with its presentation pts in seconds) is pushed
     // to the QML sink here and used to settle the paused-seek /
@@ -230,7 +214,6 @@ private:
     // state). Same in-place reload as the software fallback, but driven by the
     // user's hardware/software preference and bidirectional. No app restart.
     void reloadVideoDecodeInPlace();
-#endif
     // HW-decode diagnostics:
     // drain the QtAVPlayer copy-path cumulative counters into one runtime-log line on a
     // low-frequency cadence (seek / end-of-media). No-op off the QtAVPlayer/Windows path.
@@ -294,12 +277,10 @@ private:
     bool missingMediaFallbackEnabled_ = false;
     PreviewBackgroundScaleMode backgroundScaleMode_ = PreviewBackgroundScaleMode::FillCrop;
     double layoutSquareScale_ = miacode::preview_video::kLayoutSquareScaleDefault;
-#ifdef MIACODE_USE_QTAVPLAYER
     // FFmpeg decode backend. setSpeed() runs inside QtAVPlayer's own decode
     // loop (no Qt converter rebuild) so rate changes never race the QSG
-    // texture sampler — the class of crash the QMediaPlayer scaffolding below
-    // existed to paper over. No QAudioOutput: the video's own audio track is
-    // intentionally never played (song audio is BASS-owned).
+    // texture sampler. The video's own audio track is intentionally never
+    // played (song audio is BASS-owned).
     QAVPlayer* player_ = nullptr;
     QMetaObject::Connection videoFrameConnection_;
     QMetaObject::Connection seekedConnection_;
@@ -308,15 +289,8 @@ private:
     double lastFramePtsSeconds_ = -1.0;
     double lastFrameDurationSeconds_ = 0.0;
     // Latest decoded frame, replayed into the QML sink when a VideoOutput
-    // attaches after decoding has already produced frames (e.g. paused bg) —
-    // the push model has no continuous source to re-pull from like
-    // QMediaPlayer::setVideoOutput did.
+    // attaches after decoding has already produced frames (e.g. paused bg).
     QVideoFrame lastVideoFrame_;
-#else
-    QMediaPlayer* player_ = nullptr;
-    QAudioOutput* audioOutput_ = nullptr;
-    QMetaObject::Connection videoSinkFrameConnection_;
-#endif
     QPointer<QObject> videoOutputObject_;
     QPointer<QObject> innerVideoOutputObject_;
     QPointer<QVideoSink> videoSink_;
@@ -327,15 +301,6 @@ private:
     miacode::diagnostics::PlaybackRateLogGate playbackRateLogGate_;
     int syncVideoFrameBeaconBudget_ = 0;
     int syncMediaStatusBeaconBudget_ = 0;
-    // G2 Commit 1: Qt 6.8 FFmpeg's QMediaPlayer::setPlaybackRate has a race
-    // when the player is in a transient mediaStatus (LoadingMedia /
-    // BufferingMedia / StalledMedia / InvalidMedia) — the rate write either
-    // gets silently dropped or fights with the buffer-fill loop. When
-    // setPlaybackRate is called in those states we cache the requested rate
-    // here and re-apply it from mediaStatusChanged once the player lands in
-    // a stable state. Matches the deferred-apply pattern outlined in
-    // PREVIEW_AUDIO_CLOCK_ALIGNMENT_HANDOFF_ZH.md §6.2.
-    bool pendingPlaybackRateApply_ = false;
     quint64 playbackTransactionId_ = 0;
     qint64 preparedPlaybackTargetMs_ = -1;
     double preparedPlaybackTargetSecond_ = 0.0;
@@ -357,10 +322,6 @@ private:
     bool pausedSeekCompletionPending_ = false;
     quint64 preparedPlaybackTimeoutSerial_ = 0;
     quint64 pausedSeekTimeoutSerial_ = 0;
-    quint64 videoPlaybackWatchdogSerial_ = 0;
-    bool recoveringVideoBackend_ = false;
-    int consecutiveVideoBackendRecoveryCount_ = 0;
-    int consecutiveVideoPlaybackSoftRecoveryCount_ = 0;
     bool videoPlaybackActive_ = false;
     bool transportPlaying_ = false;
     bool videoPlaybackPendingStart_ = false;

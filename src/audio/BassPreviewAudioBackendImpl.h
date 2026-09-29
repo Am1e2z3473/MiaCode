@@ -9,8 +9,7 @@
 // PreviewBassDeviceLease, outside these implementation translation units.
 //
 // NOTE: this header is included by each TU *after* that TU's #include block
-// (Qt headers + common headers + the platform BASS headers guarded by
-// MIACODE_HAS_BASS_AUDIO), exactly mirroring the original file's ordering where the
+// (Qt headers + common headers + the platform BASS headers), exactly mirroring the original file's ordering where the
 // anonymous namespace followed the includes. The DWORD / BASS_* references in
 // the tempo constants and noteBassErr therefore resolve against the including
 // TU's bass.h on every supported platform.
@@ -263,7 +262,6 @@ private:
 // query before the next BASS call or risk losing the code.
 inline void noteBassErrCode(const char* ctx, int code)
 {
-#ifdef MIACODE_HAS_BASS_AUDIO
     if (code == 0) {
         return;
     }
@@ -274,25 +272,16 @@ inline void noteBassErrCode(const char* ctx, int code)
         return;
     }
     appendAudioDebugLog(QString("bass_err ctx=%1 code=%2").arg(QLatin1String(ctx)).arg(code));
-#else
-    Q_UNUSED(ctx);
-    Q_UNUSED(code);
-#endif
 }
 
 inline int noteBassErr(const char* ctx)
 {
-#ifdef MIACODE_HAS_BASS_AUDIO
     // Split from noteBassErrCode so a caller that must query the code inside a locked
     // region can still emit the line after unlocking: the scheduler mutex is shared
     // with the BASS mixer callback, where a log write is a stall hazard.
     const int code = static_cast<int>(BASS_ErrorGetCode());
     noteBassErrCode(ctx, code);
     return code;
-#else
-    Q_UNUSED(ctx);
-    return 0;
-#endif
 }
 
 inline QString runtimeFilePath(const QString& fileName)
@@ -400,9 +389,7 @@ inline QString bassDebugOperationLabel(miacode::preview_audio::bass::BassDebugOp
     }
 }
 
-#ifdef MIACODE_HAS_BASS_AUDIO
 typedef DWORD (WINAPI* BassFxTempoCreateProc)(DWORD handle, DWORD flags);
-#endif
 
 }  // namespace bass_detail
 }  // namespace audio

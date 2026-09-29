@@ -313,11 +313,6 @@ private:
     // BassPreviewAudioBackendImpl.h because ScheduledMixerAction is private here.
     static QString scheduledMixerActionLabel(ScheduledMixerAction action);
     void logPlaybackStatus(double authoritativeSecond, double fallbackSecond);
-    // Legacy transition hooks retained for engine/asset paths. Health is now sampled by
-    // PreviewAudioWorker, so these do not create a competing sampler thread.
-    void startAudioHealthSampler();
-    void stopAudioHealthSampler();
-    void publishAudioHealthHandles();
     // Diagnostic-only DSP probe on masterMixer_ (see PreviewAudioOutputGlitchProbe.h).
     // attach/detach bracket the master mixer's own lifetime in initializeAudioEngine /
     // every teardown path (dtor, invalidateOutputDevice); drain runs on the worker

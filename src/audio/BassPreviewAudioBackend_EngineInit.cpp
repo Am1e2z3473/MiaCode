@@ -1,7 +1,9 @@
 #include "BassPreviewAudioBackend.h"
 
 #include "BassPreviewDebugLogRouting.h"
+#include "BassFlacPlugin.h"
 #include "BassPreviewRetainedState.h"
+#include "PreviewBassDefaultDevice.h"
 #include "PreviewBassEmergencyPause.h"
 #include "common/ChartAssetPaths.h"
 #include "common/DebugLog.h"
@@ -23,9 +25,7 @@
 #include <chrono>
 #include <cstdio>
 #include <cstring>
-#include <mutex>
 
-#ifdef MIACODE_HAS_BASS_AUDIO
 #ifdef Q_OS_WIN
 #include <windows.h>
 #include <mmdeviceapi.h>
@@ -36,14 +36,13 @@
 
 #include "bass.h"
 #include "bassmix.h"
-#endif
 
 #include "BassPreviewAudioBackendImpl.h"
 #include "BassPreviewAudioBackendSample.h"
 
 using namespace miacode::audio::bass_detail;
 
-#if defined(MIACODE_HAS_BASS_AUDIO) && defined(Q_OS_WIN)
+#ifdef Q_OS_WIN
 namespace {
 
 struct DefaultBassEndpoint {
@@ -52,37 +51,6 @@ struct DefaultBassEndpoint {
     HRESULT comResult = E_FAIL;
     HRESULT endpointResult = E_FAIL;
 };
-
-struct ConcreteEndpointConfig {
-    std::once_flag once;
-    bool disabledDefaultDevice = false;
-    int errorCode = BASS_OK;
-};
-
-ConcreteEndpointConfig& concreteEndpointConfig()
-{
-    static ConcreteEndpointConfig config;
-    return config;
-}
-
-bool disableBassDefaultDeviceEntry(int* errorCode)
-{
-    // BASS_CONFIG_DEV_DEFAULT can only be changed before BASS has enumerated or
-    // initialized a device. BASS_Free does not reopen that configuration window,
-    // so a physical-output rebuild must reuse the result of the first attempt
-    // rather than call BASS_SetConfig again.
-    ConcreteEndpointConfig& config = concreteEndpointConfig();
-    std::call_once(config.once, [&config] {
-        config.disabledDefaultDevice = BASS_SetConfig(BASS_CONFIG_DEV_DEFAULT, FALSE) != FALSE;
-        if (!config.disabledDefaultDevice) {
-            config.errorCode = static_cast<int>(BASS_ErrorGetCode());
-        }
-    });
-    if (errorCode != nullptr) {
-        *errorCode = config.errorCode;
-    }
-    return config.disabledDefaultDevice;
-}
 
 DefaultBassEndpoint resolveDefaultBassEndpoint()
 {
@@ -134,7 +102,7 @@ DefaultBassEndpoint resolveDefaultBassEndpoint()
 }  // namespace
 #endif
 
-#if defined(MIACODE_HAS_BASS_AUDIO) && defined(Q_OS_LINUX)
+#ifdef Q_OS_LINUX
 namespace {
 
 int selectLinuxOutputDevice()
@@ -178,7 +146,6 @@ bool initLinuxOutputDevice(quint32 sampleRate, int* selectedDeviceOut)
 }  // namespace
 #endif
 
-#ifdef MIACODE_HAS_BASS_AUDIO
 namespace {
 
 // Output-glitch DSP callback. Runs on BASS's own mixing thread (there is no
@@ -270,11 +237,9 @@ void CALLBACK outputGlitchDspProc(HDSP handle, DWORD channel, void* buffer, DWOR
 }
 
 }  // namespace
-#endif  // MIACODE_HAS_BASS_AUDIO
 
 void BassPreviewAudioBackend::attachOutputGlitchProbe()
 {
-#ifdef MIACODE_HAS_BASS_AUDIO
     outputGlitchProbeState_.reset();
     outputGlitchProbeState_.sampleRateHz = deviceSampleRate_;
     outputGlitchProbeState_.channelCount = miacode::preview_audio::kMixChannels;
@@ -285,12 +250,10 @@ void BassPreviewAudioBackend::attachOutputGlitchProbe()
         /*priority=*/0,
         BASS_DSP_READONLY);
     noteBassErr("engine_init/output_glitch_dsp_attach");
-#endif
 }
 
 void BassPreviewAudioBackend::detachOutputGlitchProbe()
 {
-#ifdef MIACODE_HAS_BASS_AUDIO
     // Drain before tearing the state down so an in-flight event from the last
     // block is not silently lost.
     drainOutputGlitchEvents();
@@ -300,7 +263,6 @@ void BassPreviewAudioBackend::detachOutputGlitchProbe()
     }
     outputGlitchDspHandle_ = 0;
     outputGlitchProbeState_.reset();
-#endif
 }
 
 bool BassPreviewAudioBackend::ensureBassFxLoaded()
@@ -334,7 +296,7 @@ bool BassPreviewAudioBackend::ensureBassFxLoaded()
     bassFxModule_ = module;
     bassFxTempoCreate_ = reinterpret_cast<void*>(proc);
     return true;
-#elif (defined(Q_OS_MACOS) || defined(Q_OS_LINUX)) && defined(MIACODE_HAS_BASS_AUDIO)
+#elif (defined(Q_OS_MACOS) || defined(Q_OS_LINUX))
 #ifdef Q_OS_MACOS
     const QString libraryName = QStringLiteral("libbass_fx.dylib");
 #else
@@ -376,7 +338,7 @@ void BassPreviewAudioBackend::unloadBassFx()
     if (bassFxModule_ != nullptr) {
         FreeLibrary(static_cast<HMODULE>(bassFxModule_));
     }
-#elif (defined(Q_OS_MACOS) || defined(Q_OS_LINUX)) && defined(MIACODE_HAS_BASS_AUDIO)
+#elif (defined(Q_OS_MACOS) || defined(Q_OS_LINUX))
     if (bassFxModule_ != nullptr) {
         dlclose(bassFxModule_);
     }
@@ -387,7 +349,10 @@ void BassPreviewAudioBackend::unloadBassFx()
 
 void BassPreviewAudioBackend::loadOptionalPlugins()
 {
-#ifdef MIACODE_HAS_BASS_AUDIO
+    int flacError = 0;
+    if (!miacode::audio::ensureBassFlacPluginLoaded(&flacError)) {
+        appendAudioDebugLog(QString("bass_flac_plugin_load_failed err=%1").arg(flacError));
+    }
 #ifdef Q_OS_WIN
     if (pluginAac_ == 0) {
         const QString aacPath = runtimeFilePath(QStringLiteral("bass_aac.dll"));
@@ -411,12 +376,10 @@ void BassPreviewAudioBackend::loadOptionalPlugins()
         }
     }
 #endif
-#endif
 }
 
 void BassPreviewAudioBackend::unloadOptionalPlugins()
 {
-#ifdef MIACODE_HAS_BASS_AUDIO
     if (pluginAac_ != 0) {
         BASS_PluginFree(pluginAac_);
         noteBassErr("plugin_free_aac");
@@ -427,16 +390,11 @@ void BassPreviewAudioBackend::unloadOptionalPlugins()
         noteBassErr("plugin_free_opus");
         pluginOpus_ = 0;
     }
-#endif
 }
 
 bool BassPreviewAudioBackend::initializeAudioEngine()
 {
     MC_OP("BassPreviewAudioBackend::initializeAudioEngine");
-#ifndef MIACODE_HAS_BASS_AUDIO
-    _mc_op_.fail(QStringLiteral("BASS backend unavailable"));
-    return false;
-#else
     if (engineInitialized_ && masterMixer_ != 0) {
         return true;
     }
@@ -444,12 +402,13 @@ bool BassPreviewAudioBackend::initializeAudioEngine()
     timer.start();
     _mc_op_.note(QStringLiteral("device_sr=%1").arg(deviceSampleRate_));
 #ifdef Q_OS_WIN
-    // BASS_Init(-1) means "follow the Windows default device". Disable that mode
-    // once, before the first BASS enumeration/initialization, and bind every engine
-    // lifetime to the concrete Core Audio endpoint instead. A device rebuild happens
-    // after BASS_Free, when this BASS setting is deliberately no longer mutable.
+    // BASS_Init(-1) means "follow the Windows default device". main() disables that
+    // mode before anything in the process reaches BASS, so every engine lifetime can
+    // bind to the concrete Core Audio endpoint instead; this reads back that single
+    // process-wide attempt. A device rebuild happens after BASS_Free, when the
+    // setting is no longer mutable anyway.
     int errorCode = BASS_OK;
-    if (!disableBassDefaultDeviceEntry(&errorCode)) {
+    if (!miacode::preview_audio::disableBassDefaultDeviceEntry(&errorCode)) {
         lastNativeErrorCode_ = errorCode;
         appendAudioDebugLog(QString("bass_endpoint_bind_failed reason=disable_default err=%1")
                                 .arg(errorCode));
@@ -649,8 +608,6 @@ bool BassPreviewAudioBackend::initializeAudioEngine()
     // can now pause this output immediately without touching worker-owned streams.
     miacode::preview_audio::PreviewBassEmergencyPause::arm(bassOutputDeviceIndex_);
 #endif
-    // Started after engineInitialized_, so the sampler never queries a half-built engine.
-    startAudioHealthSampler();
     appendAudioDebugLog(
         QString("bass_engine_ready sample_rate=%1 output_index=%2 output_endpoint=%3 master_buffer_requested_ms=%4 master_buffer_effective_ms=%5 master_buffer_set=%6 master_buffer_read=%7 master_buffer_override_set=%8 master_buffer_override_valid=%9 master_threads_requested=%10 master_threads_effective=%11 master_threads_set=%12 master_threads_read=%13 master_threads_override_set=%14 master_threads_override_valid=%15")
             .arg(deviceSampleRate_)
@@ -676,7 +633,6 @@ bool BassPreviewAudioBackend::initializeAudioEngine()
             .arg(deviceSampleRate_),
         true);
     return true;
-#endif
 }
 
 
@@ -688,7 +644,6 @@ bool BassPreviewAudioBackend::audioEngineInitialized() const
 void BassPreviewAudioBackend::invalidateOutputDevice()
 {
     MC_OP("BassPreviewAudioBackend::invalidateOutputDevice");
-#ifdef MIACODE_HAS_BASS_AUDIO
     // DeviceChangePause runs on the backend-owning worker, after the transport has
     // already been paused and its SFX voices stopped.  Destroying every stream here
     // is intentional: retaining a stream that lost its endpoint allows BASS/Windows
@@ -700,7 +655,6 @@ void BassPreviewAudioBackend::invalidateOutputDevice()
     invalidateRetainedPlaybackState(QStringLiteral("output_device_change"));
     preparedPlayback_ = PreparedPlaybackState();
     audioHealthPlaybackRunning_.store(false, std::memory_order_release);
-    stopAudioHealthSampler();
     resetAssets();
     // Diagnostic-only: drops the DSP handle before the stream it is attached to goes
     // away. BASS_StreamFree below would free it anyway, but detaching explicitly
@@ -725,5 +679,4 @@ void BassPreviewAudioBackend::invalidateOutputDevice()
         QString("bass_output_invalidated previous_index=%1 previous_endpoint=%2 next_play_rebuild=1")
             .arg(previousDeviceIndex)
             .arg(previousEndpointId.isEmpty() ? QStringLiteral("(none)") : previousEndpointId));
-#endif
 }

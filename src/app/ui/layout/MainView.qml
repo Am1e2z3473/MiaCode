@@ -40,10 +40,12 @@ Item {
     readonly property bool editorActive: state.hasActiveEditor && !pages.overlayActive
     readonly property bool chartEditorActive: documentSession.hasDocument
         && documentSession.currentDifficultyId > 0 && !pages.overlayActive
+    readonly property alias mainMenuCommands: menuCommands
     readonly property real minimumWidth: splitView.minimumWorkspaceWidth
-    readonly property real minimumHeight: titleBar.height + platformMenuLoader.height
-        + mainToolBar.height + statusBar.height + splitView.minimumHeight
+    readonly property real minimumHeight: chromeHost.height + statusBar.height
+        + splitView.minimumHeight
     readonly property bool compact: width < minimumWidth + splitView.expandedSidebarWidth
+    property bool latencySceneActive: false
 
     ViewState { id: state }
 
@@ -77,10 +79,8 @@ Item {
                 state.openMetadataEditor()
         }
         onLatencyCalibrationRequested: {
-            if (!root.documentSession.hasDocument)
-                return
-            root.pages.rememberEditorReturnTarget(state.activeEditorKey)
-            root.pages.openLatencyPage()
+            if (root.documentSession.hasDocument)
+                root.pages.openLatencyPage()
         }
         onMediaToolsRequested: {
             if (root.documentSession.hasDocument)
@@ -139,10 +139,20 @@ Item {
         if (root.pages.activePageId === "export"
                 || root.pages.activePageId === "cover")
             state.activeSidebarView = "export"
-        else if (root.pages.activePageId === "latency")
-            state.activeSidebarView = "tools"
         else if (root.pages.activePageId === "")
             state.activeSidebarView = "chart"
+    }
+
+    function syncLatencyScene() {
+        const active = root.documentSession.hasDocument
+            && root.pages.activePageId === "latency" && state.latencyEditorActive
+        if (active === root.latencySceneActive)
+            return
+        root.latencySceneActive = active
+        if (active)
+            root.latency.enter()
+        else
+            root.latency.leave()
     }
 
     function undo() {
@@ -212,87 +222,82 @@ Item {
         anchors.fill: parent
         spacing: 0
 
-        WindowTitleBar {
-            id: titleBar
+        Item {
+            id: chromeHost
             width: parent.width
-            height: visible ? implicitHeight : 0
-            visible: root.platform.customTitleBar
-            hostWindow: root.hostWindow
-            platform: root.platform
-            menuCommands: menuCommands
-            shortcuts: root.applicationContext.shortcuts
-            documentSession: root.documentSession
-            pet: root.applicationContext.pet
-            saveEnabled: root.editorActive
-            wholeDocumentSaveEnabled: root.documentSession.hasDocument
-            documentAvailable: root.documentSession.hasDocument
-            editorCommandsEnabled: root.editorActive
-            chartCommandsEnabled: root.chartEditorActive
-            toolCommandsEnabled: root.documentSession.hasDocument
-            leadingInset: root.applicationContext.windowChrome
-                ? root.applicationContext.windowChrome.titleBarLeadingInset
-                : 0
-            documentTitle: root.documentTitle
-            normalizationEnabled: root.pages.activePageId !== "export"
-        }
+            height: titleBar.height
+                    + (root.platform.nativeMenuBar ? 0 : mainToolBar.height)
 
-        Loader {
-            id: platformMenuLoader
-            width: parent.width
-            height: active ? 30 : 0
-            active: !root.platform.customTitleBar
-            sourceComponent: MainMenu {
-                width: platformMenuLoader.width
-                height: 30
-                availableWidth: width
-                commands: menuCommands
+            WindowTitleBar {
+                id: titleBar
+                width: parent.width
+                height: visible ? implicitHeight : 0
+                hostWindow: root.hostWindow
+                platform: root.platform
+                nativeHeight: root.platform.nativeMenuBar
+                    && root.applicationContext.windowChrome
+                    ? root.applicationContext.windowChrome.titleBarHeight
+                    : 0
+                menuCommands: menuCommands
                 shortcuts: root.applicationContext.shortcuts
                 documentSession: root.documentSession
                 pet: root.applicationContext.pet
-                commandsEnabled: true
                 saveEnabled: root.editorActive
                 wholeDocumentSaveEnabled: root.documentSession.hasDocument
                 documentAvailable: root.documentSession.hasDocument
                 editorCommandsEnabled: root.editorActive
                 chartCommandsEnabled: root.chartEditorActive
                 toolCommandsEnabled: root.documentSession.hasDocument
+                leadingInset: root.applicationContext.windowChrome
+                    ? root.applicationContext.windowChrome.titleBarLeadingInset
+                    : 0
+                leadingToolAreaWidth: root.platform.nativeMenuBar
+                    ? mainToolBar.leadingActionsRight : 0
+                trailingToolAreaWidth: root.platform.nativeMenuBar
+                    ? mainToolBar.trailingActionsWidth : 0
+                documentTitle: root.documentTitle
                 normalizationEnabled: root.pages.activePageId !== "export"
             }
-        }
 
-        MainToolBar {
-            id: mainToolBar
-            width: parent.width
-            height: implicitHeight
-            hostWindow: root.hostWindow
-            sidebarActive: root.compact
-                           ? state.compactPanel === "sidebar"
-                           : state.sidebarVisible
-            bottomActive: state.difficultyEditorActive
-                          && state.bottomPanelVisible && root.timelineSession.panelVisible
-            bottomPanelEnabled: state.difficultyEditorActive
-            saveEnabled: root.editorActive
-            canUndo: splitView.canUndo
-            canRedo: splitView.canRedo
-            onToggleSidebarRequested: root.toggleSidebar()
-            onToggleBottomRequested: {
-                state.bottomPanelVisible = !state.bottomPanelVisible
-                root.preferences.bottomPanelVisible = state.bottomPanelVisible
+            MainToolBar {
+                id: mainToolBar
+                y: root.platform.nativeMenuBar
+                   ? 0
+                   : titleBar.height
+                z: root.platform.nativeMenuBar ? 2 : 0
+                width: parent.width
+                height: root.platform.nativeMenuBar ? titleBar.height : implicitHeight
+                hostWindow: root.hostWindow
+                integratedInTitleBar: root.platform.nativeMenuBar
+                titleBarLeadingInset: titleBar.leadingInset
+                sidebarActive: root.compact
+                               ? state.compactPanel === "sidebar"
+                               : state.sidebarVisible
+                bottomActive: (state.difficultyEditorActive || state.latencyEditorActive)
+                              && state.bottomPanelVisible && root.timelineSession.panelVisible
+                bottomPanelEnabled: state.difficultyEditorActive || state.latencyEditorActive
+                saveEnabled: root.editorActive
+                canUndo: splitView.canUndo
+                canRedo: splitView.canRedo
+                onToggleSidebarRequested: root.toggleSidebar()
+                onToggleBottomRequested: {
+                    state.bottomPanelVisible = !state.bottomPanelVisible
+                    root.preferences.bottomPanelVisible = state.bottomPanelVisible
+                }
+                onUndoRequested: root.undo()
+                onRedoRequested: root.redo()
+                onOpenRequested: openFileDialog.open()
+                onSaveRequested: root.saveDocument()
+                onAudioSettingsRequested: audioSettingsDialog.open()
+                onPreviewSettingsRequested: previewSettingsDialog.open()
+                onUnavailableFeatureRequested: featureName => root.showUnavailableFeature(featureName)
             }
-            onUndoRequested: root.undo()
-            onRedoRequested: root.redo()
-            onOpenRequested: openFileDialog.open()
-            onSaveRequested: root.saveDocument()
-            onAudioSettingsRequested: audioSettingsDialog.open()
-            onPreviewSettingsRequested: previewSettingsDialog.open()
-            onUnavailableFeatureRequested: featureName => root.showUnavailableFeature(featureName)
         }
 
         Item {
             id: mainViewHost
             width: parent.width
-            height: parent.height - titleBar.height - platformMenuLoader.height
-                    - mainToolBar.height - statusBar.height
+            height: parent.height - chromeHost.height - statusBar.height
 
             MainSplitView {
                 id: splitView
@@ -350,7 +355,7 @@ Item {
 
     Shortcut {
         sequences: [StandardKey.Close]
-        enabled: root.editorActive
+        enabled: root.editorActive && !root.platform.nativeMenuBar
         onActivated: splitView.requestCloseActiveEditor()
     }
 
@@ -447,6 +452,7 @@ Item {
             // replacement never leaves the editor with no tab at all.
             state.syncDifficultyEditors(root.documentSession.difficulties,
                                         root.documentSession.currentDifficultyId)
+            root.syncLatencyScene()
         }
 
         function onDifficultiesChanged() {
@@ -470,6 +476,14 @@ Item {
 
     Connections {
         target: state
+
+        function onActiveEditorKeyChanged() {
+            if (state.latencyEditorActive && root.pages.activePageId !== "latency")
+                root.pages.openLatencyPage()
+            else if (state.metadataEditorActive && root.pages.activePageId === "latency")
+                root.pages.activateMetadataPage()
+            root.syncLatencyScene()
+        }
 
         function onDifficultyEditorActivationRequested(difficultyId) {
             if (root.pages.overlayActive) {
@@ -496,8 +510,13 @@ Item {
     Connections {
         target: root.pages
 
+        function onLatencyPageActivated() {
+            state.openLatencyEditor()
+        }
+
         function onActivePageIdChanged() {
             root.syncSidebarViewToPage()
+            root.syncLatencyScene()
         }
 
         function onOverlayPageLeft() {

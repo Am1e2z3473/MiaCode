@@ -1826,23 +1826,17 @@ void TimelineQuickItem::wheelEvent(QWheelEvent* event)
         return;
     }
 
-    int delta = event->angleDelta().y();
-    if (delta == 0) {
-        delta = event->angleDelta().x();
-    }
-    if (delta == 0) {
-        delta = event->pixelDelta().y();
-    }
-    if (delta == 0) {
-        delta = event->pixelDelta().x();
-    }
-    if (delta == 0) {
+    const QPoint angleDelta = event->angleDelta();
+    const QPoint pixelDelta = event->pixelDelta();
+    const int angle = angleDelta.y() != 0 ? angleDelta.y() : angleDelta.x();
+    const int pixel = pixelDelta.y() != 0 ? pixelDelta.y() : pixelDelta.x();
+    if (angle == 0 && pixel == 0) {
         QQuickItem::wheelEvent(event);
         return;
     }
 
     forceActiveFocus(Qt::MouseFocusReason);
-    const miacode::timeline::TimelineSceneState state = currentSceneState();
+    const int delta = angle != 0 ? angle : pixel;
     appendTimelineQuickInteractionLog(
         QStringLiteral("wheel_scroll"),
         QString("delta=%1 modifiers=%2 scroll_before=%3")
@@ -1856,6 +1850,7 @@ void TimelineQuickItem::wheelEvent(QWheelEvent* event)
         event,
         stateBridge_->zoomOutWheelShortcuts());
     if (zoomInWheel || zoomOutWheel) {
+        const miacode::timeline::TimelineSceneState state = currentSceneState();
         const int steps = qMax(1, qAbs(qRound(static_cast<double>(delta) / 120.0)))
             * (zoomInWheel ? 1 : -1);
         stateBridge_->stepZoomPreset(
@@ -1867,7 +1862,9 @@ void TimelineQuickItem::wheelEvent(QWheelEvent* event)
 
     emit timelineUserInteractionStarted();
     stateBridge_->focusPlayhead(false);
-    stateBridge_->setHorizontalScrollValue(stateBridge_->horizontalScrollValue() - (delta / 2));
+    const double scrollDelta = pixel != 0 ? static_cast<double>(pixel)
+                                          : static_cast<double>(angle) / 2.0;
+    stateBridge_->setHorizontalScrollValue(stateBridge_->horizontalScrollValue() - scrollDelta);
     const double centerSecond = viewportCenterSecondForScroll(stateBridge_->horizontalScrollValue());
     appendTimelineQuickInteractionLog(
         QStringLiteral("wheel_scroll_applied"),

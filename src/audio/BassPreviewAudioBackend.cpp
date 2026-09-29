@@ -23,10 +23,8 @@
 
 #include <cstdio>   // G1 Commit 8 followup: std::snprintf for startup-beacon lines
 
-#ifdef MIACODE_HAS_BASS_AUDIO
 #include "bass.h"
 #include "bassmix.h"
-#endif
 
 #include "BassPreviewAudioBackendImpl.h"
 #include "BassPreviewAudioBackendSample.h"
@@ -43,7 +41,6 @@ BassPreviewAudioBackend::~BassPreviewAudioBackend()
 {
     appendAudioDebugLog("BassPreviewAudioBackend destroying");
     shuttingDown_.store(true, std::memory_order_release);
-#ifdef MIACODE_HAS_BASS_AUDIO
     miacode::preview_audio::PreviewBassEmergencyPause::disarm();
     // PreviewAudioWorker serializes health sampling with shutdown on this backend thread.
     stopPlaybackSession();
@@ -60,7 +57,6 @@ BassPreviewAudioBackend::~BassPreviewAudioBackend()
     unloadBassFx();
     bassDeviceLease_.release();
     engineInitialized_ = false;
-#endif
 }
 
 QString BassPreviewAudioBackend::backendId() const
@@ -100,12 +96,11 @@ bool BassPreviewAudioBackend::runtimeLibrariesPresent() const
     return runtimeLibraryExists(QStringLiteral("bass.dll"))
         && runtimeLibraryExists(QStringLiteral("bassmix.dll"))
         && runtimeLibraryExists(QStringLiteral("bass_fx.dll"));
-#elif defined(Q_OS_MACOS) && defined(MIACODE_HAS_BASS_AUDIO)
+#elif defined(Q_OS_MACOS)
     return runtimeLibraryExists(QStringLiteral("libbass.dylib"))
         && runtimeLibraryExists(QStringLiteral("libbassmix.dylib"))
-        && runtimeLibraryExists(QStringLiteral("libbass_fx.dylib"))
-        && runtimeLibraryExists(QStringLiteral("libbassopus.dylib"));
-#elif defined(Q_OS_LINUX) && defined(MIACODE_HAS_BASS_AUDIO)
+        && runtimeLibraryExists(QStringLiteral("libbass_fx.dylib"));
+#elif defined(Q_OS_LINUX)
     return runtimeLibraryExists(QStringLiteral("libbass.so"))
         && runtimeLibraryExists(QStringLiteral("libbassmix.so"))
         && runtimeLibraryExists(QStringLiteral("libbass_fx.so"));
@@ -116,7 +111,6 @@ bool BassPreviewAudioBackend::runtimeLibrariesPresent() const
 
 bool BassPreviewAudioBackend::canBePrimary(QString* reason) const
 {
-#ifdef MIACODE_HAS_BASS_AUDIO
     if (!runtimeLibrariesPresent()) {
         if (reason != nullptr) {
             *reason = QStringLiteral("missing bundled BASS runtime libraries");
@@ -127,12 +121,6 @@ bool BassPreviewAudioBackend::canBePrimary(QString* reason) const
         *reason = QStringLiteral("bundled BASS runtime libraries are available");
     }
     return true;
-#else
-    if (reason != nullptr) {
-        *reason = QStringLiteral("BASS preview backend is unavailable in this build");
-    }
-    return false;
-#endif
 }
 
 void BassPreviewAudioBackend::setWarmupResolvedPaths(const QString& chartPath, const QString& trackPath, const QString& sfxDir)

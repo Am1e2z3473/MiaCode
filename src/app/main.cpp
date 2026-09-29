@@ -9,6 +9,7 @@
 #include "common/UiHangWatchdog.h"
 #include "common/DebugOptions.h"
 #include "common/WaveformCache.h"
+#include "audio/PreviewBassDefaultDevice.h"
 #include "SimaiNativeParser.h"
 
 #include <QCoreApplication>
@@ -179,6 +180,22 @@ int main(int argc, char* argv[])
     // B=GPU driver, C=Win10 build too old) on a single run, no --debug
     // required. All output goes to the same beacon file via append.
     runStartupDiagnostic();
+
+    // BASS_CONFIG_DEV_DEFAULT only accepts changes before the process's first
+    // BASS device enumeration or BASS_Init, and the preview engine is not always
+    // first: an uncached chart's waveform decode inits the no-sound device before
+    // it, which left preview audio (and with it Play) dead until restart. Settle it
+    // here, before anything can reach BASS; the engine reuses this result.
+    {
+        int bassErrorCode = 0;
+        const bool bassDefaultDeviceDisabled =
+            miacode::preview_audio::disableBassDefaultDeviceEntry(&bassErrorCode);
+        char buf[96];
+        std::snprintf(buf, sizeof(buf),
+            "phase=bass_default_device_entry disabled=%d err=%d",
+            bassDefaultDeviceDisabled ? 1 : 0, bassErrorCode);
+        miacode::oplog::appendStartupBeaconLine(buf);
+    }
     miacode::oplog::appendStartupBeaconLine("phase=pre_mc_op");
 #endif
 
@@ -294,7 +311,7 @@ int main(int argc, char* argv[])
 
     // (libmpv probe removed in beta20 — the "Phase 4 video source built on
     // top of this" never landed; chart-preview video backgrounds use Qt's
-    // QMediaPlayer + QVideoSink stack via PreviewStageMediaHost. Shipping
+    // QtAVPlayer + QVideoSink stack via PreviewStageMediaHost. Shipping
     // libmpv-2.dll cost ~113 MB to log a single startup version line.)
 
 #ifdef Q_OS_WIN

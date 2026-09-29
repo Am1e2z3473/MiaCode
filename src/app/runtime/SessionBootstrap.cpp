@@ -292,7 +292,6 @@ Session::Session(miacode::ApplicationServices& services, QObject* parent)
                 }
             });
     logStartupStage("preview_sfx_runtime_created");
-#ifdef MIACODE_HAS_BASS_AUDIO
     previewAudioDeviceWatcher_ = new PreviewAudioDeviceWatcher(this);
     previewAudioDeviceWatcher_->setDirectCutoffHandler(
         [runtime = previewSfxRuntime_](PreviewAudioDeviceWatcher::Change) {
@@ -309,7 +308,6 @@ Session::Session(miacode::ApplicationServices& services, QObject* parent)
                 }
             });
     logStartupStage("preview_audio_device_watcher_created");
-#endif
     connect(scene_, &PreviewRuntime::framePresented, this, [this]() {
         playback_->handlePreviewStartupCanvasPresented();
         if (!playing_) {

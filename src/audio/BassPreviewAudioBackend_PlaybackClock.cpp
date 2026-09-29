@@ -24,10 +24,8 @@
 #include <cstdio>   // G1 Commit 8 followup: std::snprintf for startup-beacon lines
 #include <limits>
 
-#ifdef MIACODE_HAS_BASS_AUDIO
 #include "bass.h"
 #include "bassmix.h"
-#endif
 
 #include "BassPreviewAudioBackendImpl.h"
 #include "BassPreviewAudioBackendSample.h"
@@ -131,7 +129,6 @@ void BassPreviewAudioBackend::setPlaybackTransactionId(quint64 transactionId)
 
 namespace {
 
-#ifdef MIACODE_HAS_BASS_AUDIO
 
 namespace audio_health = miacode::preview_audio::health;
 
@@ -220,26 +217,8 @@ audio_health::BufferSnapshot bufferSnapshotFor(DWORD mixerHandle)
     return snapshot;
 }
 
-#endif  // MIACODE_HAS_BASS_AUDIO
 
 }  // namespace
-
-// Retained as a no-op compatibility hook; health sampling now runs on the backend worker.
-void BassPreviewAudioBackend::publishAudioHealthHandles()
-{
-    // Sampling is serialized with every other backend operation by PreviewAudioWorker.
-    // There is no cross-thread handle publication in the worker-owned design.
-}
-
-void BassPreviewAudioBackend::startAudioHealthSampler()
-{
-    // PreviewAudioWorker owns the only scheduler and its health deadline.
-}
-
-void BassPreviewAudioBackend::stopAudioHealthSampler()
-{
-    // No independent producer remains to stop or join.
-}
 
 // Drains the lock-free ring the output-glitch DSP callback (masterMixer_, see
 // PreviewAudioOutputGlitchProbe.h / attachOutputGlitchProbe) fills, formatting each
@@ -251,7 +230,6 @@ void BassPreviewAudioBackend::stopAudioHealthSampler()
 // audioHealthPlaybackRunning_ like the rest of this function does.
 void BassPreviewAudioBackend::drainOutputGlitchEvents()
 {
-#ifdef MIACODE_HAS_BASS_AUDIO
     namespace glitch = miacode::preview_audio::output_glitch;
     const bool debugEnabled = runtimeAudioDebugEnabled();
     glitch::GlitchEvent event;
@@ -270,13 +248,11 @@ void BassPreviewAudioBackend::drainOutputGlitchEvents()
     if (dropped > 0 && debugEnabled) {
         appendAudioDebugLog(glitch::glitchDroppedPayload(playbackTransactionId_, dropped));
     }
-#endif
 }
 
 miacode::preview_audio::PreviewAudioHealthSample BassPreviewAudioBackend::sampleHealth()
 {
     miacode::preview_audio::PreviewAudioHealthSample sample;
-#ifdef MIACODE_HAS_BASS_AUDIO
     // See drainOutputGlitchEvents()'s own comment for why this runs unconditionally
     // rather than after the early-return below.
     if (engineInitialized_) {
@@ -318,7 +294,6 @@ miacode::preview_audio::PreviewAudioHealthSample BassPreviewAudioBackend::sample
     // PreviewAudioWorker owns stall transitions and buffer-health log emission. Keeping
     // this backend method to sampling makes every native query and diagnostic state update
     // run in the one worker scheduler rather than in an independent producer.
-#endif
     latestHealthSample_ = sample;
     return sample;
 }
@@ -340,7 +315,6 @@ QString BassPreviewAudioBackend::scheduledMixerActionLabel(ScheduledMixerAction 
 
 void BassPreviewAudioBackend::logPlaybackStatus(double authoritativeSecond, double fallbackSecond)
 {
-#ifdef MIACODE_HAS_BASS_AUDIO
     if (!runtimeAudioDebugEnabled()) {
         return;
     }
@@ -518,10 +492,6 @@ void BassPreviewAudioBackend::logPlaybackStatus(double authoritativeSecond, doub
             .arg(sfxInlineSkipCount_.load(std::memory_order_relaxed))
             .arg(sfxWatchdogRecoveryCount_.load(std::memory_order_relaxed))
             .arg(sfxDeferredSyncCount_.load(std::memory_order_relaxed)));
-#else
-    Q_UNUSED(authoritativeSecond);
-    Q_UNUSED(fallbackSecond);
-#endif
 }
 
 QString BassPreviewAudioBackend::groupSignature(const CollapsedEventGroup& group) const
@@ -622,7 +592,6 @@ double BassPreviewAudioBackend::preparePreviewPlaybackTransaction(
 void BassPreviewAudioBackend::commitPreparedPreviewPlayback()
 {
     MC_OP("BassPreviewAudioBackend::commitPreparedPreviewPlayback");
-#ifdef MIACODE_HAS_BASS_AUDIO
     if (!preparedPlayback_.pending || masterMixer_ == 0) {
         return;
     }
@@ -661,7 +630,6 @@ void BassPreviewAudioBackend::commitPreparedPreviewPlayback()
             .arg(playbackSession_.backgroundTrackPlaybackRate, 0, 'f', 3)
             .arg(preparedPlayback_.resumeFromPause ? 1 : 0)
             .arg(playbackSession_.backgroundTrackPendingStart ? 1 : 0));
-#endif
     preparedPlayback_ = PreparedPlaybackState();
 }
 

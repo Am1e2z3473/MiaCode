@@ -16,6 +16,23 @@ ApplicationWindow {
     readonly property var platform: applicationContext.platform
     readonly property var chartDropBridge: applicationContext.chartDropBridge
 
+    property NativeMenuBar nativeSystemMenu: NativeMenuBar {
+        commands: mainView.mainMenuCommands
+        shortcuts: window.applicationContext.shortcuts
+        documentSession: mainView.documentSession
+        pet: window.applicationContext.pet
+        commandsEnabled: window.platform.nativeMenuBar
+        saveEnabled: mainView.editorActive
+        wholeDocumentSaveEnabled: mainView.documentSession.hasDocument
+        documentAvailable: mainView.documentSession.hasDocument
+        editorCommandsEnabled: mainView.editorActive
+        chartCommandsEnabled: mainView.chartEditorActive
+        toolCommandsEnabled: mainView.documentSession.hasDocument
+        normalizationEnabled: mainView.pages.activePageId !== "export"
+    }
+
+    menuBar: window.platform.nativeMenuBar ? window.nativeSystemMenu : null
+
     width: 1280
     height: 800
     minimumWidth: Math.ceil(mainView.minimumWidth)
@@ -33,11 +50,7 @@ ApplicationWindow {
                     | Qt.WindowMaximizeButtonHint
                     | Qt.WindowCloseButtonHint
         }
-        if (window.platform.expandClientArea) {
-            value |= Qt.ExpandedClientAreaHint
-                    | Qt.NoTitleBarBackgroundHint
-        }
-        if (Qt.platform.os === "linux" && window.platform.customTitleBar) {
+        if (Qt.platform.os === "linux") {
             value |= Qt.FramelessWindowHint
         }
         return value
@@ -223,11 +236,13 @@ ApplicationWindow {
         sourceEditorFocused: window.sourceEditorFocused
         chartCommandsEnabled: mainView.chartEditorActive
         playbackCommandsEnabled: window.playbackCommandsEnabled
+        menuOwnsChartTransformShortcuts: window.platform.nativeMenuBar
+        menuOwnsPreviewRateShortcuts: window.platform.nativeMenuBar
         onChartTransformRequested: opId => mainView.applyChartTransform(opId)
     }
 
     Loader {
-        active: Qt.platform.os === "linux" && window.platform.customTitleBar
+        active: Qt.platform.os === "linux"
         anchors.fill: parent
         sourceComponent: WindowResizeBorder {
             hostWindow: window

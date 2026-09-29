@@ -23,16 +23,13 @@
 
 #include <cstdio>   // G1 Commit 8 followup: std::snprintf for startup-beacon lines
 
-#ifdef MIACODE_HAS_BASS_AUDIO
 #include "bass.h"
 #include "bassmix.h"
-#endif
 
 #include "BassPreviewAudioBackendImpl.h"
 
 using namespace miacode::audio::bass_detail;
 
-#ifdef MIACODE_HAS_BASS_AUDIO
 
 struct BassPreviewAudioBackend::Sample {
     QString name;
@@ -224,11 +221,11 @@ struct BassPreviewAudioBackend::Sample {
         // `stream` is overwritten by the tempo wrapper. decode_handle stays
         // valid for as long as the tempo stream owns it via BASS_FX_FREESOURCE.
         DWORD stream = BASS_StreamCreateFile(
-            TRUE,
+            BASS_FILE_MEM,
             bytes.constData(),
             0,
             static_cast<QWORD>(bytes.size()),
-            BASS_STREAM_DECODE | BASS_STREAM_PRESCAN | BASS_ASYNCFILE
+            BASS_STREAM_DECODE | BASS_STREAM_PRESCAN
         );
         if (stream == 0) {
             appendAudioDebugLog(
@@ -624,5 +621,3 @@ struct BassPreviewAudioBackend::Sample {
         noteBassErr("sample_stop/seek_zero");
     }
 };
-
-#endif

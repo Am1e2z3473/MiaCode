@@ -47,7 +47,7 @@ Item {
     // User preference AND backend chart-bottom-tabs mode (export/metadata
     // call setChartBottomTabsMode(false); latency/difficulty turn it back on).
     readonly property bool bottomPanelEffectivelyVisible:
-        root.viewState.difficultyEditorActive
+        (root.viewState.difficultyEditorActive || root.viewState.latencyEditorActive)
         && root.viewState.bottomPanelVisible && root.timelineSession.panelVisible
     readonly property bool exportVideoActive:
         root.pages.activePageId === "export"
@@ -56,65 +56,39 @@ Item {
     signal openRequested()
     signal settingsRequested()
 
-    function isRangePreviewPageActive(session) {
-        return root.pages.activePageId === "export"
+    QtObject {
+        id: rangePreviewStateObject
+        readonly property var session: root.pages.exportSession
+        readonly property bool available: root.pages.activePageId === "export"
             && !!session
             && session.activeTab === "export"
             && session.settingsTab === "output"
-    }
-
-    function syncRangePreviewState() {
-        const session = root.pages.exportSession
-        if (!root.isRangePreviewPageActive(session)) {
-            root.rangePreviewState.armed = false
-            return
+        property bool active: false
+        onAvailableChanged: {
+            if (!available)
+                active = false
         }
-
-        root.rangePreviewState.startSeconds = session.exportStartSeconds
-        root.rangePreviewState.endSeconds = session.exportEndSeconds
-        root.rangePreviewState.armed = !session.fullRangeExport
-            || session.exportEndSeconds < session.contentDurationSeconds
-    }
-
-    QtObject {
-        id: rangePreviewStateObject
-        property bool armed: false
-        property real startSeconds: 0
-        property real endSeconds: 0
-    }
-
-    Component.onCompleted: root.syncRangePreviewState()
-
-    Connections {
-        target: root.pages
-        function onActivePageIdChanged() { root.syncRangePreviewState() }
+        onActiveChanged: {
+            const enabled = active && available
+            root.previewSession.setPlaybackRangeEnabled(
+                enabled,
+                enabled ? session.exportStartSeconds : 0,
+                enabled ? session.exportEndSeconds : 0)
+        }
     }
 
     Connections {
         target: root.pages.exportSession
-        function onActiveTabChanged() { root.syncRangePreviewState() }
-        function onSettingsTabChanged() { root.syncRangePreviewState() }
-        function onRangeChanged() { root.syncRangePreviewState() }
-        // A selection export is an explicit range-playback entry, even when
-        // the applied range happens to cover the full chart.
         function onSelectionRangeApplied() {
-            const session = root.pages.exportSession
-            if (!root.isRangePreviewPageActive(session))
-                return
-
-            root.rangePreviewState.startSeconds = session.exportStartSeconds
-            root.rangePreviewState.endSeconds = session.exportEndSeconds
-            root.rangePreviewState.armed = true
+            root.rangePreviewState.session.settingsTab = "output"
+            root.rangePreviewState.active = true
         }
-    }
-
-    Connections {
-        target: root.previewSession
-        function onPositionChanged() {
-            if (root.rangePreviewState.armed
-                    && root.previewSession.playing
-                    && root.previewSession.positionSeconds >= root.rangePreviewState.endSeconds)
-                root.previewSession.playing = false
+        function onRangeChanged() {
+            if (root.rangePreviewState.active) {
+                const session = root.rangePreviewState.session
+                root.previewSession.setPlaybackRangeEnabled(true, session.exportStartSeconds,
+                                                            session.exportEndSeconds)
+            }
         }
     }
 
@@ -321,6 +295,8 @@ Item {
                         documentSession: root.documentSession
                         commands: root.commands
                         preferences: root.preferences
+                        latency: root.latency
+                        pages: root.pages
                         onOpenRequested: root.openRequested()
                     }
 
@@ -331,16 +307,8 @@ Item {
                         pages: root.pages
                         previewSession: root.previewSession
                         previewSettings: root.previewSettings
-                        rangePreviewState: root.rangePreviewState
                     }
 
-                    LatencyPage {
-                        id: latencyPage
-                        anchors.fill: parent
-                        visible: root.pages.activePageId === "latency"
-                        latency: root.latency
-                        pages: root.pages
-                    }
                 }
 
                 BottomPanel {
@@ -375,6 +343,8 @@ Item {
                 preferences: root.preferences
                 rangePreviewState: root.rangePreviewState
                 exportPageActive: root.exportVideoActive
+                latencyActive: root.viewState.latencyEditorActive
+                               && root.pages.activePageId === "latency"
                 SplitView.preferredWidth: root.previewEditorAvailableWidth
                                           * root.preferences.previewWidthRatio
                 SplitView.minimumWidth: Math.max(preview.minimumWidth,

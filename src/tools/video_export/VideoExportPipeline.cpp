@@ -1,7 +1,6 @@
 #include "VideoExportController.h"
 
 #include "BassExportAudioBackend.h"
-#include "LegacyExportAudioBackend.h"
 #include "RawVideoPipeTransport.h"
 #include "VideoExportAudioRenderPlan.h"
 #include "VideoExportQuickRenderBackend.h"
@@ -173,7 +172,6 @@ bool isImageMediaPath(const QString& path)
 
 std::unique_ptr<miacode::video_export::VideoExportAudioBackend> createExportAudioBackend(QString* errorMessage)
 {
-#ifdef MIACODE_HAS_BASS_AUDIO
     auto backend = std::make_unique<miacode::video_export::BassExportAudioBackend>();
     QString reason;
     if (!backend->isSupported(&reason)) {
@@ -183,13 +181,6 @@ std::unique_ptr<miacode::video_export::VideoExportAudioBackend> createExportAudi
         return {};
     }
     return backend;
-#else
-    auto backend = std::make_unique<miacode::video_export::LegacyExportAudioBackend>();
-    QString reason;
-    backend->isSupported(&reason);
-    Q_UNUSED(reason);
-    return backend;
-#endif
 }
 
 bool writeAllToProcess(QProcess* process, const char* data, qint64 size, QString* failureDetail)

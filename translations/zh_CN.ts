@@ -4065,21 +4065,13 @@ The file may be open in preview, a media player, File Explorer preview pane, or 
         <source>Pause</source>
         <translation>暂停</translation>
     </message>
-    <message id="preview.range_pause">
-        <source>Pause range playback</source>
-        <translation>暂停区间播放</translation>
-    </message>
     <message id="preview.play">
         <source>Play</source>
         <translation>播放</translation>
     </message>
-    <message id="preview.range_play">
-        <source>Play export range</source>
-        <translation>播放导出区间</translation>
-    </message>
-    <message id="preview.range_exit">
-        <source>Exit current mode</source>
-        <translation>退出当前模式</translation>
+    <message id="preview.range_mode">
+        <source>Range playback mode</source>
+        <translation>区间播放模式</translation>
     </message>
     <message id="qml.1">
         <source>%1%</source>
@@ -4249,10 +4241,6 @@ The file may be open in preview, a media player, File Explorer preview pane, or 
         <source>Custom</source>
         <translation>自定义</translation>
     </message>
-    <message id="qml.decoder">
-        <source>Decoder</source>
-        <translation>解码器</translation>
-    </message>
     <message id="qml.delete_current_difficulty">
         <source>Delete current difficulty</source>
         <translation>删除当前难度</translation>
@@ -4273,9 +4261,9 @@ The file may be open in preview, a media player, File Explorer preview pane, or 
         <source>Enable clock_count</source>
         <translation>启用 clock_count</translation>
     </message>
-    <message id="qml.enter_to_jump_ctrl_shift_b_to_create_delete_to_remove_f2_to_rena">
-        <source>Enter to jump; Ctrl+Shift+B to create; Delete to remove; F2 to rename; right-click for the bookmark menu</source>
-        <translation>Enter 跳转；Ctrl+Shift+B 创建；Delete 删除；F2 重命名；右键打开书签菜单</translation>
+    <message id="qml.enter_to_jump_delete_to_remove_f2_to_rename_right_click_for_the">
+        <source>Enter to jump; Delete to remove; F2 to rename; right-click for the bookmark menu</source>
+        <translation>Enter 跳转；Delete 删除；F2 重命名；右键打开书签菜单</translation>
     </message>
     <message id="qml.errors">
         <source>Errors</source>
