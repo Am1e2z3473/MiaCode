@@ -4446,8 +4446,8 @@ The file may be open in preview, a media player, File Explorer preview pane, or 
         <translation>譜面ソース全体を正規化します。</translation>
     </message>
     <message id="qml.normalize_whole_chart">
-        <source>Normalize whole chart</source>
-        <translation>譜面全体を正規化</translation>
+        <source>Format Chart</source>
+        <translation>譜面を整形</translation>
     </message>
     <message id="qml.not_yet_available_in_qml">
         <source>Not yet available in QML</source>
