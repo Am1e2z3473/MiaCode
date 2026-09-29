@@ -8,17 +8,52 @@
 #include <QFileInfo>
 #include <QtMath>
 
-#include "common/MiniaudioFileAccess.h"
+#include "audio/PreviewBassDeviceLease.h"
+#include "audio/BassFlacPlugin.h"
 
-#include "../../third_party/miniaudio/miniaudio.h"
-
-#ifdef MIACODE_HAS_BASS_AUDIO
 #include "bass.h"
-#endif
 
 namespace miacode::audio_decode {
 
 namespace {
+
+class ScopedBassDecodeDevice
+{
+public:
+    ScopedBassDecodeDevice()
+        : previousDevice_(BASS_GetDevice())
+        , lease_(miacode::preview_audio::PreviewBassDeviceLease::acquire({
+              [] {
+                  return BASS_SetDevice(0)
+                      ? static_cast<miacode::preview_audio::BassDeviceLeaseApi::DeviceId>(0)
+                      : miacode::preview_audio::BassDeviceLeaseApi::kNoDevice;
+              },
+              [] {
+                  return BASS_Init(0, 48000, BASS_DEVICE_NOSPEAKER, nullptr, nullptr) != FALSE;
+              },
+              [] {
+                  BASS_SetDevice(0);
+                  BASS_Free();
+              },
+              miacode::preview_audio::BassDeviceLeaseDomain::NoSound,
+          }))
+    {
+    }
+
+    ~ScopedBassDecodeDevice()
+    {
+        lease_.release();
+        if (previousDevice_ != static_cast<DWORD>(-1)) {
+            BASS_SetDevice(previousDevice_);
+        }
+    }
+
+    bool available() const { return lease_.acquired(); }
+
+private:
+    DWORD previousDevice_ = static_cast<DWORD>(-1);
+    miacode::preview_audio::PreviewBassDeviceLease lease_;
+};
 
 QVector<float> resampleLinear(
     const QVector<float>& source,
@@ -51,10 +86,14 @@ QVector<float> resampleLinear(
     return result;
 }
 
-#ifdef MIACODE_HAS_BASS_AUDIO
 DecodedMonoAudio decodeWithBass(const QString& path, int targetSampleRate)
 {
     DecodedMonoAudio decoded;
+    ScopedBassDecodeDevice device;
+    if (!device.available()) {
+        return decoded;
+    }
+    miacode::audio::ensureBassFlacPluginLoaded();
     QFile file(path);
     if (!file.open(QIODevice::ReadOnly)) {
         return decoded;
@@ -65,7 +104,7 @@ DecodedMonoAudio decodeWithBass(const QString& path, int targetSampleRate)
     }
 
     const HSTREAM stream = BASS_StreamCreateFile(
-        TRUE,
+        BASS_FILE_MEM,
         bytes.constData(),
         0,
         static_cast<QWORD>(bytes.size()),
@@ -114,45 +153,6 @@ DecodedMonoAudio decodeWithBass(const QString& path, int targetSampleRate)
     decoded.samples = resampleLinear(mono, sourceSampleRate, targetSampleRate);
     decoded.sampleRate = targetSampleRate;
     decoded.durationSeconds = static_cast<double>(decoded.samples.size()) / targetSampleRate;
-    decoded.backend = Backend::Bass;
-    return decoded;
-}
-#endif
-
-DecodedMonoAudio decodeWithMiniaudio(const QString& path, int targetSampleRate)
-{
-    DecodedMonoAudio decoded;
-    ma_decoder_config config = ma_decoder_config_init(
-        ma_format_f32, 1, static_cast<ma_uint32>(targetSampleRate));
-    ma_decoder decoder;
-    if (miacode::audio_io::decoderInitFile(path, &config, &decoder) != MA_SUCCESS) {
-        return decoded;
-    }
-
-    ma_uint64 totalFrames = 0;
-    if (ma_decoder_get_length_in_pcm_frames(&decoder, &totalFrames) == MA_SUCCESS && totalFrames > 0) {
-        decoded.samples.reserve(static_cast<int>(
-            qMin<ma_uint64>(totalFrames, static_cast<ma_uint64>(INT_MAX))));
-    }
-    QVector<float> buffer(4096, 0.0f);
-    while (true) {
-        ma_uint64 framesRead = 0;
-        const ma_result result = ma_decoder_read_pcm_frames(
-            &decoder, buffer.data(), static_cast<ma_uint64>(buffer.size()), &framesRead);
-        if ((result != MA_SUCCESS && result != MA_AT_END) || framesRead == 0) {
-            break;
-        }
-        const int oldSize = decoded.samples.size();
-        decoded.samples.resize(oldSize + static_cast<int>(framesRead));
-        std::copy_n(buffer.cbegin(), static_cast<int>(framesRead), decoded.samples.begin() + oldSize);
-    }
-    ma_decoder_uninit(&decoder);
-    if (decoded.samples.isEmpty()) {
-        return {};
-    }
-    decoded.sampleRate = targetSampleRate;
-    decoded.durationSeconds = static_cast<double>(decoded.samples.size()) / targetSampleRate;
-    decoded.backend = Backend::Miniaudio;
     return decoded;
 }
 
@@ -160,43 +160,46 @@ DecodedMonoAudio decodeWithMiniaudio(const QString& path, int targetSampleRate)
 
 DecodedMonoAudio decodeFileToMono(
     const QString& path,
-    int targetSampleRate,
-    BackendPreference preference)
+    int targetSampleRate)
 {
     if (path.isEmpty() || targetSampleRate <= 0 || !QFileInfo::exists(path)) {
         return {};
     }
-#ifdef MIACODE_HAS_BASS_AUDIO
-    if (preference == BackendPreference::Bass) {
-        return decodeWithBass(path, targetSampleRate);
-    }
-#endif
-    if (preference == BackendPreference::Miniaudio) {
-        return decodeWithMiniaudio(path, targetSampleRate);
-    }
-    return {};
+    return decodeWithBass(path, targetSampleRate);
 }
 
-bool bassBackendAvailable()
+double probeFileDurationSeconds(const QString& path)
 {
-#ifdef MIACODE_HAS_BASS_AUDIO
-    return true;
-#else
-    return false;
-#endif
-}
-
-QString backendLabel(Backend backend)
-{
-    switch (backend) {
-    case Backend::Bass:
-        return QStringLiteral("bass");
-    case Backend::Miniaudio:
-        return QStringLiteral("miniaudio");
-    case Backend::None:
-    default:
-        return QStringLiteral("none");
+    if (path.isEmpty() || !QFileInfo::exists(path)) {
+        return 0.0;
     }
+    ScopedBassDecodeDevice device;
+    if (!device.available()) {
+        return 0.0;
+    }
+    miacode::audio::ensureBassFlacPluginLoaded();
+    QFile file(path);
+    if (!file.open(QIODevice::ReadOnly)) {
+        return 0.0;
+    }
+    const QByteArray bytes = file.readAll();
+    if (bytes.isEmpty()) {
+        return 0.0;
+    }
+    const HSTREAM stream = BASS_StreamCreateFile(
+        BASS_FILE_MEM,
+        bytes.constData(),
+        0,
+        static_cast<QWORD>(bytes.size()),
+        BASS_STREAM_DECODE | BASS_STREAM_PRESCAN);
+    if (stream == 0) {
+        return 0.0;
+    }
+    const QWORD length = BASS_ChannelGetLength(stream, BASS_POS_BYTE);
+    const double seconds = length == static_cast<QWORD>(-1)
+        ? 0.0 : BASS_ChannelBytes2Seconds(stream, length);
+    BASS_StreamFree(stream);
+    return qIsFinite(seconds) && seconds > 0.0 ? seconds : 0.0;
 }
 
 }  // namespace miacode::audio_decode

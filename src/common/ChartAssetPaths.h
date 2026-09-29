@@ -268,7 +268,7 @@ inline bool hasChartBackgroundMedia(
 }
 
 // Phase 4c — predicate: the resolved background path is a video (vs
-// image). Lets callers decide between "render through QMediaPlayer"
+// image). Lets callers decide between video rendering
 // vs "image-only path" without re-stating the suffix list.
 inline bool isVideoBackgroundPath(const QString& path)
 {

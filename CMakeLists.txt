@@ -37,6 +37,24 @@ if (MSVC)
     set(CMAKE_MSVC_DEBUG_INFORMATION_FORMAT
         "$<$<CONFIG:Debug,RelWithDebInfo>:Embedded>"
     )
+    # MSBuild hands each project's sources to one cl.exe; without /MP that
+    # process compiles them serially. Ninja already parallelizes per file.
+    if (CMAKE_GENERATOR MATCHES "Visual Studio")
+        add_compile_options($<$<COMPILE_LANGUAGE:C,CXX>:/MP>)
+    endif()
+endif()
+
+# <windows.h> defines min/max as function-like macros unless NOMINMAX is set,
+# which mangles `std::numeric_limits<T>::max()` into a macro invocation and
+# fails to compile (C4003/C2589/C2059). Vendored headers pull <windows.h> in
+# without the guard — third_party/bass/include/bass.h does — so whether a
+# translation unit breaks depends on include order alone: any TU that reaches a
+# Bass* header before common/DebugOptions.h gets the macros, and the
+# `#define NOMINMAX` inside DebugOptions.h is then too late to help. Defining it
+# for every target up front makes the outcome order-independent. (Qt does the
+# same thing in QtCore/qt_windows.h.)
+if (WIN32)
+    add_compile_definitions(NOMINMAX)
 endif()
 
 set(CMAKE_AUTOMOC ON)
@@ -109,9 +127,7 @@ endif()
 # (qhwvideobuffer_p.h / qvideotexturehelper_p.h) that QtAVPlayer's
 # QAVVideoFrame -> QVideoFrame bridge needs. The Windows, macOS, and Linux
 # QtAVPlayer preview backends use it (see the QtAVPlayer block below).
-if (WIN32 OR APPLE OR CMAKE_SYSTEM_NAME STREQUAL "Linux")
-    find_package(Qt6 6.8 REQUIRED COMPONENTS MultimediaQuickPrivate)
-endif()
+find_package(Qt6 6.8 REQUIRED COMPONENTS MultimediaQuickPrivate)
 
 add_executable(MiaCode WIN32 MACOSX_BUNDLE
     src/app/main.cpp
@@ -511,8 +527,6 @@ add_executable(MiaCode WIN32 MACOSX_BUNDLE
     src/audio/PreviewBassEmergencyPause.cpp
     src/audio/PreviewAudioSettings.h
     src/audio/PreviewAudioSettings.cpp
-    src/audio/MiniaudioPreviewAudioBackend.h
-    src/audio/MiniaudioPreviewAudioBackend.cpp
     src/audio/PreviewAudioDeviceChangePolicy.h
     src/audio/PreviewAudioDeviceCutoff.h
     src/audio/PreviewAudioDeviceWatcher.h
@@ -684,6 +698,7 @@ set(MIACODE_UI_QML_FILES
     src/app/ui/chrome/WindowCaptionButtons.qml
     src/app/ui/chrome/WindowResizeBorder.qml
     src/app/ui/chrome/MainMenu.qml
+    src/app/ui/chrome/NativeMenuBar.qml
     src/app/ui/chrome/ShortcutBindings.qml
     src/app/ui/chrome/MainMenuCommands.qml
     src/app/ui/chrome/MainToolBar.qml
@@ -748,6 +763,7 @@ set(MIACODE_UI_ICON_FILES
     src/app/ui/resources/icons/undo.svg
     src/app/ui/resources/icons/redo.svg
     src/app/ui/resources/icons/play.svg
+    src/app/ui/resources/icons/circle-play.svg
     src/app/ui/resources/icons/pause.svg
     src/app/ui/resources/icons/stop.svg
     src/app/ui/resources/icons/fullscreen.svg
@@ -769,6 +785,7 @@ set(MIACODE_UI_ICON_FILES
     src/app/ui/resources/icons/close.svg
     src/app/ui/resources/icons/more.svg
     src/app/ui/resources/icons/metadata.svg
+    src/app/ui/resources/icons/metronome.svg
     src/app/ui/resources/icons/app-icon.svg
     src/app/ui/resources/icons/app-titlebar.png
     src/app/ui/resources/icons/app-titlebar@2x.png
@@ -979,29 +996,26 @@ target_sources(MiaCode PRIVATE
     src/audio/PreviewAudioWorkerFactory.cpp
     src/audio/PreviewAudioWorker.h
     src/audio/PreviewAudioWorker.cpp
+    src/audio/PreviewBassDefaultDevice.h
+    src/audio/PreviewBassDefaultDevice.cpp
     src/audio/PreviewBassDeviceLease.h
     src/audio/PreviewBassDeviceLease.cpp
     src/tools/video_export/VideoExportAudioRenderPlan.h
     src/tools/video_export/VideoExportAudioRenderPlan.cpp
     src/tools/video_export/VideoExportAudioBackend.h
-    src/tools/video_export/LegacyExportAudioBackend.h
-    src/tools/video_export/LegacyExportAudioBackend.cpp
 )
 
-if (WIN32 OR APPLE OR CMAKE_SYSTEM_NAME STREQUAL "Linux")
-    target_sources(MiaCode PRIVATE
-        src/audio/BassPreviewAudioBackend.h
-        src/audio/BassPreviewAudioBackend.cpp
-        src/audio/BassPreviewAudioBackend_EngineInit.cpp
-        src/audio/BassPreviewAudioBackend_Assets.cpp
-        src/audio/BassPreviewAudioBackend_Transport.cpp
-        src/audio/BassPreviewAudioBackend_PlaybackClock.cpp
-        src/audio/BassPreviewAudioBackend_EventDrain.cpp
-        src/tools/video_export/BassExportAudioBackend.h
-        src/tools/video_export/BassExportAudioBackend.cpp
-    )
-    target_compile_definitions(MiaCode PRIVATE MIACODE_HAS_BASS_AUDIO=1)
-endif()
+target_sources(MiaCode PRIVATE
+    src/audio/BassPreviewAudioBackend.h
+    src/audio/BassPreviewAudioBackend.cpp
+    src/audio/BassPreviewAudioBackend_EngineInit.cpp
+    src/audio/BassPreviewAudioBackend_Assets.cpp
+    src/audio/BassPreviewAudioBackend_Transport.cpp
+    src/audio/BassPreviewAudioBackend_PlaybackClock.cpp
+    src/audio/BassPreviewAudioBackend_EventDrain.cpp
+    src/tools/video_export/BassExportAudioBackend.h
+    src/tools/video_export/BassExportAudioBackend.cpp
+)
 
 if (WIN32)
     if (CMAKE_SYSTEM_PROCESSOR MATCHES "^(aarch64|arm64|ARM64)$")
@@ -1015,7 +1029,7 @@ if (WIN32)
         "${CMAKE_CURRENT_SOURCE_DIR}/third_party/bass/bin/${MIACODE_BASS_WINDOWS_ARCH}")
     # bass_aac ships for x86/x64 only; the arm64 runtime uses the remaining
     # plugins and the audio backend already tolerates a missing add-on.
-    set(MIACODE_BASS_WINDOWS_DLLS bass.dll bassmix.dll bass_fx.dll bassopus.dll)
+    set(MIACODE_BASS_WINDOWS_DLLS bass.dll bassmix.dll bass_fx.dll bassopus.dll bassflac.dll)
     if (MIACODE_BASS_WINDOWS_ARCH STREQUAL "win64")
         list(APPEND MIACODE_BASS_WINDOWS_DLLS bass_aac.dll)
     endif()
@@ -1067,6 +1081,7 @@ elseif (APPLE)
         "${MIACODE_BASS_MACOS_DIR}/libbassmix.dylib"
         "${MIACODE_BASS_MACOS_DIR}/libbass_fx.dylib"
         "${MIACODE_BASS_MACOS_DIR}/libbassopus.dylib"
+        "${MIACODE_BASS_MACOS_DIR}/libbassflac.dylib"
     )
     foreach(MIACODE_BASS_LIBRARY IN LISTS MIACODE_BASS_MACOS_LIBRARIES)
         if (NOT EXISTS "${MIACODE_BASS_LIBRARY}")
@@ -1114,6 +1129,7 @@ elseif (CMAKE_SYSTEM_NAME STREQUAL "Linux")
         "${MIACODE_BASS_LINUX_DIR}/libbass.so"
         "${MIACODE_BASS_LINUX_DIR}/libbassmix.so"
         "${MIACODE_BASS_LINUX_DIR}/libbass_fx.so"
+        "${MIACODE_BASS_LINUX_DIR}/libbassflac.so"
     )
     foreach(MIACODE_BASS_LIBRARY IN LISTS MIACODE_BASS_LINUX_LIBRARIES)
         if (NOT EXISTS "${MIACODE_BASS_LIBRARY}")
@@ -1173,7 +1189,7 @@ target_compile_definitions(MiaCode PRIVATE HAVE_QT_MULTIMEDIA=1)
 # ---------------------------------------------------------------------------
 # QtAVPlayer (FFmpeg) — preview background-video decode backend.
 #
-# Replaces QMediaPlayer for PV/BG decoding inside PreviewStageMediaHost; see
+# Decodes PV/BG video inside PreviewStageMediaHost; see
 # docs/ops/DEBUG_INDEX.md. QtAVPlayer is the
 # MIT-licensed source vendored under third_party/QtAVPlayer, compiled straight
 # into MiaCode. Windows and macOS use the project-selected FFmpeg SDK through
@@ -1183,7 +1199,6 @@ target_compile_definitions(MiaCode PRIVATE HAVE_QT_MULTIMEDIA=1)
 # All desktop platforms use QtAVPlayer. Windows selects D3D11VA, macOS selects
 # VideoToolbox/Metal, and Linux selects VA-API through DRM/EGL.
 # ---------------------------------------------------------------------------
-if (WIN32 OR APPLE OR CMAKE_SYSTEM_NAME STREQUAL "Linux")
     if (WIN32)
         if (CMAKE_SYSTEM_PROCESSOR MATCHES "^(aarch64|arm64|ARM64)$")
             set(MIACODE_FFMPEG_DEV_DIR_DEFAULT
@@ -1273,14 +1288,12 @@ if (WIN32 OR APPLE OR CMAKE_SYSTEM_NAME STREQUAL "Linux")
     endif()
     # QT_AVPLAYER_MULTIMEDIA : build the QAVVideoFrame -> QVideoFrame bridge.
     # QT_BUILD_QTAVPLAYER_LIB: export QtAVPlayer symbols (sources live in the exe).
-    # MIACODE_USE_QTAVPLAYER  : switch PreviewStageMediaHost onto the new backend.
     # Re-asserted per-target because QtAVPlayer.cmake's add_compile_definitions
     # is directory-scoped and MiaCode is created earlier in this file.
     target_compile_definitions(MiaCode PRIVATE
         QT_AVPLAYER_MULTIMEDIA
         QT_BUILD_QTAVPLAYER_LIB
         QT_AVPLAYER_NO_AVDEVICE
-        MIACODE_USE_QTAVPLAYER=1
     )
     target_link_libraries(MiaCode PRIVATE
         Qt6::MultimediaQuickPrivate
@@ -1346,7 +1359,6 @@ if (WIN32 OR APPLE OR CMAKE_SYSTEM_NAME STREQUAL "Linux")
             VERBATIM
         )
     endif()
-endif()
 
 if (MSVC)
     target_compile_options(MiaCode PRIVATE /FS)
@@ -1536,13 +1548,13 @@ if (MIACODE_BUILD_DEV_TOOLS)
             src/audio/PreviewAudioWorkerFactory.cpp
             src/audio/PreviewAudioWorker.h
             src/audio/PreviewAudioWorker.cpp
+            src/audio/PreviewBassDefaultDevice.h
+            src/audio/PreviewBassDefaultDevice.cpp
             src/audio/PreviewBassDeviceLease.h
             src/audio/PreviewBassDeviceLease.cpp
             src/tools/probe/SoundtouchProbe.cpp
             src/audio/PreviewAudioSettings.h
             src/audio/PreviewAudioSettings.cpp
-            src/audio/MiniaudioPreviewAudioBackend.h
-            src/audio/MiniaudioPreviewAudioBackend.cpp
             src/audio/QtPreviewSfxRuntime.h
             src/audio/QtPreviewSfxRuntime.cpp
             src/common/Mmcss.h
@@ -1553,18 +1565,17 @@ if (MIACODE_BUILD_DEV_TOOLS)
             src src/preview src/audio
             src/core/video src/timeline src/tools
     )
+    target_sources(soundtouch_probe PRIVATE
+        src/audio/BassPreviewAudioBackend.h
+        src/audio/BassPreviewAudioBackend.cpp
+        src/audio/BassPreviewAudioBackend_EngineInit.cpp
+        src/audio/BassPreviewAudioBackend_Assets.cpp
+        src/audio/BassPreviewAudioBackend_Transport.cpp
+        src/audio/BassPreviewAudioBackend_PlaybackClock.cpp
+        src/audio/BassPreviewAudioBackend_EventDrain.cpp
+    )
+    target_include_directories(soundtouch_probe PRIVATE third_party/bass/include)
     if (WIN32)
-        target_sources(soundtouch_probe PRIVATE
-            src/audio/BassPreviewAudioBackend.h
-            src/audio/BassPreviewAudioBackend.cpp
-            src/audio/BassPreviewAudioBackend_EngineInit.cpp
-            src/audio/BassPreviewAudioBackend_Assets.cpp
-            src/audio/BassPreviewAudioBackend_Transport.cpp
-            src/audio/BassPreviewAudioBackend_PlaybackClock.cpp
-            src/audio/BassPreviewAudioBackend_EventDrain.cpp
-        )
-        target_compile_definitions(soundtouch_probe PRIVATE MIACODE_HAS_BASS_AUDIO=1)
-        target_include_directories(soundtouch_probe PRIVATE third_party/bass/include)
         target_link_libraries(soundtouch_probe PRIVATE
             "${MIACODE_BASS_WINDOWS_LIB_DIR}/bass.lib"
             "${MIACODE_BASS_WINDOWS_LIB_DIR}/bassmix.lib"
@@ -1576,23 +1587,70 @@ if (MIACODE_BUILD_DEV_TOOLS)
                 $<TARGET_FILE_DIR:soundtouch_probe>
             WORKING_DIRECTORY "${MIACODE_BASS_WINDOWS_BIN_DIR}"
         )
+    elseif (APPLE)
+        target_link_libraries(soundtouch_probe PRIVATE
+            "${MIACODE_BASS_MACOS_DIR}/libbass.dylib"
+            "${MIACODE_BASS_MACOS_DIR}/libbassmix.dylib")
+        set_target_properties(soundtouch_probe PROPERTIES
+            BUILD_RPATH "@executable_path")
+        add_custom_command(TARGET soundtouch_probe POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                ${MIACODE_BASS_MACOS_LIBRARIES}
+                $<TARGET_FILE_DIR:soundtouch_probe>)
+    elseif (CMAKE_SYSTEM_NAME STREQUAL "Linux")
+        target_link_libraries(soundtouch_probe PRIVATE
+            "${MIACODE_BASS_LINUX_DIR}/libbass.so"
+            "${MIACODE_BASS_LINUX_DIR}/libbassmix.so"
+            ${CMAKE_DL_LIBS})
+        set_target_properties(soundtouch_probe PROPERTIES BUILD_RPATH "$ORIGIN")
+        add_custom_command(TARGET soundtouch_probe POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                ${MIACODE_BASS_LINUX_LIBRARIES}
+                $<TARGET_FILE_DIR:soundtouch_probe>)
     endif()
 
     # Batch offset-detection evaluator. Walks a chart corpus and scores the
     # offset detector against each chart's &first (error folded mod one
     # 8th-note). Manual diagnostic — needs a real corpus, so NOT a CTest case.
-    # Links only LatencyAnalysis + its own miniaudio impl TU (decode-only).
     miacode_add_dev_tool(latency_offset_batch
         SOURCES
             src/tools/latency/LatencyBatchTest.cpp
-            src/tools/latency/LatencyBatchAudioImpl.cpp
             src/tools/latency/LatencyAnalysis.h
             src/tools/latency/LatencyAnalysis.cpp
             src/audio/OfflineAudioDecoder.h
             src/audio/OfflineAudioDecoder.cpp
+            src/audio/PreviewBassDeviceLease.h
+            src/audio/PreviewBassDeviceLease.cpp
         LIBS Qt6::Core
         INCLUDES src src/tools/latency
     )
+    target_include_directories(latency_offset_batch PRIVATE third_party/bass/include)
+    if (WIN32)
+        target_link_libraries(latency_offset_batch PRIVATE
+            "${MIACODE_BASS_WINDOWS_LIB_DIR}/bass.lib")
+        add_custom_command(TARGET latency_offset_batch POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                ${MIACODE_BASS_WINDOWS_DLLS}
+                $<TARGET_FILE_DIR:latency_offset_batch>
+            WORKING_DIRECTORY "${MIACODE_BASS_WINDOWS_BIN_DIR}")
+    elseif (APPLE)
+        target_link_libraries(latency_offset_batch PRIVATE
+            "${MIACODE_BASS_MACOS_DIR}/libbass.dylib")
+        set_target_properties(latency_offset_batch PROPERTIES
+            BUILD_RPATH "@executable_path")
+        add_custom_command(TARGET latency_offset_batch POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                ${MIACODE_BASS_MACOS_LIBRARIES}
+                $<TARGET_FILE_DIR:latency_offset_batch>)
+    elseif (CMAKE_SYSTEM_NAME STREQUAL "Linux")
+        target_link_libraries(latency_offset_batch PRIVATE
+            "${MIACODE_BASS_LINUX_DIR}/libbass.so")
+        set_target_properties(latency_offset_batch PROPERTIES BUILD_RPATH "$ORIGIN")
+        add_custom_command(TARGET latency_offset_batch POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                ${MIACODE_BASS_LINUX_LIBRARIES}
+                $<TARGET_FILE_DIR:latency_offset_batch>)
+    endif()
 
     include(cmake/devtools/MiaCodeSpecRegistry.cmake)
     include(cmake/devtools/specs/index.cmake)

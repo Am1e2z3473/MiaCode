@@ -244,15 +244,14 @@ void cacheBpmCandidates(
 
 DecodedAudio decodeMonoTrack(
     const QString& trackPath,
-    int sampleRate,
-    miacode::audio_decode::BackendPreference backend)
+    int sampleRate)
 {
     DecodedAudio decoded;
     if (trackPath.isEmpty() || sampleRate <= 0) {
         return decoded;
     }
 
-    const auto audio = miacode::audio_decode::decodeFileToMono(trackPath, sampleRate, backend);
+    const auto audio = miacode::audio_decode::decodeFileToMono(trackPath, sampleRate);
     decoded.samples = audio.samples;
     decoded.sampleRate = audio.sampleRate;
     decoded.durationSeconds = audio.durationSeconds;

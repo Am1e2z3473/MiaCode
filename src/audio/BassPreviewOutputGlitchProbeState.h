@@ -9,10 +9,8 @@
 
 // Audio-thread-owned state for the master-mixer output-glitch DSP callback
 // (see PreviewAudioOutputGlitchProbe.h for what it measures and why). This
-// header has no bass.h dependency -- BassPreviewAudioBackend.h includes it
-// unconditionally so the state can be a plain member even when
-// MIACODE_HAS_BASS_AUDIO is not defined; the DSP glue that actually touches
-// bass.h and mutates this state lives in BassPreviewAudioBackend_EngineInit.cpp.
+// The DSP glue that touches bass.h and mutates this state lives in
+// BassPreviewAudioBackend_EngineInit.cpp.
 namespace miacode::audio::bass_detail {
 
 // Bound to a fixed stereo layout. miacode::preview_audio::kMixChannels

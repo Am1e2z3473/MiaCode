@@ -343,8 +343,12 @@ void ExportSession::enter(int previousActiveDifficultyId)
         if (!pageSessionActive_ || generation != pagePrepareGeneration_) {
             return;
         }
+        const bool selectionRangePending = hasPendingSelectionRangeExport_;
         seedFromDifficulty(selectedDifficultyId_);
         syncAudition();
+        if (selectionRangePending) {
+            emit selectionRangeApplied();
+        }
     });
     // Re-scan once per real page entry so imports made by another QML surface
     // are visible, while repeated property reads during this entry share the
@@ -369,6 +373,51 @@ void ExportSession::leave()
     hasSeededTask_ = false;
     stopAudition();
     setUnavailableReason(QString());
+}
+
+void ExportSession::replaceDocument(int preferredDifficultyId)
+{
+    ++pagePrepareGeneration_;
+    stopAudition();
+    clearPendingSelectionRangeExport();
+
+    const bool retainUserSettings = hasSeededTask_;
+    const VideoExportTask previousTask = task_;
+    task_ = VideoExportTask();
+    if (retainUserSettings) {
+        miacode::video_export::copyVideoExportUserSettings(previousTask, &task_);
+    }
+    chartDurationSeconds_ = 0.0;
+    task_.exportStartSeconds = 0.0;
+    task_.contentDurationSeconds = 0.0;
+    task_.fullRangeExport = true;
+
+    batchSelectedDifficultyIds_.clear();
+    int nextDifficultyId = difficultyExists(preferredDifficultyId)
+        ? preferredDifficultyId : 0;
+    if (nextDifficultyId == 0 && engine() != nullptr) {
+        const QList<int> ids = engine()->difficultyIds();
+        if (!ids.isEmpty()) {
+            nextDifficultyId = ids.constFirst();
+        }
+    }
+    if (selectedDifficultyId_ != nextDifficultyId) {
+        selectedDifficultyId_ = nextDifficultyId;
+        emit selectedDifficultyIdChanged();
+    }
+    rebuildDifficultyList();
+
+    if (pageSessionActive_) {
+        seedFromDifficulty(selectedDifficultyId_);
+        syncAudition();
+    }
+    if (selectedDifficultyId_ <= 0 || !difficultyHasChartBody(selectedDifficultyId_)) {
+        emit outputChanged();
+        emit videoChanged();
+        emit introChanged();
+        emit rangeChanged();
+        emit batchChanged();
+    }
 }
 
 void ExportSession::selectDifficulty(int difficultyId)
@@ -942,11 +991,18 @@ void ExportSession::setExportRangeSeconds(double start, double end)
     const double minimumDuration = minimumExportRangeSeconds();
     const double boundedStart = qBound(0.0, start, qMax(0.0, chartDurationSeconds_ - minimumDuration));
     const double boundedEnd = qBound(boundedStart + minimumDuration, end, chartDurationSeconds_);
+    if (boundedStart == task_.exportStartSeconds && boundedEnd == exportEndSeconds()) {
+        return;
+    }
+    const bool previousFullRangeExport = task_.fullRangeExport;
     task_.exportStartSeconds = boundedStart;
     task_.contentDurationSeconds = qMax(0.0, boundedEnd - boundedStart);
     task_.fullRangeExport = miacode::video_export::isFullRangeVideoExport(task_.exportStartSeconds);
     emit rangeChanged();
     emit introChanged();
+    if (task_.intro.enabled && previousFullRangeExport != task_.fullRangeExport && engine() != nullptr) {
+        engine()->refreshIntroState();
+    }
 }
 
 void ExportSession::requestSelectionRangeExport(double startSecond, double endSecond)

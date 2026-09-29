@@ -225,7 +225,7 @@ inline double scheduledPlaybackMixSecond(const ScheduledPlayback& playback, doub
 // Returns -1 when no span is active. This is what lets a newer touch-hold take
 // over the voice from an older one (seamless join, overlap, or nesting) instead
 // of the older note clobbering the newer one — see runtime reconcile callers in
-// BassPreviewAudioBackend / MiniaudioPreviewAudioBackend.
+// BassPreviewAudioBackend.
 inline int touchholdOwnerSpanIndexAt(const QVector<TouchholdSpan>& spans, double second)
 {
     int owner = -1;

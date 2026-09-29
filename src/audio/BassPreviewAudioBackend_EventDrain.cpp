@@ -26,10 +26,8 @@
 #include <mutex>
 #include <cstdio>   // G1 Commit 8 followup: std::snprintf for startup-beacon lines
 
-#ifdef MIACODE_HAS_BASS_AUDIO
 #include "bass.h"
 #include "bassmix.h"
-#endif
 
 #include "BassPreviewAudioBackendImpl.h"
 #include "BassPreviewAudioBackendSample.h"
@@ -40,7 +38,6 @@ void BassPreviewAudioBackend::resetCursor(double second, bool includeCurrentSeco
 {
     MC_OP("BassPreviewAudioBackend::resetCursor");
     bool rearmScheduler = false;
-#ifdef MIACODE_HAS_BASS_AUDIO
     {
         QMutexLocker locker(&schedulerMutex_);
         rearmScheduler = sfxSchedulerActive_;
@@ -48,7 +45,6 @@ void BassPreviewAudioBackend::resetCursor(double second, bool includeCurrentSeco
     if (rearmScheduler) {
         disarmSfxScheduler("reset_cursor");
     }
-#endif
     playbackSession_.eventGroupIndex = 0;
     while (playbackSession_.eventGroupIndex < preparedGroups_.size()) {
         const double groupSecond = preparedGroups_[playbackSession_.eventGroupIndex].second;
@@ -60,11 +56,9 @@ void BassPreviewAudioBackend::resetCursor(double second, bool includeCurrentSeco
         }
         ++playbackSession_.eventGroupIndex;
     }
-#ifdef MIACODE_HAS_BASS_AUDIO
     if (rearmScheduler && playbackSession_.masterRunning) {
         anchorSfxScheduler(second);
     }
-#endif
 }
 
 void BassPreviewAudioBackend::triggerGroup(
@@ -123,14 +117,12 @@ void BassPreviewAudioBackend::drainEvents(double second)
     // A live session is scheduled by the master mixer's decode cursor.  Keeping
     // this fallback only for the pre-commit edge avoids a GUI wake-up replaying
     // the groups that BASS already emitted while the GUI thread was stalled.
-#ifdef MIACODE_HAS_BASS_AUDIO
     {
         QMutexLocker locker(&schedulerMutex_);
         if (sfxSchedulerActive_) {
             return;
         }
     }
-#endif
     // G1 Commit 8: bass_sfx_drain per §7.2. Emit one line per tick that actually
     // triggered something, with the chart-second the tick was draining toward,
     // the count, and the first/last group indices. Quiet ticks (drained=0) stay
@@ -172,7 +164,6 @@ void BassPreviewAudioBackend::drainEvents(double second)
 
 void BassPreviewAudioBackend::disarmSfxScheduler(const char* reason)
 {
-#ifdef MIACODE_HAS_BASS_AUDIO
     bool wasActive = false;
     bool hadSync = false;
     int groupIndex = -1;
@@ -240,14 +231,10 @@ void BassPreviewAudioBackend::disarmSfxScheduler(const char* reason)
                 .arg(sfxWatchdogRecoveryCount_.load(std::memory_order_relaxed))
                 .arg(sfxDeferredSyncCount_.load(std::memory_order_relaxed)));
     }
-#else
-    Q_UNUSED(reason);
-#endif
 }
 
 void BassPreviewAudioBackend::anchorSfxScheduler(double chartSecond)
 {
-#ifdef MIACODE_HAS_BASS_AUDIO
     if (masterMixer_ == 0 || !playbackSession_.masterRunning
         || shuttingDown_.load(std::memory_order_acquire)) {
         return;
@@ -319,9 +306,6 @@ void BassPreviewAudioBackend::anchorSfxScheduler(double chartSecond)
     // After the anchor row, so the pair reads in the order it happened: the anchor was
     // taken, then arming its first sync failed and the scheduler switched itself off.
     logSfxSchedulerArmFailure(armFailure);
-#else
-    Q_UNUSED(chartSecond);
-#endif
 }
 
 double BassPreviewAudioBackend::scheduledGroupSyncLeadMs(
@@ -339,7 +323,6 @@ double BassPreviewAudioBackend::scheduledGroupSyncLeadMs(
 
 double BassPreviewAudioBackend::chartSecondForDecodePositionLocked(quint64 decodePosition) const
 {
-#ifdef MIACODE_HAS_BASS_AUDIO
     if (!sfxSchedulerActive_ || masterMixer_ == 0
         || decodePosition == static_cast<quint64>(-1)
         || decodePosition < sfxSchedulerAnchorDecodePosition_) {
@@ -353,15 +336,10 @@ double BassPreviewAudioBackend::chartSecondForDecodePositionLocked(quint64 decod
     return clampTimelineSecond(
         miacode::preview_audio::bass::chartSecondForMixerSecond(
             sfxSchedulerAnchor_, sfxSchedulerAnchor_.mixerSecond + mixerElapsedSeconds));
-#else
-    Q_UNUSED(decodePosition);
-    return std::numeric_limits<double>::quiet_NaN();
-#endif
 }
 
 double BassPreviewAudioBackend::currentSfxSchedulerChartSecond(double fallbackSecond) const
 {
-#ifdef MIACODE_HAS_BASS_AUDIO
     {
         QMutexLocker locker(&schedulerMutex_);
         if (!sfxSchedulerActive_ || masterMixer_ == 0) {
@@ -373,9 +351,6 @@ double BassPreviewAudioBackend::currentSfxSchedulerChartSecond(double fallbackSe
     QMutexLocker locker(&schedulerMutex_);
     const double chartSecond = chartSecondForDecodePositionLocked(currentDecodePosition);
     return qIsFinite(chartSecond) ? chartSecond : fallbackSecond;
-#else
-    return fallbackSecond;
-#endif
 }
 
 double BassPreviewAudioBackend::liveChartSecondEstimate() const
@@ -398,7 +373,6 @@ void BassPreviewAudioBackend::advanceCursorPastSecondLocked(double second)
 
 void BassPreviewAudioBackend::armNextGroupSyncLocked(SfxArmContext& context)
 {
-#ifdef MIACODE_HAS_BASS_AUDIO
     using namespace miacode::preview_audio::bass;
     for (int pass = 0; pass < kMaxInlineCatchUpGroups; ++pass) {
         if (!sfxSchedulerActive_ || scheduledGroupSync_ != 0 || masterMixer_ == 0
@@ -498,9 +472,6 @@ void BassPreviewAudioBackend::armNextGroupSyncLocked(SfxArmContext& context)
             context.events[static_cast<std::size_t>(context.eventCount++)] = event;
         }
     }
-#else
-    Q_UNUSED(context);
-#endif
 }
 
 void BassPreviewAudioBackend::performScheduledActionLocked(
@@ -508,7 +479,6 @@ void BassPreviewAudioBackend::performScheduledActionLocked(
     ScheduledMixerAction action,
     miacode::preview_audio::bass::SfxCallbackEvent* event)
 {
-#ifdef MIACODE_HAS_BASS_AUDIO
     using namespace miacode::preview_audio::bass;
     const bool startBackground = action == ScheduledMixerAction::StartPendingBackgroundTrack
         || action == ScheduledMixerAction::SfxGroupAndStartPendingBackgroundTrack;
@@ -549,16 +519,10 @@ void BassPreviewAudioBackend::performScheduledActionLocked(
     } else if (event->startedBackground) {
         event->kind = SfxCallbackEventKind::Trigger;
     }
-#else
-    Q_UNUSED(groupIndex);
-    Q_UNUSED(action);
-    Q_UNUSED(event);
-#endif
 }
 
 void BassPreviewAudioBackend::logSfxSchedulerArmFailure(const SfxSchedulerArmFailure& failure) const
 {
-#ifdef MIACODE_HAS_BASS_AUDIO
     if (!failure.pending) {
         return;
     }
@@ -567,9 +531,6 @@ void BassPreviewAudioBackend::logSfxSchedulerArmFailure(const SfxSchedulerArmFai
         QString("bass_sfx_scheduler action=deactivated reason=set_sync_failed bass_err=%1 target_chart_second=%2")
             .arg(failure.bassError)
             .arg(failure.targetChartSecond, 0, 'f', 6));
-#else
-    Q_UNUSED(failure);
-#endif
 }
 
 void BassPreviewAudioBackend::onMixerGroupSync(quint32 handle, quint32 channel, quint32 data, void* user)
@@ -584,7 +545,6 @@ void BassPreviewAudioBackend::onMixerGroupSync(quint32 handle, quint32 channel, 
 
 void BassPreviewAudioBackend::handleMixerGroupSync(quint32 handle)
 {
-#ifdef MIACODE_HAS_BASS_AUDIO
     if (shuttingDown_.load(std::memory_order_acquire)) {
         return;
     }
@@ -616,9 +576,6 @@ void BassPreviewAudioBackend::handleMixerGroupSync(quint32 handle)
         sfxCallbackEventRing_.tryPush(event);
     }
     publishArmContextFromCallback(context);
-#else
-    Q_UNUSED(handle);
-#endif
 }
 
 void BassPreviewAudioBackend::processMixerGroupSyncLocked(
@@ -627,7 +584,6 @@ void BassPreviewAudioBackend::processMixerGroupSyncLocked(
     miacode::preview_audio::bass::SfxCallbackEvent* event,
     SfxArmContext& context)
 {
-#ifdef MIACODE_HAS_BASS_AUDIO
     using namespace miacode::preview_audio::bass;
     if (event == nullptr || shuttingDown_.load(std::memory_order_acquire)) {
         return;
@@ -666,17 +622,10 @@ void BassPreviewAudioBackend::processMixerGroupSyncLocked(
     event->armFailureBassError = sfxSchedulerArmFailure_.bassError;
     event->armFailureTargetChartSecond = sfxSchedulerArmFailure_.targetChartSecond;
     sfxSchedulerArmFailure_ = SfxSchedulerArmFailure();
-#else
-    Q_UNUSED(handle);
-    Q_UNUSED(processedAfterContention);
-    Q_UNUSED(event);
-    Q_UNUSED(context);
-#endif
 }
 
 void BassPreviewAudioBackend::finishArmContext(const SfxArmContext& context)
 {
-#ifdef MIACODE_HAS_BASS_AUDIO
     for (int index = 0; index < context.staleCount; ++index) {
         const quint32 handle = context.staleHandles[static_cast<std::size_t>(index)];
         if (handle != 0 && masterMixer_ != 0) {
@@ -687,23 +636,16 @@ void BassPreviewAudioBackend::finishArmContext(const SfxArmContext& context)
     for (int index = 0; index < context.eventCount; ++index) {
         logSfxCallbackEvent(context.events[static_cast<std::size_t>(index)]);
     }
-#else
-    Q_UNUSED(context);
-#endif
 }
 
 void BassPreviewAudioBackend::publishArmContextFromCallback(const SfxArmContext& context)
 {
-#ifdef MIACODE_HAS_BASS_AUDIO
     for (int index = 0; index < context.staleCount; ++index) {
         pushStaleSyncHandle(context.staleHandles[static_cast<std::size_t>(index)]);
     }
     for (int index = 0; index < context.eventCount; ++index) {
         sfxCallbackEventRing_.tryPush(context.events[static_cast<std::size_t>(index)]);
     }
-#else
-    Q_UNUSED(context);
-#endif
 }
 
 void BassPreviewAudioBackend::pushStaleSyncHandle(quint32 handle)
@@ -723,7 +665,6 @@ void BassPreviewAudioBackend::pushStaleSyncHandle(quint32 handle)
 
 void BassPreviewAudioBackend::drainStaleSyncHandles()
 {
-#ifdef MIACODE_HAS_BASS_AUDIO
     for (std::atomic<quint32>& slot : staleSyncHandles_) {
         const quint32 handle = slot.exchange(0, std::memory_order_acq_rel);
         if (handle != 0 && masterMixer_ != 0) {
@@ -731,12 +672,10 @@ void BassPreviewAudioBackend::drainStaleSyncHandles()
             noteBassErr("sfx_scheduler/remove_dead_sync");
         }
     }
-#endif
 }
 
 void BassPreviewAudioBackend::drainDeferredMixerSync()
 {
-#ifdef MIACODE_HAS_BASS_AUDIO
     using namespace miacode::preview_audio::bass;
     const quint32 handle = deferredMixerSyncHandle_.exchange(0, std::memory_order_acq_rel);
     if (handle == 0) {
@@ -811,12 +750,10 @@ void BassPreviewAudioBackend::drainDeferredMixerSync()
                 .arg(context.inlineSkips)
                 .arg(rearmed ? 1 : 0));
     }
-#endif
 }
 
 void BassPreviewAudioBackend::runSfxChainWatchdog(double referenceChartSecond, bool hasReference)
 {
-#ifdef MIACODE_HAS_BASS_AUDIO
     using namespace miacode::preview_audio::bass;
     if (masterMixer_ == 0 || !playbackSession_.masterRunning
         || shuttingDown_.load(std::memory_order_acquire)) {
@@ -956,15 +893,10 @@ void BassPreviewAudioBackend::runSfxChainWatchdog(double referenceChartSecond, b
                 .arg(sfxSchedulerAnchorDecodePosition_));
         resetCursor(referenceChartSecond, false);
     }
-#else
-    Q_UNUSED(referenceChartSecond);
-    Q_UNUSED(hasReference);
-#endif
 }
 
 void BassPreviewAudioBackend::serviceSfxScheduler(double referenceChartSecond, bool hasReference)
 {
-#ifdef MIACODE_HAS_BASS_AUDIO
     // PreviewAudioWorker never dispatches syncPreviewPlaybackClockTransaction(), so the
     // chain's worker-side upkeep has to ride on what it does execute: DrainEvents and
     // SyncBackgroundTrack every playback tick, plus its own health tick when the GUI stalls.
@@ -972,15 +904,10 @@ void BassPreviewAudioBackend::serviceSfxScheduler(double referenceChartSecond, b
     drainStaleSyncHandles();
     drainDeferredMixerSync();
     runSfxChainWatchdog(referenceChartSecond, hasReference);
-#else
-    Q_UNUSED(referenceChartSecond);
-    Q_UNUSED(hasReference);
-#endif
 }
 
 void BassPreviewAudioBackend::drainSfxCallbackEvents()
 {
-#ifdef MIACODE_HAS_BASS_AUDIO
     using namespace miacode::preview_audio::bass;
     SfxCallbackEvent event;
     for (std::size_t drained = 0;
@@ -992,13 +919,11 @@ void BassPreviewAudioBackend::drainSfxCallbackEvents()
     if (dropped > 0 && runtimeAudioDebugEnabled()) {
         appendAudioDebugLog(QString("bass_sfx_mixer_diag_drop count=%1").arg(dropped));
     }
-#endif
 }
 
 void BassPreviewAudioBackend::logSfxCallbackEvent(
     const miacode::preview_audio::bass::SfxCallbackEvent& event) const
 {
-#ifdef MIACODE_HAS_BASS_AUDIO
     using namespace miacode::preview_audio::bass;
     if (!runtimeAudioDebugEnabled()) {
         return;
@@ -1089,14 +1014,10 @@ void BassPreviewAudioBackend::logSfxCallbackEvent(
         failure.targetChartSecond = event.armFailureTargetChartSecond;
         logSfxSchedulerArmFailure(failure);
     }
-#else
-    Q_UNUSED(event);
-#endif
 }
 
 void BassPreviewAudioBackend::reconcileTouchholdVoice(double second, TouchholdTransition* out)
 {
-#ifdef MIACODE_HAS_BASS_AUDIO
     if (touchholdSample_ == nullptr) {
         return;
     }
@@ -1130,15 +1051,10 @@ void BassPreviewAudioBackend::reconcileTouchholdVoice(double second, TouchholdTr
         return;
     }
     logTouchholdTransition(transition);
-#else
-    Q_UNUSED(second);
-    Q_UNUSED(out);
-#endif
 }
 
 void BassPreviewAudioBackend::logTouchholdTransition(const TouchholdTransition& transition) const
 {
-#ifdef MIACODE_HAS_BASS_AUDIO
     if (!transition.changed) {
         return;
     }
@@ -1158,31 +1074,22 @@ void BassPreviewAudioBackend::logTouchholdTransition(const TouchholdTransition& 
             .arg(transition.previousOwner)
             .arg(transition.second, 0, 'f', 6)
             .arg(transition.spanStartSecond, 0, 'f', 6));
-#else
-    Q_UNUSED(transition);
-#endif
 }
 
 void BassPreviewAudioBackend::pauseTouchholdVoices()
 {
     MC_OP("BassPreviewAudioBackend::pauseTouchholdVoices");
-#ifdef MIACODE_HAS_BASS_AUDIO
     if (touchholdSample_ != nullptr) {
         touchholdSample_->stop();
     }
-#endif
     touchholdOwnerSpanIndex_ = -1;
 }
 
 void BassPreviewAudioBackend::restoreTouchholdVoices(double second)
 {
     MC_OP("BassPreviewAudioBackend::restoreTouchholdVoices");
-#ifdef MIACODE_HAS_BASS_AUDIO
     pauseTouchholdVoices();
     reconcileTouchholdVoice(second);
-#else
-    Q_UNUSED(second);
-#endif
 }
 
 
@@ -1194,24 +1101,17 @@ bool BassPreviewAudioBackend::playKindInternal(
     if (nativeErrorCode != nullptr) {
         *nativeErrorCode = 0;
     }
-#ifdef MIACODE_HAS_BASS_AUDIO
     Sample* sample = sampleForKind(kind);
     if (sample == nullptr) {
         return false;
     }
     return sample->playOneShot(gain, nativeErrorCode);
-#else
-    Q_UNUSED(kind);
-    Q_UNUSED(gain);
-    return false;
-#endif
 }
 
 bool BassPreviewAudioBackend::audition(const QString& kind, double gain)
 {
     MC_OP("BassPreviewAudioBackend::audition");
     lastNativeErrorCode_ = 0;
-#ifdef MIACODE_HAS_BASS_AUDIO
     if (!initializeAudioEngine() || masterMixer_ == 0) {
         return false;
     }
@@ -1232,11 +1132,6 @@ bool BassPreviewAudioBackend::audition(const QString& kind, double gain)
             .arg(gain, 0, 'f', 2)
             .arg(started ? 1 : 0));
     return started;
-#else
-    Q_UNUSED(kind);
-    Q_UNUSED(gain);
-    return false;
-#endif
 }
 
 void BassPreviewAudioBackend::stopAll()

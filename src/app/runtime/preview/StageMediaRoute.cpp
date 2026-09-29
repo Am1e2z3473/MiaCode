@@ -181,12 +181,9 @@ void miacode::runtime::StageMediaHost::releasePreviewStageMediaDecoderForFileOpe
 }
 
 void miacode::runtime::StageMediaHost::applyPreviewMediaWarmupToStageMediaRoute(
-    const QString& chartPath,
-    const QString& resolvedMediaPath,
-    const QString& trackPath)
+    const QString& chartPath)
 {
     ensurePreviewStageMediaHostInitialized();
-    state_.previewStageMediaHost_->setWarmupResolvedMediaPath(chartPath, resolvedMediaPath);
     state_.deferredQuickShellStartupStageMediaChartPath_ = chartPath;
     state_.deferredQuickShellStartupStageMediaPending_ = true;
     if (!shouldDeferQuickShellStartupStageMediaLoad()) {
@@ -378,7 +375,6 @@ void miacode::runtime::StageMediaHost::ensurePreviewStageMediaHostInitialized()
         refreshPreviewStageMediaRouteDebugState(!state_.playing_);
     });
     ensureQuickShellPreviewCompositeSurfaceInitialized();
-    state_.previewStageMediaHost_->setWarmupResolvedMediaPath(state_.previewMediaWarmupChartPath_, state_.previewMediaWarmupResolvedPath_);
     state_.deferredQuickShellStartupStageMediaChartPath_ = state_.currentFilePath_;
     // Phase 4c — pick up the &video= override from the parsed document
     // so the lazy host-init path (this code) honours it on first load.
@@ -479,14 +475,6 @@ void Session::clearPreviewStageMediaRoute()
 void Session::releasePreviewStageMediaDecoderForFileOperation()
 {
     stageMedia_->releasePreviewStageMediaDecoderForFileOperation();
-}
-
-void Session::applyPreviewMediaWarmupToStageMediaRoute(
-    const QString& chartPath,
-    const QString& resolvedMediaPath,
-    const QString& trackPath)
-{
-    stageMedia_->applyPreviewMediaWarmupToStageMediaRoute(chartPath, resolvedMediaPath, trackPath);
 }
 
 void Session::applyPreviewStageMediaRoutePlaybackRate(double rate, const char* site)
