@@ -1,8 +1,9 @@
-name: Build macOS Dev
+name: macOS Package (V1)
 
 on:
   push:
     branches:
+      - main
       - MiaCode_v1
   workflow_dispatch:
 
@@ -15,7 +16,7 @@ concurrency:
 
 jobs:
   package:
-    name: Package Apple Silicon dev build
+    name: Package Apple Silicon build (V1)
     runs-on: macos-14
     timeout-minutes: 90
     env:
