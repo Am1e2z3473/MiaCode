@@ -2,11 +2,19 @@
   <img src="resources/icons/app.png" alt="MiaCode avatar" width="128">
 </p>
 
-# MiaCode
+<h1 align="center">MiaCode</h1>
 
-[中文](README.md) | [English](README_EN.md)
+<p align="center">
+  <a href="https://github.com/Team-MiaCode/MiaCode/releases/latest"><img src="https://img.shields.io/github/v/release/Team-MiaCode/MiaCode" alt="Latest release"></a>
+  <a href="https://github.com/Team-MiaCode/MiaCode/stargazers"><img src="https://img.shields.io/github/stars/Team-MiaCode/MiaCode" alt="GitHub stars"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/source_code_license-MIT-blue" alt="Source code license: MIT"></a>
+</p>
 
-A new version rebuilt with QML is in development. Follow the [`feature/qml-ui`](https://github.com/Team-MiaCode/MiaCode/tree/feature/qml-ui) branch for progress.
+<p align="center">
+  <a href="README.md">中文</a> | <a href="README_EN.md">English</a>
+</p>
+
+MiaCode is an all-in-one maimai chart authoring tool built with Qt 6 / C++, offering a range of features across multiple platforms for professional chart makers.
 
 <table align="center" width="100%">
   <tr>
@@ -19,7 +27,7 @@ A new version rebuilt with QML is in development. Follow the [`feature/qml-ui`](
   </tr>
 </table>
 
-MiaCode is an all-in-one maimai chart authoring tool built with Qt 6 / C++, offering a range of features across multiple platforms.
+A new version rebuilt with QML is in development. Follow the [`feature/qml-ui`](https://github.com/Team-MiaCode/MiaCode/tree/feature/qml-ui) branch for progress.
 
 ## Quick Start
 

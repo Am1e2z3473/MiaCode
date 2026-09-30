@@ -2,12 +2,19 @@
   <img src="resources/icons/app.png" alt="MiaCode avatar" width="128">
 </p>
 
-# MiaCode
+<h1 align="center">MiaCode</h1>
 
-[中文](README.md) | [English](README_EN.md)
+<p align="center">
+  <a href="https://github.com/Team-MiaCode/MiaCode/releases/latest"><img src="https://img.shields.io/github/v/release/Team-MiaCode/MiaCode" alt="Latest release"></a>
+  <a href="https://github.com/Team-MiaCode/MiaCode/stargazers"><img src="https://img.shields.io/github/stars/Team-MiaCode/MiaCode" alt="GitHub stars"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/source_code_license-MIT-blue" alt="Source code license: MIT"></a>
+</p>
 
-基于 QML 重构的新版本正在开发中。欢迎关注 [`feature/qml-ui`](https://github.com/Team-MiaCode/MiaCode/tree/feature/qml-ui) 分支的开发进展。
+<p align="center">
+  <a href="README.md">中文</a> | <a href="README_EN.md">English</a>
+</p>
 
+MiaCode 是一款基于 Qt 6 / C++ 的一站式 maimai 谱面创作工具，集成丰富功能与多平台支持，为创作者提供专业与便捷的体验。
 <table align="center" width="100%">
   <tr>
     <td align="center" width="50%"><img src="resources/readme/dark-theme.jpg" alt="MiaCode 深色主题" width="400"></td>
@@ -19,7 +26,7 @@
   </tr>
 </table>
 
-MiaCode 是一款基于 Qt 6 / C++ 的一站式 maimai 谱面创作工具，集成丰富功能与多平台支持。
+基于 QML 重构的新版本正在开发中。欢迎关注 [`feature/qml-ui`](https://github.com/Team-MiaCode/MiaCode/tree/feature/qml-ui) 分支的开发进展。
 
 ## 快速开始
 
