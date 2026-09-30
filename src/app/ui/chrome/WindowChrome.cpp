@@ -89,6 +89,15 @@ void WindowChrome::attach(QWindow* window)
 #endif
 }
 
+void WindowChrome::minimize()
+{
+    if (window_.isNull()) {
+        return;
+    }
+    // Keep maximized/fullscreen bits so the native restore operation retains them.
+    window_->setWindowStates(window_->windowStates() | Qt::WindowMinimized);
+}
+
 void WindowChrome::refreshTitleBarMetrics()
 {
 #ifdef Q_OS_MACOS

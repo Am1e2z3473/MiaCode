@@ -237,11 +237,9 @@ bool Bootstrap::start(const QString& startupOpenTarget)
         miacode::app::entry::logQuickWindowGpuDevice(
             window, QStringLiteral("qml_ui_root_window"));
 
-#if defined(Q_OS_WIN) || defined(Q_OS_MACOS)
         window->setVisible(false);
         windowChrome_->attach(window);
         appendUiRuntimeLog(QStringLiteral("window_chrome_attached"));
-#endif
         NativeWindowTheme::applyToWindow(window);
         // The native frame is applied, not bound: without re-applying it the
         // titlebar keeps the palette it was born with while every QML surface
