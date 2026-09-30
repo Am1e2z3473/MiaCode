@@ -1,7 +1,7 @@
 include(${CMAKE_CURRENT_LIST_DIR}/SharedSources.cmake)
 
 # Qt dependencies for diagnostic executables and specs.
-find_package(Qt6 6.8 REQUIRED COMPONENTS Test Network Widgets)
+find_package(Qt6 6.10 REQUIRED COMPONENTS Test Network Widgets)
 
 # Mirror the product QML module for specs that instantiate its components.
 set(MIACODE_QML_SPEC_IMPORT_ROOT "${CMAKE_CURRENT_BINARY_DIR}/qml_spec_imports")

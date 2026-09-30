@@ -393,7 +393,7 @@ if ! command -v cmake >/dev/null 2>&1; then
 fi
 
 if ! command -v macdeployqt >/dev/null 2>&1; then
-  echo "macdeployqt not found in PATH (set QT_ROOT=/path/to/Qt/6.8.x/macos)" >&2
+  echo "macdeployqt not found in PATH (set QT_ROOT=/path/to/Qt/6.10.x/macos)" >&2
   exit 1
 fi
 

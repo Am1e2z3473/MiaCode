@@ -109,7 +109,7 @@ configure_file(
     @ONLY
 )
 
-find_package(Qt6 6.8 REQUIRED COMPONENTS Core Gui LinguistTools Multimedia Quick Quick3D Quick3DHelpers Qml QuickControls2 ShaderTools)
+find_package(Qt6 6.10 REQUIRED COMPONENTS Core Gui LinguistTools Multimedia Quick Quick3D Quick3DHelpers Qml QuickControls2 ShaderTools)
 
 qt_policy(SET QTP0001 NEW)
 
@@ -127,7 +127,7 @@ endif()
 # (qhwvideobuffer_p.h / qvideotexturehelper_p.h) that QtAVPlayer's
 # QAVVideoFrame -> QVideoFrame bridge needs. The Windows, macOS, and Linux
 # QtAVPlayer preview backends use it (see the QtAVPlayer block below).
-find_package(Qt6 6.8 REQUIRED COMPONENTS MultimediaQuickPrivate)
+find_package(Qt6 6.10 REQUIRED COMPONENTS MultimediaQuickPrivate)
 
 add_executable(MiaCode WIN32 MACOSX_BUNDLE
     src/app/main.cpp

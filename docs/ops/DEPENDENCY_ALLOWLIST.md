@@ -12,7 +12,7 @@
 > 泄漏出媒体适配层——五种漂移都会让 `ctest -R dependency_allowlist_spec` 失败。
 > **改依赖和改本文必须同一次提交。**
 
-Qt 最低版本锁定：`6.8`
+Qt 最低版本锁定：`6.10`
 
 版本锁不是风格问题：`Qt6::MultimediaQuickPrivate` 是私有模块，没有跨版本兼容承诺，
 所以 `CMakeLists.txt` 里**每一处** `find_package(Qt6 <ver> …)` 都必须写同一个版本号，
