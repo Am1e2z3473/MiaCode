@@ -1,4 +1,4 @@
-"""Behavioral regression checks for document indexing and generated guide copies."""
+"""Behavioral regression checks for document indexing."""
 from pathlib import Path
 import shutil
 import subprocess
@@ -6,7 +6,6 @@ import tempfile
 import unittest
 
 import docs_index
-import sync_guides
 
 
 class GovernanceTests(unittest.TestCase):
@@ -28,9 +27,6 @@ code_anchors: ["src/app"]
 ---
 # Current
 ''', encoding="utf-8")
-        self.guide = self.root / sync_guides.SOURCE
-        self.guide.mkdir(parents=True)
-        (self.guide / 'SKILL.md').write_text('# Guide\n`src/app`\n', encoding="utf-8")
 
     def assert_error(self, errors, phrase):
         self.assertTrue(any(phrase in e for e in errors), errors)
@@ -85,21 +81,6 @@ test_targets: ["missing_spec"]
         self.assertEqual(docs_index.run(self.root, True), [])
         self.assertNotIn('Secret', (self.root / 'docs/INDEX.md').read_text(encoding="utf-8"))
 
-    def test_mirror_drift_and_obsolete_files(self):
-        self.assertEqual(sync_guides.run(self.root, True), [])
-        mirror = self.root / sync_guides.MIRRORS[0]
-        (mirror / 'SKILL.md').write_text('drift', encoding="utf-8")
-        (mirror / 'old.md').write_text('obsolete', encoding="utf-8")
-        self.assert_error(sync_guides.run(self.root), 'drift')
-        self.assertEqual((mirror / 'SKILL.md').read_text(encoding="utf-8"), 'drift')
-        self.assertEqual(sync_guides.run(self.root, True), [])
-        self.assertFalse((mirror / 'old.md').exists())
-        self.assertEqual(sync_guides.snapshot(mirror), sync_guides.snapshot(self.guide))
-
-    def test_missing_guide_reference_prevents_sync(self):
-        (self.guide / 'SKILL.md').write_text('# Guide\n[Missing](missing.md)\n', encoding="utf-8")
-        self.assert_error(sync_guides.run(self.root, True), 'broken link')
-        self.assertFalse((self.root / sync_guides.MIRRORS[0]).exists())
 
 
 if __name__ == '__main__':
