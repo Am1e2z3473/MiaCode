@@ -218,10 +218,10 @@ private:
     // drain the QtAVPlayer copy-path cumulative counters into one runtime-log line on a
     // low-frequency cadence (seek / end-of-media). No-op off the QtAVPlayer/Windows path.
     void emitHwDecodeDiagSummary(const char* reason);
-    // Audit §5.2 — decide what a backend EndOfMedia actually means and, when it is
+    // Classify a backend EndOfMedia event and, when it is
     // stale, put the PV back on screen instead of leaving it frozen on the frame
     // that happened to be last. Never touches the main transport: a PV that really
-    // ended stays subordinate (docs/audit/PREVIEW_AUTO_PAUSE_INITIAL_DIAGNOSIS_ZH.md).
+    // ended stays subordinate.
     void handleVideoEndOfMedia(bool wasPlaybackActive);
     bool tryRecoverFromStaleEndOfMedia(double targetSecond);
     void resetStaleEndOfMediaRecovery();

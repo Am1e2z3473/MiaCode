@@ -101,7 +101,6 @@ if (typeof bundledManifest.id !== "string" || bundledManifest.id.trim() === "") 
 
 const publicDocs = [
   "resources/extensions/README.md",
-  "docs/specs/extensions/EXTENSION_SYSTEM_V1.md",
   "packages/miacode-extension-api/index.d.ts",
 ];
 for (const relativePath of publicDocs) {

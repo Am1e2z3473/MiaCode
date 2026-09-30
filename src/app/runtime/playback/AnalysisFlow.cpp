@@ -4,7 +4,7 @@
 
 #include "BracketScopeHighlighter.h"
 #include "QtPreviewSfxRuntime.h"
-#include "SimaiNativeParser.h"
+#include "SimaiParser.h"
 #include "app/quick_shell/QuickShellPreviewCompositeSurface.h"
 #include "app/quick_shell/QuickShellPreviewSurfacePolicy.h"
 #include "common/ChartAssetPaths.h"
@@ -46,7 +46,7 @@ constexpr int kTimelineAnalysisIdleDelayMs = 180;
 
 void miacode::runtime::PlaybackCoordinator::scheduleTimelineAnalysisRefresh(
     const TimelineSlowRefreshRequest& request,
-    const SimaiNativeParseResult& parseResult,
+    const SimaiParseResult& parseResult,
     const TimelinePreviewRefreshState& previewState)
 {
     state_.pendingTimelineAnalysisRefresh_.revision = request.revision;
@@ -179,7 +179,7 @@ void miacode::runtime::PlaybackCoordinator::dispatchTimelineAnalysisRefresh()
                 entry.strictNoteCount = result.validationReport.strictNoteCount;
                 entry.strictErrorCount = result.validationReport.strictErrorCount;
                 entry.issues.reserve(result.validationReport.issues.size());
-                for (const SimaiNativeValidationIssue& issue : result.validationReport.issues) {
+                for (const SimaiValidationIssue& issue : result.validationReport.issues) {
                     Session::ValidationCachedIssue cachedIssue;
                     cachedIssue.line = issue.line;
                     cachedIssue.col = issue.col;

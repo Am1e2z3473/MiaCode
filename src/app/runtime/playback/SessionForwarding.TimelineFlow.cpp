@@ -142,7 +142,7 @@ void Session::dispatchTimelineSlowRefresh()
 
 void Session::scheduleTimelineAnalysisRefresh(
     const TimelineSlowRefreshRequest& request,
-    const SimaiNativeParseResult& parseResult,
+    const SimaiParseResult& parseResult,
     const TimelinePreviewRefreshState& previewState)
 {
     playback_->scheduleTimelineAnalysisRefresh(request, parseResult, previewState);

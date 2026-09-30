@@ -8,7 +8,7 @@
 #include <QStringList>
 #include <QVector>
 
-#include "SimaiNativeParser.h"
+#include "SimaiParser.h"
 #include "timeline/TimelineData.h"
 #include "common/MuriConfig.h"
 #include "common/MuriTypes.h"  // makeMarkerAnalysisKey
@@ -489,7 +489,7 @@ QString slideHeadTapDetailText(
     return renderMuriDetail(
         slideHeadTapDetailKind(hasTapOnSlideHead),
         simpleGapDetailArgs(alertLevel, causeConfig, affectedTarget, gapMs),
-        SimaiNativeValidationLocale::English);
+        SimaiValidationLocale::English);
 }
 
 QString tapOnSlideDetailText(
@@ -501,7 +501,7 @@ QString tapOnSlideDetailText(
     return renderMuriDetail(
         MuriDetailKind::TapOnSlideCollide,
         simpleGapDetailArgs(alertLevel, causeConfig, affectedTarget, gapMs),
-        SimaiNativeValidationLocale::English);
+        SimaiValidationLocale::English);
 }
 
 }  // namespace miacode::muri::detail

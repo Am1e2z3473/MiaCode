@@ -183,7 +183,7 @@ bool verifyV2AnalysisUsesWorkspaceSnapshot(QTextStream& err)
                    QStringLiteral("the production QML context reaches the assembly's single "
                                   "workspace and analysis service instead of building its own"), err)
         && require(analysisServiceHeader.contains(QStringLiteral("bool pending = false;"))
-                       && analysisServiceHeader.contains(QStringLiteral("SimaiNativeValidationReport validation;"))
+                       && analysisServiceHeader.contains(QStringLiteral("SimaiValidationReport validation;"))
                        && analysisServiceHeader.contains(QStringLiteral("QVector<TimelineNoteMarker> noteMarkers;"))
                        && analysisServiceHeader.contains(QStringLiteral("MuriAnalysisReport muri;"))
                        && analysisServiceHeader.contains(QStringLiteral("QVector<MuriStaticReference> muriStaticReferences;")),

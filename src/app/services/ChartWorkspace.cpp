@@ -79,7 +79,7 @@ ChartWorkspace::ChartWorkspace(QObject* parent)
 }
 
 ChartWorkspacePreflightResult ChartWorkspace::preflightSource(
-    const QString& source, SimaiNativeValidationLocale locale)
+    const QString& source, SimaiValidationLocale locale)
 {
     ChartWorkspacePreflightResult result;
     result.candidate = SimaiDocument::fromText(source);
@@ -91,16 +91,16 @@ ChartWorkspacePreflightResult ChartWorkspace::preflightSource(
     for (const int difficultyId : result.candidate.difficultyIds()) {
         const SimaiDifficultyData* difficulty = result.candidate.difficulty(difficultyId);
         if (difficulty == nullptr) continue;
-        const SimaiNativeValidationReport report = SimaiNativeParser::buildValidationReport(
+        const SimaiValidationReport report = SimaiParser::buildValidationReport(
             difficulty->chart, locale, nullptr, timing);
         const SourceFieldSpan span = spans.forDifficulty(difficultyId);
-        for (const SimaiNativeValidationIssue& issue : report.issues) {
+        for (const SimaiValidationIssue& issue : report.issues) {
             const int line = span.valueLine + issue.line - 1;
             const int column = issue.line == 1 ? span.valueColumn + issue.col - 1 : issue.col;
             const int endColumn = issue.line == 1
                 ? span.valueColumn + issue.endCol - 1 : issue.endCol;
             result.issues.append({line, column, endColumn,
-                issue.severity == SimaiNativeValidationSeverity::Warning
+                issue.severity == SimaiValidationSeverity::Warning
                     ? ChartWorkspaceIssueSeverity::Warning : ChartWorkspaceIssueSeverity::Error,
                 issue.displayMessage});
         }
@@ -113,7 +113,7 @@ ChartWorkspaceResult ChartWorkspace::openSource(
     const QString& source, const QString& filePath, int preferredDifficultyId)
 {
     const ChartWorkspacePreflightResult preflight =
-        preflightSource(source, SimaiNativeValidationLocale::English);
+        preflightSource(source, SimaiValidationLocale::English);
     // Maidata field parse is the open gate. Chart-body diagnostics (empty
     // inote, unmatched brackets, unknown tokens) stay on the result for the
     // validation panel; they must not refuse the file. v1 loadDocument uses
@@ -142,7 +142,7 @@ ChartWorkspaceResult ChartWorkspace::replaceSource(const QString& source)
 {
     if (!hasDocument_) return reject();
     const ChartWorkspacePreflightResult preflight =
-        preflightSource(source, SimaiNativeValidationLocale::English);
+        preflightSource(source, SimaiValidationLocale::English);
     if (!preflight.accepted) return reject(preflight.issues);
 
     const QString canonicalSource = preflight.candidate.toText();

@@ -17,7 +17,8 @@ Current ownership contracts live in `docs/specs/ui/CURRENT_ARCHITECTURE_ZH.md`.
 | `preview/runtime/` | Preview runtime, assets and export sessions |
 | `preview/quick_scene/` | Shared Qt Quick/QSG chart rendering |
 | `timeline/` | Timeline model and Quick surface |
-| `tools/` | Domain tools, export, analysis, specs and probes |
+| `tools/` | Domain tools, export, analysis and specs |
+| `devtools/` | Command-line diagnostics: chart dump, muri dump, audio probe and offset batch |
 | `common/` | Shared configuration, resource paths and logging |
 | `extensions/` | Retained manifest/schema contract; no active extension host |
 | `wrapper/` | Windows launcher |

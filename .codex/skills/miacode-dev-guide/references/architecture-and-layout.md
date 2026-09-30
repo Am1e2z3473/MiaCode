@@ -17,9 +17,10 @@
 | 音频 | `src/audio/` | PreviewAudioBackend、QtPreviewSfxRuntime；设备和 BASS/miniaudio 访问留在此边界 |
 | 视频/封面导出 | `src/app/ui/export/`、`src/app/runtime/export/`、`src/tools/video_export/`、`src/tools/cover_export/` | UI session、ExportEngine、snapshot/worker、合成器各负其责 |
 | 延迟、无理、媒体工具 | `src/tools/latency/`、`src/tools/muri/`、`src/tools/media/` | 前端经 `ApplicationServices` 的 engine 槽位调用；不要复制分析实现 |
+| 命令行诊断 | `src/devtools/`、`cmake/devtools/CliTools.cmake` | 开发程序入口集中于 devtools；领域算法复用所属模块 |
 | 配置、资源、日志 | `src/common/` | 共享配置与纯 helper；不要把单一功能私有状态放进 common |
 
-装配细节查 `src/app/runtime/ASSEMBLY.md` 和 `ApplicationServices` 的实际安装点；其中的阶段计划不代表代码已实现。
+装配细节查 `src/app/runtime/SessionBootstrap.cpp` 和 `ApplicationServices` 的实际安装点。
 历史中的 MainWindow、v1 QuickShell 外壳、DComp 渲染器和外置预览 worker 已退役，不能作为新功能入口。部分类型名仍含 QuickShell，不等于有第二套产品前端。
 
 ## QML 可复用组件

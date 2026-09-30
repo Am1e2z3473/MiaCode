@@ -1,4 +1,4 @@
-#include "SimaiNativeParser.h"
+#include "SimaiParser.h"
 
 #include <QCoreApplication>
 #include <QTextStream>
@@ -20,7 +20,7 @@ using miacode::timeline::offset::NonFiniteHandling;
 using miacode::timeline::offset::shiftedNoteMarkers;
 
 struct AnalyzedChart {
-    SimaiNativeParseResult parsed;
+    SimaiParseResult parsed;
     MuriAnalysisReport report;
     QVector<MuriStaticReference> staticReferences;
     QVector<miacode::muri::MuriPanelEntry> visibleEntries;
@@ -34,7 +34,7 @@ bool nearlyEqual(double a, double b, double epsilon = 1e-6)
 AnalyzedChart analyzeChart(const QString& chartText, double firstSeconds = 0.0)
 {
     AnalyzedChart result;
-    result.parsed = SimaiNativeParser::parseForTimeline(chartText);
+    result.parsed = SimaiParser::parseForTimeline(chartText);
     const QVector<TimelineNoteMarker> shiftedMarkers =
         shiftedNoteMarkers(result.parsed.noteMarkers, firstSeconds, NonFiniteHandling::PassThrough);
     result.report = MuriAnalyzer::analyze(shiftedMarkers);
@@ -179,7 +179,7 @@ int main(int argc, char** argv)
                    && nearlyEqual(miacode::muri::handRadiusForOptions(options), miacode::muri::kHandRadiusNormal),
                QStringLiteral("the default hand radius is the established reference hand"));
 
-        const SimaiNativeParseResult parsed = SimaiNativeParser::parseForTimeline(
+        const SimaiParseResult parsed = SimaiParser::parseForTimeline(
             QStringLiteral("(120){4}1,1h[4:1],B1,1-5[4:1],\nE\n"));
         expect(parsed.ok, QStringLiteral("hand radius chart parses"));
         options.handRadiusPx = 60;

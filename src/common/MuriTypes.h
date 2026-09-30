@@ -7,7 +7,7 @@
 #include <QVector>
 
 struct TimelineNoteMarker;
-enum class SimaiNativeValidationLocale;
+enum class SimaiValidationLocale;
 
 struct MuriPadTimeEntry {
     QString pad;
@@ -217,7 +217,7 @@ QString muriDetailKindKey(MuriDetailKind kind);
 QString renderMuriDetail(
     MuriDetailKind kind,
     const MuriDetailArgs& args,
-    SimaiNativeValidationLocale locale);
+    SimaiValidationLocale locale);
 QString renderMuriDiagnosticDetail(
     const MuriDiagnostic& diagnostic,
-    SimaiNativeValidationLocale locale);
+    SimaiValidationLocale locale);

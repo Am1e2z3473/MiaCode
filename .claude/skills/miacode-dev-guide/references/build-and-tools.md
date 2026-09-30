@@ -6,6 +6,7 @@
 - Linux 产品可执行文件生成到 `build/bin/MiaCode`；Qt 按模块 URI 管理构建期 QML 目录。
 - 日常构建使用 Release；复用已配置的构建目录，先检查 CMakeCache，不硬编码开发者机器路径。
 - 可执行规格由 `MIACODE_BUILD_DEV_TOOLS=ON` 启用；domain manifests 位于 `cmake/devtools/specs/`，注册规则查 `cmake/devtools/MiaCodeSpecRegistry.cmake`。
+- 命令行诊断入口位于 `src/devtools/`；构建装配与手动工具定义分别位于 `cmake/devtools/DevTools.cmake`、`cmake/devtools/CliTools.cmake`。
 - 新 Spec 仿照同域的 `miacode_add_spec`，声明保护的契约与 owner，复用源文件分组，保留最小链接依赖。手动诊断仍用 `miacode_add_dev_tool`。
 - 查 `docs/tests/SPEC_CATALOG.md` 选择 target；compile-only 规格以构建验证，不要求 CTest 条目。
 

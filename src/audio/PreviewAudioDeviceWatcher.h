@@ -15,9 +15,7 @@ class QMediaDevices;
 // physical hotplug; PreviewAudioDeviceChangePolicy decides which of those are real, and
 // this class holds the snapshot the policy compares against.
 //
-// Deliberately owns no playback state. The consumer (MainWindow::TimelineSection) decides
-// what to do with the signal; see docs/superpowers/specs/
-// 2026-08-06-preview-audio-device-autopause-design.md.
+// Playback-state changes belong to the consumer; this watcher reports device changes.
 class PreviewAudioDeviceWatcher : public QObject
 {
     Q_OBJECT

@@ -9,7 +9,7 @@ import subprocess
 import sys
 
 ROOT = Path(__file__).resolve().parents[2]
-SCOPES = ('specs', 'tests', 'archive', 'audit', 'superpowers/plans', 'superpowers/specs')
+SCOPES = ('specs', 'tests', 'audit')
 LIFECYCLES = ('stable-current', 'reusable-verification', 'archive-legacy', 'working')
 GENERATED = {'docs/tests/SPEC_CATALOG.md'}  # Checked by SpecCatalog.cmake, not authored Markdown.
 
@@ -108,6 +108,8 @@ def render(rows):
     text += '入口与维护规则见 [README](README.md)；可执行规格见 [Spec 目录](tests/SPEC_CATALOG.md)。\n'
     for state in LIFECYCLES:
         selected = sorted(r for r in rows if r[0] == state)
+        if not selected:
+            continue
         text += f'\n## {state}（{len(selected)}）\n\n| 文档 | Canonical ID |\n| --- | --- |\n'
         for _, path, title, cid in selected:
             text += f'| [{title}]({path.removeprefix("docs/")}) | {cid or "—"} |\n'

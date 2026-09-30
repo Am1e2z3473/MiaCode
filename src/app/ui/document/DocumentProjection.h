@@ -4,7 +4,7 @@
 #include <QVector>
 
 #include "core/chart/document/SimaiDocument.h"
-#include "core/chart/parser/SimaiNativeParser.h"
+#include "core/chart/parser/SimaiParser.h"
 
 namespace miacode {
 struct AnalysisSnapshot;
@@ -113,6 +113,6 @@ DocumentPresentationState projectDocumentPresentation(const DocumentPresentation
 DocumentSourceTransactionState projectDocumentSourceTransaction(
     const DocumentSourceTransactionInput& input);
 DocumentSourcePreflightResult preflightDocumentSource(
-    const QString& source, SimaiNativeValidationLocale locale);
+    const QString& source, SimaiValidationLocale locale);
 
 }  // namespace miacode::ui

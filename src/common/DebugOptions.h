@@ -264,7 +264,7 @@ inline bool previewRejectNegativeHsEnabled()
     // outside the judgement ring (hold/touch/slide keep the magnitude). Set
     // MIACODE_PREVIEW_REJECT_NEGATIVE_HS=1 to restore the strict stance where
     // the parser rejects hs <= 0 (Q7). Read once at app boot into
-    // SimaiNativeParser::setAllowNegativeHsEnabled (zero is always rejected).
+    // SimaiParser::setAllowNegativeHsEnabled (zero is always rejected).
     return envFlagEnabled("MIACODE_PREVIEW_REJECT_NEGATIVE_HS");
 }
 

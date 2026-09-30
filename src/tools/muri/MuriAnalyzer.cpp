@@ -10,7 +10,7 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 
-#include "SimaiNativeParser.h"
+#include "SimaiParser.h"
 #include "timeline/TimelineData.h"
 #include "common/MuriConfig.h"
 #include "tools/muri/MuriAnalyzerGeometry.h"
@@ -1263,7 +1263,7 @@ MuriAnalysisReport MuriAnalyzer::analyze(
                         runtimeResult.judgeSecond,
                         marker,
                         markerKey,
-                        renderMuriDetail(detailKind, detailArgs, SimaiNativeValidationLocale::English),
+                        renderMuriDetail(detailKind, detailArgs, SimaiValidationLocale::English),
                         diagnosticAnchorForSlideJudge(
                             marker,
                             state,
@@ -1299,7 +1299,7 @@ MuriAnalysisReport MuriAnalyzer::analyze(
                         lastSegment.completedSecond,
                         marker,
                         markerKey,
-                        renderMuriDetail(detailKind, detailArgs, SimaiNativeValidationLocale::English),
+                        renderMuriDetail(detailKind, detailArgs, SimaiValidationLocale::English),
                         diagnosticAnchorForSlideJudge(
                             marker,
                             state,
@@ -1333,7 +1333,7 @@ MuriAnalysisReport MuriAnalyzer::analyze(
                         runtimeResult.judgeSecond,
                         marker,
                         markerKey,
-                        renderMuriDetail(detailKind, detailArgs, SimaiNativeValidationLocale::English),
+                        renderMuriDetail(detailKind, detailArgs, SimaiValidationLocale::English),
                         diagnosticAnchorForSlideJudge(
                             marker,
                             state,
@@ -1362,7 +1362,7 @@ MuriAnalysisReport MuriAnalyzer::analyze(
                         state.wifiCompletedSecond,
                         marker,
                         markerKey,
-                        renderMuriDetail(detailKind, detailArgs, SimaiNativeValidationLocale::English),
+                        renderMuriDetail(detailKind, detailArgs, SimaiValidationLocale::English),
                         diagnosticAnchorForSlideJudge(
                             marker,
                             state,

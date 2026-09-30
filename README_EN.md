@@ -83,7 +83,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\build\package-win.ps1 -QtRoot
 
 ## Releases
 
-Release packages are currently produced locally by maintainers using the scripts in this repository; obsolete GitHub Actions have been removed. See [docs/ops/RELEASE_CHECKLIST.md](docs/ops/RELEASE_CHECKLIST.md) for release steps and [docs/ops/OPEN_SOURCE_CHECKLIST.md](docs/ops/OPEN_SOURCE_CHECKLIST.md) for remaining open-source readiness checks.
+Release packages are currently produced locally by maintainers using the scripts in this repository; obsolete GitHub Actions have been removed. See [docs/ops/RELEASE_CHECKLIST.md](docs/ops/RELEASE_CHECKLIST.md) for release steps.
 
 ## License And Acknowledgements
 

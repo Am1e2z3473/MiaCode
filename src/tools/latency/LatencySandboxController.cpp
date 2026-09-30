@@ -7,7 +7,7 @@
 #include "runtime/Session.h"
 #include "runtime/Shared.h"
 #include "QtPreviewSfxRuntime.h"
-#include "SimaiNativeParser.h"
+#include "SimaiParser.h"
 #include "preview/runtime/PreviewRuntime.h"
 #include "timeline/TimelineMarkerOffset.h"
 #include "timeline/TimelineQuickModel.h"
@@ -293,7 +293,7 @@ void LatencySandboxController::setupSandboxPreviewState()
     }
     const double duration = resolveAudioDurationSeconds();
     const QString chartText = buildTestChartText(bpm_, subdivision_, duration);
-    const SimaiNativeParseResult parseResult = SimaiNativeParser::parseForTimeline(chartText);
+    const SimaiParseResult parseResult = SimaiParser::parseForTimeline(chartText);
     const TimelinePreviewRefreshState previewState =
         buildTimelinePreviewRefreshState(parseResult, offsetSeconds_);
 

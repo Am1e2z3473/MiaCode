@@ -7,7 +7,7 @@
 #include "common/MuriRenderOptions.h"
 #include "common/MuriTypes.h"
 #include "core/chart/document/SimaiTimingMetadata.h"
-#include "core/chart/parser/SimaiNativeParser.h"
+#include "core/chart/parser/SimaiParser.h"
 #include "timeline/TimelineData.h"
 
 struct TimelineSlowRefreshRequest {
@@ -16,7 +16,7 @@ struct TimelineSlowRefreshRequest {
     QString chartText;
     double firstSeconds = 0.0;
     miacode::simai::SimaiTimingMetadata timingMetadata;
-    SimaiNativeValidationLocale validationLocale = SimaiNativeValidationLocale::English;
+    SimaiValidationLocale validationLocale = SimaiValidationLocale::English;
 };
 
 struct TimelinePreviewRefreshResult {
@@ -24,7 +24,7 @@ struct TimelinePreviewRefreshResult {
     int difficultyId = 0;
     QString chartText;
     double firstSeconds = 0.0;
-    SimaiNativeParseResult parseResult;
+    SimaiParseResult parseResult;
     QVector<TimelineBeatMarker> shiftedBeatMarkers;
     QVector<TimelineNoteMarker> shiftedNoteMarkers;
     QByteArray noteMarkerSignature;
@@ -40,9 +40,9 @@ struct TimelineAnalysisRefreshRequest {
     quint64 revision = 0;
     int difficultyId = 0;
     QString chartText;
-    SimaiNativeValidationLocale validationLocale = SimaiNativeValidationLocale::English;
+    SimaiValidationLocale validationLocale = SimaiValidationLocale::English;
     miacode::simai::SimaiTimingMetadata timingMetadata;
-    SimaiNativeParseResult parseResult;
+    SimaiParseResult parseResult;
     QByteArray noteMarkerSignature;
     QVector<TimelineNoteMarker> noteMarkers;
     MuriRenderOptions renderOptions;
@@ -53,20 +53,20 @@ struct TimelineAnalysisRefreshResult {
     quint64 revision = 0;
     int difficultyId = 0;
     QString chartText;
-    SimaiNativeValidationLocale validationLocale = SimaiNativeValidationLocale::English;
+    SimaiValidationLocale validationLocale = SimaiValidationLocale::English;
     miacode::simai::SimaiTimingMetadata timingMetadata;
     QByteArray noteMarkerSignature;
-    SimaiNativeValidationReport validationReport;
+    SimaiValidationReport validationReport;
     MuriAnalysisReport analysisReport;
     QVector<MuriStaticReference> staticReferences;
 };
 
 TimelinePreviewRefreshState buildTimelinePreviewRefreshState(
-    const SimaiNativeParseResult& parseResult,
+    const SimaiParseResult& parseResult,
     double firstSeconds);
 TimelinePreviewRefreshResult buildTimelinePreviewRefreshResult(
     const TimelineSlowRefreshRequest& request,
-    const SimaiNativeParseResult& parseResult,
+    const SimaiParseResult& parseResult,
     const TimelinePreviewRefreshState& previewState);
 TimelinePreviewRefreshResult buildTimelinePreviewRefreshResult(const TimelineSlowRefreshRequest& request);
 TimelinePreviewRefreshState buildTimelinePreviewRefreshState(const QString& chartText, double firstSeconds);

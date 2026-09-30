@@ -32,8 +32,7 @@ QML engine 创建根窗口，`runtime::Session` 是 QObject 装配对象，拥�
 | SettingsHost / EditorHost / ValidationHost / StageMediaHost / ShellHost | 偏好、编辑器持久状态、校验展示、舞台媒体、窗口生命周期 |
 
 具体安装关系以 `src/app/runtime/SessionBootstrap.cpp` 和 `ApplicationServices` 为准。
-`src/app/runtime/ASSEMBLY.md` 还包含未完成的拆分计划；兼容 adapter 与 RuntimeContext 过渡存储
-仍存在，不能把目标架构写成已完成的物理隔离。
+兼容 adapter 与 RuntimeContext 存储由运行时宿主共享，具体边界以各宿主声明与安装点为准。
 
 ## 跨边界数据
 

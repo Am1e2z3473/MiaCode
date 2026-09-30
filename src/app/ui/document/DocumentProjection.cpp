@@ -55,12 +55,12 @@ DocumentValidationProjection projectDocumentValidation(
     projection.warningCount = snapshot.validation.warningCount;
     projection.parsedNoteCount = snapshot.validation.strictNoteCount;
     projection.issues.reserve(snapshot.validation.issues.size());
-    for (const SimaiNativeValidationIssue& issue : snapshot.validation.issues) {
+    for (const SimaiValidationIssue& issue : snapshot.validation.issues) {
         projection.issues.append({
             issue.line,
             issue.col,
             issue.endCol,
-            issue.severity == SimaiNativeValidationSeverity::Warning
+            issue.severity == SimaiValidationSeverity::Warning
                 ? DocumentValidationIssueSeverity::Warning
                 : DocumentValidationIssueSeverity::Error,
             issue.displayMessage,
@@ -111,7 +111,7 @@ DocumentSourceTransactionState projectDocumentSourceTransaction(
 }
 
 DocumentSourcePreflightResult preflightDocumentSource(
-    const QString& source, SimaiNativeValidationLocale locale)
+    const QString& source, SimaiValidationLocale locale)
 {
     const miacode::ChartWorkspacePreflightResult workspacePreflight =
         miacode::ChartWorkspace::preflightSource(source, locale);

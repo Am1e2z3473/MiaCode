@@ -87,7 +87,7 @@ double steppedPreviewPlaybackRate(double rate, int direction)
     return kPreviewPlaybackRateOptions[targetIndex];
 }
 
-SimaiNativeValidationLocale uiValidationLocale()
+SimaiValidationLocale uiValidationLocale()
 {
     // One implementation, owned by the non-Widget application layer. The name
     // remains as the shared runtime entry point for the parser/UI locale map.

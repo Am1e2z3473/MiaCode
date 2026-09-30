@@ -9,7 +9,7 @@
 #include <QStringList>
 #include <QVector>
 
-#include "SimaiNativeParser.h"
+#include "SimaiParser.h"
 #include "timeline/TimelineData.h"
 #include "common/MuriConfig.h"
 #include "common/MuriTypes.h"
@@ -561,7 +561,7 @@ void collectSimpleNoteMultiTouchDiagnostics(
                 diagnostic.detail = renderMuriDetail(
                     diagnostic.detailKind,
                     diagnostic.detailArgs,
-                    SimaiNativeValidationLocale::English);
+                    SimaiValidationLocale::English);
                 diagnostics->append(diagnostic);
             }
         }
@@ -705,7 +705,7 @@ void collectSimpleNoteRuntimeDiagnostics(
             const QString detail = renderMuriDetail(
                 detailKind,
                 detailArgs,
-                SimaiNativeValidationLocale::English);
+                SimaiValidationLocale::English);
             collector.addSimpleNoteDiagnostic(
                 slideHeadTap ? MuriKind::SlideHeadTap : MuriKind::TapOnSlide,
                 alertLevel,
@@ -766,7 +766,7 @@ void collectSimpleNoteRuntimeDiagnostics(
         const QString overlapDetail = renderMuriDetail(
             overlapDetailKind,
             overlapDetailArgs,
-            SimaiNativeValidationLocale::English);
+            SimaiValidationLocale::English);
         const DiagnosticAnchor anchor = earlierDiagnosticAnchor(
             diagnosticAnchorFromNote(note),
             diagnosticAnchorForCause(overlapCause, markerRefs, syntheticSlideHeadOwnerKeys));

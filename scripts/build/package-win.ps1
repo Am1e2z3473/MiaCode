@@ -477,7 +477,7 @@ foreach ($removedAppFile in $toolchainData.Package.RemovedAppFiles) {
 # file together with the required-path contract that asserts they stay out.
 $unusedQtStyleBaseNames = $toolchainData.Package.UnusedQtRuntimeDllBaseNames
 if ($IncludeDevTools) {
-    # The dev tools (simai_native_dump, soundtouch_probe) link Qt6::Widgets, so a
+    # The dev tools (miacode_simai_dump, miacode_audio_probe) link Qt6::Widgets, so a
     # package that ships them must keep it.
     $unusedQtStyleBaseNames = @($unusedQtStyleBaseNames | Where-Object { $_ -ne "Qt6Widgets" })
 }
@@ -607,7 +607,7 @@ foreach ($runtimeDll in $requiredFfmpegRuntimeDlls) {
 # to log a startup probe version line.)
 
 if ($IncludeDevTools) {
-    foreach ($toolName in @("simai_native_dump.exe")) {
+    foreach ($toolName in @("miacode_simai_dump.exe")) {
         $toolPath = Join-Path $buildOutputDir $toolName
         if (Test-Path $toolPath) {
             Copy-Item $toolPath (Join-Path $appDir $toolName) -Force

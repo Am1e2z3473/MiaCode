@@ -38,6 +38,3 @@ code_anchors: ["src/preview/runtime", "src/preview/quick_scene", "src/core/scene
 
 规格入口见 [Spec 目录](../../tests/SPEC_CATALOG.md) 的 preview、video_export、timeline 域。
 涉及后端与设备的行为须在实际平台验证，纯策略规格通过不等于 GPU/音频设备通过。
-
-旧设计见 [历史预览架构](PREVIEW_RUNTIME_EXPORT_ARCHITECTURE_SPEC.md) 和
-[GPU/QRhi 方案](GPU_RENDERING_DEVICE_AND_QRHI_EXPORT_PLAN.md)，仅用于理解迁移背景。

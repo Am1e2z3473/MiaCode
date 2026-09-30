@@ -56,7 +56,7 @@
         int& lastTimelineParseDifficultyId_ = timeline_.lastTimelineParseDifficultyId_;
         QString& lastTimelineParseChartText_ = timeline_.lastTimelineParseChartText_;
         miacode::simai::SimaiTimingMetadata& lastTimelineParseTimingMetadata_ = timeline_.lastTimelineParseTimingMetadata_;
-        SimaiNativeParseResult& lastTimelineParseResult_ = timeline_.lastTimelineParseResult_;
+        SimaiParseResult& lastTimelineParseResult_ = timeline_.lastTimelineParseResult_;
         QVector<TimelineNoteMarker>& latestTimelineNoteMarkers_ = timeline_.latestTimelineNoteMarkers_;
         QByteArray& latestTimelineNoteMarkerSignature_ = timeline_.latestTimelineNoteMarkerSignature_;
         quint64& latestTimelinePreviewRevision_ = timeline_.latestTimelinePreviewRevision_;
@@ -577,7 +577,7 @@
     int& lastTimelineParseDifficultyId_ = state_.lastTimelineParseDifficultyId_;
     QString& lastTimelineParseChartText_ = state_.lastTimelineParseChartText_;
     miacode::simai::SimaiTimingMetadata& lastTimelineParseTimingMetadata_ = state_.lastTimelineParseTimingMetadata_;
-    SimaiNativeParseResult& lastTimelineParseResult_ = state_.lastTimelineParseResult_;
+    SimaiParseResult& lastTimelineParseResult_ = state_.lastTimelineParseResult_;
     QVector<TimelineNoteMarker>& latestTimelineNoteMarkers_ = state_.latestTimelineNoteMarkers_;
     QByteArray& latestTimelineNoteMarkerSignature_ = state_.latestTimelineNoteMarkerSignature_;
     quint64& latestTimelinePreviewRevision_ = state_.latestTimelinePreviewRevision_;

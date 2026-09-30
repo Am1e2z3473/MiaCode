@@ -8,7 +8,7 @@
 #include "BracketScopeHighlighter.h"
 #include "editor/BookmarkCommentSyntax.h"
 #include "QtPreviewSfxRuntime.h"
-#include "SimaiNativeParser.h"
+#include "SimaiParser.h"
 #include "preferences/PreferenceDocument.h"
 #include "app/quick_shell/QuickShellPreviewCompositeSurface.h"
 #include "app/quick_shell/QuickShellPreviewSurfacePolicy.h"

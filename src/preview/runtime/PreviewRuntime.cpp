@@ -1105,8 +1105,7 @@ QString PreviewRuntime::resourceGaugePayload() const
     // cachedTextureCreateTotal_, and handlePresentedFrame() is what disarms it. A
     // chart switch runs reset() and samples immediately, so before this flag existed
     // it printed a confident `cached_tex=0 cached_tex_creates=0` that a reader could
-    // not distinguish from a genuinely empty repository — the exact misread called
-    // out in docs/audit/CHART_SWITCH_RESOURCE_RELEASE_AUDIT_ZH.md section 7.4.
+    // not distinguish from a genuinely empty repository.
     //
     // tex_fresh=0 means "no present has refreshed these since the last reset/resize;
     // ignore them". It does NOT mean the repository is empty.

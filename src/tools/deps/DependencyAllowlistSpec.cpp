@@ -1,26 +1,6 @@
-// Drift guard for docs/ops/DEPENDENCY_ALLOWLIST.md (QML UI v2 stage 3.5, item 4).
-//
-// Stage 3.5 of docs/specs/ui/UI_TODO_ZH.md requires the MiaCode
-// process to have a written, layered dependency allowlist instead of an
-// accumulated link line. This spec is the machine half of that requirement:
-//
-//   1. every library linked into the MiaCode target has a row in the doc's
-//      allowlist table (a new dependency cannot arrive undocumented);
-//   2. every row in that table is still linked (a removed dependency cannot
-//      rot in the doc);
-//   3. nothing in the doc's forbidden table is linked into MiaCode — this is
-//      how "Qt6::Network only belongs to the standalone net target" and,
-//      later, "Qt6::Widgets is gone" stay true;
-//   4. the Qt version the doc pins matches every find_package(Qt6 <ver>) in
-//      CMakeLists.txt — stage 3.5 requires Qt6::MultimediaQuickPrivate (a
-//      private module with no compatibility promise) to be version-locked;
-//   5. QtAVPlayer headers — the only reason the private Qt Multimedia module is
-//      linked at all — are included solely from the media adapter layer the doc
-//      names, so the private dependency cannot spread across src/.
-//
-// The repo root is injected at configure time via MIACODE_SOURCE_ROOT, so the
-// spec reads CMakeLists.txt and the doc from disk rather than embedding a copy
-// of either list.
+// Compare product link dependencies with docs/ops/DEPENDENCY_ALLOWLIST.md.
+// Check allowed libraries, forbidden libraries, the pinned Qt version,
+// and the source boundary of QtAVPlayer's private media headers.
 
 #include <QDirIterator>
 #include <QFile>

@@ -39,7 +39,7 @@ struct BpmDetectionResult {
 // field defaults to the value the algorithm shipped with, so passing a
 // default-constructed DetectionTuning reproduces the production behavior
 // exactly — the GUI callers rely on this. The batch-test dev tool
-// (`latency_offset_batch`) exposes these as CLI flags so the onset/transient
+// (`miacode_latency_offset_batch`) exposes these as CLI flags so the onset/transient
 // mix and the phase penalties can be swept without recompiling.
 struct DetectionTuning {
     // --- Onset (energy-flux) envelope, buildOnsetEnvelope() ---

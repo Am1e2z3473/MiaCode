@@ -104,7 +104,7 @@ QByteArray noteMarkerSignature(const QVector<TimelineNoteMarker>& notes)
 }
 
 double computeDurationSeconds(
-    const SimaiNativeParseResult& parseResult,
+    const SimaiParseResult& parseResult,
     const QVector<TimelineBeatMarker>& beatMarkers,
     const QVector<TimelineNoteMarker>& noteMarkers,
     double firstSeconds)
@@ -125,7 +125,7 @@ double computeDurationSeconds(
 }  // namespace
 
 TimelinePreviewRefreshState buildTimelinePreviewRefreshState(
-    const SimaiNativeParseResult& parseResult,
+    const SimaiParseResult& parseResult,
     double firstSeconds)
 {
     TimelinePreviewRefreshState state;
@@ -137,7 +137,7 @@ TimelinePreviewRefreshState buildTimelinePreviewRefreshState(
 
 TimelinePreviewRefreshResult buildTimelinePreviewRefreshResult(
     const TimelineSlowRefreshRequest& request,
-    const SimaiNativeParseResult& parseResult,
+    const SimaiParseResult& parseResult,
     const TimelinePreviewRefreshState& previewState)
 {
     TimelinePreviewRefreshResult result;
@@ -160,7 +160,7 @@ TimelinePreviewRefreshResult buildTimelinePreviewRefreshResult(
 
 TimelinePreviewRefreshResult buildTimelinePreviewRefreshResult(const TimelineSlowRefreshRequest& request)
 {
-    const SimaiNativeParseResult parseResult = SimaiNativeParser::parseForTimeline(
+    const SimaiParseResult parseResult = SimaiParser::parseForTimeline(
         request.chartText,
         request.timingMetadata);
     const TimelinePreviewRefreshState previewState = buildTimelinePreviewRefreshState(
@@ -171,7 +171,7 @@ TimelinePreviewRefreshResult buildTimelinePreviewRefreshResult(const TimelineSlo
 
 TimelinePreviewRefreshState buildTimelinePreviewRefreshState(const QString& chartText, double firstSeconds)
 {
-    return buildTimelinePreviewRefreshState(SimaiNativeParser::parseForTimeline(chartText), firstSeconds);
+    return buildTimelinePreviewRefreshState(SimaiParser::parseForTimeline(chartText), firstSeconds);
 }
 
 TimelineAnalysisRefreshResult buildTimelineAnalysisRefreshResult(const TimelineAnalysisRefreshRequest& request)
@@ -182,7 +182,7 @@ TimelineAnalysisRefreshResult buildTimelineAnalysisRefreshResult(const TimelineA
     result.chartText = request.chartText;
     result.validationLocale = request.validationLocale;
     result.timingMetadata = request.timingMetadata;
-    result.validationReport = SimaiNativeParser::buildValidationReport(
+    result.validationReport = SimaiParser::buildValidationReport(
         request.chartText,
         request.validationLocale,
         &request.parseResult,

@@ -66,8 +66,6 @@ ctest --test-dir <dev-build> -C Release -R '^<spec-target>$' --output-on-failure
 ```
 
 保持独立编译、链接、进程边界；没有逐断言覆盖证据，不按名称相近删除或合并规格。
-`playback_coordinator_construction_spec` 是既有的未闭合链接实验，排除默认构建、无 CTest；目录
-明确标为 `blocked-link`，不能把它当成已通过的 compile-only 契约。
 
 ## 代码结构与同步面
 
