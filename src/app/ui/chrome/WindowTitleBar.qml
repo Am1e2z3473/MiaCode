@@ -6,6 +6,7 @@ Rectangle {
     id: root
 
     required property var hostWindow
+    required property var windowChrome
     required property var menuCommands
     required property var shortcuts
     required property var documentSession
@@ -229,5 +230,6 @@ Rectangle {
         visible: root.useCaptionButtons
         width: root.useCaptionButtons ? implicitWidth : 0
         hostWindow: root.hostWindow
+        windowChrome: root.windowChrome
     }
 }

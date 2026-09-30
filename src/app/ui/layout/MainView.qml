@@ -233,6 +233,7 @@ Item {
                 width: parent.width
                 height: visible ? implicitHeight : 0
                 hostWindow: root.hostWindow
+                windowChrome: root.applicationContext.windowChrome
                 platform: root.platform
                 nativeHeight: root.platform.nativeMenuBar
                     && root.applicationContext.windowChrome

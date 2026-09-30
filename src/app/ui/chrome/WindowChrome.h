@@ -23,6 +23,7 @@ public:
     ~WindowChrome() override;
 
     void attach(QWindow* window);
+    Q_INVOKABLE void minimize();
     // Remeasure traffic-light clearance after native layout is ready.
     Q_INVOKABLE void refreshTitleBarMetrics();
     qreal titleBarLeadingInset() const { return titleBarLeadingInset_; }

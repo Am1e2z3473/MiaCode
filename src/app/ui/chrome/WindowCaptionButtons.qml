@@ -9,13 +9,14 @@ Row {
     id: root
 
     required property var hostWindow
+    required property var windowChrome
 
     height: parent ? parent.height : 34
 
     CaptionButton {
         buttonType: "minimize"
         accessibleName: qsTrId("qml.minimize")
-        onClicked: root.hostWindow.showMinimized()
+        onClicked: root.windowChrome.minimize()
     }
 
     CaptionButton {
