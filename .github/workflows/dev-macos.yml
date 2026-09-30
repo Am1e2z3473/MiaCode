@@ -3,7 +3,7 @@ name: Build macOS Dev
 on:
   push:
     branches:
-      - dev
+      - MiaCode_v1
   workflow_dispatch:
 
 permissions:
