@@ -7,7 +7,7 @@
 //
 // Why this exists: bass_audio_health (PreviewAudioHealth.h) aggregates over a
 // multi-second window, so a click/pop lasting a few milliseconds cannot show up
-// in its numbers -- see docs/audit/PREVIEW_AUDIO_MASTER_MIXER_STALL_REVIEW_ZH.md.
+// in its numbers.
 // This probe instead looks at the master mixer's OUTPUT waveform itself, one
 // block at a time, from a BASS DSP callback that runs on BASS's own mixing
 // thread. Everything below is a pure, stateless-per-call transform on caller-
@@ -18,9 +18,7 @@
 // runs on the audio thread and must not log, lock, or allocate -- see that
 // TU's comment for the exact constraints.
 //
-// Candidate failure modes this measures for
-// (docs/audit/PREVIEW_AUDIO_MASTER_MIXER_STALL_REVIEW_ZH.md and the deeper
-// second-pass review it was extended with):
+// Candidate failure modes measured by this probe:
 //  - kind=step: a sample-to-sample jump too large to be ordinary program
 //    content. Catches BOTH a device-buffer underrun splice (silence/glue
 //    dropped in) and a SoundTouch tempo-stream overlap-add seam, since both

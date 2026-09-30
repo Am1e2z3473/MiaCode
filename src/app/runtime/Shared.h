@@ -7,7 +7,7 @@
 #include <QStringList>
 #include <QtGlobal>
 
-#include "SimaiNativeParser.h"
+#include "SimaiParser.h"
 #include "chrome/WindowParityMetrics.h"
 #include "common/DebugLog.h"
 #include "common/DebugOptions.h"
@@ -129,7 +129,7 @@ QString editorLineSpacingFactorLabel(double factor);
 int nearestPreviewPlaybackRateIndex(double rate);
 double steppedPreviewPlaybackRate(double rate, int direction);
 // The parser validation locale matching the session UI language.
-SimaiNativeValidationLocale uiValidationLocale();
+SimaiValidationLocale uiValidationLocale();
 QByteArray autosaveContentSignature(const QString& text);
 QString resolveProjectDataDirectoryPath(const QString& filePath);
 void appendStartupTimingStage(const QString& stage, qint64 elapsedMs, qint64 deltaMs);

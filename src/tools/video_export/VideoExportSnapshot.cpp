@@ -2,7 +2,7 @@
 #include "VideoExportRuntimePolicy.h"
 
 #include "SimaiDocument.h"
-#include "SimaiNativeParser.h"
+#include "SimaiParser.h"
 #include "common/ChartClockCount.h"
 #include "common/ChartAssetPaths.h"
 #include "timeline/TimelineMarkerOffset.h"
@@ -459,7 +459,7 @@ bool buildVideoExportTaskFromSnapshot(
     }
 
     const miacode::simai::SimaiTimingMetadata timingMetadata = miacode::simai::buildTimingMetadata(document);
-    const SimaiNativeParseResult nativeResult = SimaiNativeParser::parseForTimeline(
+    const SimaiParseResult nativeResult = SimaiParser::parseForTimeline(
         difficulty->chart,
         timingMetadata);
     bool firstOk = false;

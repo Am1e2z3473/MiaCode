@@ -4,7 +4,7 @@
 #include "app/services/PlaybackStateAuthority.h"
 
 #include "QtPreviewSfxRuntime.h"
-#include "SimaiNativeParser.h"
+#include "SimaiParser.h"
 #include "TimelineQuickModel.h"
 #include "TimelineSlowRefresh.h"
 #include "timeline/quick/TimelineQuickStateBridge.h"
@@ -82,7 +82,7 @@ QString detectIntroBannerModeForChart(const SimaiDocument& document, const QStri
     }
     const miacode::simai::SimaiTimingMetadata timingMetadata =
         miacode::simai::buildTimingMetadata(document);
-    const SimaiNativeParseResult parsedTimeline = SimaiNativeParser::parseForTimeline(
+    const SimaiParseResult parsedTimeline = SimaiParser::parseForTimeline(
         chartBody,
         timingMetadata);
     return detectedIntroBannerMode(parsedTimeline.noteMarkers);
@@ -410,8 +410,8 @@ QVector<TimelineNoteMarker> miacode::runtime::VideoExportHost::parseAndPublishTi
     }
     const miacode::simai::SimaiTimingMetadata timingMetadata =
         miacode::simai::buildTimingMetadata(session_.applicationServices_.workspace().document());
-    const SimaiNativeParseResult parseResult =
-        SimaiNativeParser::parseForTimeline(difficulty->chart, timingMetadata);
+    const SimaiParseResult parseResult =
+        SimaiParser::parseForTimeline(difficulty->chart, timingMetadata);
     bool firstOk = false;
     const double firstSeconds =
         parsedDocumentFirstSeconds(session_.applicationServices_.workspace().document().first, &firstOk);
@@ -742,10 +742,10 @@ bool miacode::runtime::VideoExportHost::buildVideoExportSnapshotForChartDirector
         return false;
     }
 
-    const SimaiNativeValidationLocale validationLocale = uiValidationLocale();
+    const SimaiValidationLocale validationLocale = uiValidationLocale();
     const miacode::simai::SimaiTimingMetadata timingMetadata = miacode::simai::buildTimingMetadata(document);
-    const SimaiNativeValidationReport report =
-        SimaiNativeParser::buildValidationReport(difficulty->chart, validationLocale, nullptr, timingMetadata);
+    const SimaiValidationReport report =
+        SimaiParser::buildValidationReport(difficulty->chart, validationLocale, nullptr, timingMetadata);
     if (report.errorCount > 0) {
         QString issueSummary;
         if (!report.issues.isEmpty()) {
@@ -759,7 +759,7 @@ bool miacode::runtime::VideoExportHost::buildVideoExportSnapshotForChartDirector
         return false;
     }
 
-    const SimaiNativeParseResult parsedTimeline = SimaiNativeParser::parseForTimeline(
+    const SimaiParseResult parsedTimeline = SimaiParser::parseForTimeline(
         difficulty->chart,
         timingMetadata);
     if (parsedTimeline.noteMarkers.isEmpty()) {

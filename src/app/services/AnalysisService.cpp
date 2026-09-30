@@ -13,7 +13,7 @@ namespace miacode {
 
 AnalysisService::AnalysisService(
     ChartWorkspace& workspace,
-    SimaiNativeValidationLocale locale,
+    SimaiValidationLocale locale,
     const MuriRenderOptions& renderOptions,
     double staticTapOnSlideThresholdSeconds,
     QObject* parent)
@@ -83,7 +83,7 @@ void AnalysisService::requestAnalysis()
 
 AnalysisSnapshot AnalysisService::analyze(
     const ChartWorkspace& workspace,
-    SimaiNativeValidationLocale locale,
+    SimaiValidationLocale locale,
     const MuriRenderOptions& renderOptions,
     double staticTapOnSlideThresholdSeconds)
 {
@@ -109,8 +109,8 @@ AnalysisSnapshot AnalysisService::analyzeRequest(AnalysisRequest analysisRequest
 
     const miacode::simai::SimaiTimingMetadata timing =
         miacode::simai::buildTimingMetadata(analysisRequest.document);
-    const SimaiNativeParseResult parseResult =
-        SimaiNativeParser::parseForTimeline(difficulty->chart, timing);
+    const SimaiParseResult parseResult =
+        SimaiParser::parseForTimeline(difficulty->chart, timing);
     const TimelinePreviewRefreshState previewState = buildTimelinePreviewRefreshState(
         parseResult,
         miacode::timeline::offset::parsedFirstSeconds(analysisRequest.document.first));

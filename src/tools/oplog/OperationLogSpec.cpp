@@ -380,7 +380,7 @@ void runRealisticScenarioDemos(const QString& logPath, const QString& fatalPath)
     // Scenario 3: parser exception — chain captured, what= placeholder
     // (real what() shows up via the Fatal-channel path below).
     auto parseFile = [] {
-        MC_OP("SimaiNativeParser::parse");
+        MC_OP("SimaiParser::parse");
         _mc_op_.note(QStringLiteral("line=42"));
         throw std::runtime_error("unexpected token '&' at line 42");
     };

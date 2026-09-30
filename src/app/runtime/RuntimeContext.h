@@ -9,7 +9,7 @@
 #include "PreviewAudioSettings.h"
 #include "PreviewRenderSettings.h"
 #include "SimaiDocument.h"
-#include "SimaiNativeParser.h"
+#include "SimaiParser.h"
 #include "SimaiTimingMetadata.h"
 #include "common/MuriRenderOptions.h"
 #include "common/MuriTypes.h"
@@ -75,7 +75,7 @@ public:
         int line = 1;
         int col = 1;
         int endCol = 1;
-        SimaiNativeValidationSeverity severity = SimaiNativeValidationSeverity::Error;
+        SimaiValidationSeverity severity = SimaiValidationSeverity::Error;
         QString rawMessage;
         QString displayMessage;
     };
@@ -90,7 +90,7 @@ public:
 
     struct ValidationCacheEntry {
         QString chartText;
-        SimaiNativeValidationLocale validationLocale = SimaiNativeValidationLocale::English;
+        SimaiValidationLocale validationLocale = SimaiValidationLocale::English;
         miacode::simai::SimaiTimingMetadata timingMetadata;
         quint64 validationRevision = 0;
         bool ok = true;
@@ -138,7 +138,7 @@ public:
         int lastTimelineParseDifficultyId_ = 0;
         QString lastTimelineParseChartText_;
         miacode::simai::SimaiTimingMetadata lastTimelineParseTimingMetadata_;
-        SimaiNativeParseResult lastTimelineParseResult_;
+        SimaiParseResult lastTimelineParseResult_;
         QVector<TimelineNoteMarker> latestTimelineNoteMarkers_;
         QByteArray latestTimelineNoteMarkerSignature_;
         quint64 latestTimelinePreviewRevision_ = 0;

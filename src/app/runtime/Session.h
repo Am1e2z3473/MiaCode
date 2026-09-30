@@ -24,7 +24,7 @@
 #include "PreviewRenderSettings.h"
 #include "SimaiDocument.h"
 #include "SimaiTimingMetadata.h"
-#include "SimaiNativeParser.h"
+#include "SimaiParser.h"
 #include "timeline/TimelineData.h"
 #include "timeline/TimelineQuickModel.h"
 #include "timeline/TimelineSlowRefresh.h"

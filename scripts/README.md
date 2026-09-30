@@ -82,6 +82,22 @@ macOS 的 QtAVPlayer 预览解码还需要 FFmpeg dev SDK，位于仓库本地�
 生成（已存在且校验通过时直接复用）；打包仅复制其中必需的六个 dylib，
 不会查找或复制 Homebrew 依赖。也可用 `MIACODE_FFMPEG_DEV_DIR` 显式指定兼容 SDK。
 
+## 开发者工具
+
+`MIACODE_BUILD_DEV_TOOLS=ON` 启用命令行诊断工具和 Spec。
+程序入口位于 `src/devtools/`，CMake 定义位于 `cmake/devtools/CliTools.cmake`，
+注册入口为 `cmake/devtools/DevTools.cmake`。
+
+| 程序 | 用途 |
+|---|---|
+| `miacode_simai_dump` | 输出谱面解析 JSON |
+| `miacode_muri_dump` | 输出无理分析 JSON |
+| `miacode_audio_probe` | 检查音频变速播放 |
+| `miacode_latency_offset_batch` | 批量评估谱面偏移检测 |
+
+Spec 按领域登记于 `cmake/devtools/specs/`，清单见
+[`SPEC_CATALOG.md`](../docs/tests/SPEC_CATALOG.md)。
+
 ## 其他脚本
 
 - `debug/Start_MiaCode_Debug.bat`：发布包内唯一 Windows 调试启动入口。

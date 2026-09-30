@@ -6,7 +6,7 @@
 #include <QJsonObject>
 #include <QSet>
 
-#include "SimaiNativeParser.h"
+#include "SimaiParser.h"
 #include "timeline/TimelineData.h"
 #include "common/MuriConfig.h"
 #include "common/MuriTypes.h"  // makeMarkerAnalysisKey + Muri* state types
@@ -1028,7 +1028,7 @@ QString formatSlideTooFastDetail(
         markerConfigLabels,
         syntheticSlideHeadOwnerKeys,
         &detailKind);
-    return renderMuriDetail(detailKind, args, SimaiNativeValidationLocale::English);
+    return renderMuriDetail(detailKind, args, SimaiValidationLocale::English);
 }
 
 }  // namespace miacode::muri::detail

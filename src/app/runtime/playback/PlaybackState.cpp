@@ -5,7 +5,7 @@
 
 #include "BracketScopeHighlighter.h"
 #include "QtPreviewSfxRuntime.h"
-#include "SimaiNativeParser.h"
+#include "SimaiParser.h"
 #include "app/quick_shell/QuickShellPreviewCompositeSurface.h"
 #include "app/quick_shell/QuickShellPreviewSurfacePolicy.h"
 #include "common/ChartAssetPaths.h"
@@ -1016,8 +1016,7 @@ void miacode::runtime::PlaybackCoordinator::pausePreviewForAudioDeviceChange(
 void miacode::runtime::PlaybackCoordinator::emitChartSwitchResourceGauge()
 {
     // Chart-switch leak gauge. The pause handler above is the ONLY other site that
-    // arms a render sample, which left a chart switch (the scenario in
-    // docs/audit/CHART_SWITCH_RESOURCE_RELEASE_AUDIT_ZH.md) as a zero-log event:
+    // arms a render sample, which left a chart switch as a zero-log event:
     // measuring it required an artificial "play a few seconds, then pause" step
     // after every switch, and any round where the timeline tab happened to be
     // hidden silently dropped its sample. Arming here makes the switch itself the

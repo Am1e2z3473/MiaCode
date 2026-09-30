@@ -3,10 +3,8 @@
 Standalone programs that measure, against the bundled BASS / BASSmix binaries, the
 semantics the preview SFX scheduler (`src/audio/BassPreviewAudioBackend_EventDrain.cpp`)
 depends on. They run without Qt or the app; build one, run it with the default output
-device present, and read the printed verdicts. Results on macOS with BASS 2.4.18.3 /
-BASSmix 2.4.12 are recorded in `docs/audit/PREVIEW_AUDIO_MASTER_MIXER_STALL_REVIEW_ZH.md`
-§7.9; rerun on Windows (BASS 2.4.18 / BASSmix 2.4.13) when a field report suggests the
-library behaves differently there.
+device present, and read the printed verdicts. Run against each platform's bundled
+BASS / BASSmix version when investigating platform-specific behavior.
 
 | Program | Question it answers |
 | --- | --- |

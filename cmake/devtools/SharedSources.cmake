@@ -5,8 +5,8 @@ set(_miacode_chart_core
     src/core/chart/document/SimaiDocument.cpp
     src/core/chart/document/SimaiTimingMetadata.h
     src/core/chart/document/SimaiTimingMetadata.cpp
-    src/core/chart/parser/SimaiNativeParser.h
-    src/core/chart/parser/SimaiNativeParser.cpp
+    src/core/chart/parser/SimaiParser.h
+    src/core/chart/parser/SimaiParser.cpp
 )
 set(_miacode_log_core
     src/common/OperationLog.h

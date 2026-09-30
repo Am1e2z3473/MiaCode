@@ -6,7 +6,7 @@
 #include "BracketScopeHighlighter.h"
 #include "audio/PreviewAudioPlaybackFlowPolicy.h"
 #include "QtPreviewSfxRuntime.h"
-#include "SimaiNativeParser.h"
+#include "SimaiParser.h"
 #include "app/quick_shell/QuickShellPreviewCompositeSurface.h"
 #include "app/quick_shell/QuickShellPreviewSurfacePolicy.h"
 #include "common/ChartAssetPaths.h"
@@ -488,9 +488,7 @@ bool miacode::runtime::PlaybackCoordinator::startQtPreviewPlayback(double second
     // paused scrub re-anchors the retained state, so the resume is always the retained
     // branch), which left the audio backend stamping txn=0 on every bass_status line
     // for the whole session. That silently removed the only handle for correlating
-    // audio-channel lines with the runtime channel's preview/resource_gauge — the
-    // correlation docs/audit/AUDIO_CLOCK_DESYNC_AUDIT_ZH.md phase A asks an
-    // investigator to use.
+    // audio-channel lines with the runtime channel's preview/resource_gauge.
     bool forceFreshAudioPrepare = false;
     if (state_.previewSfxRuntime_ != nullptr) {
         state_.previewSfxRuntime_->setPlaybackTransactionId(playbackTxn);

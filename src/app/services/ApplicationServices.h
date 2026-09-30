@@ -38,7 +38,7 @@ class UpdateService;
 // widget layer. It reads nothing but the resolved UI language token, so it
 // belongs here; MainWindowShared::uiValidationLocale() now forwards to it and
 // stays as the name the widget-side call sites already use.
-SimaiNativeValidationLocale uiValidationLocale();
+SimaiValidationLocale uiValidationLocale();
 
 // The application's service assembly: one non-Widget owner for the document
 // domain and the shared UI boundaries.
@@ -155,7 +155,7 @@ public:
     QObject* exportPageSession() const { return exportPageSession_; }
     void setExportPageSession(QObject* session) { exportPageSession_ = session; }
 
-    SimaiNativeValidationLocale validationLocale() const { return validationLocale_; }
+    SimaiValidationLocale validationLocale() const { return validationLocale_; }
 
     // 更新检查的取数端口。真正触网的实现住在 QML/Bootstrap 层，因为这个
     // 装配体只链 Qt6::Core 与 Qt6::Gui（见类注释）。
@@ -176,7 +176,7 @@ private:
     // everything that binds to it.
     ChartWorkspace workspace_;
     ChartWorkspaceFileService files_;
-    SimaiNativeValidationLocale validationLocale_;
+    SimaiValidationLocale validationLocale_;
     AnalysisService analysis_;
     EditorSyncController editorSync_;
     UiRequestService uiRequests_;

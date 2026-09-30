@@ -1204,7 +1204,7 @@ QString appendRestoreSubdivisionIfNeeded(
     return transformedSelection + QStringLiteral("{%1}").arg(originalDenominator);
 }
 
-// SimaiNativeParser starts every chart on {4}; a chart that never writes one is
+// SimaiParser starts every chart on {4}; a chart that never writes one is
 // timed on it.
 constexpr int kDefaultSubdivision = 4;
 

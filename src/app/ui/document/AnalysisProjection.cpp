@@ -90,12 +90,12 @@ AnalysisProjection projectAnalysis(
     result.pending = false;
     result.noteMarkers = snapshot.noteMarkers;
     result.validationRows.reserve(snapshot.validation.issues.size());
-    for (const SimaiNativeValidationIssue& issue : snapshot.validation.issues) {
+    for (const SimaiValidationIssue& issue : snapshot.validation.issues) {
         AnalysisRow row;
         row.line = issue.line;
         row.column = issue.col;
         row.endColumn = issue.endCol;
-        row.severity = issue.severity == SimaiNativeValidationSeverity::Warning
+        row.severity = issue.severity == SimaiValidationSeverity::Warning
             ? QStringLiteral("warning") : QStringLiteral("error");
         row.title = row.severity == QLatin1String("warning")
             ? QStringLiteral("Warning") : QStringLiteral("Error");

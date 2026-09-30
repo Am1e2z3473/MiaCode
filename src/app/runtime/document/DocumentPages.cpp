@@ -6,7 +6,7 @@
 
 #include "BracketScopeHighlighter.h"
 #include "QtPreviewSfxRuntime.h"
-#include "SimaiNativeParser.h"
+#include "SimaiParser.h"
 #include "app/quick_shell/QuickShellPreviewCompositeSurface.h"
 #include "app/quick_shell/QuickShellPreviewSurfacePolicy.h"
 #include "common/ChartAssetPaths.h"
@@ -493,7 +493,7 @@ void miacode::runtime::DocumentSessionHost::clearTimelineAndPreview(bool preserv
     state_.lastTimelineParseDifficultyId_ = 0;
     state_.lastTimelineParseChartText_.clear();
     state_.lastTimelineParseTimingMetadata_ = miacode::simai::SimaiTimingMetadata();
-    state_.lastTimelineParseResult_ = SimaiNativeParseResult();
+    state_.lastTimelineParseResult_ = SimaiParseResult();
     state_.muriAnalysisReport_ = MuriAnalysisReport();
     state_.muriAnalysisReport_.revision = ++state_.muriAnalysisReportRevisionCounter_;
     state_.muriAnalysisReportNoteMarkerSignature_.clear();

@@ -8,7 +8,7 @@
 
 #include "BracketScopeHighlighter.h"
 #include "QtPreviewSfxRuntime.h"
-#include "SimaiNativeParser.h"
+#include "SimaiParser.h"
 #include "MainEntrypoints.h"
 #include "app/quick_shell/QuickShellPreviewCompositeSurface.h"
 #include "app/quick_shell/QuickShellPreviewSurfacePolicy.h"
@@ -870,14 +870,14 @@ void miacode::runtime::PlaybackCoordinator::dispatchTimelineSlowRefresh()
         : QThreadPool::globalInstance();
     pool->start([this, guard, request]() {
         miacode::diag::MemoryStageScope memScope("preview/mem_stage", "slow_refresh_build");
-        SimaiNativeParseResult parseResult;
+        SimaiParseResult parseResult;
         TimelinePreviewRefreshState previewState;
         {
             // beta7 probe 2.1 — tight core bracket excludes the invokeMethod result COPY below,
             // so (slow_refresh_build − slow_refresh_core) isolates the in-flight handoff cost.
             miacode::diag::MemoryStageScope memScopeCore(
                 "preview/mem_stage", "slow_refresh_core");
-            parseResult = SimaiNativeParser::parseForTimeline(
+            parseResult = SimaiParser::parseForTimeline(
                 request.chartText,
                 request.timingMetadata);
             previewState = buildTimelinePreviewRefreshState(parseResult, request.firstSeconds);

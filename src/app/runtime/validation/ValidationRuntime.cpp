@@ -2,7 +2,7 @@
 #include "runtime/playback/PlaybackCoordinator.h"
 #include "runtime/shell/ShellHost.h"
 
-#include "SimaiNativeParser.h"
+#include "SimaiParser.h"
 #include "preview/runtime/PreviewRuntime.h"
 #include "tools/muri/MuriAnalyzer.h"
 #include "tools/muri/MuriPanelEntries.h"
@@ -99,7 +99,7 @@ void miacode::runtime::ValidationHost::refreshValidationPanelForActiveField()
     }
 
     const QString chartText = session_.activeChartText();
-    const SimaiNativeValidationLocale validationLocale = miacode::uiValidationLocale();
+    const SimaiValidationLocale validationLocale = miacode::uiValidationLocale();
     const miacode::simai::SimaiTimingMetadata timingMetadata = session_.currentTimingMetadata();
     const Session::ValidationCacheEntry& entry = it.value();
     if (entry.chartText != chartText
@@ -152,7 +152,7 @@ miacode::runtime::ValidationHost::documentValidationSnapshot() const
                 cachedIssue.line,
                 cachedIssue.col,
                 cachedIssue.endCol,
-                cachedIssue.severity == SimaiNativeValidationSeverity::Warning
+                cachedIssue.severity == SimaiValidationSeverity::Warning
                     ? miacode::ui::DocumentValidationIssueSeverity::Warning
                     : miacode::ui::DocumentValidationIssueSeverity::Error,
                 cachedIssue.displayMessage,
@@ -209,9 +209,9 @@ bool miacode::runtime::ValidationHost::runValidateSimaiSilently()
 
     const int difficultyId = session_.activeDifficultyId();
     const QString chartText = session_.activeChartText();
-    const SimaiNativeValidationLocale validationLocale = miacode::uiValidationLocale();
+    const SimaiValidationLocale validationLocale = miacode::uiValidationLocale();
     const miacode::simai::SimaiTimingMetadata timingMetadata = session_.currentTimingMetadata();
-    const SimaiNativeParseResult* cachedLenientResult =
+    const SimaiParseResult* cachedLenientResult =
         (state_.lastTimelineParseDifficultyId_ == difficultyId
             && state_.lastTimelineParseChartText_ == chartText
             && state_.lastTimelineParseTimingMetadata_ == timingMetadata)
@@ -229,8 +229,8 @@ bool miacode::runtime::ValidationHost::runValidateSimaiSilently()
     } else {
         QElapsedTimer reportTimer;
         reportTimer.start();
-        const SimaiNativeValidationReport report =
-            SimaiNativeParser::buildValidationReport(chartText, validationLocale, cachedLenientResult, timingMetadata);
+        const SimaiValidationReport report =
+            SimaiParser::buildValidationReport(chartText, validationLocale, cachedLenientResult, timingMetadata);
         entry.chartText = chartText;
         entry.validationLocale = validationLocale;
         entry.timingMetadata = timingMetadata;
@@ -244,7 +244,7 @@ bool miacode::runtime::ValidationHost::runValidateSimaiSilently()
         entry.strictErrorCount = report.strictErrorCount;
         entry.issues.clear();
         entry.issues.reserve(report.issues.size());
-        for (const SimaiNativeValidationIssue& issue : report.issues) {
+        for (const SimaiValidationIssue& issue : report.issues) {
             Session::ValidationCachedIssue cachedIssue;
             cachedIssue.line = issue.line;
             cachedIssue.col = issue.col;

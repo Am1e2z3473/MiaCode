@@ -110,7 +110,7 @@ bool verifyMultiDifficultyStrictPreflight(QTextStream& err)
         "&inote_5=(120){4}1,\n"
         "&inote_6=(120){4}bad,\n");
     const auto preflight = miacode::ui::preflightDocumentSource(
-        attempted, SimaiNativeValidationLocale::English);
+        attempted, SimaiValidationLocale::English);
     miacode::ui::DocumentSourceTransactionInput transaction;
     transaction.committedSourceText = committed;
     transaction.attemptedSourceText = attempted;
@@ -130,7 +130,7 @@ bool verifyEffectiveInlineSourceSpan(QTextStream& err)
         "&inote_6=(120){4}1,\n"
         "&inote_6=(120){4}bad,\n");
     const auto preflight = miacode::ui::preflightDocumentSource(
-        source, SimaiNativeValidationLocale::English);
+        source, SimaiValidationLocale::English);
     return require(!preflight.accepted && !preflight.issues.isEmpty()
                        && preflight.issues.constFirst().line == 2
                        && preflight.issues.constFirst().column == 18
@@ -142,7 +142,7 @@ bool verifyEffectiveInlineSourceSpan(QTextStream& err)
 bool verifyLevelOnlyDifficultySourceSpan(QTextStream& err)
 {
     const auto preflight = miacode::ui::preflightDocumentSource(
-        QStringLiteral("&title=x\n&lv_6=13"), SimaiNativeValidationLocale::English);
+        QStringLiteral("&title=x\n&lv_6=13"), SimaiValidationLocale::English);
     return require(!preflight.accepted && !preflight.issues.isEmpty()
                        && preflight.issues.constFirst().line == 2
                        && preflight.issues.constFirst().column >= 1
@@ -162,9 +162,9 @@ bool verifyAnalysisSnapshotIdentityGate(QTextStream& err)
     snapshot.validation.warningCount = 1;
     snapshot.validation.strictNoteCount = 7;
     snapshot.validation.issues = {
-        {2, 3, 5, SimaiNativeValidationSeverity::Error,
+        {2, 3, 5, SimaiValidationSeverity::Error,
          QStringLiteral("bad token"), QStringLiteral("Bad token")},
-        {4, 1, 2, SimaiNativeValidationSeverity::Warning,
+        {4, 1, 2, SimaiValidationSeverity::Warning,
          QStringLiteral("compatibility warning"), QStringLiteral("Compatibility warning")},
     };
 

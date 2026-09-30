@@ -344,9 +344,7 @@ private:
     // emitted during updatePaintNode, one whole render+swap before the pixels exist,
     // while the GUI-thread completion check runs off a QUEUED frameSwapped hop that
     // can lag a frame. That combination could retire the warm-up on a frame whose
-    // pipeline build had not actually happened yet — the "warm-up done means the
-    // marker was drawn, not that a render/present completed" gap called out in
-    // docs/audit/PREVIEW_FIRST_PLAY_RENDER_STALL_HANDOFF_AUDIT_ZH.md §6D-2.
+    // pipeline build had not actually happened yet.
     std::atomic<quint64> fireworkLayerDrawSignal_{0};
     quint64 fireworkWarmupArmDrawSignal_ = 0;
     bool requestedShowObjectStatsHud_ = false;

@@ -237,7 +237,7 @@ if ($LASTEXITCODE -ne 0) {
 
 $buildTargets = @("MiaCode", "MiaCodeLauncher")
 if ($buildDevTools -eq "ON") {
-    $buildTargets += @("simai_native_dump", "soundtouch_probe")
+    $buildTargets += @("miacode_simai_dump", "miacode_audio_probe")
 }
 cmake --build $BuildDir --config $Config --target @buildTargets --parallel $BuildJobs
 if ($LASTEXITCODE -ne 0) {

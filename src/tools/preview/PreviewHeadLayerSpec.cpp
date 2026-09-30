@@ -14,7 +14,7 @@
 #include "core/scene/PreviewSceneConstants.h"
 #include "core/scene/PreviewSceneMath.h"
 #include "core/scene/PreviewSkinSelectors.h"
-#include "core/chart/parser/SimaiNativeParser.h"
+#include "core/chart/parser/SimaiParser.h"
 
 namespace {
 
@@ -163,7 +163,7 @@ QPointF expectedHeadCenterForLane(
 
 bool verifySameHeadBranchesCollapseToFastestRotation(QTextStream& err)
 {
-    const SimaiNativeParseResult parsed = SimaiNativeParser::parseForTimeline(
+    const SimaiParseResult parsed = SimaiParser::parseForTimeline(
         QStringLiteral("(120){8}1-3[8:1]*-4[8:2]*-5[8:3],\nE")
     );
     if (!require(parsed.ok, QStringLiteral("branching slide chart parses"), err)) {
@@ -757,7 +757,7 @@ bool verifyNormalMineModeRestoresExOverlay(QTextStream& err)
 
 bool verifyVerticalStraightSlideCpUsesMirroredSprite(QTextStream& err)
 {
-    const SimaiNativeParseResult parsed = SimaiNativeParser::parseForTimeline(
+    const SimaiParseResult parsed = SimaiParser::parseForTimeline(
         QStringLiteral("(120){4}8-5[4:1],4-1[4:1],\nE")
     );
     if (!require(parsed.ok, QStringLiteral("vertical straight-slide CP chart parses"), err)) {

@@ -21,7 +21,7 @@
 | `archive-legacy` | 历史设计和退役实现 | lifecycle；正文注明历史性质并指向当前入口 |
 | `working` | 计划、研究、审计，或混有待复核旧描述的材料 | lifecycle |
 
-新增当前规范放 `specs/<domain>/`，验收清单放 `tests/`。旧文件先标明状态，不为整理目录破坏既有链接。
+新增当前规范放 `specs/<domain>/`，验收清单放 `tests/`。阶段计划、进度记录和一次性设计产物在任务完成后清理，关联引用同步维护。
 `canonical_id` 是稳定的契约标识，文件重命名时保留；当前规范/验收清单间不得重复。
 `owner` 是仓库相对模块路径；`code_anchors` 使用真实文件或目录，不维护易漂移的行号。
 `last_verified` 记录源代码复核日期，不等于全平台测试通过日期。具体测试结果另行记录。
@@ -55,8 +55,7 @@ python3 scripts/governance/sync_guides.py --check
 cmake -DMIACODE_SPEC_CATALOG_CHECK=ON -P cmake/devtools/SpecCatalog.cmake
 ```
 
-文档工具检查 `specs/`、`tests/`、`archive/`、`audit/`、`superpowers/plans/` 和
-`superpowers/specs/` 中所有 Git 跟踪或未忽略的 Markdown；新增公开文件缺少生命周期会失败。
+文档工具检查 `specs/`、`tests/` 和 `audit/` 中所有 Git 跟踪或未忽略的 Markdown；新增公开文件缺少生命周期会失败。
 当前文档检查 canonical ID、owner、代码锚点和本地文件链接；历史路径不当作当前事实验证。
 `INDEX.md` 与 `SPEC_CATALOG.md` 各由自己的生成工具检查，不另建手写清单或豁免表。
 `ops/` 保留各自的运维索引与检查规则，不在本次生命周期迁移范围。

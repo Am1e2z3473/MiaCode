@@ -10,7 +10,7 @@
 #include "common/DebugOptions.h"
 #include "common/WaveformCache.h"
 #include "audio/PreviewBassDefaultDevice.h"
-#include "SimaiNativeParser.h"
+#include "SimaiParser.h"
 
 #include <QCoreApplication>
 #include <QCommandLineOption>
@@ -205,7 +205,7 @@ int main(int argc, char* argv[])
     // MIACODE_PREVIEW_REJECT_NEGATIVE_HS restores the strict reject-hs<=0
     // stance. Read once here so BOTH the GUI process and the CLI export-worker
     // subprocess (which inherits the environment) agree on what parses.
-    SimaiNativeParser::setAllowNegativeHsEnabled(!miacode::debug_options::previewRejectNegativeHsEnabled());
+    SimaiParser::setAllowNegativeHsEnabled(!miacode::debug_options::previewRejectNegativeHsEnabled());
 
 #ifdef Q_OS_WIN
     miacode::oplog::appendStartupBeaconLine("phase=before_crash_recovery_install");

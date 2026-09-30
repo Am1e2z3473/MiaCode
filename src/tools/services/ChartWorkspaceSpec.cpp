@@ -394,7 +394,7 @@ bool verifyInlineSourceSpanWinsOverLaterLevel(QTextStream& out)
 {
     const auto preflight = miacode::ChartWorkspace::preflightSource(
         QStringLiteral("&inote_5=(120){4}bad,\n&lv_5=13\n"),
-        SimaiNativeValidationLocale::English);
+        SimaiValidationLocale::English);
     return expect(!preflight.accepted && !preflight.issues.isEmpty()
                       && preflight.issues.constFirst().line == 1,
                   QStringLiteral("full-source diagnostics prefer the inline chart span over a later level field"), out);

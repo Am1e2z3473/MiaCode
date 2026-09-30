@@ -1,26 +1,5 @@
-// Ratchet for docs/specs/ui/UI_BACKEND_SURFACE_ZH.md.
-//
-// Stage 3.5 item 2 of docs/specs/ui/UI_TODO_ZH.md wants
-// ApplicationContext to stop holding a MainWindow&. That is not one edit —
-// it is roughly 120 method calls plus 17 direct reads of MainWindow's private
-// members, spread across the Qml*Model façades. A goal that size regresses
-// silently unless the remaining surface is a number somebody can see.
-//
-// So this spec compares, by set equality, what src/app/ui/ actually reaches
-// on the hidden window against the inventory the doc lists:
-//
-//   * a name in the code but not in the doc  -> new coupling, rejected;
-//   * a name in the doc but not in the code  -> it was migrated and the doc was
-//     not updated, also rejected — that is what forces the count down in the
-//     same commit as the work.
-//
-// It also pins the `friend class` grants MainWindow hands to QML types. Those
-// are the opposite of the "narrow QObject façade" the stage asks for: a friend
-// is not a narrow interface, it is no interface, which is why the doc says to
-// clear them before trimming public methods.
-//
-// The repo root arrives as MIACODE_SOURCE_ROOT, so the spec reads the tree and
-// the doc from disk instead of embedding a copy of either list.
+// Compare QML access to Session with docs/specs/ui/UI_BACKEND_SURFACE_ZH.md.
+// Check the accessed members and friend grants against the maintained inventory.
 
 #include <QDirIterator>
 #include <QFile>

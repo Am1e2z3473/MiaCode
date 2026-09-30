@@ -24,7 +24,7 @@ code_anchors: ["src/tools/muri/MuriAnalyzer.cpp", "src/tools/muri/MuriStaticChec
 
 ## 2. 输入与前置归一化
 
-- 输入基于 `SimaiNativeParser::parseForTimeline` 产出的 `TimelineNoteMarker`。
+- 输入基于 `SimaiParser::parseForTimeline` 产出的 `TimelineNoteMarker`。
 - 若上游对 marker 做了 `&first` 平移，则运行时分析和静态参考都必须使用平移后的秒数；即使平移后秒数为负，也必须原样进入判定，不能折到 `0`。
 - slide / wifi 的头星会参与无理分析：
   - 运行时会生成头星对应的 tap-like judge target，但它复用所属 slide / wifi 的真实语义，不额外参与多押手动作统计。

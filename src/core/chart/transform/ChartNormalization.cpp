@@ -7,7 +7,7 @@
 #include <QtGlobal>
 
 #include "common/OperationLog.h"
-#include "core/chart/parser/SimaiNativeParser.h"
+#include "core/chart/parser/SimaiParser.h"
 #include "core/chart/transform/ChartNormalizationSegmentPolicy.h"
 #include "core/chart/transform/Non384SnapTable.h"
 
@@ -1334,10 +1334,10 @@ QString renderMeasureLine(const RenderMeasure& measure, const ChartNormalization
     return renderMeasureLineApproximate(measure);
 }
 
-QString summarizeValidationError(const SimaiNativeValidationReport& report)
+QString summarizeValidationError(const SimaiValidationReport& report)
 {
     if (!report.issues.isEmpty()) {
-        const SimaiNativeValidationIssue& issue = report.issues.constFirst();
+        const SimaiValidationIssue& issue = report.issues.constFirst();
         return issue.displayMessage.isEmpty() ? issue.rawMessage : issue.displayMessage;
     }
     return QStringLiteral("Fix syntax errors before normalizing this chart.");
@@ -1471,9 +1471,9 @@ ChartNormalizationResult normalizeChartFragment(
 {
     ChartNormalizationResult result;
 
-    const SimaiNativeValidationReport report = SimaiNativeParser::buildValidationReport(
+    const SimaiValidationReport report = SimaiParser::buildValidationReport(
         input,
-        SimaiNativeValidationLocale::English,
+        SimaiValidationLocale::English,
         nullptr,
         timingMetadata);
     if (report.errorCount > 0) {

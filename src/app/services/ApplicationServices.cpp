@@ -4,16 +4,16 @@
 
 namespace miacode {
 
-SimaiNativeValidationLocale uiValidationLocale()
+SimaiValidationLocale uiValidationLocale()
 {
     const QString token = PreferenceDocument::resolvedLanguageToken();
     if (token.startsWith(QStringLiteral("zh"))) {
-        return SimaiNativeValidationLocale::Chinese;
+        return SimaiValidationLocale::Chinese;
     }
     if (token.startsWith(QStringLiteral("ja"))) {
-        return SimaiNativeValidationLocale::Japanese;
+        return SimaiValidationLocale::Japanese;
     }
-    return SimaiNativeValidationLocale::English;
+    return SimaiValidationLocale::English;
 }
 
 ApplicationServices::ApplicationServices(QObject* parent)

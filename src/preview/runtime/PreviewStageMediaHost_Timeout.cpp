@@ -190,10 +190,8 @@ void PreviewStageMediaHost::settlePendingSeekAcks(double mediaSecondStart, doubl
 // core/video/PreviewEndOfMediaPolicy.h, which is covered by
 // preview_end_of_media_policy_spec.
 //
-// Neither branch is ever allowed to end the main preview transport. That
-// coupling was the root cause in
-// docs/audit/PREVIEW_AUTO_PAUSE_INITIAL_DIAGNOSIS_ZH.md and it stays removed:
-// the PV is subordinate visual media, and a natural end simply keeps its last
+// Neither branch ends the main preview transport. The PV is subordinate
+// visual media, and a natural end simply keeps its last
 // frame while BGM / chart / timeline continue to the unified content endpoint.
 void PreviewStageMediaHost::handleVideoEndOfMedia(bool wasPlaybackActive)
 {

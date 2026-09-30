@@ -7,7 +7,7 @@
 #include "common/DebugLog.h"
 #include "common/DebugOptions.h"
 #include "common/InputShortcutGesture.h"
-#include "SimaiNativeParser.h"
+#include "SimaiParser.h"
 #include "preferences/PreferenceDocument.h"
 #include "common/TimelineThemeConfig.h"
 #include "timeline/TimelineSceneStateBuilder.h"
@@ -43,16 +43,16 @@ int zoomPresetIndexForScale(const QVector<double>& zoomPresets, double scale, in
     return closestIndex;
 }
 
-SimaiNativeValidationLocale timelineUiValidationLocale()
+SimaiValidationLocale timelineUiValidationLocale()
 {
     const QString token = PreferenceDocument::resolvedLanguageToken();
     if (token.startsWith(QStringLiteral("zh"))) {
-        return SimaiNativeValidationLocale::Chinese;
+        return SimaiValidationLocale::Chinese;
     }
     if (token.startsWith(QStringLiteral("ja"))) {
-        return SimaiNativeValidationLocale::Japanese;
+        return SimaiValidationLocale::Japanese;
     }
-    return SimaiNativeValidationLocale::English;
+    return SimaiValidationLocale::English;
 }
 
 QString muriAlertLevelText(MuriAlertLevel level)
@@ -107,7 +107,7 @@ QHash<quint64, QVector<miacode::timeline::TimelineMuriMarkerPlacement>> muriMark
 QHash<quint64, QString> muriMarkerTooltipsForReport(const MuriAnalysisReport& report)
 {
     QHash<quint64, QStringList> linesByLocation;
-    const SimaiNativeValidationLocale locale = timelineUiValidationLocale();
+    const SimaiValidationLocale locale = timelineUiValidationLocale();
     for (const MuriDiagnostic& diagnostic : report.diagnostics) {
         const quint64 locationId = timelineRenderLocationId(diagnostic.line, diagnostic.col);
         QString text = QStringLiteral("%1 · %2")

@@ -3,14 +3,10 @@
 Generated from `cmake/devtools/specs/` by `cmake -P cmake/devtools/SpecCatalog.cmake`.
 Check without writing: `cmake -DMIACODE_SPEC_CATALOG_CHECK=ON -P cmake/devtools/SpecCatalog.cmake`.
 
-121 independent specs; source lists and link dependencies are maintained only in CMake.
-All existing assertions and target/CTest names are retained. No bundles or retirements.
+118 independent specs; source lists and link dependencies are maintained only in CMake.
 
 `platform:all` means the target is registered on every platform, not that all platforms
 have been tested. Platform-specific source branches and link additions remain in their manifests.
-`blocked-link` records the existing PlaybackCoordinator construction experiment: it is
-`EXCLUDE_FROM_ALL`, has no CTest entry, and its recorded source closure does not link.
-Its `compile-only` execution field does not claim a successful compile/link validation.
 Contract IDs are stable identifiers: keep them when renaming a source or target.
 Owners name production modules; kinds describe the checked boundary, not runtime diagnostics.
 
@@ -44,7 +40,6 @@ Owners name production modules; kinds describe the checked boundary, not runtime
 | `src/tools/preview/BassPreviewDebugLogRoutingSpec.cpp` | `bass_preview_debug_log_routing_spec` | `src/audio` | `preview.bass-preview-debug-log-routing` | preview | behavior | high | all | ctest | active |
 | `src/tools/preview/BassPreviewRetainedStateSpec.cpp` | `bass_preview_retained_state_spec` | `src/audio` | `preview.bass-preview-retained-state` | preview | behavior | high | all | ctest | active |
 | `src/tools/preview/BassPreviewSfxSchedulerPolicySpec.cpp` | `bass_preview_sfx_scheduler_policy_spec` | `src/audio` | `preview.bass-preview-sfx-scheduler-policy` | preview | behavior | high | all | ctest | active |
-| `src/tools/preview/PausedSeekHandshakeSpec.cpp` | `paused_seek_handshake_spec` | `src/preview/runtime` | `preview.paused-seek-handshake` | preview | integration | high | all | ctest | active |
 | `src/tools/preview/PreviewAudioCommandQueueSpec.cpp` | `preview_audio_command_queue_spec` | `src/audio` | `preview.preview-audio-command-queue` | preview | behavior | high | all | ctest | active |
 | `src/tools/preview/PreviewAudioDeviceChangePolicySpec.cpp` | `preview_audio_device_change_policy_spec` | `src/audio` | `preview.preview-audio-device-change-policy` | preview | behavior | high | all | ctest | active |
 | `src/tools/preview/PreviewAudioHealthSpec.cpp` | `preview_audio_health_spec` | `src/audio` | `preview.preview-audio-health` | preview | behavior | high | all | ctest | active |
@@ -69,7 +64,6 @@ Owners name production modules; kinds describe the checked boundary, not runtime
 | `src/tools/preview/PreviewTextureGenerationPolicySpec.cpp` | `preview_texture_generation_policy_spec` | `src/preview/quick_scene` | `preview.preview-texture-generation-policy` | preview | behavior | high | all | ctest | active |
 | `src/tools/preview/PvMemoryDiagnosticsSpec.cpp` | `pv_memory_diagnostics_spec` | `src/preview/runtime` | `preview.pv-memory-diagnostics` | preview | behavior | high | all | ctest | active |
 | `src/tools/preview/PvMemoryHostContractSpec.cpp` | `pv_memory_host_contract_spec` | `src/preview/runtime` | `preview.pv-memory-host-contract` | preview | source-contract | high | all | ctest | active |
-| `src/tools/preview/QtAVPlayerPlatformSpec.cpp` | `qtavplayer_platform_spec` | `src/preview/runtime` | `preview.qtavplayer-platform` | preview | source-contract | high | all | ctest | active |
 | `src/tools/preview/QuickShellPreviewSurfacePolicySpec.cpp` | `quickshell_preview_surface_policy_spec` | `src/app/quick_shell` | `preview.quickshell-preview-surface-policy` | preview | source-contract | high | all | ctest | active |
 | `src/tools/preview/TouchPadAuthoringStateSpec.cpp` | `touch_pad_authoring_state_spec` | `src/core/scene` | `preview.touch-pad-authoring-state` | preview | source-contract | high | all | ctest | active |
 | `src/tools/services/AnalysisServiceSpec.cpp` | `analysis_service_spec` | `src/app/services` | `v2.analysis-service` | services | integration | high | all | ctest | active |
@@ -82,7 +76,6 @@ Owners name production modules; kinds describe the checked boundary, not runtime
 | `src/tools/services/EditorSyncControllerSpec.cpp` | `editor_sync_controller_spec` | `src/app/services` | `v2.editor-sync-controller` | services | integration | high | all | ctest | active |
 | `src/tools/services/ExportEngineSpec.cpp` | `export_engine_spec` | `src/app/services` | `v2.export-engine` | services | integration | high | all | ctest | active |
 | `src/tools/services/JobProgressServiceSpec.cpp` | `job_progress_service_spec` | `src/app/services` | `v2.job-progress-service` | services | behavior | high | all | ctest | active |
-| `src/tools/services/PlaybackCoordinatorConstructionSpec.cpp` | `playback_coordinator_construction_spec` | `src/app/runtime` | `v2.playback-coordinator-construction` | services | boundary | high | all | compile-only | blocked-link |
 | `src/tools/services/PlaybackCoordinatorSpec.cpp` | `playback_coordinator_spec` | `src/app/runtime` | `v2.playback-coordinator` | services | source-contract | high | all | ctest | active |
 | `src/tools/services/PlaybackStateAuthoritySpec.cpp` | `playback_state_authority_spec` | `src/app/services` | `v2.playback-state-authority` | services | behavior | high | all | ctest | active |
 | `src/tools/services/PlaybackStorageBoundarySpec.cpp` | `playback_storage_boundary_spec` | `src/app/runtime` | `v2.playback-storage-boundary` | services | boundary | high | all | ctest | active |

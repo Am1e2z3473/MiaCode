@@ -9,7 +9,7 @@
 #include "ChartWorkspace.h"
 #include "common/MuriRenderOptions.h"
 #include "common/MuriTypes.h"
-#include "core/chart/parser/SimaiNativeParser.h"
+#include "core/chart/parser/SimaiParser.h"
 #include "timeline/TimelineData.h"
 
 namespace miacode {
@@ -22,8 +22,8 @@ struct AnalysisSnapshot {
     int difficultyId = 0;
     bool available = false;
     bool pending = false;
-    SimaiNativeValidationLocale locale = SimaiNativeValidationLocale::English;
-    SimaiNativeValidationReport validation;
+    SimaiValidationLocale locale = SimaiValidationLocale::English;
+    SimaiValidationReport validation;
     QVector<TimelineNoteMarker> noteMarkers;
     QByteArray noteMarkerSignature;
     MuriAnalysisReport muri;
@@ -37,7 +37,7 @@ class AnalysisService final : public QObject
 public:
     explicit AnalysisService(
         ChartWorkspace& workspace,
-        SimaiNativeValidationLocale locale = SimaiNativeValidationLocale::English,
+        SimaiValidationLocale locale = SimaiValidationLocale::English,
         const MuriRenderOptions& renderOptions = {},
         double staticTapOnSlideThresholdSeconds = -1.0,
         QObject* parent = nullptr);
@@ -52,7 +52,7 @@ public:
 
     static AnalysisSnapshot analyze(
         const ChartWorkspace& workspace,
-        SimaiNativeValidationLocale locale = SimaiNativeValidationLocale::English,
+        SimaiValidationLocale locale = SimaiValidationLocale::English,
         const MuriRenderOptions& renderOptions = {},
         double staticTapOnSlideThresholdSeconds = -1.0);
 
@@ -67,7 +67,7 @@ private:
     struct AnalysisRequest {
         ChartWorkspaceSnapshot workspace;
         SimaiDocument document;
-        SimaiNativeValidationLocale locale = SimaiNativeValidationLocale::English;
+        SimaiValidationLocale locale = SimaiValidationLocale::English;
         MuriRenderOptions renderOptions;
         double staticTapOnSlideThresholdSeconds = -1.0;
     };
@@ -77,7 +77,7 @@ private:
     bool identityIsCurrent(int difficultyId, quint64 revision) const;
 
     ChartWorkspace* workspace_ = nullptr;
-    SimaiNativeValidationLocale locale_ = SimaiNativeValidationLocale::English;
+    SimaiValidationLocale locale_ = SimaiValidationLocale::English;
     MuriRenderOptions renderOptions_;
     double staticTapOnSlideThresholdSeconds_ = -1.0;
     AnalysisSnapshot snapshot_;

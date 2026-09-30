@@ -1,7 +1,7 @@
 #include "timeline/TimelineQuickModel.h"
 #include "timeline/TimelineQuickModelPrivate.h"
 #include "core/chart/document/SimaiTimingMetadata.h"
-#include "core/chart/parser/SimaiNativeParser.h"
+#include "core/chart/parser/SimaiParser.h"
 
 #include <QApplication>
 #include <QFile>
@@ -269,7 +269,7 @@ QVector<ComparableNote> flattenSnapshotNotes(const TimelineRenderSnapshot& snaps
     return notes;
 }
 
-QVector<ComparableNote> flattenParserNotes(const SimaiNativeParseResult& parsed)
+QVector<ComparableNote> flattenParserNotes(const SimaiParseResult& parsed)
 {
     QVector<ComparableNote> notes;
     notes.reserve(parsed.noteMarkers.size());
@@ -309,7 +309,7 @@ QVector<ComparableBeat> flattenSnapshotBeats(const TimelineRenderSnapshot& snaps
     return beats;
 }
 
-QVector<ComparableBeat> flattenParserBeats(const SimaiNativeParseResult& parsed)
+QVector<ComparableBeat> flattenParserBeats(const SimaiParseResult& parsed)
 {
     QVector<ComparableBeat> beats;
     beats.reserve(parsed.beatMarkers.size());
@@ -339,7 +339,7 @@ QVector<double> flattenSnapshotLineStarts(const TimelineRenderSnapshot& snapshot
     return starts;
 }
 
-QVector<double> flattenParserMeasureLines(const SimaiNativeParseResult& parsed)
+QVector<double> flattenParserMeasureLines(const SimaiParseResult& parsed)
 {
     return parsed.measureLineSeconds;
 }
@@ -485,12 +485,12 @@ bool snapshotMatchesParser(
     QString* diff = nullptr,
     const miacode::simai::SimaiTimingMetadata& timingMetadata = miacode::simai::SimaiTimingMetadata())
 {
-    const SimaiNativeParseResult parsed = SimaiNativeParser::parseForTimeline(chartText, timingMetadata);
+    const SimaiParseResult parsed = SimaiParser::parseForTimeline(chartText, timingMetadata);
     if (!parsed.ok) {
         if (diff != nullptr) {
             QStringList messages;
             messages.append(QStringLiteral("parser failed"));
-            for (const SimaiNativeMessage& error : parsed.errors) {
+            for (const SimaiMessage& error : parsed.errors) {
                 messages.append(QStringLiteral("L%1C%2 %3").arg(error.line).arg(error.col).arg(error.message));
             }
             *diff = messages.join(QLatin1Char('\n'));
@@ -2097,7 +2097,7 @@ int main(int argc, char** argv)
     {
         // Regression (gap fix): absolute-seconds and tempo#seconds hold/touch-hold
         // durations must render on the Timeline exactly like the authoritative
-        // SimaiNativeParser. These forms were previously dropped by the quick model.
+        // SimaiParser. These forms were previously dropped by the quick model.
         struct DurationCase { QString name; QString chart; double expectedHoldSeconds; };
         const QVector<DurationCase> cases = {
             { QStringLiteral("1h[4:3]"),     QStringLiteral("1h[4:3],\nE"),     1.5 },

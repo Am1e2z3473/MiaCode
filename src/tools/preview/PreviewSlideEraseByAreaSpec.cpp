@@ -10,7 +10,7 @@
 #include <QTextStream>
 #include <QtMath>
 
-#include "core/chart/parser/SimaiNativeParser.h"
+#include "core/chart/parser/SimaiParser.h"
 #include "core/scene/PreviewTrackShared.h"
 
 #include <cmath>
@@ -37,7 +37,7 @@ bool require(bool condition, const QString& message, QTextStream& err)
 
 bool parseSingleSlideMarker(const QString& chart, TimelineNoteMarker* outMarker, QTextStream& err)
 {
-    const SimaiNativeParseResult parsed = SimaiNativeParser::parseForTimeline(chart);
+    const SimaiParseResult parsed = SimaiParser::parseForTimeline(chart);
     if (!require(parsed.ok, QStringLiteral("chart parses: %1").arg(chart), err)) {
         return false;
     }

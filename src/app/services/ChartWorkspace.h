@@ -5,7 +5,7 @@
 #include <QVector>
 
 #include "core/chart/document/SimaiDocument.h"
-#include "core/chart/parser/SimaiNativeParser.h"
+#include "core/chart/parser/SimaiParser.h"
 
 namespace miacode {
 
@@ -73,7 +73,7 @@ public:
     static constexpr int MetadataSection = -1;
 
     static ChartWorkspacePreflightResult preflightSource(
-        const QString& source, SimaiNativeValidationLocale locale);
+        const QString& source, SimaiValidationLocale locale);
 
     // Opening establishes a new complete-document save point from the maidata
     // field parse. Chart-syntax diagnostics are recorded, not used as a gate:

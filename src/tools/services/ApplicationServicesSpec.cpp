@@ -1,18 +1,7 @@
-// Contract regression for the non-Widget application service assembly.
-//
-// Stage 3.5 items 1-2 of docs/specs/ui/UI_TODO_ZH.md: the
-// document, analysis, editor-sync, UI-request, job-progress and
-// preview-appearance services must have an owner that is not a QWidget and does
-// not need one to exist. Before ApplicationServices they were split between
-// MainWindow (UiRequestService, JobProgressService, EditorSyncController,
-// and the preview appearance members reached through
-// friend access) and ApplicationContext (ChartWorkspace,
-// ChartWorkspaceFileService, AnalysisService), so "who owns the document
-// domain" had two answers and both of them were UI objects.
-//
-// This target links Qt6::Core / Qt6::Gui only. If ApplicationServices ever
-// reaches for QtWidgets — directly or through a header it includes — the spec
-// fails to LINK, which is a stronger guarantee than grepping for QWidget.
+// Contract regression for application-service ownership and playback slots.
+// ApplicationServices owns document, analysis, editor-sync, UI-request,
+// job-progress and preview-appearance services independently of QWidget.
+// This target links Qt6::Core / Qt6::Gui only.
 
 #include "app/services/ApplicationServices.h"
 #include "app/services/PlaybackControl.h"
@@ -196,7 +185,7 @@ bool verifyPlaybackControlSlotIsLive(QTextStream& err)
 bool verifyValidationLocaleHasANonWidgetOwner(QTextStream& err)
 {
     miacode::ApplicationServices services;
-    const SimaiNativeValidationLocale locale = services.validationLocale();
+    const SimaiValidationLocale locale = services.validationLocale();
     return require(locale == miacode::uiValidationLocale(),
                    QStringLiteral("the assembly publishes the shared UI validation locale"), err);
 }

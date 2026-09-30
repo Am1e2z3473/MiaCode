@@ -18,7 +18,7 @@
 #include <QtMath>
 
 #include "SimaiDocument.h"
-#include "SimaiNativeParser.h"
+#include "SimaiParser.h"
 #include "core/chart/transform/ChartNormalization.h"
 #include "core/chart/transform/Non384SnapTable.h"
 
@@ -200,7 +200,7 @@ QJsonArray dumpPadEntryMatrix(const QVector<QVector<MuriPadTimeEntry>>& values)
     return array;
 }
 
-QJsonObject dumpMessage(const SimaiNativeMessage& message)
+QJsonObject dumpMessage(const SimaiMessage& message)
 {
     QJsonObject object;
     object.insert(QStringLiteral("source_line"), message.line);
@@ -220,10 +220,10 @@ QJsonObject dumpBeatMarker(const TimelineBeatMarker& marker)
     return object;
 }
 
-QJsonArray dumpMessages(const QVector<SimaiNativeMessage>& messages)
+QJsonArray dumpMessages(const QVector<SimaiMessage>& messages)
 {
     QJsonArray array;
-    for (const SimaiNativeMessage& message : messages) {
+    for (const SimaiMessage& message : messages) {
         array.append(dumpMessage(message));
     }
     return array;
@@ -462,7 +462,7 @@ QJsonArray dumpNoteMarkers(const QVector<TimelineNoteMarker>& markers)
     return array;
 }
 
-QJsonObject dumpParseResult(const SimaiNativeParseResult& result)
+QJsonObject dumpParseResult(const SimaiParseResult& result)
 {
     QJsonObject object;
     object.insert(QStringLiteral("ok"), result.ok);
@@ -508,7 +508,7 @@ QJsonObject dumpDocumentSemantics(const SimaiDocument& document)
         item.insert(QStringLiteral("designer"), difficulty->designer);
         item.insert(
             QStringLiteral("chart_parse"),
-            dumpParseResult(SimaiNativeParser::parseForTimeline(
+            dumpParseResult(SimaiParser::parseForTimeline(
                 difficulty->chart,
                 miacode::simai::buildTimingMetadata(document))));
         difficulties.append(item);
@@ -709,10 +709,10 @@ bool runFolderMatchSpec(const QString& inputPath, QTextStream& out, QTextStream&
             } else {
                 const SimaiDifficultyData* actualDifficulty = actualDocument.difficulty(actualIds.constFirst());
                 if (actualDifficulty != nullptr) {
-                    const QJsonObject actualParseDump = dumpParseResult(SimaiNativeParser::parseForTimeline(
+                    const QJsonObject actualParseDump = dumpParseResult(SimaiParser::parseForTimeline(
                         actualDifficulty->chart,
                         miacode::simai::buildTimingMetadata(actualDocument)));
-                    const QJsonObject expectedParseDump = dumpParseResult(SimaiNativeParser::parseForTimeline(expectedText));
+                    const QJsonObject expectedParseDump = dumpParseResult(SimaiParser::parseForTimeline(expectedText));
                     same = compareJsonValues(actualParseDump, expectedParseDump, QStringLiteral("$.chart"), &diff);
                     if (!same) {
                         diff = enrichChartOnlyDiff(diff, actualParseDump, sourceText, actualDifficulty->id);
@@ -815,7 +815,7 @@ void expectResetTapNotes(
 // notes, not into a string that merely looks plausible.
 QString noteSecondsText(const QString& chart)
 {
-    const SimaiNativeParseResult result = SimaiNativeParser::parseForTimeline(chart);
+    const SimaiParseResult result = SimaiParser::parseForTimeline(chart);
     QStringList seconds;
     for (const TimelineNoteMarker& marker : result.noteMarkers) {
         seconds.append(QString::number(marker.second, 'f', 6));
@@ -2816,7 +2816,7 @@ int main(int argc, char** argv)
         // subdivisions naturally shift) and warnings (which can change
         // count after normalize). Keep ok / errors / note_markers — those
         // are the user-visible chart semantics.
-        const auto buildSemanticView = [&](const SimaiNativeParseResult& parse) {
+        const auto buildSemanticView = [&](const SimaiParseResult& parse) {
             QJsonObject obj;
             obj.insert(QStringLiteral("ok"), parse.ok);
             obj.insert(QStringLiteral("errors"), strip(dumpMessages(parse.errors)));
@@ -2824,7 +2824,7 @@ int main(int argc, char** argv)
             return obj;
         };
 
-        const auto origParse = SimaiNativeParser::parseForTimeline(origChart, timingMd);
+        const auto origParse = SimaiParser::parseForTimeline(origChart, timingMd);
         const QJsonObject origSemantic = buildSemanticView(origParse);
 
         miacode::chart_transform::ChartNormalizationOptions opts;
@@ -2837,7 +2837,7 @@ int main(int argc, char** argv)
             if (!result.ok) {
                 out << "  WHOLE: normalize FAIL: " << result.errorMessage << '\n';
             } else {
-                const auto newParse = SimaiNativeParser::parseForTimeline(result.text, timingMd);
+                const auto newParse = SimaiParser::parseForTimeline(result.text, timingMd);
                 const QJsonObject newSemantic = buildSemanticView(newParse);
                 QString diff;
                 const bool same = compareJsonValues(origSemantic, newSemantic, QStringLiteral("$"), &diff);
@@ -2875,7 +2875,7 @@ int main(int argc, char** argv)
                     continue;
                 }
                 const QString spliced = origChart.left(startOffset) + result.text + origChart.mid(endOffset);
-                const auto newParse = SimaiNativeParser::parseForTimeline(spliced, timingMd);
+                const auto newParse = SimaiParser::parseForTimeline(spliced, timingMd);
                 const QJsonObject newSemantic = buildSemanticView(newParse);
                 QString diff;
                 const bool same = compareJsonValues(origSemantic, newSemantic, QStringLiteral("$"), &diff);

@@ -4,7 +4,7 @@
 #include <QSet>
 #include <QtMath>
 
-#include "SimaiNativeParser.h"
+#include "SimaiParser.h"
 
 namespace {
 
@@ -202,7 +202,7 @@ MuriPanelEntry makeMuriPanelEntry(const MuriDiagnostic& diagnostic)
     entry.detailKind = diagnostic.detailKind;
     entry.detailArgs = diagnostic.detailArgs;
     entry.rawDetail = diagnostic.detail.isEmpty()
-        ? renderMuriDetail(entry.detailKind, entry.detailArgs, SimaiNativeValidationLocale::English)
+        ? renderMuriDetail(entry.detailKind, entry.detailArgs, SimaiValidationLocale::English)
         : diagnostic.detail;
     return entry;
 }
@@ -223,7 +223,7 @@ MuriPanelEntry makeMuriPanelEntry(const MuriStaticReference& reference)
     entry.rawDetail = renderMuriDetail(
         entry.detailKind,
         entry.detailArgs,
-        SimaiNativeValidationLocale::English);
+        SimaiValidationLocale::English);
     return entry;
 }
 

@@ -417,7 +417,7 @@ package_step "Configuring Release build in $BUILD_DIR"
 cmake "${cmake_args[@]}"
 build_args=(--build "$BUILD_DIR" --config Release --parallel "$PACKAGE_JOBS")
 if [[ "$BUILD_DEV_TOOLS" == "ON" ]]; then
-  build_args+=(--target MiaCode simai_native_dump soundtouch_probe)
+  build_args+=(--target MiaCode miacode_simai_dump miacode_audio_probe)
 else
   build_args+=(--target MiaCode)
 fi
@@ -454,7 +454,7 @@ else
 fi
 
 if [[ "$BUILD_DEV_TOOLS" == "ON" ]]; then
-  for helper_bin in simai_native_dump soundtouch_probe; do
+  for helper_bin in miacode_simai_dump miacode_audio_probe; do
     helper_path="$BUILD_DIR/$helper_bin"
     if [[ ! -f "$helper_path" && -f "$BUILD_DIR/Release/$helper_bin" ]]; then
       helper_path="$BUILD_DIR/Release/$helper_bin"

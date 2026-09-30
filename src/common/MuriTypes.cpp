@@ -1,6 +1,6 @@
 #include "common/MuriTypes.h"
 
-#include "core/chart/parser/SimaiNativeParser.h"
+#include "core/chart/parser/SimaiParser.h"
 #include "timeline/TimelineData.h"
 
 #include <QCoreApplication>
@@ -17,29 +17,29 @@ constexpr int kEnglishLocaleIndex = 0;
 constexpr int kChineseLocaleIndex = 1;
 constexpr int kJapaneseLocaleIndex = 2;
 
-int localeTemplateIndex(SimaiNativeValidationLocale locale)
+int localeTemplateIndex(SimaiValidationLocale locale)
 {
     switch (locale) {
-    case SimaiNativeValidationLocale::Chinese:
+    case SimaiValidationLocale::Chinese:
         return kChineseLocaleIndex;
-    case SimaiNativeValidationLocale::Japanese:
+    case SimaiValidationLocale::Japanese:
         return kJapaneseLocaleIndex;
-    case SimaiNativeValidationLocale::English:
+    case SimaiValidationLocale::English:
     default:
         return kEnglishLocaleIndex;
     }
 }
 
-QString protectedPrefixText(SimaiNativeValidationLocale locale)
+QString protectedPrefixText(SimaiValidationLocale locale)
 {
     static const char* kProtectedPrefix[3] = {"protected", "保护", "保護"};
     return QString::fromUtf8(kProtectedPrefix[localeTemplateIndex(locale)]);
 }
 
-QString localizeMuriEntityText(QString text, SimaiNativeValidationLocale locale)
+QString localizeMuriEntityText(QString text, SimaiValidationLocale locale)
 {
     text = text.trimmed();
-    if (text.isEmpty() || locale == SimaiNativeValidationLocale::English) {
+    if (text.isEmpty() || locale == SimaiValidationLocale::English) {
         return text;
     }
 
@@ -51,10 +51,10 @@ QString localizeMuriEntityText(QString text, SimaiNativeValidationLocale locale)
     return text;
 }
 
-QString localizeMuriEntityList(QString text, SimaiNativeValidationLocale locale)
+QString localizeMuriEntityList(QString text, SimaiValidationLocale locale)
 {
     text = text.trimmed();
-    if (text.isEmpty() || locale == SimaiNativeValidationLocale::English) {
+    if (text.isEmpty() || locale == SimaiValidationLocale::English) {
         return text;
     }
 
@@ -272,7 +272,7 @@ const MuriDetailTemplateRow* detailTemplateRow(MuriDetailKind kind)
     return nullptr;
 }
 
-QString noGapResolvedOutsideWindowTemplate(SimaiNativeValidationLocale locale)
+QString noGapResolvedOutsideWindowTemplate(SimaiValidationLocale locale)
 {
     static const char* kTemplates[3] = {
         "%1 resolved outside its critical window.",
@@ -282,7 +282,7 @@ QString noGapResolvedOutsideWindowTemplate(SimaiNativeValidationLocale locale)
     return QString::fromUtf8(kTemplates[localeTemplateIndex(locale)]);
 }
 
-QString earlyJudgedByPerfectWindowTemplate(SimaiNativeValidationLocale locale)
+QString earlyJudgedByPerfectWindowTemplate(SimaiValidationLocale locale)
 {
     static const char* kTemplates[3] = {
         "%1 was early-judged by %2 %3 before standard timing, outside the Perfect tolerance (%4 for this trace).",
@@ -292,7 +292,7 @@ QString earlyJudgedByPerfectWindowTemplate(SimaiNativeValidationLocale locale)
     return QString::fromUtf8(kTemplates[localeTemplateIndex(locale)]);
 }
 
-QString resolvedOutsidePerfectWindowTemplate(SimaiNativeValidationLocale locale)
+QString resolvedOutsidePerfectWindowTemplate(SimaiValidationLocale locale)
 {
     static const char* kTemplates[3] = {
         "%1 resolved %2 before standard timing, outside the Perfect tolerance (%3 for this trace).",
@@ -302,7 +302,7 @@ QString resolvedOutsidePerfectWindowTemplate(SimaiNativeValidationLocale locale)
     return QString::fromUtf8(kTemplates[localeTemplateIndex(locale)]);
 }
 
-QString staticReferenceNoDeltaTemplate(SimaiNativeValidationLocale locale)
+QString staticReferenceNoDeltaTemplate(SimaiValidationLocale locale)
 {
     static const char* kTemplates[3] = {
         "Static reference from %1",
@@ -315,7 +315,7 @@ QString staticReferenceNoDeltaTemplate(SimaiNativeValidationLocale locale)
 QString selectedDetailTemplate(
     const MuriDetailTemplateRow& row,
     MuriAlertLevel alert,
-    SimaiNativeValidationLocale locale)
+    SimaiValidationLocale locale)
 {
     const int index = localeTemplateIndex(locale);
     const char* text = alert == MuriAlertLevel::Warning && row.warning[index][0] != '\0'
@@ -329,17 +329,17 @@ QString selectedDetailTemplate(
     return QString::fromUtf8(text);
 }
 
-QString localizedLeft(const MuriDetailArgs& args, SimaiNativeValidationLocale locale)
+QString localizedLeft(const MuriDetailArgs& args, SimaiValidationLocale locale)
 {
     return localizeMuriEntityText(args.left, locale);
 }
 
-QString localizedRight(const MuriDetailArgs& args, SimaiNativeValidationLocale locale)
+QString localizedRight(const MuriDetailArgs& args, SimaiValidationLocale locale)
 {
     return localizeMuriEntityText(args.right, locale);
 }
 
-QString localizedActions(const MuriDetailArgs& args, SimaiNativeValidationLocale locale)
+QString localizedActions(const MuriDetailArgs& args, SimaiValidationLocale locale)
 {
     return localizeMuriEntityList(args.actions, locale);
 }
@@ -446,7 +446,7 @@ QString muriDetailKindKey(MuriDetailKind kind)
 QString renderMuriDetail(
     MuriDetailKind kind,
     const MuriDetailArgs& args,
-    SimaiNativeValidationLocale locale)
+    SimaiValidationLocale locale)
 {
     if (kind == MuriDetailKind::None) {
         return QString();
@@ -509,7 +509,7 @@ QString renderMuriDetail(
 
 QString renderMuriDiagnosticDetail(
     const MuriDiagnostic& diagnostic,
-    SimaiNativeValidationLocale locale)
+    SimaiValidationLocale locale)
 {
     const QString rendered = renderMuriDetail(diagnostic.detailKind, diagnostic.detailArgs, locale);
     return rendered.isEmpty() ? diagnostic.detail : rendered;

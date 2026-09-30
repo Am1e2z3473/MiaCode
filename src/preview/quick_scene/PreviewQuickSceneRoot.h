@@ -175,9 +175,7 @@ private:
     // everything before the pass is QRhi resource work (texture/buffer uploads,
     // resource creation, swapchain image acquire), everything inside the pass is
     // draw-call recording, which is where a first-use graphics pipeline (PSO /
-    // shader variant) gets created by the driver. §5.1 of
-    // docs/audit/PREVIEW_FIRST_PLAY_RENDER_STALL_HANDOFF_AUDIT_ZH.md could not tell
-    // those apart because render_submit_ms was one opaque bracket.
+    // shader variant) gets created by the driver.
     qint64 renderPhasePassStartNs_ = -1;
     qint64 renderPhasePassEndNs_ = -1;
     qint64 renderPhaseRenderEndNs_ = -1;
