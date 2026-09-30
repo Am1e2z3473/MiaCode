@@ -187,9 +187,8 @@ scripts/release/*
 !scripts/release/update-manifest.py
 !scripts/README.md
 !scripts/README_EN.md
-# Ignore local Claude config, but version-control the repo-guide skill.
+# Ignore local Claude config; track role definitions.
 .claude/*
-!.claude/skills/
 !.claude/agents/
 
 # Python bytecode caches (e.g. tools/lvcard_gen).

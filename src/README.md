@@ -1,7 +1,7 @@
 # Source layout
 
-The maintained repository guide is `.agents/skills/miacode-dev-guide/SKILL.md`;
-`.claude` and `.codex` copies are generated. Code remains the source of truth.
+Shared development rules live in [AGENTS.md](../AGENTS.md).
+Task guides are maintained in `.agents/skills/`.
 Current ownership contracts live in `docs/specs/ui/CURRENT_ARCHITECTURE_ZH.md`.
 
 | Directory | Responsibility |
@@ -26,9 +26,8 @@ Current ownership contracts live in `docs/specs/ui/CURRENT_ARCHITECTURE_ZH.md`.
 Keep sources with their domain owner. Reuse existing QML controls and application services;
 do not create parallel document, playback or resource-lookup authorities.
 
-Bootstrap is the GUI entry. Session is a QObject, not a hidden QMainWindow.
-The old v1 shell, DComp chart renderer and external realtime preview worker are retired.
-QSG export still supports its current D3D11/QRhi and OpenGL sessions and export worker;
+Bootstrap is the GUI entry; Session assembles runtime hosts.
+QSG export supports D3D11/QRhi and OpenGL sessions and an export worker;
 see `docs/specs/preview/CURRENT_RENDER_EXPORT_CONTRACT_ZH.md`.
 
 Executable contracts stay under `tools/`; registration and source groups live in

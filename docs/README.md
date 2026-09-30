@@ -10,7 +10,7 @@
 - [Slide 与头材质](specs/chart/SLIDE_DELAY_AND_HEAD_MATERIAL_SPEC.md)、[无理检测](specs/muri/MURI_DETECTION_SPEC.md)
 - [Timeline 坐标与聚焦](specs/timeline/TIMELINE_COORDINATE_FOCUS_SPEC.md)
 - [调试索引](ops/DEBUG_INDEX.md)、[日志模式](ops/OPERATION_LOG_PATTERNS_SPEC.md)、[发布检查](ops/RELEASE_CHECKLIST.md)
-- [仓库开发 skill](../.agents/skills/miacode-dev-guide/SKILL.md)、[贡献指南](../CONTRIBUTING.md)
+- [代理与开发规则](../AGENTS.md)、[仓库开发 skill](../.agents/skills/miacode-dev-guide/SKILL.md)、[贡献指南](../CONTRIBUTING.md)
 
 ## 分类与维护
 
@@ -43,15 +43,13 @@ code_anchors: ["src/app/services/ApplicationServices.h", "src/app/runtime/Sessio
 
 ## 生成与检查
 
-工具要求 Python 3.9+、Git 和仓库要求的 CMake；索引与镜像工具只依赖 Python 标准库。
+工具要求 Python 3.9+、Git 和仓库要求的 CMake；索引工具只依赖 Python 标准库。
 
 ```sh
 python3 scripts/governance/docs_index.py --sync
-python3 scripts/governance/sync_guides.py --sync
 cmake -P cmake/devtools/SpecCatalog.cmake
 
 python3 scripts/governance/docs_index.py --check
-python3 scripts/governance/sync_guides.py --check
 cmake -DMIACODE_SPEC_CATALOG_CHECK=ON -P cmake/devtools/SpecCatalog.cmake
 ```
 
