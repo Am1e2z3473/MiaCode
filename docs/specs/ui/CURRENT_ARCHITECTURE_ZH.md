@@ -48,6 +48,13 @@ QML 控件、弹层和表单优先复用 `src/app/ui/components/`；主题在 `t
 文案经 Qt Linguist（`translations/*.ts` → 构建目录中的 `.qm` → `/i18n` 内嵌资源），QML 用 `qsTrId`，C++ 用 `qtTrId`；运行期由 `LocaleService` 装载与热切换。偏好持久化在 `PreferenceDocument`。
 共享请求/进度复用 UiRequestService 和 JobProgressService；文件与资源解析复用现有领域服务。
 
+主窗口的状态转换与几何记忆由 `WindowChrome` 管理，`Bootstrap` 在显示前恢复、
+接受关闭后保存。最小化保留窗口状态中的最大化与全屏标志，系统恢复沿用缩小前状态。
+`preferences.json` 的 `ui.main_window` 保存 `normal_geometry`（`x`、`y`、`width`、`height`）、
+`screen_name` 和 `maximized`；普通窗口几何在事件循环合并几何与状态变化后采集。
+启动恢复普通窗口尺寸与最大化状态，位置按目标屏幕的可用区域约束。
+Wayland 的窗口位置由合成器管理，应用恢复尺寸与最大化状态。
+
 仓库地图见 [开发 skill](../../../.agents/skills/miacode-dev-guide/SKILL.md)。
 渲染与导出见 [当前渲染契约](../preview/CURRENT_RENDER_EXPORT_CONTRACT_ZH.md)。
 

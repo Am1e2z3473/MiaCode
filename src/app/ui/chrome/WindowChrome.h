@@ -3,12 +3,16 @@
 #include <QAbstractNativeEventFilter>
 #include <QObject>
 #include <QPointer>
+#include <QRect>
+#include <QString>
+#include <QTimer>
 
 class QWindow;
 
 // v2 WindowTitleBar chrome. Attach only from Bootstrap (never v1).
 // Windows: WM_NCCALCSIZE over the native caption.
 // macOS: full-size content; native title text hidden; QWindow::title kept.
+// All platforms: root-window state transitions and persisted geometry.
 // titleBarLeadingInset: clearance past macOS traffic lights (0 elsewhere).
 namespace miacode::ui {
 
@@ -24,6 +28,7 @@ public:
 
     void attach(QWindow* window);
     Q_INVOKABLE void minimize();
+    void saveWindowState();
     // Remeasure traffic-light clearance after native layout is ready.
     Q_INVOKABLE void refreshTitleBarMetrics();
     qreal titleBarLeadingInset() const { return titleBarLeadingInset_; }
@@ -42,8 +47,14 @@ private:
     void stopObservingMacOsFullScreen();
     void setTitleBarLeadingInset(qreal inset);
     void setTitleBarHeight(qreal height);
+    void restoreWindowState();
+    void captureWindowState();
 
     QPointer<QWindow> window_;
+    QRect normalGeometry_;
+    QString screenName_;
+    bool maximized_ = false;
+    QTimer stateCaptureTimer_;
     quintptr nativeHandle_ = 0;
     qreal titleBarLeadingInset_ = 0;
     qreal titleBarHeight_ = 0;

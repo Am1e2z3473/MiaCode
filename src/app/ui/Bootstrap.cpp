@@ -228,7 +228,6 @@ bool Bootstrap::start(const QString& startupOpenTarget)
             rootWindow_ = nullptr;
             releaseRootWindowResources();
         });
-        backend_->setRootWindowFrameGeometry(window->frameGeometry());
         if (!appIcon_.isNull()) {
             window->setIcon(appIcon_);
         }
@@ -256,7 +255,8 @@ bool Bootstrap::start(const QString& startupOpenTarget)
             releaseRootWindowResources();
             return false;
         }
-        window->show();
+        window->setVisible(true);
+        backend_->setRootWindowFrameGeometry(window->frameGeometry());
         // The stage-media route defers its first chart-path load until the
         // frontend window is ready. UIv2 has no native surface host to forward
         // that readiness notification, so release the shared backend gate here
@@ -316,6 +316,7 @@ void Bootstrap::beginAcceptedRootWindowShutdown(const QString& source)
         qApp->setQuitOnLastWindowClosed(false);
     }
     if (!rootWindow_.isNull()) {
+        windowChrome_->saveWindowState();
         rootWindow_->hide();
     }
     if (applicationServices_ != nullptr && applicationServices_->documentBridge() != nullptr

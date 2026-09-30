@@ -1,8 +1,13 @@
 #include "chrome/WindowChrome.h"
+#include "preferences/PreferenceDocument.h"
+#include "common/DebugLog.h"
 
 #include <QtGlobal>
 #include <QCoreApplication>
+#include <QGuiApplication>
+#include <QJsonObject>
 #include <QPointer>
+#include <QScreen>
 #include <QWindow>
 
 #ifdef Q_OS_WIN
@@ -16,6 +21,10 @@ namespace miacode::ui {
 WindowChrome::WindowChrome(QObject* parent)
     : QObject(parent)
 {
+    // Capture after the geometry and window-state events of a transition settle.
+    stateCaptureTimer_.setSingleShot(true);
+    stateCaptureTimer_.setInterval(0);
+    connect(&stateCaptureTimer_, &QTimer::timeout, this, &WindowChrome::captureWindowState);
 }
 
 WindowChrome::~WindowChrome()
@@ -51,6 +60,15 @@ void WindowChrome::attach(QWindow* window)
     }
 
     window_ = window;
+    restoreWindowState();
+    const auto scheduleCapture = [this]() { stateCaptureTimer_.start(); };
+    connect(window, &QWindow::xChanged, this, scheduleCapture);
+    connect(window, &QWindow::yChanged, this, scheduleCapture);
+    connect(window, &QWindow::widthChanged, this, scheduleCapture);
+    connect(window, &QWindow::heightChanged, this, scheduleCapture);
+    connect(window, &QWindow::windowStateChanged, this, scheduleCapture);
+    connect(window, &QWindow::visibilityChanged, this, scheduleCapture);
+    connect(window, &QWindow::screenChanged, this, scheduleCapture);
 
 #ifdef Q_OS_WIN
     nativeHandle_ = window->winId();
@@ -94,8 +112,109 @@ void WindowChrome::minimize()
     if (window_.isNull()) {
         return;
     }
+    captureWindowState();
     // Keep maximized/fullscreen bits so the native restore operation retains them.
     window_->setWindowStates(window_->windowStates() | Qt::WindowMinimized);
+}
+
+void WindowChrome::restoreWindowState()
+{
+    const QJsonObject saved = PreferenceDocument::loadPreferencesObject()
+        .value(QStringLiteral("ui")).toObject()
+        .value(QStringLiteral("main_window")).toObject();
+    const QJsonObject geometry = saved.value(QStringLiteral("normal_geometry")).toObject();
+    normalGeometry_ = QRect(geometry.value(QStringLiteral("x")).toInt(),
+                            geometry.value(QStringLiteral("y")).toInt(),
+                            geometry.value(QStringLiteral("width")).toInt(),
+                            geometry.value(QStringLiteral("height")).toInt());
+    if (!normalGeometry_.isValid()) {
+        normalGeometry_ = window_->geometry();
+        screenName_ = window_->screen() ? window_->screen()->name() : QString();
+        return;
+    }
+
+    // Wayland's compositor owns top-level placement; restore only size and state.
+    const bool canRestorePosition = !QGuiApplication::platformName().startsWith(QStringLiteral("wayland"));
+    QScreen* screen = nullptr;
+    if (canRestorePosition) {
+        const QString savedScreenName = saved.value(QStringLiteral("screen_name")).toString();
+        for (QScreen* candidate : QGuiApplication::screens()) {
+            if (candidate->name() == savedScreenName) {
+                screen = candidate;
+                break;
+            }
+        }
+        if (screen == nullptr) {
+            screen = QGuiApplication::screenAt(normalGeometry_.center());
+        }
+    }
+    if (screen == nullptr) {
+        screen = window_->screen();
+    }
+    if (screen != nullptr) {
+        const QRect available = screen->availableGeometry();
+        normalGeometry_.setSize(QSize(
+            qBound(qMin(window_->minimumWidth(), available.width()), normalGeometry_.width(), available.width()),
+            qBound(qMin(window_->minimumHeight(), available.height()), normalGeometry_.height(), available.height())));
+        if (canRestorePosition) {
+            normalGeometry_.moveLeft(qBound(available.left(), normalGeometry_.left(),
+                                           available.right() - normalGeometry_.width() + 1));
+            normalGeometry_.moveTop(qBound(available.top(), normalGeometry_.top(),
+                                          available.bottom() - normalGeometry_.height() + 1));
+            window_->setScreen(screen);
+        }
+        screenName_ = screen->name();
+    }
+    if (canRestorePosition) {
+        window_->setGeometry(normalGeometry_);
+    } else {
+        window_->resize(normalGeometry_.size());
+    }
+    maximized_ = saved.value(QStringLiteral("maximized")).toBool();
+    if (maximized_) {
+        window_->setWindowStates(Qt::WindowMaximized);
+    }
+}
+
+void WindowChrome::captureWindowState()
+{
+    if (window_.isNull() || !window_->isVisible()) {
+        return;
+    }
+    const Qt::WindowStates states = window_->windowStates();
+    if (states.testFlag(Qt::WindowMinimized) || states.testFlag(Qt::WindowFullScreen)) {
+        return;
+    }
+    maximized_ = states.testFlag(Qt::WindowMaximized);
+    if (!maximized_) {
+        normalGeometry_ = window_->geometry();
+    }
+    if (window_->screen() != nullptr) {
+        screenName_ = window_->screen()->name();
+    }
+}
+
+void WindowChrome::saveWindowState()
+{
+    if (window_.isNull()) {
+        return;
+    }
+    captureWindowState();
+    QJsonObject root = PreferenceDocument::loadPreferencesObject();
+    QJsonObject ui = root.value(QStringLiteral("ui")).toObject();
+    ui.insert(QStringLiteral("main_window"), QJsonObject{
+        {QStringLiteral("normal_geometry"), QJsonObject{
+             {QStringLiteral("x"), normalGeometry_.x()},
+             {QStringLiteral("y"), normalGeometry_.y()},
+             {QStringLiteral("width"), normalGeometry_.width()},
+             {QStringLiteral("height"), normalGeometry_.height()}}},
+        {QStringLiteral("screen_name"), screenName_},
+        {QStringLiteral("maximized"), maximized_}});
+    root.insert(QStringLiteral("ui"), ui);
+    if (!PreferenceDocument::savePreferencesObject(root)) {
+        miacode::debug_log::appendLine(miacode::debug_log::Channel::Runtime,
+                                     QStringLiteral("window"), QStringLiteral("action=state_save_failed"));
+    }
 }
 
 void WindowChrome::refreshTitleBarMetrics()
