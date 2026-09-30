@@ -6,12 +6,27 @@
 
 [中文](README.md) | [English](README_EN.md)
 
-<p align="center">
-  <img src="resources/readme/v1/dark-theme.jpg" alt="MiaCode 深色主题" width="49%">
-  <img src="resources/readme/v1/light-theme.jpg" alt="MiaCode 浅色主题" width="49%">
-</p>
+<table align="center" width="100%">
+  <tr>
+    <td align="center" width="50%"><img src="resources/readme/dark-theme.jpg" alt="MiaCode 深色主题" width="400"></td>
+    <td align="center" width="50%"><img src="resources/readme/light-theme.jpg" alt="MiaCode 浅色主题" width="400"></td>
+  </tr>
+  <tr>
+    <td align="center">深色主题</td>
+    <td align="center">浅色主题</td>
+  </tr>
+</table>
 
-MiaCode 是一款基于 Qt 6 / C++ 的 maimai 谱面创作工具。集成丰富功能与多平台支持。
+MiaCode 是一款基于 Qt 6 / C++ 的一站式 maimai 谱面创作工具，集成丰富功能与多平台支持。
+
+## 快速开始
+
+发布版本与下载包见 [GitHub Releases](https://github.com/Team-MiaCode/MiaCode/releases/latest)。支持 Windows (x64) 与 macOS (Apple)，选择对应系统的压缩包下载后解压。
+
+- **Windows**：双击解压目录中的 `MiaCode.exe` 启动。
+- **macOS**：双击 `MiaCode.app` 启动，也可将其拖入“应用程序”文件夹。若系统显示安全提示，可在解压目录打开终端，执行 `xattr -dr com.apple.quarantine "MiaCode.app"` 后启动。
+
+-Linux 用户可按下方步骤从源码构建。
 
 ## 功能介绍
 
@@ -27,19 +42,31 @@ MiaCode 是一款基于 Qt 6 / C++ 的 maimai 谱面创作工具。集成丰富�
 
 ### 语法与无理
 
-<p align="center">
-  <img src="resources/readme/v1/syntax-check.jpg" alt="语法检查结果" height="140">
-  <img src="resources/readme/v1/muri-check.jpg" alt="无理检测结果" height="140">
-</p>
+<table align="center" width="100%">
+  <tr>
+    <td align="center" width="50%"><img src="resources/readme/syntax-check.jpg" alt="语法检查结果" width="360"></td>
+    <td align="center" width="50%"><img src="resources/readme/muri-check.jpg" alt="无理检测结果" width="360"></td>
+  </tr>
+  <tr>
+    <td align="center">语法检查</td>
+    <td align="center">无理检测</td>
+  </tr>
+</table>
 
+支持谱面语法检查与谱面无理配置检测，可快速跳转到指定行。
 
-支持谱面语法检查，与谱面无理配置检测工具与对应的预览模式，可快速跳转到指定行。
 ### 视频与封面
 
-<p align="center">
-  <img src="resources/readme/v1/video-export.jpg" alt="视频导出界面" height="280">
-  <img src="resources/readme/v1/cover-export.jpg" alt="封面编辑界面" height="280">
-</p>
+<table align="center" width="100%">
+  <tr>
+    <td align="center" width="50%"><img src="resources/readme/video-export.jpg" alt="视频导出界面" height="200"></td>
+    <td align="center" width="50%"><img src="resources/readme/cover-export.jpg" alt="封面编辑界面" height="200"></td>
+  </tr>
+  <tr>
+    <td align="center">导出</td>
+    <td align="center">封面工具</td>
+  </tr>
+</table>
 
 #### 导出
 
@@ -53,15 +80,39 @@ MiaCode 是一款基于 Qt 6 / C++ 的 maimai 谱面创作工具。集成丰富�
 
 支持自定义字体、背景等样式，也可以叠加谱面帧截图，用于展示配置。
 
+### Net 批量下载
 
-### 更多实用小功能：
+<table align="center" width="100%">
+  <tr>
+    <td align="center"><img src="resources/readme/net-batch-download.jpg" alt="Net 批量下载界面" width="640"></td>
+  </tr>
+  <tr>
+    <td align="center">Net 批量下载</td>
+  </tr>
+</table>
 
-<p align="center">
-  <img src="resources/readme/v1/time-value-autocomplete.jpg" alt="时值自动补全" height="140">
-  <img src="resources/readme/v1/chart-formatting.jpg" alt="谱面整理选项" height="140">
-  <img src="resources/readme/v1/audio-video-tools.jpg" alt="音视频处理工具" height="140">
-  <img src="resources/readme/v1/bpm-offset-detection.jpg" alt="BPM 与延迟检测" height="140">
-</p>
+按用户 ID、Tag、歌曲名与上传时间筛选 Majdata Net 谱面，勾选后批量下载到指定目录，支持额外生成 ZIP 压缩包。
+
+### 更多实用功能
+
+<table align="center" width="100%">
+  <tr>
+    <td align="center" width="50%"><img src="resources/readme/time-value-autocomplete.jpg" alt="自动补全时值" height="150"></td>
+    <td align="center" width="50%"><img src="resources/readme/chart-formatting.jpg" alt="一键谱面整理" height="150"></td>
+  </tr>
+  <tr>
+    <td align="center">时值自动补全</td>
+    <td align="center">谱面整理</td>
+  </tr>
+  <tr>
+    <td align="center"><img src="resources/readme/audio-video-tools.jpg" alt="音视频工具" height="150"></td>
+    <td align="center"><img src="resources/readme/bpm-offset-detection.jpg" alt="BPM 与延迟检测" height="150"></td>
+  </tr>
+  <tr>
+    <td align="center">音视频工具</td>
+    <td align="center">BPM 与延迟检测</td>
+  </tr>
+</table>
 
 - 自定义背景
 
@@ -70,8 +121,11 @@ MiaCode 是一款基于 Qt 6 / C++ 的 maimai 谱面创作工具。集成丰富�
 - 输入法禁止与全角字符转换
 - 书签跳转段落
 - 快捷编写 Touch 音符
+- 拖入音频创建谱面
+- 显示选区拍数
+- 重置摆键到 1 号
 - 自动补全时值
-- 谱面整理
+- 一键谱面整理
 
 - 音视频工具
 - BPM 与延迟检测
@@ -88,6 +142,12 @@ MiaCode 是一款基于 Qt 6 / C++ 的 maimai 谱面创作工具。集成丰富�
 
 ### Windows
 
+手动安装以下构建工具：
+
+- Visual Studio 2022 或 Build Tools 2022，选择“使用 C++ 的桌面开发”
+- CMake 3.21+
+- Python 3（包含 pip）
+
 使用一键脚本自动安装 Qt、准备依赖、构建并打包：
 
 ```powershell
@@ -96,6 +156,34 @@ powershell -ExecutionPolicy Bypass -File .\scripts\build\build-win.ps1
 
 ### macOS
 
+使用 Apple 芯片 Mac，系统版本为 macOS 13 或以上。在终端安装 Xcode Command Line Tools，并通过 [Homebrew](https://brew.sh/) 安装 CMake 和 Python 3：
+
+```bash
+xcode-select --install
+brew install cmake python
+```
+
+依赖安装完成后，使用一键脚本自动安装 Qt、准备依赖、构建并打包：
+```bash
+bash scripts/build/build-macos.sh
+```
+
+### Linux（适用于高级用户）
+
+
+
+Linux 无打包脚本，需要手动安装 CMake 3.21+、C++20 编译器、pkg-config 和 Qt 6.8+（包含 Qt Quick、Quick Controls 2、Multimedia、Multimedia 的私有开发头文件、Shader Tools 和 SVG），以及 FFmpeg、VA-API、DRM、OpenGL / EGL 的开发库。FFmpeg 开发库需包含 `libavfilter`、`libavcodec`、`libavformat`、`libavutil`、`libswresample` 和 `libswscale`。
+
+在仓库根目录执行以下命令，将 `[/path/to/Qt/6.x/gcc_64]` 替换为 Qt 安装目录：
+
+```bash
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_PREFIX_PATH="[/path/to/Qt/6.x/gcc_64]"
+cmake --build build --target MiaCode --parallel
+./build/MiaCode
+```
+
+音视频处理与导出使用独立的 `ffmpeg` 程序，可手动安装支持 H.264 / AAC 编码的 FFmpeg。
 ## 仓库结构
 
 - [src](src)：应用源码
@@ -106,18 +194,28 @@ powershell -ExecutionPolicy Bypass -File .\scripts\build\build-win.ps1
 - [docs](docs)：文档
 - [samples](samples)：规格测试示例资源
 
-## 许可证与鸣谢
+## 许可证
 
-MiaCode 自有源代码使用 MIT License，见 [LICENSE](LICENSE)。仓库整体、随仓库分发的资源、打包产物和发布包定位为非商业使用；具体边界见 [LICENSE_SCOPE.md](LICENSE_SCOPE.md)。第三方库、字体、音效、图片、FFmpeg、BASS、Qt 以及参考实现可能有各自的许可证或分发限制，请以 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) 为准。
+自有代码使用 MIT 协议，随仓库分发的 Release 构建产物为非商业使用，具体边界见 [LICENSE_SCOPE.md](LICENSE_SCOPE.md)。
 
-感谢 [Minepig/MaiMuriDX](https://github.com/Minepig/MaiMuriDX) 等项目提供的 simai 解析、预览和工程实现参考。感谢 [gfdfdxc/maimai-transition](https://github.com/gfdfdxc/maimai-transition) 提供片头参考。感谢 [Majdata Net](https://majdata.net/) 提供社区谱面下载，感谢 [MaiViewer](https://www.maiviewer.net/) 提供官方谱面 simai 抄谱参考。
+第三方库、字体、音效、图片、FFmpeg、BASS、Qt 以及参考实现的各自许可证或分发限制参考 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
+
+## 致谢
+
+感谢 [Minepig/MaiMuriDX](https://github.com/Minepig/MaiMuriDX) 提供的无理检测功能参考。
+
+感谢 [gfdfdxc/maimai-transition](https://github.com/gfdfdxc/maimai-transition) 提供的片头动画参考。
+
+感谢 [Majdata Net](https://majdata.net/) 提供的自制谱面社区。
+
+感谢 [MaiViewer](https://www.maiviewer.net/) 提供官方谱面抄谱下载站。
 
 特别感谢 hitomi 老师无偿提供 MiaCode logo 绘制。
 
 感谢内部测试时期给出建议、复现问题和协助调试的朋友们，名单见 [ACKNOWLEDGEMENTS.md](ACKNOWLEDGEMENTS.md)。
 ## 社群
 
-QQ 群：1095435375
+欢迎加入 MiaCode 官方 QQ 交流群：1095435375
 
 <p align="center">
   <img src="resources/community/qq-group.png" alt="MiaCode QQ 群二维码" width="360">
