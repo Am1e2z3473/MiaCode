@@ -6,6 +6,8 @@
 
 [中文](README.md) | [English](README_EN.md)
 
+基于 QML 重构的新版本正在开发中。欢迎关注 [`feature/qml-ui`](https://github.com/Team-MiaCode/MiaCode/tree/feature/qml-ui) 分支的开发进展。
+
 <table align="center" width="100%">
   <tr>
     <td align="center" width="50%"><img src="resources/readme/dark-theme.jpg" alt="MiaCode 深色主题" width="400"></td>
@@ -26,7 +28,7 @@ MiaCode 是一款基于 Qt 6 / C++ 的一站式 maimai 谱面创作工具，集�
 - **Windows**：双击解压目录中的 `MiaCode.exe` 启动。
 - **macOS**：双击 `MiaCode.app` 启动，也可将其拖入“应用程序”文件夹。若系统显示安全提示，可在解压目录打开终端，执行 `xattr -dr com.apple.quarantine "MiaCode.app"` 后启动。
 
--Linux 用户可按下方步骤从源码构建。
+Linux 用户可按下方步骤从源码构建。
 
 ## 功能介绍
 
@@ -116,8 +118,6 @@ MiaCode 是一款基于 Qt 6 / C++ 的一站式 maimai 谱面创作工具，集�
 
 - 自定义背景
 
-
-
 - 输入法禁止与全角字符转换
 - 书签跳转段落
 - 快捷编写 Touch 音符
@@ -164,13 +164,12 @@ brew install cmake python
 ```
 
 依赖安装完成后，使用一键脚本自动安装 Qt、准备依赖、构建并打包：
+
 ```bash
 bash scripts/build/build-macos.sh
 ```
 
 ### Linux（适用于高级用户）
-
-
 
 Linux 无打包脚本，需要手动安装 CMake 3.21+、C++20 编译器、pkg-config 和 Qt 6.8+（包含 Qt Quick、Quick Controls 2、Multimedia、Multimedia 的私有开发头文件、Shader Tools 和 SVG），以及 FFmpeg、VA-API、DRM、OpenGL / EGL 的开发库。FFmpeg 开发库需包含 `libavfilter`、`libavcodec`、`libavformat`、`libavutil`、`libswresample` 和 `libswscale`。
 
@@ -184,6 +183,7 @@ cmake --build build --target MiaCode --parallel
 ```
 
 音视频处理与导出使用独立的 `ffmpeg` 程序，可手动安装支持 H.264 / AAC 编码的 FFmpeg。
+
 ## 仓库结构
 
 - [src](src)：应用源码
@@ -213,6 +213,7 @@ cmake --build build --target MiaCode --parallel
 特别感谢 hitomi 老师无偿提供 MiaCode logo 绘制。
 
 感谢内部测试时期给出建议、复现问题和协助调试的朋友们，名单见 [ACKNOWLEDGEMENTS.md](ACKNOWLEDGEMENTS.md)。
+
 ## 社群
 
 欢迎加入 MiaCode 官方 QQ 交流群：1095435375
