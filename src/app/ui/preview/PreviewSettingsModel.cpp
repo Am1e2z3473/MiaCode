@@ -1,3 +1,5 @@
+#include "common/LocalizedText.h"
+
 #include "preview/PreviewSettingsModel.h"
 
 #include "common/PreviewGameplayConfig.h"
@@ -459,8 +461,8 @@ void PreviewSettingsModel::importHudFont()
         return;
     }
     miacode::FileRequest request;
-    request.title = text("dialog.video_export.option.import_hud_font");
-    request.nameFilters = QStringList{QStringLiteral("Font Files (*.ttf *.otf)")};
+    request.title = miacode::localizedText("dialog.video_export.option.import_hud_font");
+    request.nameFilters = {miacode::localizedText("file_filter.font")};
     uiRequests_->requestFile(request, [this](const QString& path) {
         applyHudFontImport(path);
     });
@@ -477,10 +479,10 @@ void PreviewSettingsModel::applyHudFontImport(const QString& selectedPath)
         if (uiRequests_ != nullptr) {
             uiRequests_->postNotice(
                 miacode::NoticeSeverity::Warning,
-                text("dialog.video_export.option.import_hud_font"),
+                miacode::localizedText("dialog.video_export.option.import_hud_font"),
                 result.failure == miacode::video_export::FontImportFailure::CopyFailed
-                    ? text("card_font.copy_failed")
-                    : text("card_font.invalid_font"));
+                    ? miacode::localizedText("card_font.copy_failed")
+                    : miacode::localizedText("card_font.invalid_font"));
         }
         return;
     }

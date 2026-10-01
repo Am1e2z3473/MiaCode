@@ -28,7 +28,7 @@ bool runProcess(
     const QStringList& arguments,
     const std::atomic_bool* cancelRequested,
     QByteArray* output,
-    QString* error)
+    miacode::LocalizedText* error)
 {
     QProcess process;
     process.setProcessChannelMode(QProcess::MergedChannels);
@@ -64,7 +64,7 @@ bool probeDuration(
     const QString& videoPath,
     const std::atomic_bool* cancelRequested,
     double* durationSeconds,
-    QString* error)
+    miacode::LocalizedText* error)
 {
     QProcess process;
     process.setProcessChannelMode(QProcess::MergedChannels);
@@ -92,7 +92,7 @@ bool probeDuration(
     const QRegularExpressionMatch match = pattern.match(output);
     if (!match.hasMatch()) {
         if (error != nullptr) {
-            *error = qtTrId("media_tools.batch_pv_duration_failed");
+            *error = miacode::localizedText("media_tools.batch_pv_duration_failed");
         }
         return false;
     }
@@ -101,7 +101,7 @@ bool probeDuration(
         + match.captured(3).toDouble();
     if (!(total > 0.0)) {
         if (error != nullptr) {
-            *error = qtTrId("media_tools.batch_pv_duration_failed");
+            *error = miacode::localizedText("media_tools.batch_pv_duration_failed");
         }
         return false;
     }
@@ -131,16 +131,16 @@ bool compressJob(
     const QString& ffmpegPath,
     const PvCompressionJob& job,
     const std::atomic_bool* cancelRequested,
-    QString* resultStatus)
+    miacode::LocalizedText* resultStatus)
 {
     const QFileInfo videoInfo(job.videoPath);
     const qint64 originalBytes = videoInfo.size();
     if (originalBytes <= 0) {
-        *resultStatus = qtTrId("media_tools.batch_pv_invalid_file");
+        *resultStatus = miacode::localizedText("media_tools.batch_pv_invalid_file");
         return false;
     }
     if (originalBytes < kPvCompressionHardLimitBytes) {
-        *resultStatus = qtTrId("media_tools.batch_pv_already_small");
+        *resultStatus = miacode::localizedText("media_tools.batch_pv_already_small");
         return true;
     }
 
@@ -149,16 +149,16 @@ bool compressJob(
     const QString tempPath = videoInfo.dir().filePath(QStringLiteral(".miacode_video_batch_compress_tmp.mp4"));
     QFile::remove(tempPath);
     if (QFileInfo::exists(backupPath) && !QFile::remove(backupPath)) {
-        *resultStatus = qtTrId("media_tools.batch_pv_backup_failed");
+        *resultStatus = miacode::localizedText("media_tools.batch_pv_backup_failed");
         return false;
     }
     if (!QFile::copy(job.videoPath, backupPath)) {
-        *resultStatus = qtTrId("media_tools.batch_pv_backup_failed");
+        *resultStatus = miacode::localizedText("media_tools.batch_pv_backup_failed");
         return false;
     }
 
     double durationSeconds = 0.0;
-    QString error;
+    miacode::LocalizedText error;
     if (!probeDuration(ffmpegPath, backupPath, cancelRequested, &durationSeconds, &error)) {
         *resultStatus = error;
         return false;
@@ -166,8 +166,8 @@ bool compressJob(
 
     QTemporaryDir passLogDirectory;
     if (!passLogDirectory.isValid()) {
-        *resultStatus = qtTrId("media_tools.batch_pv_ffmpeg_failed_1")
-            .arg(QStringLiteral("Could not create the two-pass log directory."));
+        *resultStatus = miacode::localizedText("media_tools.batch_pv_ffmpeg_failed_1")
+            .arg(miacode::localizedText("media_tools.pass_log_directory_failed"));
         return false;
     }
 
@@ -189,7 +189,7 @@ bool compressJob(
         if (!firstPassOk || !secondPassOk) {
             QFile::remove(tempPath);
             if (cancelRequested == nullptr || !cancelRequested->load()) {
-                *resultStatus = qtTrId("media_tools.batch_pv_ffmpeg_failed_1")
+                *resultStatus = miacode::localizedText("media_tools.batch_pv_ffmpeg_failed_1")
                     .arg(error);
             }
             return false;
@@ -209,13 +209,13 @@ bool compressJob(
 
     if (!encoded) {
         QFile::remove(tempPath);
-        *resultStatus = qtTrId("media_tools.batch_pv_output_invalid");
+        *resultStatus = miacode::localizedText("media_tools.batch_pv_output_invalid");
         return false;
     }
 
     QString unused;
     if (replaceWithTemp(job.videoPath, tempPath, &unused)) {
-        *resultStatus = qtTrId("media_tools.batch_pv_done_1")
+        *resultStatus = miacode::localizedText("media_tools.batch_pv_done_1")
             .arg(QLocale().formattedDataSize(compressedBytes));
         return true;
     }
@@ -224,10 +224,10 @@ bool compressJob(
         QStringLiteral("%1_compressed.%2").arg(videoInfo.completeBaseName(), videoInfo.suffix()));
     QFile::remove(preservedPath);
     if (QFile::rename(tempPath, preservedPath)) {
-        *resultStatus = qtTrId("media_tools.batch_pv_replace_failed_1")
+        *resultStatus = miacode::localizedText("media_tools.batch_pv_replace_failed_1")
             .arg(QDir::toNativeSeparators(preservedPath));
     } else {
-        *resultStatus = qtTrId("media_tools.batch_pv_replace_failed_1")
+        *resultStatus = miacode::localizedText("media_tools.batch_pv_replace_failed_1")
             .arg(QDir::toNativeSeparators(tempPath));
     }
     return false;
@@ -293,18 +293,18 @@ void PvBatchCompressionWorker::run()
     });
     const QString ffmpegPath = needsFfmpeg ? resolvePvCompressionFfmpegExecutable() : QString();
     if (needsFfmpeg && ffmpegPath.isEmpty()) {
-        const QString missingMessage = qtTrId("media_tools.batch_pv_ffmpeg_missing");
+        const miacode::LocalizedText missingMessage = miacode::localizedText("media_tools.batch_pv_ffmpeg_missing");
         int failed = 0;
         for (int row = 0; row < jobs_.size(); ++row) {
             const PvCompressionJob& job = jobs_.at(row);
             if (job.videoPath.isEmpty()) {
-                emit rowStatus(row, qtTrId("media_tools.batch_pv_no_video"));
+                emit rowStatus(row, miacode::localizedText("media_tools.batch_pv_no_video"));
             } else if (job.originalBytes < kPvCompressionHardLimitBytes) {
-                emit rowStatus(row, qtTrId("media_tools.batch_pv_already_small"));
+                emit rowStatus(row, miacode::localizedText("media_tools.batch_pv_already_small"));
             } else {
                 emit rowStatus(
                     row,
-                    qtTrId("media_tools.batch_pv_failed_1").arg(missingMessage));
+                    miacode::localizedText("media_tools.batch_pv_failed_1").arg(missingMessage));
                 ++failed;
             }
             emit progress(row + 1);
@@ -318,23 +318,23 @@ void PvBatchCompressionWorker::run()
     for (int row = 0; row < jobs_.size() && !isCanceled(); ++row) {
         const PvCompressionJob& job = jobs_.at(row);
         if (job.videoPath.isEmpty()) {
-            emit rowStatus(row, qtTrId("media_tools.batch_pv_no_video"));
+            emit rowStatus(row, miacode::localizedText("media_tools.batch_pv_no_video"));
             emit progress(row + 1);
             continue;
         }
         if (job.originalBytes < kPvCompressionHardLimitBytes) {
-            emit rowStatus(row, qtTrId("media_tools.batch_pv_already_small"));
+            emit rowStatus(row, miacode::localizedText("media_tools.batch_pv_already_small"));
             emit progress(row + 1);
             continue;
         }
-        emit rowStatus(row, qtTrId("media_tools.batch_pv_compressing"));
-        emit summary(qtTrId("media_tools.batch_pv_compressing_1").arg(job.displayName));
-        QString status;
+        emit rowStatus(row, miacode::localizedText("media_tools.batch_pv_compressing"));
+        emit summary(miacode::localizedText("media_tools.batch_pv_compressing_1").arg(job.displayName));
+        miacode::LocalizedText status;
         if (compressJob(ffmpegPath, job, cancelRequested_, &status)) {
             ++succeeded;
         } else if (!isCanceled()) {
             ++failed;
-            status = qtTrId("media_tools.batch_pv_failed_1").arg(status);
+            status = miacode::localizedText("media_tools.batch_pv_failed_1").arg(status);
         }
         if (!status.isEmpty()) {
             emit rowStatus(row, status);

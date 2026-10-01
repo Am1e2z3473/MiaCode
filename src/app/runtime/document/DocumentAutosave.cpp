@@ -1,4 +1,6 @@
-﻿#include "app/services/UiRequestService.h"
+﻿#include "common/LocalizedText.h"
+
+#include "app/services/UiRequestService.h"
 #include "runtime/document/DocumentSessionHost.h"
 #include "runtime/Shared.h"
 #include "runtime/editor/EditorHost.h"
@@ -159,13 +161,13 @@ void miacode::runtime::DocumentSessionHost::restoreBackupFilePath(const QString&
     if (requests == nullptr) {
         return;
     }
-    const QString title = qtTrId("dialog.restore_backup.title");
+    const miacode::LocalizedText title = miacode::localizedText("dialog.restore_backup.title");
     const QString normalizedPath = path.isEmpty() ? QString() : QDir::cleanPath(path);
     const QFileInfo backupInfo(normalizedPath);
     if (normalizedPath.isEmpty() || !backupInfo.exists() || !backupInfo.isFile()) {
         requests->postNotice(
             miacode::NoticeSeverity::Warning, title,
-            qtTrId("dialog.restore_backup.missing")
+            miacode::localizedText("dialog.restore_backup.missing")
                 .arg(QDir::toNativeSeparators(normalizedPath)));
         return;
     }
@@ -176,9 +178,9 @@ void miacode::runtime::DocumentSessionHost::restoreBackupFilePath(const QString&
     requests->requestConfirmation(
         title,
         mentionAbnormalExit
-            ? qtTrId("dialog.restore_backup.abnormal_exit_confirm")
+            ? miacode::localizedText("dialog.restore_backup.abnormal_exit_confirm")
                   .arg(backupTimestampLabel)
-            : qtTrId("dialog.restore_backup.confirm").arg(backupTimestampLabel),
+            : miacode::localizedText("dialog.restore_backup.confirm").arg(backupTimestampLabel),
         title,
         [this, normalizedPath, title](bool accepted) {
             if (accepted) {
@@ -207,7 +209,7 @@ void miacode::runtime::DocumentSessionHost::applyBackupFile(const QString& norma
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
         requests->postNotice(
             miacode::NoticeSeverity::Error, title,
-            qtTrId("dialog.restore_backup.read_failed")
+            miacode::localizedText("dialog.restore_backup.read_failed")
                 .arg(QDir::toNativeSeparators(normalizedPath)));
         return;
     }
@@ -238,7 +240,7 @@ void miacode::runtime::DocumentSessionHost::applyBackupFile(const QString& norma
     // surface instead of vanishing.
     requests->postNotice(
         miacode::NoticeSeverity::Information, title,
-        qtTrId("status.restore_backup.loaded"));
+        miacode::localizedText("status.restore_backup.loaded"));
 }
 
 void miacode::runtime::DocumentSessionHost::schedulePendingAbnormalExitBackupRestore()
@@ -459,11 +461,11 @@ namespace {
 
 // Saving is on the v2 path (Session::saveDocument / saveDocumentAs), so its
 // failures have to reach the QML shell rather than a Widgets box.
-void postSaveFailureThrough(miacode::UiRequestService* requests, const QString& text)
+void postSaveFailureThrough(miacode::UiRequestService* requests, const miacode::LocalizedText& text)
 {
     if (requests != nullptr) {
         requests->postNotice(miacode::NoticeSeverity::Error,
-                             QStringLiteral("Save Failed"), text);
+                             miacode::localizedText("document.save_failed"), text);
     }
 }
 
@@ -507,7 +509,7 @@ bool miacode::runtime::DocumentSessionHost::saveToPath(const QString& path)
     (void)session_.parsedFirstSeconds(&firstOk);
     if (!firstOk) {
         _mc_op_.fail(QStringLiteral("invalid_first"));
-        postSaveFailureThrough(session_.uiRequestService(), QStringLiteral("&first must be a valid number of seconds."));
+        postSaveFailureThrough(session_.uiRequestService(), miacode::localizedText("document.invalid_first"));
         miacode::debug_log::appendTimingLine(
             miacode::debug_log::Channel::Runtime,
             QStringLiteral("close_timing/document"),
@@ -520,7 +522,7 @@ bool miacode::runtime::DocumentSessionHost::saveToPath(const QString& path)
     QSaveFile file(path);
     if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
         _mc_op_.fail(QStringLiteral("QSaveFile::open: %1").arg(file.errorString()));
-        postSaveFailureThrough(session_.uiRequestService(), QStringLiteral("Cannot write file:\n") + path);
+        postSaveFailureThrough(session_.uiRequestService(), miacode::localizedText("document.open_write_failed") + path);
         miacode::debug_log::appendTimingLine(
             miacode::debug_log::Channel::Runtime,
             QStringLiteral("close_timing/document"),
@@ -541,7 +543,7 @@ bool miacode::runtime::DocumentSessionHost::saveToPath(const QString& path)
     }
     if (file.write(data) != data.size() || !file.commit()) {
         _mc_op_.fail(QStringLiteral("write_or_commit_failed err=%1").arg(file.errorString()));
-        postSaveFailureThrough(session_.uiRequestService(), QStringLiteral("Write failed:\n") + path);
+        postSaveFailureThrough(session_.uiRequestService(), miacode::localizedText("document.write_failed") + path);
         miacode::debug_log::appendTimingLine(
             miacode::debug_log::Channel::Runtime,
             QStringLiteral("close_timing/document"),

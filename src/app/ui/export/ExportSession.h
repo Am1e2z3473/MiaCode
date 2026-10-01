@@ -74,9 +74,9 @@ class ExportSession final : public QObject
     Q_PROPERTY(int introSoundIndex READ introSoundIndex WRITE setIntroSoundIndex NOTIFY introChanged)
     Q_PROPERTY(QString introSoundFileName READ introSoundFileName WRITE setIntroSoundFileName NOTIFY introChanged)
     Q_PROPERTY(double introSoundVolume READ introSoundVolume WRITE setIntroSoundVolume NOTIFY introChanged)
-    Q_PROPERTY(QString introSoundLabel READ introSoundLabel CONSTANT)
-    Q_PROPERTY(QString introSoundVolumeLabel READ introSoundVolumeLabel CONSTANT)
-    Q_PROPERTY(QString introSoundImportLabel READ introSoundImportLabel CONSTANT)
+    Q_PROPERTY(QString introSoundLabel READ introSoundLabel NOTIFY localeLabelsChanged)
+    Q_PROPERTY(QString introSoundVolumeLabel READ introSoundVolumeLabel NOTIFY localeLabelsChanged)
+    Q_PROPERTY(QString introSoundImportLabel READ introSoundImportLabel NOTIFY localeLabelsChanged)
 
     // Range
     Q_PROPERTY(double exportStartSeconds READ exportStartSeconds WRITE setExportStartSeconds NOTIFY rangeChanged)

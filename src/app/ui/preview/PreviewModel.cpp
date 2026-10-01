@@ -17,16 +17,16 @@ namespace {
 
 struct StatisticDescriptor {
     const char* kind;
-    const char* fallbackName;
+    const char* labelKey;
 };
 
 constexpr std::array<StatisticDescriptor, 6> kStatisticDescriptors{{
-    {"tap", "Tap"},
-    {"hold", "Hold"},
-    {"slide", "Slide"},
-    {"touch", "Touch"},
-    {"break", "Break"},
-    {"total", "Total"},
+    {"tap", "note_stats.tap"},
+    {"hold", "note_stats.hold"},
+    {"slide", "note_stats.slide"},
+    {"touch", "note_stats.touch"},
+    {"break", "note_stats.break"},
+    {"total", "note_stats.total"},
 }};
 
 } // namespace
@@ -121,9 +121,7 @@ void PreviewModel::rebuildStatistics()
         const StatisticDescriptor& descriptor = kStatisticDescriptors.at(static_cast<std::size_t>(index));
         const QString text = statisticsTexts_.value(index);
         const int separator = text.indexOf(QRegularExpression(QStringLiteral("\\s")));
-        const QString name = separator > 0
-            ? text.left(separator)
-            : QString::fromLatin1(descriptor.fallbackName);
+        const QString name = qtTrId(descriptor.labelKey);
         const QString value = statisticsAvailable_ && separator > 0
             ? text.mid(separator + 1).trimmed()
             : QString();

@@ -7,6 +7,35 @@ namespace miacode {
 
 namespace {
 
+QVariant resolveText(const QVariant& value)
+{
+    if (value.metaType() == QMetaType::fromType<LocalizedText>())
+        return value.value<LocalizedText>().text();
+    if (value.metaType().id() == QMetaType::QVariantMap) {
+        QVariantMap map = value.toMap();
+        for (auto it = map.begin(); it != map.end(); ++it) it.value() = resolveText(it.value());
+        return map;
+    }
+    if (value.metaType().id() == QMetaType::QVariantList) {
+        QVariantList list = value.toList();
+        for (auto& item : list) item = resolveText(item);
+        return list;
+    }
+    return value;
+}
+
+QVariantMap presentation(const QVariantMap& payload)
+{
+    QVariantMap result = resolveText(payload).toMap();
+    if (result.contains(QStringLiteral("nameFilters"))) {
+        QStringList filters;
+        for (const auto& filter : result.value(QStringLiteral("nameFilters")).toList())
+            filters.append(filter.toString());
+        result.insert(QStringLiteral("nameFilters"), filters);
+    }
+    return result;
+}
+
 // Resolves FileRequest::startPath into the `startFolder` / `startFile` URLs the
 // shell hands straight to its dialogs.  They must come from
 // QUrl::fromLocalFile: spelling them in QML as "file://" + "C:/charts" parses
@@ -58,33 +87,46 @@ UiRequestService::UiRequestService(QObject* parent)
 {
 }
 
+void UiRequestService::retranslate()
+{
+    for (auto it = filePresentations_.cbegin(); it != filePresentations_.cend(); ++it)
+        emit fileUpdated(it.key(), presentation(it.value()));
+    for (auto it = noticePresentations_.cbegin(); it != noticePresentations_.cend(); ++it)
+        emit noticeUpdated(it.key(), presentation(it.value()));
+    for (auto it = pendingChoices_.cbegin(); it != pendingChoices_.cend(); ++it)
+        emit choiceUpdated(it.key(), presentation(it->presentation));
+}
+
 QString UiRequestService::requestFile(const FileRequest& request, FileCallback onResolved)
 {
     const QString requestId = QStringLiteral("file-%1").arg(nextRequestSerial_++);
     pendingFileRequests_.insert(requestId, std::move(onResolved));
 
     QVariantMap payload;
-    payload.insert(QStringLiteral("title"), request.title);
+    payload.insert(QStringLiteral("title"), request.title.variant());
     payload.insert(QStringLiteral("startPath"), request.startPath);
-    payload.insert(QStringLiteral("nameFilters"), request.nameFilters);
+    QVariantList filters;
+    for (const auto& filter : request.nameFilters) filters.append(filter.variant());
+    payload.insert(QStringLiteral("nameFilters"), filters);
     payload.insert(QStringLiteral("saveMode"), request.saveMode);
     payload.insert(QStringLiteral("selectFolder"), request.selectFolder);
     addStartLocation(request, payload);
-    emit fileRequested(requestId, payload);
+    filePresentations_.insert(requestId, payload);
+    emit fileRequested(requestId, presentation(payload));
     return requestId;
 }
 
 void UiRequestService::postNotice(NoticeSeverity severity,
-                                  const QString& title,
-                                  const QString& text,
-                                  const QString& details)
+                                  const LocalizedText& title,
+                                  const LocalizedText& text,
+                                  const LocalizedText& details)
 {
     emitNotice(severity, title, text, details, QString());
 }
 
-QString UiRequestService::requestConfirmation(const QString& title,
-                                              const QString& text,
-                                              const QString& acceptLabel,
+QString UiRequestService::requestConfirmation(const LocalizedText& title,
+                                              const LocalizedText& text,
+                                              const LocalizedText& acceptLabel,
                                               NoticeCallback onResolved)
 {
     const QString requestId = QStringLiteral("confirm-%1").arg(nextRequestSerial_++);
@@ -94,8 +136,8 @@ QString UiRequestService::requestConfirmation(const QString& title,
     return requestId;
 }
 
-QString UiRequestService::requestChoice(const QString& title,
-                                       const QString& text,
+QString UiRequestService::requestChoice(const LocalizedText& title,
+                                       const LocalizedText& text,
                                        const QVariantList& choices,
                                        const QString& dismissChoiceId,
                                        ChoiceCallback onResolved)
@@ -114,11 +156,12 @@ QString UiRequestService::requestChoice(const QString& title,
     pendingChoices_.insert(requestId, std::move(pending));
 
     QVariantMap payload;
-    payload.insert(QStringLiteral("title"), title);
-    payload.insert(QStringLiteral("text"), text);
+    payload.insert(QStringLiteral("title"), title.variant());
+    payload.insert(QStringLiteral("text"), text.variant());
     payload.insert(QStringLiteral("choices"), choices);
     payload.insert(QStringLiteral("dismissChoiceId"), dismissChoiceId);
-    emit choiceRequested(requestId, payload);
+    pendingChoices_[requestId].presentation = payload;
+    emit choiceRequested(requestId, presentation(payload));
     return requestId;
 }
 
@@ -139,10 +182,10 @@ void UiRequestService::submitChoiceResult(const QString& requestId, const QStrin
 }
 
 QString UiRequestService::requestNoticeAction(NoticeSeverity severity,
-                                              const QString& title,
-                                              const QString& text,
-                                              const QString& details,
-                                              const QString& actionLabel,
+                                              const LocalizedText& title,
+                                              const LocalizedText& text,
+                                              const LocalizedText& details,
+                                              const LocalizedText& actionLabel,
                                               NoticeCallback onResolved)
 {
     const QString requestId = QStringLiteral("notice-%1").arg(nextRequestSerial_++);
@@ -152,26 +195,28 @@ QString UiRequestService::requestNoticeAction(NoticeSeverity severity,
 }
 
 QString UiRequestService::emitNotice(NoticeSeverity severity,
-                                     const QString& title,
-                                     const QString& text,
-                                     const QString& details,
-                                     const QString& actionLabel,
+                                     const LocalizedText& title,
+                                     const LocalizedText& text,
+                                     const LocalizedText& details,
+                                     const LocalizedText& actionLabel,
                                      const QString& requestId,
                                      bool confirmation)
 {
     QVariantMap notice;
     notice.insert(QStringLiteral("confirmation"), confirmation);
     notice.insert(QStringLiteral("severity"), severityId(severity));
-    notice.insert(QStringLiteral("title"), title);
-    notice.insert(QStringLiteral("text"), text);
-    notice.insert(QStringLiteral("details"), details);
-    notice.insert(QStringLiteral("actionLabel"), actionLabel);
-    emit noticeRequested(requestId, notice);
+    notice.insert(QStringLiteral("title"), title.variant());
+    notice.insert(QStringLiteral("text"), text.variant());
+    notice.insert(QStringLiteral("details"), details.variant());
+    notice.insert(QStringLiteral("actionLabel"), actionLabel.variant());
+    noticePresentations_.insert(requestId, notice);
+    emit noticeRequested(requestId, presentation(notice));
     return requestId;
 }
 
 void UiRequestService::submitNoticeResult(const QString& requestId, bool actionChosen)
 {
+    noticePresentations_.remove(requestId);
     const auto pending = pendingNotices_.find(requestId);
     if (pending == pendingNotices_.end()) {
         return;
@@ -195,6 +240,7 @@ void UiRequestService::cancelFileRequest(const QString& requestId)
 
 void UiRequestService::resolve(const QString& requestId, const QString& path)
 {
+    filePresentations_.remove(requestId);
     const auto pending = pendingFileRequests_.find(requestId);
     if (pending == pendingFileRequests_.end()) {
         return;

@@ -966,8 +966,8 @@ Rectangle {
                                             labelWidth: root.labelWidth
                                             options: [
                                                 { value: "auto", label: qsTrId("qml.automatic") },
-                                                { value: "DX", label: "DX" },
-                                                { value: "Standard", label: "Standard" }
+                                                { value: "DX", label: qsTrId("dialog.skin_settings.chart_effect.starry") },
+                                                { value: "Standard", label: qsTrId("dialog.skin_settings.chart_effect.standard") }
                                             ]
                                             currentValue: root.session ? root.session.cardMode : "auto"
                                             onPicked: function(value) { if (root.session) root.session.cardMode = value }

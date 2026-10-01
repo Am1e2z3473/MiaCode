@@ -1,5 +1,7 @@
 #pragma once
 
+#include "common/LocalizedText.h"
+
 #include <QObject>
 #include <QString>
 
@@ -36,8 +38,8 @@ public:
     explicit JobProgressService(QObject* parent = nullptr);
 
     bool active() const { return active_; }
-    QString title() const { return title_; }
-    QString label() const { return label_; }
+    QString title() const { return title_.text(); }
+    QString label() const { return label_.text(); }
     int percent() const { return percent_; }
     bool indeterminate() const { return indeterminate_; }
     // Identifies the job currently owning the surface. Consumers compare it
@@ -48,14 +50,15 @@ public:
     bool chartExport() const;
 
     // Returns the new job's token.
-    quint64 begin(const QString& title,
-                  const QString& label,
+    quint64 begin(const LocalizedText& title,
+                  const LocalizedText& label,
                   bool cancellable,
                   TaskType taskType = TaskType::Generic);
-    void report(int percent, const QString& label);
+    void report(int percent, const LocalizedText& label);
     // A stage with no measurable progress; the shell shows a busy indicator.
-    void reportIndeterminate(const QString& label);
+    void reportIndeterminate(const LocalizedText& label);
     void end();
+    void retranslate();
 
     Q_INVOKABLE void requestCancel();
 
@@ -71,8 +74,8 @@ private:
     int percent_ = 0;
     quint64 token_ = 0;
     TaskType taskType_ = TaskType::Generic;
-    QString title_;
-    QString label_;
+    LocalizedText title_;
+    LocalizedText label_;
 };
 
 }  // namespace miacode

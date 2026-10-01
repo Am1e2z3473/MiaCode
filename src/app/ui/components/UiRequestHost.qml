@@ -20,6 +20,11 @@ Item {
     property string activeNoticeId: ""
     property string activeChoiceId: ""
 
+    property var fileRequest: ({})
+    property var folderRequest: ({})
+    property var notice: ({})
+    property var choiceRequest: ({})
+
     visible: false
     width: 0
     height: 0
@@ -30,17 +35,14 @@ Item {
     function openRequest(requestId, request) {
         if (request.selectFolder) {
             root.activeFolderRequestId = requestId
-            folderDialog.title = request.title
+            root.folderRequest = request
             if (request.startFolder)
                 folderDialog.currentFolder = request.startFolder
             folderDialog.open()
             return
         }
         root.activeFileRequestId = requestId
-        fileDialog.title = request.title
-        fileDialog.nameFilters = request.nameFilters && request.nameFilters.length > 0
-                                 ? request.nameFilters
-                                 : [qsTrId("qml.all_files")]
+        root.fileRequest = request
         // Mode first: an open dialog rejects a selectedFile that does not
         // exist, a save dialog accepts the proposed name.
         fileDialog.fileMode = request.saveMode ? FileDialog.SaveFile : FileDialog.OpenFile
@@ -54,21 +56,24 @@ Item {
     Connections {
         target: root.requests
         function onFileRequested(requestId, request) { root.openRequest(requestId, request) }
+        function onFileUpdated(requestId, request) {
+            if (requestId === root.activeFileRequestId) root.fileRequest = request
+            if (requestId === root.activeFolderRequestId) root.folderRequest = request
+        }
+        function onNoticeUpdated(requestId, notice) {
+            if (requestId === root.activeNoticeId) root.notice = notice
+        }
+        function onChoiceUpdated(requestId, request) {
+            if (requestId === root.activeChoiceId) root.choiceRequest = request
+        }
         function onChoiceRequested(requestId, request) {
             root.activeChoiceId = requestId
-            choiceDialog.title = request.title
-            choiceDialog.message = request.text
-            choiceDialog.choices = request.choices || []
-            choiceDialog.dismissChoiceId = request.dismissChoiceId || ""
+            root.choiceRequest = request
             choiceDialog.open()
         }
         function onNoticeRequested(requestId, notice) {
             root.activeNoticeId = requestId
-            noticeDialog.title = notice.title
-            noticeDialog.message = notice.text
-            noticeDialog.details = notice.details
-            noticeDialog.actionLabel = notice.actionLabel || ""
-            noticeDialog.confirmation = !!notice.confirmation
+            root.notice = notice
             noticeDialog.open()
         }
     }
@@ -76,6 +81,9 @@ Item {
     FileDialog {
         id: fileDialog
         objectName: "uiRequestFileDialog"
+        title: root.fileRequest.title || ""
+        nameFilters: root.fileRequest.nameFilters && root.fileRequest.nameFilters.length > 0
+                     ? root.fileRequest.nameFilters : [qsTrId("qml.all_files")]
         onAccepted: {
             const requestId = root.activeFileRequestId
             root.activeFileRequestId = ""
@@ -91,6 +99,7 @@ Item {
     FolderDialog {
         id: folderDialog
         objectName: "uiRequestFolderDialog"
+        title: root.folderRequest.title || ""
         onAccepted: {
             const requestId = root.activeFolderRequestId
             root.activeFolderRequestId = ""
@@ -107,8 +116,11 @@ Item {
         id: noticeDialog
         objectName: "uiRequestNoticeDialog"
 
-        property string actionLabel: ""
-        property bool confirmation: false
+        title: root.notice.title || ""
+        message: root.notice.text || ""
+        details: root.notice.details || ""
+        property string actionLabel: root.notice.actionLabel || ""
+        property bool confirmation: !!root.notice.confirmation
         dismissChoiceId: "reject"
         choices: {
             const actions = [{ id: "reject", label: confirmation ? qsTrId("action.no")
@@ -122,6 +134,8 @@ Item {
         onChosen: function(choiceId) {
             const requestId = root.activeNoticeId
             root.activeNoticeId = ""
+            if (requestId.length === 0 && root.requests)
+                root.requests.submitNoticeResult(requestId, false)
             Qt.callLater(function() {
                 if (requestId.length > 0 && root.requests)
                     root.requests.submitNoticeResult(requestId, choiceId === "accept")
@@ -133,6 +147,10 @@ Item {
     ChoiceDialog {
         id: choiceDialog
         objectName: "uiRequestChoiceDialog"
+        title: root.choiceRequest.title || ""
+        message: root.choiceRequest.text || ""
+        choices: root.choiceRequest.choices || []
+        dismissChoiceId: root.choiceRequest.dismissChoiceId || ""
 
         onChosen: function(choiceId) {
             const requestId = root.activeChoiceId

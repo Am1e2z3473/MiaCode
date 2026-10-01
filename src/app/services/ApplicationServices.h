@@ -156,6 +156,11 @@ public:
     void setExportPageSession(QObject* session) { exportPageSession_ = session; }
 
     SimaiValidationLocale validationLocale() const { return validationLocale_; }
+    void setValidationLocale(SimaiValidationLocale locale)
+    {
+        validationLocale_ = locale;
+        analysis_.setLocale(locale);
+    }
 
     // 更新检查的取数端口。真正触网的实现住在 QML/Bootstrap 层，因为这个
     // 装配体只链 Qt6::Core 与 Qt6::Gui（见类注释）。

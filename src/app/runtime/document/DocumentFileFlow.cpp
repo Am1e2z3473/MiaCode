@@ -1,4 +1,6 @@
-﻿#include "runtime/document/DocumentSessionHost.h"
+﻿#include "common/LocalizedText.h"
+
+#include "runtime/document/DocumentSessionHost.h"
 #include "app/services/UiRequestService.h"
 #include "runtime/Shared.h"
 
@@ -143,8 +145,8 @@ bool miacode::runtime::DocumentSessionHost::openFileAtPath(const QString& path, 
             if (miacode::UiRequestService* const requests = session_.uiRequestService()) {
                 requests->postNotice(
                     miacode::NoticeSeverity::Error,
-                    QStringLiteral("Open Failed"),
-                    QStringLiteral("Cannot open file:\n") + normalizedPath
+                    miacode::localizedText("document.open_failed"),
+                    miacode::localizedText("document.open_read_failed") + normalizedPath
                 );
             }
         }

@@ -2,6 +2,7 @@
 
 #include "app/services/AnalysisService.h"
 
+#include <QCoreApplication>
 #include <utility>
 
 namespace {
@@ -17,6 +18,7 @@ QString validationDetailText(const QString& message)
     if (stripPrefix(QStringLiteral("[ERROR]"))) return detail;
     if (stripPrefix(QStringLiteral("[WARNING]"))) return detail;
     if (stripPrefix(QStringLiteral("[错误]"))) return detail;
+    if (stripPrefix(QStringLiteral("[エラー]"))) return detail;
     stripPrefix(QStringLiteral("[警告]"));
     return detail;
 }
@@ -53,7 +55,7 @@ AnalysisProjection projectAnalysis(const AnalysisProjectionInput& input)
             ? QStringLiteral("warning") : QStringLiteral("error");
         row.code = issue.code;
         row.title = row.severity == QLatin1String("warning")
-            ? QStringLiteral("Warning") : QStringLiteral("Error");
+            ? qtTrId("validation.severity.warning") : qtTrId("validation.severity.error");
         row.detail = validationDetailText(issue.message);
         row.difficultyId = input.activeDifficultyId;
         row.revision = input.validation.revision;
@@ -98,7 +100,7 @@ AnalysisProjection projectAnalysis(
         row.severity = issue.severity == SimaiValidationSeverity::Warning
             ? QStringLiteral("warning") : QStringLiteral("error");
         row.title = row.severity == QLatin1String("warning")
-            ? QStringLiteral("Warning") : QStringLiteral("Error");
+            ? qtTrId("validation.severity.warning") : qtTrId("validation.severity.error");
         row.detail = validationDetailText(issue.displayMessage);
         row.code = QString();
         row.difficultyId = activeDifficultyId;

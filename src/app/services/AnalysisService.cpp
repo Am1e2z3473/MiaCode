@@ -34,6 +34,16 @@ AnalysisSnapshot AnalysisService::snapshot() const
     return snapshot_;
 }
 
+void AnalysisService::setLocale(SimaiValidationLocale locale)
+{
+    if (locale_ == locale) return;
+    locale_ = locale;
+    snapshot_.locale = locale;
+    SimaiParser::localizeValidationReport(snapshot_.validation, locale);
+    if (pendingRequest_) pendingRequest_->locale = locale;
+    emit snapshotChanged(snapshot_.difficultyId, snapshot_.revision);
+}
+
 void AnalysisService::setMuriParameters(
     const MuriRenderOptions& renderOptions, double staticTapOnSlideThresholdSeconds)
 {
@@ -161,6 +171,8 @@ void AnalysisService::dispatchPendingRequest()
                     guard->pendingRequest_.reset();
                 }
                 if (guard->identityIsCurrent(result.difficultyId, result.revision)) {
+                    result.locale = guard->locale_;
+                    SimaiParser::localizeValidationReport(result.validation, result.locale);
                     guard->snapshot_ = std::move(result);
                     emit guard->snapshotChanged(
                         guard->snapshot_.difficultyId, guard->snapshot_.revision);

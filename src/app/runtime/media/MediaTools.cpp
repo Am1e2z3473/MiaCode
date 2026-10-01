@@ -1,3 +1,5 @@
+#include "common/LocalizedText.h"
+
 #include "tools/media/PvCompressionPolicy.h"
 #include "app/services/UiRequestService.h"
 #include "app/services/JobProgressService.h"
@@ -48,7 +50,7 @@ QString describeFileLockHolders(const QString& path)
     DWORD session = 0;
     WCHAR sessionKey[CCH_RM_SESSION_KEY + 1] = {0};
     if (RmStartSession(&session, 0, sessionKey) != ERROR_SUCCESS) {
-        return QStringLiteral("(RmStartSession failed)");
+        return qtTrId("media_tools.lock_session_failed");
     }
     QString result;
     const std::wstring native = QDir::toNativeSeparators(path).toStdWString();
@@ -79,10 +81,10 @@ QString describeFileLockHolders(const QString& path)
             }
             result = holders.isEmpty() ? qtTrId("media_tools.lock_holder_none") : holders.join(QStringLiteral("; "));
         } else {
-            result = QStringLiteral("(RmGetList rc=%1)").arg(static_cast<uint>(rc));
+            result = qtTrId("media_tools.lock_query_failed").arg(static_cast<uint>(rc));
         }
     } else {
-        result = QStringLiteral("(RmRegisterResources failed)");
+        result = qtTrId("media_tools.lock_register_failed");
     }
     RmEndSession(session);
     return result;
@@ -200,7 +202,7 @@ bool renameWithRetry(const QString& from, const QString& to)
     return false;
 }
 
-bool copyFileReplacing(const QString& sourcePath, const QString& destinationPath, QString* error)
+bool copyFileReplacing(const QString& sourcePath, const QString& destinationPath, miacode::LocalizedText* error)
 {
     // Diagnostic bracket #1: who holds the source right after the preview
     // release (and before any ffmpeg work). For pv ops sourcePath is pv.mp4.
@@ -216,23 +218,23 @@ bool copyFileReplacing(const QString& sourcePath, const QString& destinationPath
         pumpFileLockRetryDelay();
     }
     if (error != nullptr) {
-        *error = qtTrId("media_tools.failed_to_write_file_1")
+        *error = miacode::localizedText("media_tools.failed_to_write_file_1")
             .arg(destinationPath);
     }
     return false;
 }
 
-bool restoreFileFromBackup(const QString& backupPath, const QString& destinationPath, QString* error)
+bool restoreFileFromBackup(const QString& backupPath, const QString& destinationPath, miacode::LocalizedText* error)
 {
     if (!QFileInfo::exists(backupPath)) {
         if (error != nullptr) {
-            *error = QStringLiteral("Backup file was not found: %1").arg(backupPath);
+            *error = miacode::localizedText("media_tools.backup_not_found").arg(backupPath);
         }
         return false;
     }
     if (!copyFileReplacing(backupPath, destinationPath, error)) {
         if (error != nullptr) {
-            *error = qtTrId("media_tools.failed_to_restore_backup_to")
+            *error = miacode::localizedText("media_tools.failed_to_restore_backup_to")
                 .arg(destinationPath);
         }
         return false;
@@ -265,7 +267,7 @@ int mediaBlankBeatsFromMeterId(const QString& meterId)
     return ok && numerator > 0 ? numerator : 4;
 }
 
-bool replaceFileWithTemp(const QString& tempPath, const QString& destinationPath, QString* error)
+bool replaceFileWithTemp(const QString& tempPath, const QString& destinationPath, miacode::LocalizedText* error)
 {
     const QString replacingPath = destinationPath + QStringLiteral(".replacing");
     removeWithRetry(replacingPath);
@@ -279,16 +281,16 @@ bool replaceFileWithTemp(const QString& tempPath, const QString& destinationPath
                                       describeFileLockHolders(destinationPath));
         logFileLockDiag(QStringLiteral("rename_failed"), destinationPath);
         if (error != nullptr) {
-            *error = qtTrId("media_tools.failed_to_stage_original_file")
+            *error = miacode::localizedText("media_tools.failed_to_stage_original_file")
                 .arg(destinationPath)
-                + qtTrId("media_tools.lock_diagnosis").arg(diag);
+                + miacode::localizedText("media_tools.lock_diagnosis").arg(diag);
         }
         return false;
     }
     if (!renameWithRetry(tempPath, destinationPath)) {
         renameWithRetry(replacingPath, destinationPath);
         if (error != nullptr) {
-            *error = QStringLiteral("Failed to replace file: %1").arg(destinationPath);
+            *error = miacode::localizedText("media_tools.replace_failed").arg(destinationPath);
         }
         return false;
     }
@@ -306,15 +308,15 @@ bool runFfmpegBlocking(
     const QString& ffmpegPath,
     const QStringList& args,
     miacode::JobProgressService* jobProgress,
-    const QString& title,
-    const QString& label,
+    const miacode::LocalizedText& title,
+    const miacode::LocalizedText& label,
     double totalDurationSeconds,
-    QString* error,
+    miacode::LocalizedText* error,
     bool* cancelled = nullptr)
 {
     if (jobProgress == nullptr) {
         if (error != nullptr) {
-            *error = QStringLiteral("progress surface unavailable");
+            *error = miacode::localizedText("media_tools.progress_unavailable");
         }
         return false;
     }
@@ -401,7 +403,7 @@ bool runFfmpegBlocking(
                 *cancelled = true;
             }
             if (error != nullptr) {
-                *error = qtTrId("media_tools.canceled");
+                *error = miacode::localizedText("media_tools.canceled");
             }
             return false;
         }
@@ -417,15 +419,15 @@ bool runFfmpegBlocking(
         if (error != nullptr) {
             const QString trimmed = stderrTail.trimmed();
             *error = trimmed.isEmpty()
-                ? QStringLiteral("ffmpeg exited with code %1.").arg(process.exitCode())
-                : trimmed.right(2000);
+                ? miacode::localizedText("media_tools.ffmpeg_exit_error").arg(process.exitCode())
+                : miacode::LocalizedText(trimmed.right(2000));
         }
         return false;
     }
     return true;
 }
 
-bool probeMediaDurationSeconds(const QString& ffmpegPath, const QString& mediaPath, double* durationSeconds, QString* error)
+bool probeMediaDurationSeconds(const QString& ffmpegPath, const QString& mediaPath, double* durationSeconds, miacode::LocalizedText* error)
 {
     QStringList args;
     args << QStringLiteral("-hide_banner")
@@ -446,7 +448,7 @@ bool probeMediaDurationSeconds(const QString& ffmpegPath, const QString& mediaPa
         process.kill();
         process.waitForFinished(3000);
         if (error != nullptr) {
-            *error = QStringLiteral("Timed out while probing media duration.");
+            *error = miacode::localizedText("media_tools.duration_probe_timeout");
         }
         return false;
     }
@@ -458,7 +460,7 @@ bool probeMediaDurationSeconds(const QString& ffmpegPath, const QString& mediaPa
     const QRegularExpressionMatch match = durationPattern.match(output);
     if (!match.hasMatch()) {
         if (error != nullptr) {
-            *error = QStringLiteral("Failed to read media duration.");
+            *error = miacode::localizedText("media_tools.duration_read_failed");
         }
         return false;
     }
@@ -469,7 +471,7 @@ bool probeMediaDurationSeconds(const QString& ffmpegPath, const QString& mediaPa
     const double totalSeconds = hours * 3600.0 + minutes * 60.0 + seconds;
     if (!(totalSeconds > 0.0)) {
         if (error != nullptr) {
-            *error = QStringLiteral("Invalid media duration.");
+            *error = miacode::localizedText("media_tools.duration_invalid");
         }
         return false;
     }
@@ -483,7 +485,7 @@ bool compressVideoUnder20Mb(
     const QString& ffmpegPath,
     const QString& videoPath,
     miacode::JobProgressService* jobProgress,
-    QString* error,
+    miacode::LocalizedText* error,
     bool* cancelled = nullptr,
     bool* preservedCompressed = nullptr)
 {
@@ -494,7 +496,7 @@ bool compressVideoUnder20Mb(
     const qint64 originalBytes = videoInfo.size();
     if (originalBytes > 0 && originalBytes < miacode::media::kPvCompressionHardLimitBytes) {
         if (error != nullptr) {
-            *error = qtTrId("media_tools.the_current_video_is_already");
+            *error = miacode::localizedText("media_tools.the_current_video_is_already");
         }
         return false;
     }
@@ -515,7 +517,7 @@ bool compressVideoUnder20Mb(
     QTemporaryDir passLogDirectory;
     if (!passLogDirectory.isValid()) {
         if (error != nullptr) {
-            *error = QStringLiteral("Could not create the two-pass log directory.");
+            *error = miacode::localizedText("media_tools.pass_log_directory_failed");
         }
         return false;
     }
@@ -536,8 +538,8 @@ bool compressVideoUnder20Mb(
             ffmpegPath,
             firstPass,
             jobProgress,
-            qtTrId("media_tools.compressing_video"),
-            qtTrId("media_tools.compressing_video"),
+            miacode::localizedText("media_tools.compressing_video"),
+            miacode::localizedText("media_tools.compressing_video"),
             durationSeconds,
             error,
             cancelled);
@@ -545,8 +547,8 @@ bool compressVideoUnder20Mb(
             ffmpegPath,
             secondPass,
             jobProgress,
-            qtTrId("media_tools.compressing_video"),
-            qtTrId("media_tools.compressing_video"),
+            miacode::localizedText("media_tools.compressing_video"),
+            miacode::localizedText("media_tools.compressing_video"),
             durationSeconds,
             error,
             cancelled);
@@ -571,8 +573,8 @@ bool compressVideoUnder20Mb(
         QFile::remove(tempPath);
         if (error != nullptr) {
             *error = compressedBytes >= miacode::media::kPvCompressionHardLimitBytes
-                ? QStringLiteral("Compressed video is still larger than 20 MB.")
-                : QStringLiteral("Compressed video was not smaller than the original file.");
+                ? miacode::localizedText("media_tools.compressed_size_exceeded")
+                : miacode::localizedText("media_tools.compressed_size_not_reduced");
         }
         return false;
     }
@@ -594,11 +596,11 @@ bool compressVideoUnder20Mb(
             *preservedCompressed = true;
         }
         if (error != nullptr) {
-            const QString staged = *error;
-            *error = qtTrId("media_tools.compressed_but_replace_failed")
+            const miacode::LocalizedText staged = *error;
+            *error = miacode::localizedText("media_tools.compressed_but_replace_failed")
                          .arg(QDir::toNativeSeparators(preservedPath));
             if (!staged.isEmpty()) {
-                *error += QStringLiteral("\n\n") + staged;
+                *error = *error + QStringLiteral("\n\n") + staged;
             }
         }
     }
@@ -611,7 +613,7 @@ bool convertTrackTo44100Hz(
     const QString& ffmpegPath,
     const QString& trackPath,
     miacode::JobProgressService* jobProgress,
-    QString* error,
+    miacode::LocalizedText* error,
     bool* cancelled = nullptr)
 {
     const QFileInfo trackInfo(trackPath);
@@ -640,8 +642,8 @@ bool convertTrackTo44100Hz(
             ffmpegPath,
             args,
             jobProgress,
-            qtTrId("media_tools.processing_audio"),
-            qtTrId("media_tools.processing_audio"),
+            miacode::localizedText("media_tools.processing_audio"),
+            miacode::localizedText("media_tools.processing_audio"),
             trackDurationSeconds,
             error,
             cancelled)) {
@@ -656,7 +658,7 @@ bool prependTrackSilence(
     const QString& trackPath,
     double silenceSeconds,
     miacode::JobProgressService* jobProgress,
-    QString* error,
+    miacode::LocalizedText* error,
     bool* cancelled = nullptr)
 {
     const QFileInfo trackInfo(trackPath);
@@ -691,8 +693,8 @@ bool prependTrackSilence(
             ffmpegPath,
             args,
             jobProgress,
-            qtTrId("media_tools.processing_track_mp3"),
-            qtTrId("media_tools.processing_track_mp3"),
+            miacode::localizedText("media_tools.processing_track_mp3"),
+            miacode::localizedText("media_tools.processing_track_mp3"),
             totalDurationSeconds,
             error,
             cancelled)) {
@@ -707,7 +709,7 @@ bool prependPvBlack(
     const QString& pvPath,
     double silenceSeconds,
     miacode::JobProgressService* jobProgress,
-    QString* error,
+    miacode::LocalizedText* error,
     bool* cancelled = nullptr)
 {
     const QFileInfo pvInfo(pvPath);
@@ -748,8 +750,8 @@ bool prependPvBlack(
             ffmpegPath,
             args,
             jobProgress,
-            qtTrId("media_tools.processing_pv_mp4"),
-            qtTrId("media_tools.processing_pv_mp4"),
+            miacode::localizedText("media_tools.processing_pv_mp4"),
+            miacode::localizedText("media_tools.processing_pv_mp4"),
             totalDurationSeconds,
             error,
             cancelled)) {
@@ -768,12 +770,12 @@ void miacode::runtime::MediaJobsHost::onCompressBackgroundVideo()
     if (requests == nullptr) {
         return;
     }
-    const QString title = qtTrId("media_tools.compress_video");
+    const miacode::LocalizedText title = miacode::localizedText("media_tools.compress_video");
     const QString chartDirPath = resolveCurrentChartDirectory();
     if (chartDirPath.isEmpty()) {
         requests->postNotice(
             miacode::NoticeSeverity::Warning, title,
-            qtTrId("media_tools.open_or_save_a_chart"));
+            miacode::localizedText("media_tools.open_or_save_a_chart"));
         return;
     }
 
@@ -782,7 +784,7 @@ void miacode::runtime::MediaJobsHost::onCompressBackgroundVideo()
     if (!QFileInfo::exists(videoPath)) {
         requests->postNotice(
             miacode::NoticeSeverity::Warning, title,
-            qtTrId("media_tools.no_background_mp4_video_was"));
+            miacode::localizedText("media_tools.no_background_mp4_video_was"));
         return;
     }
 
@@ -795,7 +797,7 @@ void miacode::runtime::MediaJobsHost::onCompressBackgroundVideo()
         && videoSizeBytes < miacode::media::kPvCompressionHardLimitBytes) {
         requests->postNotice(
             miacode::NoticeSeverity::Information, title,
-            qtTrId("media_tools.the_current_video_is_already_2")
+            miacode::localizedText("media_tools.the_current_video_is_already_2")
                 .arg(QLocale().formattedDataSize(videoSizeBytes)));
         return;
     }
@@ -803,9 +805,9 @@ void miacode::runtime::MediaJobsHost::onCompressBackgroundVideo()
         QStringLiteral("%1_bak.%2").arg(videoInfo.completeBaseName(), videoInfo.suffix());
     requests->requestConfirmation(
         title,
-        qtTrId("media_tools.compress_1_under_20_mib")
+        miacode::localizedText("media_tools.compress_1_under_20_mib")
             .arg(videoInfo.fileName(), backupName),
-        qtTrId("media_tools.compress_video"),
+        miacode::localizedText("media_tools.compress_video"),
         [this, title, videoPath, backupName](bool accepted) {
             if (accepted) {
                 runCompressBackgroundVideo(title, videoPath, backupName);
@@ -814,7 +816,7 @@ void miacode::runtime::MediaJobsHost::onCompressBackgroundVideo()
 }
 
 void miacode::runtime::MediaJobsHost::runCompressBackgroundVideo(
-    const QString& title, const QString& videoPath, const QString& backupName)
+    const miacode::LocalizedText& title, const QString& videoPath, const QString& backupName)
 {
     MC_OP("miacode::runtime::MediaJobsHost::runCompressBackgroundVideo");
     miacode::UiRequestService* const requests = session_.uiRequestService();
@@ -825,13 +827,13 @@ void miacode::runtime::MediaJobsHost::runCompressBackgroundVideo(
     if (ffmpegPath.isEmpty()) {
         requests->postNotice(
             miacode::NoticeSeverity::Error, title,
-            qtTrId("media_tools.ffmpeg_was_not_found_place"));
+            miacode::localizedText("media_tools.ffmpeg_was_not_found_place"));
         return;
     }
 
     releasePreviewMediaForFileOperation();
 
-    QString error;
+    miacode::LocalizedText error;
     bool cancelled = false;
     bool preservedCompressed = false;
     if (!compressVideoUnder20Mb(
@@ -843,7 +845,7 @@ void miacode::runtime::MediaJobsHost::runCompressBackgroundVideo(
             (cancelled || preservedCompressed) ? miacode::NoticeSeverity::Information
                                                : miacode::NoticeSeverity::Error,
             title,
-            cancelled ? qtTrId("media_tools.video_compression_canceled")
+            cancelled ? miacode::localizedText("media_tools.video_compression_canceled")
                       : error);
         reloadPreviewMediaAfterFileOperation(false);
         return;
@@ -851,7 +853,7 @@ void miacode::runtime::MediaJobsHost::runCompressBackgroundVideo(
     reloadPreviewMediaAfterFileOperation(false);
     showMediaOperationCompleteDialog(
         title,
-        qtTrId("media_tools.compressed_1_under_20_mib_2")
+        miacode::localizedText("media_tools.compressed_1_under_20_mib_2")
             .arg(QFileInfo(videoPath).fileName(), backupName),
         videoPath);
 }
@@ -863,12 +865,12 @@ void miacode::runtime::MediaJobsHost::onConvertTrackTo44100Hz()
     if (requests == nullptr) {
         return;
     }
-    const QString title = qtTrId("media_tools.sample_rate");
+    const miacode::LocalizedText title = miacode::localizedText("media_tools.sample_rate");
     const QString chartDirPath = resolveCurrentChartDirectory();
     if (chartDirPath.isEmpty()) {
         requests->postNotice(
             miacode::NoticeSeverity::Warning, title,
-            qtTrId("media_tools.open_or_save_a_chart"));
+            miacode::localizedText("media_tools.open_or_save_a_chart"));
         return;
     }
 
@@ -876,14 +878,14 @@ void miacode::runtime::MediaJobsHost::onConvertTrackTo44100Hz()
     if (!QFileInfo::exists(trackPath)) {
         requests->postNotice(
             miacode::NoticeSeverity::Warning, title,
-            qtTrId("media_tools.track_mp3_was_not_found"));
+            miacode::localizedText("media_tools.track_mp3_was_not_found"));
         return;
     }
 
     requests->requestConfirmation(
         title,
-        qtTrId("media_tools.convert_track_mp3_to_44100"),
-        qtTrId("media_tools.sample_rate"),
+        miacode::localizedText("media_tools.convert_track_mp3_to_44100"),
+        miacode::localizedText("media_tools.sample_rate"),
         [this, title, trackPath](bool accepted) {
             if (accepted) {
                 runConvertTrackTo44100Hz(title, trackPath);
@@ -892,7 +894,7 @@ void miacode::runtime::MediaJobsHost::onConvertTrackTo44100Hz()
 }
 
 void miacode::runtime::MediaJobsHost::runConvertTrackTo44100Hz(
-    const QString& title, const QString& trackPath)
+    const miacode::LocalizedText& title, const QString& trackPath)
 {
     MC_OP("miacode::runtime::MediaJobsHost::runConvertTrackTo44100Hz");
     miacode::UiRequestService* const requests = session_.uiRequestService();
@@ -903,13 +905,13 @@ void miacode::runtime::MediaJobsHost::runConvertTrackTo44100Hz(
     if (ffmpegPath.isEmpty()) {
         requests->postNotice(
             miacode::NoticeSeverity::Error, title,
-            qtTrId("media_tools.ffmpeg_was_not_found_place"));
+            miacode::localizedText("media_tools.ffmpeg_was_not_found_place"));
         return;
     }
 
     releasePreviewMediaForFileOperation();
 
-    QString error;
+    miacode::LocalizedText error;
     bool cancelled = false;
     // Qualified: Session now also has a convertTrackTo44100Hz() — the
     // MediaToolsEngine entry point — which would otherwise shadow this
@@ -920,7 +922,7 @@ void miacode::runtime::MediaJobsHost::runConvertTrackTo44100Hz(
                       : miacode::NoticeSeverity::Error,
             title,
             cancelled
-                ? qtTrId("media_tools.sample_rate_conversion_canceled")
+                ? miacode::localizedText("media_tools.sample_rate_conversion_canceled")
                 : error);
         reloadPreviewMediaAfterFileOperation(true);
         return;
@@ -928,7 +930,7 @@ void miacode::runtime::MediaJobsHost::runConvertTrackTo44100Hz(
     reloadPreviewMediaAfterFileOperation(true);
     showMediaOperationCompleteDialog(
         title,
-        qtTrId("media_tools.converted_track_mp3_to_44100_2"),
+        miacode::localizedText("media_tools.converted_track_mp3_to_44100_2"),
         trackPath);
 }
 
@@ -937,8 +939,8 @@ miacode::runtime::MediaJobsHost::MediaBlankPaths miacode::runtime::MediaJobsHost
     MediaBlankPaths paths;
     paths.isTrack = target == MediaBlankTarget::Track;
     paths.title = paths.isTrack
-        ? qtTrId("media_tools.prepend_track_silence")
-        : qtTrId("media_tools.prepend_pv_black_screen");
+        ? miacode::localizedText("media_tools.prepend_track_silence")
+        : miacode::localizedText("media_tools.prepend_pv_black_screen");
     const QString chartDirPath = resolveCurrentChartDirectory();
     if (chartDirPath.isEmpty()) {
         return paths;
@@ -968,21 +970,21 @@ QVariantMap miacode::runtime::MediaJobsHost::prependMediaBlankContext(MediaBlank
         return context;
     }
     const MediaBlankPaths paths = resolveMediaBlankPaths(target);
-    context.insert(QStringLiteral("title"), paths.title);
+    context.insert(QStringLiteral("title"), paths.title.text());
     context.insert(QStringLiteral("isTrack"), paths.isTrack);
     if (paths.inputPath.isEmpty()) {
         requests->postNotice(
             miacode::NoticeSeverity::Warning, paths.title,
-            qtTrId("media_tools.open_or_save_a_chart"));
+            miacode::localizedText("media_tools.open_or_save_a_chart"));
         return context;
     }
     if (!QFileInfo::exists(paths.inputPath)) {
         requests->postNotice(
             miacode::NoticeSeverity::Warning, paths.title,
-            qtTrId("media_tools.1_was_not_found_next")
+            miacode::localizedText("media_tools.1_was_not_found_next")
                 .arg(paths.isTrack
-                         ? paths.inputName
-                         : qtTrId("media_tools.background_mp4_video")));
+                         ? miacode::LocalizedText(paths.inputName)
+                         : miacode::localizedText("media_tools.background_mp4_video")));
         return context;
     }
 
@@ -1036,13 +1038,13 @@ void miacode::runtime::MediaJobsHost::restoreMediaBlankBackup(MediaBlankTarget t
     }
     const MediaBlankPaths paths = resolveMediaBlankPaths(target);
     releasePreviewMediaForFileOperation();
-    QString error;
+    miacode::LocalizedText error;
     if (!restoreFileFromBackup(paths.backupPath, paths.inputPath, &error)) {
         requests->postNotice(miacode::NoticeSeverity::Error, paths.title, error);
     } else {
         requests->postNotice(
             miacode::NoticeSeverity::Information, paths.title,
-            qtTrId("media_tools.backup_restored"));
+            miacode::localizedText("media_tools.backup_restored"));
     }
     reloadPreviewMediaAfterFileOperation(paths.isTrack);
 }
@@ -1059,14 +1061,14 @@ void miacode::runtime::MediaJobsHost::applyMediaBlank(MediaBlankTarget target, d
     if (ffmpegPath.isEmpty()) {
         requests->postNotice(
             miacode::NoticeSeverity::Error, paths.title,
-            qtTrId("media_tools.ffmpeg_was_not_found_place"));
+            miacode::localizedText("media_tools.ffmpeg_was_not_found_place"));
         return;
     }
 
     const double silenceSeconds = beats * 60.0 / bpm;
     releasePreviewMediaForFileOperation();
 
-    QString error;
+    miacode::LocalizedText error;
     bool cancelled = false;
     const bool ok = paths.isTrack
         ? prependTrackSilence(
@@ -1081,7 +1083,7 @@ void miacode::runtime::MediaJobsHost::applyMediaBlank(MediaBlankTarget target, d
                       : miacode::NoticeSeverity::Error,
             paths.title,
             cancelled
-                ? qtTrId(paths.isTrack ? "media_tools.track_mp3_processing_canceled" : "media_tools.video_processing_canceled")
+                ? miacode::localizedText(paths.isTrack ? "media_tools.track_mp3_processing_canceled" : "media_tools.video_processing_canceled")
                 : error);
         reloadPreviewMediaAfterFileOperation(paths.isTrack);
         return;
@@ -1090,11 +1092,11 @@ void miacode::runtime::MediaJobsHost::applyMediaBlank(MediaBlankTarget target, d
     reloadPreviewMediaAfterFileOperation(paths.isTrack);
     showMediaOperationCompleteDialog(
         paths.title,
-        qtTrId("media_tools.prepended_2_s_of_3")
+        miacode::localizedText("media_tools.prepended_2_s_of_3")
             .arg(paths.inputName)
             .arg(silenceSeconds, 0, 'f', 3)
-            .arg(paths.isTrack ? qtTrId("media_tools.silence")
-                               : qtTrId("media_tools.black_screen"))
+            .arg(paths.isTrack ? miacode::localizedText("media_tools.silence")
+                               : miacode::localizedText("media_tools.black_screen"))
             .arg(paths.backupName),
         paths.inputPath);
 }

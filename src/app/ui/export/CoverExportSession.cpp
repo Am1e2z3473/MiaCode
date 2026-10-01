@@ -1,4 +1,7 @@
+#include "common/LocalizedText.h"
+
 #include "export/CoverExportSession.h"
+#include "ui/preferences/LocaleService.h"
 
 #include "common/ChartAssetPaths.h"
 #include "core/chart/document/SimaiDocument.h"
@@ -74,6 +77,12 @@ CoverExportSession::CoverExportSession(miacode::ExportEngine& exportEngine,
     , sceneBinder_(std::make_unique<miacode::cover_export::CoverFrameSceneBinder>(this))
     , bannerTemplate_(loadBannerTemplate())
 {
+
+    connect(&miacode::LocaleService::instance(), &miacode::LocaleService::languageChanged,
+            this, [this](const QString&) {
+        emit localeLabelsChanged();
+        emit fontLibraryChanged();
+    });
     layout_->ensureDefaultLayers();
     activeLayerKey_ = miacode::cover_export::CoverLayoutModel::cardKey();
     connect(playback_.get(), &miacode::cover_export::CoverFramePlaybackController::secondsChanged,
@@ -415,8 +424,8 @@ bool CoverExportSession::renderChartFrame(miacode::cover_export::CoverLayer* lay
             return false;
         }
         if (reportErrors) {
-            notifyError(qtTrId("cover.chart_frame"),
-                        qtTrId("cover.could_not_render_the_chart"), error);
+            notifyError(miacode::localizedText("cover.chart_frame"),
+                        miacode::localizedText("cover.could_not_render_the_chart"), error);
         }
         return false;
     }
@@ -527,8 +536,8 @@ bool CoverExportSession::isActiveChartFrame(
 void CoverExportSession::addChartFrameLayer()
 {
     if (!chartFrameAvailable_ || layout_ == nullptr) {
-        notifyError(qtTrId("cover.chart_frame"),
-                    qtTrId("cover.this_difficulty_has_no_chart"));
+        notifyError(miacode::localizedText("cover.chart_frame"),
+                    miacode::localizedText("cover.this_difficulty_has_no_chart"));
         return;
     }
     auto* layer = layout_->addChartFrameLayer(frameRenderer_ != nullptr ? frameRenderer_->playheadSeconds() : 0.0);
@@ -543,8 +552,8 @@ void CoverExportSession::addChartFrameLayer()
 void CoverExportSession::addImageLayer()
 {
     miacode::FileRequest request;
-    request.title = qtTrId("cover.choose_image");
-    request.nameFilters = {qtTrId("cover.images_png_jpg_jpeg_bmp")};
+    request.title = miacode::localizedText("cover.choose_image");
+    request.nameFilters = {miacode::localizedText("cover.images_png_jpg_jpeg_bmp")};
     uiRequests_->requestFile(request, [this](const QString& path) {
         if (path.isEmpty() || layout_ == nullptr) return;
         if (auto* layer = layout_->addImageLayer(path)) {
@@ -627,9 +636,9 @@ void CoverExportSession::browseActiveLayerImage()
     auto* layer = activeCoverLayer();
     if (layer == nullptr || layer->kind() != QStringLiteral("image")) return;
     miacode::FileRequest request;
-    request.title = qtTrId("cover.choose_image");
+    request.title = miacode::localizedText("cover.choose_image");
     request.startPath = QFileInfo(layer->imagePath()).absolutePath();
-    request.nameFilters = {qtTrId("cover.images_png_jpg_jpeg_bmp")};
+    request.nameFilters = {miacode::localizedText("cover.images_png_jpg_jpeg_bmp")};
     uiRequests_->requestFile(request, [this](const QString& path) {
         if (path.isEmpty()) return;
         if (auto* active = activeCoverLayer(); active != nullptr && active->kind() == QStringLiteral("image")) {
@@ -642,14 +651,14 @@ void CoverExportSession::browseActiveLayerImage()
 void CoverExportSession::requestFont(bool displayFont, bool textLayerFont)
 {
     miacode::FileRequest request;
-    request.title = qtTrId("card_font.import");
-    request.nameFilters = {QStringLiteral("Font files (*.ttf *.otf)")};
+    request.title = miacode::localizedText("card_font.import");
+    request.nameFilters = {miacode::localizedText("file_filter.font")};
     uiRequests_->requestFile(request, [this, displayFont, textLayerFont](const QString& path) {
         if (path.isEmpty()) return;
         const auto result = miacode::video_export::importFontFileIntoLibrary(path);
         if (result.path.isEmpty()) {
-            notifyError(qtTrId("card_font.import"),
-                        qtTrId(result.failure == miacode::video_export::FontImportFailure::CopyFailed ? "card_font.copy_failed" : "card_font.invalid_font"));
+            notifyError(miacode::localizedText("card_font.import"),
+                        miacode::localizedText(result.failure == miacode::video_export::FontImportFailure::CopyFailed ? "card_font.copy_failed" : "card_font.invalid_font"));
             return;
         }
         if (textLayerFont) {
@@ -958,9 +967,9 @@ QString CoverExportSession::outputDirectoryDisplay() const
 void CoverExportSession::browseBackgroundImage()
 {
     miacode::FileRequest request;
-    request.title = qtTrId("cover.choose_background_image");
+    request.title = miacode::localizedText("cover.choose_background_image");
     request.startPath = QFileInfo(backgroundPath_).absolutePath();
-    request.nameFilters = {qtTrId("cover.images_png_jpg_jpeg_bmp")};
+    request.nameFilters = {miacode::localizedText("cover.images_png_jpg_jpeg_bmp")};
     uiRequests_->requestFile(request, [this](const QString& path) {
         if (path.isEmpty()) return;
         backgroundPath_ = path;
@@ -976,9 +985,9 @@ void CoverExportSession::resetLayout()
     // Reset throws away every layer and every position, so it asks first — the
     // same question v1's 布局 ▾ menu asked before it.
     uiRequests_->requestConfirmation(
-        qtTrId("cover.reset_layout"),
-        qtTrId("cover.reset_discards_all_current_layers"),
-        qtTrId("cover.reset_layout"),
+        miacode::localizedText("cover.reset_layout"),
+        miacode::localizedText("cover.reset_discards_all_current_layers"),
+        miacode::localizedText("cover.reset_layout"),
         [this](bool accepted) {
             if (!accepted || layout_ == nullptr) return;
             layout_->resetLayout();
@@ -1093,8 +1102,8 @@ bool CoverExportSession::applyCompositionJsonInternal(const QJsonObject& root,
     miacode::cover_export::CoverCompositionState state;
     QString error;
     if (!miacode::cover_export::CoverCompositionState::fromJson(root, &state, &error)) {
-        if (reportErrors) notifyError(qtTrId("cover.import_layout_2"),
-                                      qtTrId("cover.the_layout_file_is_not"), error);
+        if (reportErrors) notifyError(miacode::localizedText("cover.import_layout_2"),
+                                      miacode::localizedText("cover.the_layout_file_is_not"), error);
         return false;
     }
     const QSize size = state.size;
@@ -1114,8 +1123,8 @@ bool CoverExportSession::applyCompositionJsonInternal(const QJsonObject& root,
         && !QFileInfo::exists(backgroundPath_)) {
         backgroundMode_ = miacode::cover_export::CoverBackgroundMode::Jacket;
         if (reportErrors) {
-            notifyError(qtTrId("cover.background"),
-                        qtTrId("cover.the_custom_background_image_was"));
+            notifyError(miacode::localizedText("cover.background"),
+                        miacode::localizedText("cover.the_custom_background_image_was"));
         }
     }
     blurBackground_ = background.value(QStringLiteral("blur")).toBool(true);
@@ -1221,9 +1230,9 @@ void CoverExportSession::persistComposition()
 void CoverExportSession::saveLayout()
 {
     miacode::FileRequest request;
-    request.title = qtTrId("cover.save_cover_layout");
+    request.title = miacode::localizedText("cover.save_cover_layout");
     request.startPath = QStringLiteral("cover-layout.miacover");
-    request.nameFilters = {qtTrId("cover.cover_layout_miacover")};
+    request.nameFilters = {miacode::localizedText("cover.cover_layout_miacover")};
     request.saveMode = true;
     uiRequests_->requestFile(request, [this](QString path) {
         if (path.isEmpty()) return;
@@ -1231,8 +1240,8 @@ void CoverExportSession::saveLayout()
         QFile file(path);
         if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate)
             || file.write(QJsonDocument(sharedCompositionJson()).toJson(QJsonDocument::Indented)) < 0) {
-            notifyError(qtTrId("cover.save_layout_2"),
-                        qtTrId("cover.could_not_write_the_layout"), path);
+            notifyError(miacode::localizedText("cover.save_layout_2"),
+                        miacode::localizedText("cover.could_not_write_the_layout"), path);
             return;
         }
         miacode::cover_export::CoverCompositionState::pushRecentFile(path);
@@ -1243,8 +1252,8 @@ void CoverExportSession::saveLayout()
 void CoverExportSession::importLayout()
 {
     miacode::FileRequest request;
-    request.title = qtTrId("cover.import_cover_layout");
-    request.nameFilters = {qtTrId("cover.cover_layout_miacover_legacy_json")};
+    request.title = miacode::localizedText("cover.import_cover_layout");
+    request.nameFilters = {miacode::localizedText("cover.cover_layout_miacover_legacy_json")};
     uiRequests_->requestFile(request, [this](const QString& path) { openRecentLayout(path); });
 }
 
@@ -1253,15 +1262,15 @@ void CoverExportSession::openRecentLayout(const QString& path)
     if (path.isEmpty()) return;
     QFile file(path);
     if (!file.open(QIODevice::ReadOnly)) {
-        notifyError(qtTrId("cover.import_layout_2"),
-                    qtTrId("cover.could_not_read_the_layout"), path);
+        notifyError(miacode::localizedText("cover.import_layout_2"),
+                    miacode::localizedText("cover.could_not_read_the_layout"), path);
         return;
     }
     const QJsonDocument document = QJsonDocument::fromJson(file.readAll());
     if (!document.isObject() || document.object().value(QStringLiteral("kind")).toString()
                                     != QStringLiteral("miacode-cover-composition")) {
-        notifyError(qtTrId("cover.import_layout_2"),
-                    qtTrId("cover.this_file_is_not_a"), path);
+        notifyError(miacode::localizedText("cover.import_layout_2"),
+                    miacode::localizedText("cover.this_file_is_not_a"), path);
         return;
     }
     if (applyCompositionJson(document.object(), true)) {
@@ -1296,8 +1305,8 @@ void CoverExportSession::savePreset(const QString& name)
 void CoverExportSession::applyBuiltinPreset(const QString& id)
 {
     if (id != QStringLiteral("card") && !chartFrameAvailable_) {
-        notifyError(qtTrId("cover.apply_preset"),
-                    qtTrId("cover.this_preset_needs_a_renderable"));
+        notifyError(miacode::localizedText("cover.apply_preset"),
+                    miacode::localizedText("cover.this_preset_needs_a_renderable"));
         return;
     }
     const QJsonObject composition = builtinPresetComposition(id);
@@ -1334,7 +1343,7 @@ void CoverExportSession::removePreset(const QString& name)
 void CoverExportSession::browseOutputDirectory()
 {
     miacode::FileRequest request;
-    request.title = qtTrId("net.choose_output_directory");
+    request.title = miacode::localizedText("net.choose_output_directory");
     request.startPath = outputDirectory_;
     request.selectFolder = true;
     uiRequests_->requestFile(request, [this](const QString& path) { setOutputDirectory(path); });
@@ -1369,13 +1378,13 @@ void CoverExportSession::exportCover()
     // Widgets cover dialog; the QML route dropped the user-visible half of
     // that guard and just emitted regardless.
     if (!containsDifficulty(selectedDifficultyId_)) {
-        notifyError(qtTrId("cover.export_cover"),
-                    qtTrId("cover.no_difficulty_selected"));
+        notifyError(miacode::localizedText("cover.export_cover"),
+                    miacode::localizedText("cover.no_difficulty_selected"));
         return;
     }
     if (outputDirectory_.isEmpty()) {
-        notifyError(qtTrId("cover.export_cover"),
-                    qtTrId("cover.no_output_directory"));
+        notifyError(miacode::localizedText("cover.export_cover"),
+                    miacode::localizedText("cover.no_output_directory"));
         return;
     }
 
@@ -1412,7 +1421,7 @@ void CoverExportSession::exportCover()
         ? miacode::cover_export::exportCoverComposite(
               layout_.get(), buildInputs(), QSize(outputWidth(), outputHeight()), outputDirectory_)
         : miacode::cover_export::CoverExportResult{
-              false, QString(), QStringLiteral("could not render one or more chart frames")};
+              false, QString(), qtTrId("cover.chart_frame_render_failed")};
     if (layout_->layer(savedActiveKey) != nullptr) {
         activeLayerKey_ = savedActiveKey;
         emit activeLayerChanged();
@@ -1428,14 +1437,14 @@ void CoverExportSession::exportCover()
     }
     setBusy(false);
     if (!result.success) {
-        notifyError(qtTrId("cover.export_cover"),
-                    qtTrId("cover.cover_export_failed_1").arg(result.errorMessage),
+        notifyError(miacode::localizedText("cover.export_cover"),
+                    miacode::localizedText("cover.cover_export_failed_1").arg(result.errorMessage),
                     result.errorMessage);
         return;
     }
     uiRequests_->postNotice(miacode::NoticeSeverity::Information,
-                            qtTrId("cover.export_cover"),
-                            qtTrId("cover.cover_export_completed"),
+                            miacode::localizedText("cover.export_cover"),
+                            miacode::localizedText("cover.cover_export_completed"),
                             result.outputPath);
 }
 
@@ -1446,7 +1455,7 @@ void CoverExportSession::setBusy(bool busy)
     emit busyChanged();
 }
 
-void CoverExportSession::notifyError(const QString& title, const QString& text, const QString& details) const
+void CoverExportSession::notifyError(const miacode::LocalizedText& title, const miacode::LocalizedText& text, const miacode::LocalizedText& details) const
 {
     if (uiRequests_ != nullptr) {
         uiRequests_->postNotice(miacode::NoticeSeverity::Error, title, text, details);

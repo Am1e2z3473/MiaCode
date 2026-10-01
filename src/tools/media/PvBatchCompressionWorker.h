@@ -1,6 +1,7 @@
 #pragma once
 
 #include "PvBatchCompressionScanner.h"
+#include "common/LocalizedText.h"
 
 #include <QObject>
 
@@ -18,10 +19,10 @@ public slots:
     void run();
 
 signals:
-    void rowStatus(int row, const QString& status);
+    void rowStatus(int row, const miacode::LocalizedText& status);
     void progress(int completed);
-    void summary(const QString& message);
-    void finished(int succeeded, int failed, bool canceled, const QString& fatalError);
+    void summary(const miacode::LocalizedText& message);
+    void finished(int succeeded, int failed, bool canceled, const miacode::LocalizedText& fatalError);
 
 private:
     bool isCanceled() const;

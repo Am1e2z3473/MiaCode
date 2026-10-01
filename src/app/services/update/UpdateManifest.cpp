@@ -64,10 +64,19 @@ QString selectNotes(const QJsonObject& notes, const QString& languageToken)
     if (notes.contains(languageToken)) {
         return notes.value(languageToken).toString();
     }
+    const QString language = languageToken.section(QLatin1Char('_'), 0, 0).section(QLatin1Char('-'), 0, 0);
+    const QString catalog = language == QStringLiteral("zh") ? QStringLiteral("zh_CN")
+        : language == QStringLiteral("ja") ? QStringLiteral("ja_JP") : QStringLiteral("en_US");
+    if (notes.contains(catalog)) return notes.value(catalog).toString();
     return notes.value(QStringLiteral("en_US")).toString();
 }
 
 } // namespace
+
+QString UpdateManifest::localizedNotes(const QString& languageToken) const
+{
+    return notesByLanguage.isEmpty() ? notes : selectNotes(notesByLanguage, languageToken);
+}
 
 ManifestParseResult parseManifest(const QByteArray& payload,
                                   int selfMajor,
@@ -156,7 +165,8 @@ ManifestParseResult parseManifest(const QByteArray& payload,
     result.manifest.releasedAt = root.value(QStringLiteral("releasedAt")).toString();
     result.manifest.releasePageUrl = releasePageUrl;
     result.manifest.mandatory = root.value(QStringLiteral("mandatory")).toBool(false);
-    result.manifest.notes = selectNotes(root.value(QStringLiteral("notes")).toObject(), languageToken);
+    result.manifest.notesByLanguage = root.value(QStringLiteral("notes")).toObject();
+    result.manifest.notes = result.manifest.localizedNotes(languageToken);
     result.manifest.package = package;
     return result;
 }

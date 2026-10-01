@@ -1,5 +1,7 @@
 #pragma once
 
+#include "common/LocalizedText.h"
+
 #include <QObject>
 #include <QStringList>
 #include <QVariantList>
@@ -39,7 +41,7 @@ public:
 
     QString batchDirectory() const { return batchDirectory_; }
     QVariantList batchJobs() const;
-    QString batchSummary() const { return batchSummary_; }
+    QString batchSummary() const { return batchSummary_.text(); }
     bool batchRunning() const { return batchRunning_; }
 
     // ---- single-file tools ----
@@ -69,8 +71,8 @@ signals:
 private:
     void setBatchDirectory(const QString& path);
     void rescanBatchDirectory();
-    void setRowStatus(int row, const QString& status);
-    void finishBatch(int succeeded, int failed, bool canceled, const QString& fatalError);
+    void setRowStatus(int row, const miacode::LocalizedText& status);
+    void finishBatch(int succeeded, int failed, bool canceled, const miacode::LocalizedText& fatalError);
 
     // From the application assembly, not from the hidden window.
     miacode::UiRequestService* uiRequests_ = nullptr;
@@ -82,9 +84,9 @@ private:
         return engineSlot_ != nullptr ? *engineSlot_ : nullptr;
     }
     QString batchDirectory_;
-    QString batchSummary_;
+    miacode::LocalizedText batchSummary_;
     QList<miacode::media::PvCompressionJob> jobs_;
-    QStringList jobStatuses_;
+    QList<miacode::LocalizedText> jobStatuses_;
     std::atomic_bool batchCancelRequested_ = false;
     bool batchRunning_ = false;
     quint64 batchJobToken_ = 0;

@@ -10,7 +10,7 @@ namespace miacode {
 
 // Owns the process-wide QTranslator install for ID-based catalogs
 // (qtTrId / qsTrId). Language preference persistence stays on PreferenceDocument;
-// this service only loads .qm files and asks the QML engine to retranslate.
+// this service only loads .qm files and notifies the registered QML engines and UI models.
 class LocaleService final : public QObject
 {
     Q_OBJECT
@@ -37,10 +37,8 @@ private:
     ~LocaleService() override;
 
     bool loadTranslatorForToken(const QString& token);
-    void retranslateEngine();
 
     QTranslator* translator_ = nullptr;
-    QQmlEngine* engine_ = nullptr;
     QString activeToken_;
 };
 

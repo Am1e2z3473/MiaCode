@@ -1,3 +1,5 @@
+#include "common/LocalizedText.h"
+
 #include "app/ui/preferences/AppBackgroundModel.h"
 
 #include "app/ui/preferences/LocaleService.h"
@@ -70,7 +72,7 @@ AppBackgroundModel::AppBackgroundModel(miacode::UiRequestService* uiRequests,
     connect(&miacode::LocaleService::instance(), &miacode::LocaleService::languageChanged,
             this, [this](const QString&) {
                 emit localeLabelsChanged();
-                updateImageProjection();
+                emit errorChanged();
             });
     reload();
 }
@@ -106,9 +108,9 @@ bool AppBackgroundModel::isReadableFile(const QString& path)
     return file.open(QIODevice::ReadOnly);
 }
 
-QString AppBackgroundModel::imageError()
+miacode::LocalizedText AppBackgroundModel::imageError()
 {
-    return qtTrId("dialog.preferences.background.image_error");
+    return miacode::localizedText("dialog.preferences.background.image_error");
 }
 
 void AppBackgroundModel::setImagePath(const QString& path)
@@ -131,12 +133,12 @@ void AppBackgroundModel::clearImage()
 void AppBackgroundModel::chooseImage()
 {
     if (uiRequests_ == nullptr) {
-        updateImageProjection(qtTrId("dialog.preferences.background.file_picker_unavailable"));
+        updateImageProjection(miacode::localizedText("dialog.preferences.background.file_picker_unavailable"));
         return;
     }
     miacode::FileRequest request;
-    request.title = qtTrId("dialog.preferences.background.choose");
-    request.nameFilters = {qtTrId("dialog.preferences.background.image_filter")};
+    request.title = miacode::localizedText("dialog.preferences.background.choose");
+    request.nameFilters = {miacode::localizedText("dialog.preferences.background.image_filter")};
     uiRequests_->requestFile(request, [this](const QString& path) {
         if (!path.isEmpty()) {
             setImagePath(path);
@@ -233,26 +235,26 @@ QVariantList AppBackgroundModel::positionOptions() const
             option(QStringLiteral("right_bottom"), positionLabel(QStringLiteral("right_bottom")))};
 }
 
-QString AppBackgroundModel::errorMessage() const { return errorMessage_; }
+QString AppBackgroundModel::errorMessage() const { return errorMessage_.text(); }
 
-void AppBackgroundModel::updateImageProjection(const QString& error)
+void AppBackgroundModel::updateImageProjection(const miacode::LocalizedText& error)
 {
     const QString nextUrl = isReadableFile(settings_.imagePath)
         ? QUrl::fromLocalFile(settings_.imagePath).toString()
         : QString();
     const bool nextReadable = !nextUrl.isEmpty();
-    const QString nextError = error.isNull()
-        ? (settings_.imagePath.isEmpty() || nextReadable ? QString() : imageError())
+    const miacode::LocalizedText nextError = error.isNull()
+        ? (settings_.imagePath.isEmpty() || nextReadable ? miacode::LocalizedText() : imageError())
         : error;
     const QString oldUrl = sourceUrl_;
     const bool oldReadable = imageReadable_;
-    const QString oldError = errorMessage_;
+    const QString oldError = errorMessage_.text();
     sourceUrl_ = nextUrl;
     imageReadable_ = nextReadable;
     errorMessage_ = nextError;
     if (oldUrl != sourceUrl_) emit sourceUrlChanged();
     if (oldReadable != imageReadable_) emit imageReadableChanged();
-    if (oldError != errorMessage_) emit errorChanged();
+    if (oldError != errorMessage_.text()) emit errorChanged();
 }
 
 bool AppBackgroundModel::commit(const Settings& candidate)
@@ -263,7 +265,7 @@ bool AppBackgroundModel::commit(const Settings& candidate)
     ui.insert(QStringLiteral("app_background"), miacode::ui::appBackgroundSettingsToJson(next));
     root.insert(QStringLiteral("ui"), ui);
     if (!savePreferences_ || !savePreferences_(root)) {
-        errorMessage_ = qtTrId("dialog.preferences.background.save_error");
+        errorMessage_ = miacode::localizedText("dialog.preferences.background.save_error");
         emit errorChanged();
         return false;
     }

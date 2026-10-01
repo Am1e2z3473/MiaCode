@@ -66,6 +66,7 @@ public:
     // Negative-HS compat switch (`<HS*-N>`). Default off → hs <= 0 rejected.
     static void setAllowNegativeHsEnabled(bool enabled);
     static bool allowNegativeHsEnabled();
+    static void localizeValidationReport(SimaiValidationReport& report, SimaiValidationLocale locale);
     static SimaiValidationReport buildValidationReport(
         const QString& text,
         SimaiValidationLocale locale,

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "common/LocalizedText.h"
+
 #include "runtime/Session.h"
 
 #include "app/services/ExportEngine.h"
@@ -55,7 +57,7 @@ public:
     // An empty path means the pick was cancelled.
     void packChartToZipAtPath(const QString& chartText,
                               const QString& chartPath,
-                              const QString& dialogTitle,
+                              const miacode::LocalizedText& dialogTitle,
                               const QString& pickedPath);
     // ---- QML export shell (v2) ----
     VideoExportTask buildVideoExportSeedTaskPublic(int difficultyId = 0);
@@ -156,7 +158,7 @@ private:
         const BatchExportCallbacks& callbacks,
         QString* errorMessage);
     // ---- Inline export progress on the preview transport (A3 amended) ----
-    void reportExportProgress(int percent, const QString& label);
+    void reportExportProgress(int percent, const miacode::LocalizedText& label);
     // percent < 0 keeps the current percent (label-only update); an empty
     // label keeps the current label.
     void endExportProgress();

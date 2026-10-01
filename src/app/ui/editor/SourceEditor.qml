@@ -761,7 +761,7 @@ Rectangle {
             model: editorContextMenu.transformRows.filter(row => row.section === 0)
             delegate: AppMenuItem {
                 required property var modelData
-                text: modelData.label
+                text: qsTrId(modelData.labelKey)
                 enabled: editorContextMenu.hasSelection
                 onTriggered: root.applyChartTransform(modelData.id)
             }
@@ -771,7 +771,7 @@ Rectangle {
             model: editorContextMenu.transformRows.filter(row => row.section === 1)
             delegate: AppMenuItem {
                 required property var modelData
-                text: modelData.label
+                text: qsTrId(modelData.labelKey)
                 enabled: editorContextMenu.hasSelection
                 onTriggered: root.applyChartTransform(modelData.id)
             }
@@ -781,19 +781,19 @@ Rectangle {
             model: editorContextMenu.transformRows.filter(row => row.section === 2)
             delegate: AppMenuItem {
                 required property var modelData
-                text: modelData.label
+                text: qsTrId(modelData.labelKey)
                 enabled: editorContextMenu.hasSelection
                 onTriggered: root.applyChartTransform(modelData.id)
             }
         }
         AppMenu {
-            title: root.documentSession.chartTransformMoreLabel()
+            title: qsTrId("action.transform.more")
             enabled: editorContextMenu.hasSelection
             Repeater {
                 model: editorContextMenu.transformRows.filter(row => row.section === 3)
                 delegate: AppMenuItem {
                     required property var modelData
-                    text: modelData.label
+                    text: qsTrId(modelData.labelKey)
                     onTriggered: root.applyChartTransform(modelData.id)
                 }
             }

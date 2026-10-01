@@ -1,6 +1,7 @@
 #pragma once
 
 #include "runtime/Session.h"
+#include "common/LocalizedText.h"
 
 #include "app/services/MediaToolsEngine.h"
 
@@ -41,7 +42,7 @@ private:
         QString inputName;
         QString backupName;
         QString backupPath;
-        QString title;
+        miacode::LocalizedText title;
         bool isTrack = false;
     };
     MediaBlankPaths resolveMediaBlankPaths(MediaBlankTarget target) const;
@@ -52,12 +53,12 @@ private:
     void reloadPreviewMediaAfterFileOperation(bool reloadTrack);
     // Shows an export-style "done" dialog naming the produced file, with an
     // "Open Folder" button that reveals its containing directory.
-    void runConvertTrackTo44100Hz(const QString& title, const QString& trackPath);
+    void runConvertTrackTo44100Hz(const miacode::LocalizedText& title, const QString& trackPath);
     void runCompressBackgroundVideo(
-        const QString& title, const QString& videoPath, const QString& backupName);
+        const miacode::LocalizedText& title, const QString& videoPath, const QString& backupName);
     void showMediaOperationCompleteDialog(
-        const QString& title,
-        const QString& summary,
+        const miacode::LocalizedText& title,
+        const miacode::LocalizedText& summary,
         const QString& producedFilePath);
 
     Session& session_;

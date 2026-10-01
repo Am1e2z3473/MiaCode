@@ -1,3 +1,5 @@
+#include "common/LocalizedText.h"
+
 #include "export/ExportSession.h"
 
 #include "core/chart/document/SimaiDocument.h"
@@ -676,12 +678,12 @@ void ExportSession::startExport()
         // at all.
         miacode::JobProgressService* const jobProgress =
             jobProgress_;
-        const QString batchJobTitle = qtTrId("dialog.batch_export.title");
+        const miacode::LocalizedText batchJobTitle = miacode::localizedText("action.batch_export");
         quint64 batchJobToken = 0;
         if (jobProgress != nullptr) {
             batchJobToken = jobProgress->begin(
                 batchJobTitle,
-                qtTrId("export.preparing_package"),
+                miacode::localizedText("export.preparing_package"),
                 /*cancellable=*/true,
                 miacode::JobProgressService::TaskType::ChartExport);
         }
@@ -720,21 +722,21 @@ void ExportSession::startExport()
         batchExportRunning_ = false;
         exportRunning_ = false;
         emit exportRunningChanged();
-        const QString batchTitle = qtTrId("dialog.batch_export.title");
+        const miacode::LocalizedText batchTitle = miacode::localizedText("action.batch_export");
         if (!launched) {
             uiRequests_->postNotice(
                 miacode::NoticeSeverity::Error,
                 batchTitle,
                 error.isEmpty()
-                    ? qtTrId("dialog.batch_export.error.export_failed")
-                    : error);
+                    ? miacode::localizedText("dialog.video_export.error.failed")
+                    : miacode::LocalizedText(error));
             return;
         }
         if (result.canceled) {
             uiRequests_->postNotice(
                 miacode::NoticeSeverity::Information,
                 batchTitle,
-                qtTrId("dialog.batch_export.message.canceled"));
+                miacode::localizedText("dialog.batch_export.message.canceled"));
             return;
         }
         const auto shortenDetails = [](QString details) {
@@ -745,17 +747,17 @@ void ExportSession::startExport()
             uiRequests_->postNotice(
                 miacode::NoticeSeverity::Information,
                 batchTitle,
-                qtTrId("dialog.batch_export.message.success").arg(result.successCount),
+                miacode::localizedText("dialog.batch_export.message.success").arg(result.successCount),
                 successDetails);
             return;
         }
         uiRequests_->postNotice(
             miacode::NoticeSeverity::Warning,
             batchTitle,
-            qtTrId("dialog.batch_export.message.partial_failed")
+            miacode::localizedText("dialog.batch_export.message.partial_failed")
                 .arg(result.successCount).arg(result.failedCharts.size()),
-            (successDetails.isEmpty() ? QString()
-                : qtTrId("dialog.batch_export.message.output_files")
+            (successDetails.isEmpty() ? miacode::LocalizedText()
+                : miacode::localizedText("dialog.batch_export.message.output_files")
                     + QStringLiteral("\n") + successDetails + QStringLiteral("\n\n"))
                 + shortenDetails(result.failedCharts.join(QLatin1Char('\n'))));
         return;
@@ -778,10 +780,10 @@ void ExportSession::startExport()
         emit exportRunningChanged();
         uiRequests_->postNotice(
             miacode::NoticeSeverity::Error,
-            qtTrId("dialog.video_export.title"),
+            miacode::localizedText("dialog.video_export.title"),
             error.isEmpty()
-                ? qtTrId("dialog.video_export.error.launch_failed")
-                : error);
+                ? miacode::localizedText("dialog.video_export.error.launch_failed")
+                : miacode::LocalizedText(error));
         return;
     }
 }
@@ -801,9 +803,9 @@ void ExportSession::cancelExport()
 void ExportSession::browseOutputPath()
 {
     miacode::FileRequest request;
-    request.title = qtTrId("dialog.video_export.title");
+    request.title = miacode::localizedText("dialog.video_export.title");
     request.startPath = task_.outputPath;
-    request.nameFilters = QStringList{QStringLiteral("MP4 (*.mp4)")};
+    request.nameFilters = {miacode::localizedText("file_filter.mp4")};
     request.saveMode = true;
     uiRequests_->requestFile(request, [this](const QString& path) {
         if (!path.isEmpty()) {
@@ -815,9 +817,9 @@ void ExportSession::browseOutputPath()
 void ExportSession::browseIntroBackground()
 {
     miacode::FileRequest request;
-    request.title = qtTrId("dialog.video_export.choose_intro_background");
+    request.title = miacode::localizedText("dialog.video_export.choose_intro_background");
     request.startPath = task_.intro.customBackgroundPath;
-    request.nameFilters = QStringList{QStringLiteral("Images (*.png *.jpg *.jpeg *.webp)")};
+    request.nameFilters = {miacode::localizedText("file_filter.image")};
     uiRequests_->requestFile(request, [this](const QString& path) {
         if (!path.isEmpty()) {
             setIntroCustomBackgroundPath(path);
@@ -828,8 +830,8 @@ void ExportSession::browseIntroBackground()
 void ExportSession::importIntroSound()
 {
     miacode::FileRequest request;
-    request.title = introSoundLabel();
-    request.nameFilters = QStringList{QStringLiteral("Audio (*.wav *.mp3 *.ogg *.flac)")};
+    request.title = miacode::localizedText("dialog.render_settings.music.intro_sound");
+    request.nameFilters = {miacode::localizedText("file_filter.audio")};
     uiRequests_->requestFile(request, [this](const QString& path) {
         applyIntroSoundImport(path);
     });
@@ -838,8 +840,8 @@ void ExportSession::importIntroSound()
 void ExportSession::importIntroFont()
 {
     miacode::FileRequest request;
-    request.title = qtTrId("card_font.import");
-    request.nameFilters = QStringList{QStringLiteral("Font Files (*.ttf *.otf)")};
+    request.title = miacode::localizedText("card_font.import");
+    request.nameFilters = {miacode::localizedText("file_filter.font")};
     uiRequests_->requestFile(request, [this](const QString& path) {
         applyFontImport(path);
     });
@@ -853,11 +855,11 @@ void ExportSession::applyFontImport(const QString& selectedPath)
     const miacode::video_export::FontImportResult result =
         miacode::video_export::importFontFileIntoLibrary(selectedPath);
     if (result.path.isEmpty()) {
-        const QString text = result.failure == miacode::video_export::FontImportFailure::CopyFailed
-            ? qtTrId("card_font.copy_failed")
-            : qtTrId("card_font.invalid_font");
+        const miacode::LocalizedText text = result.failure == miacode::video_export::FontImportFailure::CopyFailed
+            ? miacode::localizedText("card_font.copy_failed")
+            : miacode::localizedText("card_font.invalid_font");
         uiRequests_->postNotice(miacode::NoticeSeverity::Warning,
-                                qtTrId("card_font.import"), text);
+                                miacode::localizedText("card_font.import"), text);
         return;
     }
 
@@ -903,7 +905,7 @@ void ExportSession::applyIntroSoundImport(const QString& selectedPath)
 void ExportSession::browseBatchOutputDirectory()
 {
     miacode::FileRequest request;
-    request.title = qtTrId("dialog.batch_export.select_folder");
+    request.title = miacode::localizedText("dialog.batch_export.select_folder");
     request.startPath = batchOutputDirectory_;
     request.selectFolder = true;
     uiRequests_->requestFile(request, [this](const QString& path) {
@@ -916,7 +918,7 @@ void ExportSession::browseBatchOutputDirectory()
 void ExportSession::addChartDirectories()
 {
     miacode::FileRequest request;
-    request.title = qtTrId("dialog.batch_export.select_charts");
+    request.title = miacode::localizedText("dialog.batch_export.select_charts");
     request.selectFolder = true;
     uiRequests_->requestFile(request, [this](const QString& path) {
         addChartDirectory(path);

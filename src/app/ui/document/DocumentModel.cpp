@@ -1,8 +1,11 @@
+#include "common/LocalizedText.h"
+
 #include "document/ChartTransformCommands.h"
 #include "core/chart/transform/ChartBatchTransform.h"
 #include "core/chart/transform/ChartNormalization.h"
 #include "core/chart/selection/ChartSelectionBeatSummary.h"
 #include "document/DocumentModel.h"
+#include "ui/preferences/LocaleService.h"
 
 #include "editor/BookmarkCommentSyntax.h"
 
@@ -48,7 +51,7 @@ QVariantList unsavedSectionChoices()
     const auto choice = [](const char* id, const char* labelKey, const char* role) {
         return QVariantMap{
             {QStringLiteral("id"), QLatin1String(id)},
-            {QStringLiteral("label"), qtTrId(labelKey)},
+            {QStringLiteral("label"), miacode::localizedText(labelKey).variant()},
             {QStringLiteral("role"), QLatin1String(role)},
         };
     };
@@ -59,14 +62,14 @@ QVariantList unsavedSectionChoices()
     };
 }
 
-QString dropCreateTitle()
+miacode::LocalizedText dropCreateTitle()
 {
-    return qtTrId("drop_chart.preview.create_title");
+    return miacode::localizedText("drop_chart.preview.create_title");
 }
 
-QString dropOpenOrCreateTitle()
+miacode::LocalizedText dropOpenOrCreateTitle()
 {
-    return qtTrId("drop_chart.preview.title");
+    return miacode::localizedText("drop_chart.preview.title");
 }
 
 QString cleanChartFolderName(QString name)
@@ -118,7 +121,7 @@ QVariantMap dropChoice(const char* id, const char* labelKey, const char* role)
 {
     return QVariantMap{
         {QStringLiteral("id"), QLatin1String(id)},
-        {QStringLiteral("label"), qtTrId(labelKey)},
+        {QStringLiteral("label"), miacode::localizedText(labelKey).variant()},
         {QStringLiteral("role"), QLatin1String(role)},
     };
 }
@@ -148,9 +151,9 @@ QVariantList createFolderChoices()
     };
 }
 
-QString dropCreateHereText(const QString& path)
+miacode::LocalizedText dropCreateHereText(const QString& path)
 {
-    return qtTrId("drop_chart.preview.create_here").arg(QDir::toNativeSeparators(path));
+    return miacode::localizedText("drop_chart.preview.create_here").arg(QDir::toNativeSeparators(path));
 }
 
 QString plannedDroppedChartFolder(const QString& audioPath)
@@ -189,6 +192,17 @@ DocumentModel::DocumentModel(
     , bridgeSlot_(&bridgeSlot)
     , previewSlot_(&previewSlot)
 {
+
+    connect(&miacode::LocaleService::instance(), &miacode::LocaleService::languageChanged,
+            this, [this](const QString&) {
+        emit localeLabelsChanged();
+        emit metadataChanged();
+        emit currentFilePathChanged();
+        emit documentTitleChanged();
+        emit currentDifficultyChanged();
+        emit difficultiesChanged();
+        emit bookmarksChanged();
+    });
     metadataSaveTimer_.setSingleShot(true);
     connect(&metadataSaveTimer_, &QTimer::timeout, this, [this] {
         saveMetadataImmediately();
@@ -435,7 +449,7 @@ void DocumentModel::requestMetadataAudio(std::function<void(const QString&)> onS
 {
     if (uiRequests_ == nullptr) return;
     miacode::FileRequest request;
-    request.title = qtTrId("track_metadata.read_from_audio");
+    request.title = miacode::localizedText("track_metadata.read_from_audio");
     // The chart's own track when it is the MP3 this picker reads, so the usual
     // pick is one keypress; otherwise the chart's folder. Never the chart
     // itself: preselecting maidata.txt would offer the one file it must not read.
@@ -446,9 +460,9 @@ void DocumentModel::requestMetadataAudio(std::function<void(const QString&)> onS
     } else if (!chartPath.isEmpty()) {
         request.startPath = QFileInfo(chartPath).absolutePath();
     }
-    request.nameFilters = QStringList{
-        qtTrId("track_metadata.metadata_audio_file_filter"),
-        qtTrId("track_metadata.all_files"),
+    request.nameFilters = {
+        miacode::localizedText("track_metadata.metadata_audio_file_filter"),
+        miacode::localizedText("qml.all_files"),
     };
     uiRequests_->requestFile(request, [callback = std::move(onSelected)](const QString& path) {
         if (callback && !path.trimmed().isEmpty()) callback(QDir::cleanPath(path));
@@ -463,24 +477,24 @@ void DocumentModel::readTitleFromAudioFile()
         if (!tag.valid) {
             uiRequests_->postNotice(
                 miacode::NoticeSeverity::Information,
-                qtTrId("track_metadata.read_title_from_mp3"),
-                qtTrId("track_metadata.no_id3v2_tag_was_found"));
+                miacode::localizedText("track_metadata.read_title_from_mp3"),
+                miacode::localizedText("track_metadata.no_id3v2_tag_was_found"));
             return;
         }
         const QString value = tag.title.trimmed();
         if (value.isEmpty()) {
             uiRequests_->postNotice(
                 miacode::NoticeSeverity::Information,
-                qtTrId("track_metadata.read_title_from_mp3"),
-                qtTrId("track_metadata.the_selected_mp3_s_id3")
-                    .arg(qtTrId("track_metadata.title")));
+                miacode::localizedText("track_metadata.read_title_from_mp3"),
+                miacode::localizedText("track_metadata.the_selected_mp3_s_id3")
+                    .arg(miacode::localizedText("track_metadata.title")));
             return;
         }
         setMetadataTitle(value);
         uiRequests_->postNotice(
             miacode::NoticeSeverity::Information,
-            qtTrId("track_metadata.read_title_from_mp3"),
-            qtTrId("track_metadata.loaded_title_from_mp3"));
+            miacode::localizedText("track_metadata.read_title_from_mp3"),
+            miacode::localizedText("track_metadata.loaded_title_from_mp3"));
     });
 }
 
@@ -492,24 +506,24 @@ void DocumentModel::readArtistFromAudioFile()
         if (!tag.valid) {
             uiRequests_->postNotice(
                 miacode::NoticeSeverity::Information,
-                qtTrId("track_metadata.read_artist_from_mp3"),
-                qtTrId("track_metadata.no_id3v2_tag_was_found"));
+                miacode::localizedText("track_metadata.read_artist_from_mp3"),
+                miacode::localizedText("track_metadata.no_id3v2_tag_was_found"));
             return;
         }
         const QString value = tag.artist.trimmed();
         if (value.isEmpty()) {
             uiRequests_->postNotice(
                 miacode::NoticeSeverity::Information,
-                qtTrId("track_metadata.read_artist_from_mp3"),
-                qtTrId("track_metadata.the_selected_mp3_s_id3")
-                    .arg(qtTrId("track_metadata.artist")));
+                miacode::localizedText("track_metadata.read_artist_from_mp3"),
+                miacode::localizedText("track_metadata.the_selected_mp3_s_id3")
+                    .arg(miacode::localizedText("track_metadata.artist")));
             return;
         }
         setMetadataArtist(value);
         uiRequests_->postNotice(
             miacode::NoticeSeverity::Information,
-            qtTrId("track_metadata.read_artist_from_mp3"),
-            qtTrId("track_metadata.loaded_artist_from_mp3"));
+            miacode::localizedText("track_metadata.read_artist_from_mp3"),
+            miacode::localizedText("track_metadata.loaded_artist_from_mp3"));
     });
 }
 
@@ -520,19 +534,19 @@ void DocumentModel::extractCoverFromAudioFile()
     if (chartPath.isEmpty()) {
         uiRequests_->postNotice(
             miacode::NoticeSeverity::Warning,
-            qtTrId("metadata.field.cover"),
-            qtTrId("media_tools.open_or_save_a_chart"));
+            miacode::localizedText("metadata.field.cover"),
+            miacode::localizedText("media_tools.open_or_save_a_chart"));
         return;
     }
     requestMetadataAudio([this, chartPath](const QString& audioPath) {
         if (uiRequests_ == nullptr) return;
-        const QString title = qtTrId("track_metadata.extract_cover_to_bg_jpg");
+        const miacode::LocalizedText title = miacode::localizedText("track_metadata.extract_cover_to_bg_jpg");
         const miacode::id3::Tag tag = miacode::id3::readTagFromFile(audioPath);
         if (!tag.valid || tag.pictureBytes.isEmpty()) {
             uiRequests_->postNotice(
                 miacode::NoticeSeverity::Information,
                 title,
-                qtTrId("track_metadata.the_selected_mp3_has_no"));
+                miacode::localizedText("track_metadata.the_selected_mp3_has_no"));
             return;
         }
         QImage cover;
@@ -540,7 +554,7 @@ void DocumentModel::extractCoverFromAudioFile()
             uiRequests_->postNotice(
                 miacode::NoticeSeverity::Warning,
                 title,
-                qtTrId("track_metadata.failed_to_decode_embedded_cover")
+                miacode::localizedText("track_metadata.failed_to_decode_embedded_cover")
                     .arg(tag.pictureMimeType));
             return;
         }
@@ -555,8 +569,8 @@ void DocumentModel::extractCoverFromAudioFile()
         if (hasExistingCover) {
             uiRequests_->requestConfirmation(
                 title,
-                qtTrId("track_metadata.background_image_exists_overwrite"),
-                qtTrId("action.yes"),
+                miacode::localizedText("track_metadata.background_image_exists_overwrite"),
+                miacode::localizedText("action.yes"),
                 [this, cover, bgPath, existingBgPath, title](bool accepted) {
                     if (accepted) writeExtractedCover(cover, bgPath, existingBgPath, title);
                 });
@@ -568,7 +582,7 @@ void DocumentModel::extractCoverFromAudioFile()
 
 void DocumentModel::writeExtractedCover(
     const QImage& cover, const QString& bgPath, const QString& existingBgPath,
-    const QString& title)
+    const miacode::LocalizedText& title)
 {
     if (uiRequests_ == nullptr) return;
     if (preview() != nullptr) preview()->prepareForMediaFileOperation();
@@ -579,7 +593,7 @@ void DocumentModel::writeExtractedCover(
             if (preview() != nullptr) preview()->refreshMediaAfterFileOperation();
             uiRequests_->postNotice(
                 miacode::NoticeSeverity::Error, title,
-                qtTrId("track_metadata.failed_to_write_bg_jpg"));
+                miacode::localizedText("track_metadata.failed_to_write_bg_jpg"));
             return;
         }
     }
@@ -596,14 +610,14 @@ void DocumentModel::writeExtractedCover(
         if (preview() != nullptr) preview()->refreshMediaAfterFileOperation();
         uiRequests_->postNotice(
             miacode::NoticeSeverity::Error, title,
-            qtTrId("track_metadata.failed_to_write_bg_jpg"));
+            miacode::localizedText("track_metadata.failed_to_write_bg_jpg"));
         return;
     }
     if (preview() != nullptr) preview()->refreshMediaAfterFileOperation();
     uiRequests_->postNotice(
         miacode::NoticeSeverity::Information,
         title,
-        qtTrId(existingBgPath.isEmpty() ? "track_metadata.wrote_bg_jpg_from_the" : "track_metadata.overwrote_bg_jpg_with_embedded"));
+        miacode::localizedText(existingBgPath.isEmpty() ? "track_metadata.wrote_bg_jpg_from_the" : "track_metadata.overwrote_bg_jpg_with_embedded"));
 }
 
 void DocumentModel::importChartBackgroundImage()
@@ -623,14 +637,14 @@ void DocumentModel::removeChartPv()
     if (chartPath.isEmpty()) {
         uiRequests_->postNotice(
             miacode::NoticeSeverity::Warning,
-            qtTrId("metadata.field.background_video"),
-            qtTrId("media_tools.open_or_save_a_chart"));
+            miacode::localizedText("metadata.field.background_video"),
+            miacode::localizedText("media_tools.open_or_save_a_chart"));
         return;
     }
     uiRequests_->requestConfirmation(
-        qtTrId("track_metadata.delete_pv"),
-        qtTrId("track_metadata.delete_pv_confirm"),
-        qtTrId("action.yes"),
+        miacode::localizedText("track_metadata.delete_pv"),
+        miacode::localizedText("track_metadata.delete_pv_confirm"),
+        miacode::localizedText("action.yes"),
         [this, chartPath](bool accepted) {
             if (!accepted || workspace_ == nullptr || uiRequests_ == nullptr) return;
             if (preview() != nullptr) preview()->prepareForMediaFileOperation();
@@ -639,8 +653,8 @@ void DocumentModel::removeChartPv()
                 if (preview() != nullptr) preview()->refreshMediaAfterFileOperation();
                 uiRequests_->postNotice(
                     miacode::NoticeSeverity::Error,
-                    qtTrId("track_metadata.delete_pv"),
-                    qtTrId("track_metadata.failed_to_remove_media")
+                    miacode::localizedText("track_metadata.delete_pv"),
+                    miacode::localizedText("track_metadata.failed_to_remove_media")
                         .arg(result.errorCode));
                 return;
             }
@@ -648,8 +662,8 @@ void DocumentModel::removeChartPv()
             if (preview() != nullptr) preview()->refreshMediaAfterFileOperation();
             uiRequests_->postNotice(
                 miacode::NoticeSeverity::Information,
-                qtTrId("track_metadata.delete_pv"),
-                qtTrId("track_metadata.deleted_pv"));
+                miacode::localizedText("track_metadata.delete_pv"),
+                miacode::localizedText("track_metadata.deleted_pv"));
         });
 }
 
@@ -660,28 +674,28 @@ void DocumentModel::requestChartMediaImport(miacode::ChartMediaService::Kind kin
     if (chartPath.isEmpty()) {
         uiRequests_->postNotice(
             miacode::NoticeSeverity::Warning,
-            qtTrId("metadata.field.background_video"),
-            qtTrId("media_tools.open_or_save_a_chart"));
+            miacode::localizedText("metadata.field.background_video"),
+            miacode::localizedText("media_tools.open_or_save_a_chart"));
         return;
     }
 
     const bool video = kind == miacode::ChartMediaService::Kind::Video;
     miacode::FileRequest request;
-    request.title = qtTrId(video ? "track_metadata.import_background_video" : "track_metadata.import_file");
+    request.title = miacode::localizedText(video ? "track_metadata.import_background_video" : "track_metadata.import_file");
     request.startPath = QFileInfo(chartPath).absolutePath();
-    request.nameFilters = QStringList{
-        qtTrId(video ? "track_metadata.video_file_filter" : "track_metadata.image_file_filter"),
-        qtTrId("track_metadata.all_files"),
+    request.nameFilters = {
+        miacode::localizedText(video ? "track_metadata.video_file_filter" : "track_metadata.image_file_filter"),
+        miacode::localizedText("qml.all_files"),
     };
     uiRequests_->requestFile(request, [this, kind](const QString& sourcePath) {
         if (sourcePath.trimmed().isEmpty() || uiRequests_ == nullptr) return;
         if (!miacode::ChartMediaService::sourceIsSupported(sourcePath, kind)) {
             uiRequests_->postNotice(
                 miacode::NoticeSeverity::Warning,
-                qtTrId("track_metadata.unsupported_media_file"),
+                miacode::localizedText("track_metadata.unsupported_media_file"),
                 kind == miacode::ChartMediaService::Kind::Image
-                    ? qtTrId("track_metadata.failed_to_read_image")
-                    : qtTrId("track_metadata.unsupported_media_file"));
+                    ? miacode::localizedText("track_metadata.failed_to_read_image")
+                    : miacode::localizedText("track_metadata.unsupported_media_file"));
             return;
         }
         const QString target = miacode::ChartMediaService::targetPath(
@@ -701,9 +715,9 @@ void DocumentModel::requestChartMediaImport(miacode::ChartMediaService::Kind kin
         }
         const bool replacingVideo = kind == miacode::ChartMediaService::Kind::Video;
         uiRequests_->requestConfirmation(
-            qtTrId(replacingVideo ? "track_metadata.import_background_video" : "track_metadata.import_file"),
-            qtTrId(replacingVideo ? "track_metadata.background_video_exists_overwrite" : "track_metadata.background_image_exists_overwrite"),
-            qtTrId("action.yes"),
+            miacode::localizedText(replacingVideo ? "track_metadata.import_background_video" : "track_metadata.import_file"),
+            miacode::localizedText(replacingVideo ? "track_metadata.background_video_exists_overwrite" : "track_metadata.background_image_exists_overwrite"),
+            miacode::localizedText("action.yes"),
             [this, sourcePath, kind](bool accepted) {
                 if (accepted) applyChartMediaImport(sourcePath, kind);
             });
@@ -721,8 +735,8 @@ void DocumentModel::applyChartMediaImport(
         if (preview() != nullptr) preview()->refreshMediaAfterFileOperation();
         uiRequests_->postNotice(
             miacode::NoticeSeverity::Error,
-            qtTrId("track_metadata.failed_to_import_media"),
-            qtTrId("track_metadata.failed_to_import_media")
+            miacode::localizedText("track_metadata.failed_to_import_media"),
+            miacode::localizedText("track_metadata.failed_to_import_media")
                 .arg(result.errorCode));
         return;
     }
@@ -734,13 +748,13 @@ void DocumentModel::applyChartMediaImport(
     if (!result.warnings.isEmpty()) {
         uiRequests_->postNotice(
             miacode::NoticeSeverity::Warning,
-            qtTrId("track_metadata.import_file"),
+            miacode::localizedText("track_metadata.import_file"),
             result.warnings.join(QLatin1Char('\n')));
     }
     uiRequests_->postNotice(
         miacode::NoticeSeverity::Information,
-        qtTrId(video ? "track_metadata.import_background_video" : "track_metadata.import_file"),
-        qtTrId(video ? "track_metadata.imported_background_video" : "track_metadata.imported_background_image")
+        miacode::localizedText(video ? "track_metadata.import_background_video" : "track_metadata.import_file"),
+        miacode::localizedText(video ? "track_metadata.imported_background_video" : "track_metadata.imported_background_image")
             .arg(result.targetPath));
 }
 
@@ -966,10 +980,10 @@ void DocumentModel::createDocumentFromPickedAudio()
         patterns << QStringLiteral("*.%1").arg(extension);
     }
     miacode::FileRequest request;
-    request.title = qtTrId("document.choose_audio");
-    request.nameFilters = QStringList{
-        qtTrId("document.audio_files_filter").arg(patterns.join(QLatin1Char(' '))),
-        qtTrId("qml.all_files"),
+    request.title = miacode::localizedText("document.choose_audio");
+    request.nameFilters = {
+        miacode::localizedText("document.audio_files_filter").arg(patterns.join(QLatin1Char(' '))),
+        miacode::localizedText("qml.all_files"),
     };
     requests->requestFile(request, [this](const QString& audioPath) {
         if (!audioPath.trimmed().isEmpty()) {
@@ -1022,8 +1036,8 @@ void DocumentModel::handleDroppedAudio(const QString& audioPath, std::function<v
         const QString targetDirectory = plannedDroppedChartFolder(audioPath);
         requests->requestChoice(
             dropCreateTitle(),
-            QStringLiteral("%1\n\n%2")
-                .arg(qtTrId("drop_chart.preview.single_track")
+            miacode::LocalizedText(QStringLiteral("%1\n\n%2"))
+                .arg(miacode::localizedText("drop_chart.preview.single_track")
                          .arg(QFileInfo(existingTrack).fileName()),
                      dropCreateHereText(targetDirectory)),
             createFolderChoices(),
@@ -1042,7 +1056,7 @@ void DocumentModel::handleDroppedAudio(const QString& audioPath, std::function<v
     if (QFileInfo::exists(maidataPath)) {
         requests->requestChoice(
             dropOpenOrCreateTitle(),
-            qtTrId("drop_chart.preview.existing_project")
+            miacode::localizedText("drop_chart.preview.existing_project")
                 .arg(QDir::toNativeSeparators(directory)),
             existingChartChoices(),
             QStringLiteral("cancel"),
@@ -1099,8 +1113,8 @@ void DocumentModel::leaveThenCreateDroppedChart(const QString& audioPath, bool o
                 if (uiRequests_ != nullptr) {
                     uiRequests_->postNotice(
                         miacode::NoticeSeverity::Error,
-                        qtTrId("document.new_failed"),
-                        qtTrId("document.cannot_replace")
+                        miacode::localizedText("document.new_failed"),
+                        miacode::localizedText("document.cannot_replace")
                             .arg(QDir::toNativeSeparators(renamed)));
                 }
                 finished();
@@ -1110,8 +1124,8 @@ void DocumentModel::leaveThenCreateDroppedChart(const QString& audioPath, bool o
                 if (uiRequests_ != nullptr) {
                     uiRequests_->postNotice(
                         miacode::NoticeSeverity::Error,
-                        qtTrId("document.new_failed"),
-                        qtTrId("document.cannot_write")
+                        miacode::localizedText("document.new_failed"),
+                        miacode::localizedText("document.cannot_write")
                             .arg(QDir::toNativeSeparators(renamed)));
                 }
                 finished();
@@ -1135,8 +1149,8 @@ void DocumentModel::createDroppedChartInNewFolder(const QString& audioPath,
         if (uiRequests_ != nullptr) {
             uiRequests_->postNotice(
                 miacode::NoticeSeverity::Error,
-                qtTrId("document.new_failed"),
-                qtTrId("document.cannot_write").arg(QDir::toNativeSeparators(trackPath)));
+                miacode::localizedText("document.new_failed"),
+                miacode::localizedText("document.cannot_write").arg(QDir::toNativeSeparators(trackPath)));
         }
         finished();
         return;
@@ -1160,9 +1174,9 @@ void DocumentModel::createChartBesideAudio(const QString& audioPath, bool overwr
         return;
     }
     requests->requestConfirmation(
-        qtTrId("document.file_already_exists"),
-        qtTrId("document.maidata_txt_already_exists_in"),
-        qtTrId("action.yes"),
+        miacode::localizedText("document.file_already_exists"),
+        miacode::localizedText("document.maidata_txt_already_exists_in"),
+        miacode::localizedText("action.yes"),
         [this, audioPath, targetPath](bool accepted) {
             if (accepted) {
                 ensureTrackCopyThenCreate(audioPath, targetPath);
@@ -1190,16 +1204,16 @@ void DocumentModel::ensureTrackCopyThenCreate(
         if (QFileInfo::exists(trackPath) && !QFile::remove(trackPath)) {
             if (requests != nullptr) {
                 requests->postNotice(
-                    miacode::NoticeSeverity::Error, qtTrId("document.new_failed"),
-                    qtTrId("document.cannot_replace").arg(QDir::toNativeSeparators(trackPath)));
+                    miacode::NoticeSeverity::Error, miacode::localizedText("document.new_failed"),
+                    miacode::localizedText("document.cannot_replace").arg(QDir::toNativeSeparators(trackPath)));
             }
             return;
         }
         if (!QFile::copy(audioPath, trackPath)) {
             if (requests != nullptr) {
                 requests->postNotice(
-                    miacode::NoticeSeverity::Error, qtTrId("document.new_failed"),
-                    qtTrId("document.cannot_write").arg(QDir::toNativeSeparators(trackPath)));
+                    miacode::NoticeSeverity::Error, miacode::localizedText("document.new_failed"),
+                    miacode::localizedText("document.cannot_write").arg(QDir::toNativeSeparators(trackPath)));
             }
             return;
         }
@@ -1212,8 +1226,8 @@ void DocumentModel::ensureTrackCopyThenCreate(
         if (requests != nullptr && !resolved.isEmpty()
             && QFileInfo(resolved) != QFileInfo(trackPath)) {
             requests->postNotice(
-                miacode::NoticeSeverity::Warning, qtTrId("document.track_may_differ"),
-                qtTrId("document.existing_track_preferred")
+                miacode::NoticeSeverity::Warning, miacode::localizedText("document.track_may_differ"),
+                miacode::localizedText("document.existing_track_preferred")
                     .arg(QFileInfo(resolved).fileName(), QFileInfo(trackPath).fileName()));
         }
         createEmptyDocumentAt(targetPath, audioPath);
@@ -1227,10 +1241,10 @@ void DocumentModel::ensureTrackCopyThenCreate(
         return;
     }
     requests->requestConfirmation(
-        qtTrId("document.file_already_exists"),
-        qtTrId("document.replace_existing_confirm")
+        miacode::localizedText("document.file_already_exists"),
+        miacode::localizedText("document.replace_existing_confirm")
             .arg(trackName, audioInfo.fileName()),
-        qtTrId("action.yes"),
+        miacode::localizedText("action.yes"),
         [copyThenCreate](bool accepted) {
             if (accepted) {
                 copyThenCreate();
@@ -1250,8 +1264,8 @@ void DocumentModel::createEmptyDocumentAt(const QString& targetPath, const QStri
         if (requests != nullptr) {
             requests->postNotice(
                 miacode::NoticeSeverity::Error,
-                qtTrId("document.file_already_exists"),
-                qtTrId("document.cannot_write_file").arg(QDir::toNativeSeparators(targetPath)));
+                miacode::localizedText("document.file_already_exists"),
+                miacode::localizedText("document.cannot_write_file").arg(QDir::toNativeSeparators(targetPath)));
         }
         return;
     }
@@ -1280,7 +1294,8 @@ bool DocumentModel::saveDifficultySection(int difficultyId)
 {
     if (!hasDocument() || fileService_ == nullptr) return false;
     if (!runWorkspaceMutation([&] { return fileService_->save(difficultyId).accepted; })) {
-        emit operationFailed(qtTrId("document.save_failed"), qtTrId("document.cannot_write_chart"));
+        uiRequests_->postNotice(miacode::NoticeSeverity::Error,
+            miacode::localizedText("document.save_failed"), miacode::localizedText("document.cannot_write_chart"));
         return false;
     }
     publishWorkspaceCommit(WorkspaceCommitKind::SavePoint);
@@ -1308,7 +1323,8 @@ bool DocumentModel::openFile(const QUrl& fileUrl)
             result = fileService_->open(path);
             return result.accepted;
         })) {
-        emit operationFailed(qtTrId("dialog.open_startup_target.missing.title"), qtTrId("document.cannot_open_chart"));
+        uiRequests_->postNotice(miacode::NoticeSeverity::Error,
+            miacode::localizedText("dialog.open_startup_target.missing.title"), miacode::localizedText("document.cannot_open_chart"));
         return false;
     }
     if (!result.issues.isEmpty()) {
@@ -1367,7 +1383,8 @@ void DocumentModel::saveSectionOrAskForPath(
             writeUnifiedDesignerPreference(currentFilePath(), unifiedDesignerEnabled_);
             publishWorkspaceCommit(WorkspaceCommitKind::SavePoint);
         } else {
-            emit operationFailed(qtTrId("document.save_failed"), qtTrId("document.cannot_write_chart"));
+            uiRequests_->postNotice(miacode::NoticeSeverity::Error,
+                miacode::localizedText("document.save_failed"), miacode::localizedText("document.cannot_write_chart"));
         }
         finish(saved);
         return;
@@ -1379,9 +1396,9 @@ void DocumentModel::saveSectionOrAskForPath(
         return;
     }
     miacode::FileRequest request;
-    request.title = qtTrId("action.save_as");
+    request.title = miacode::localizedText("action.save_as");
     request.saveMode = true;
-    request.nameFilters = QStringList{qtTrId("qml.simai_files_txt_simai"), qtTrId("qml.all_files_2")};
+    request.nameFilters = {miacode::localizedText("qml.simai_files_txt_simai"), miacode::localizedText("qml.all_files_2")};
     const qulonglong generation = documentGeneration_;
     requests->requestFile(request, [this, difficultyId, generation, finish](const QString& path) {
         if (generation != documentGeneration_ || path.trimmed().isEmpty()) {
@@ -1397,7 +1414,8 @@ void DocumentModel::saveSectionOrAskForPath(
             writeUnifiedDesignerPreference(currentFilePath(), unifiedDesignerEnabled_);
             publishWorkspaceCommit(WorkspaceCommitKind::SavePoint);
         } else {
-            emit operationFailed(qtTrId("document.save_failed"), qtTrId("document.cannot_write_chart"));
+            uiRequests_->postNotice(miacode::NoticeSeverity::Error,
+                miacode::localizedText("document.save_failed"), miacode::localizedText("document.cannot_write_chart"));
         }
         finish(saved);
     });
@@ -1412,7 +1430,8 @@ bool DocumentModel::saveMetadataImmediately()
     if (fileService_ == nullptr || !runWorkspaceMutation([&] {
             return fileService_->save(miacode::ChartWorkspace::MetadataSection).accepted;
         })) {
-        emit operationFailed(qtTrId("document.save_failed"), qtTrId("document.cannot_write_chart"));
+        uiRequests_->postNotice(miacode::NoticeSeverity::Error,
+            miacode::localizedText("document.save_failed"), miacode::localizedText("document.cannot_write_chart"));
         return false;
     }
     writeUnifiedDesignerPreference(currentFilePath(), workspace_->unifiedDesignerEnabled());
@@ -1461,9 +1480,9 @@ void DocumentModel::requestLeaveSection(int difficultyId, std::function<void(boo
     }
     const qulonglong generation = documentGeneration_;
     uiRequests_->requestChoice(
-        qtTrId(wholeDocument ? "dialog.unsaved_changes.title" : "dialog.unsaved_tab_changes.title"),
-        wholeDocument ? qtTrId("dialog.unsaved_changes.message")
-                      : qtTrId("dialog.unsaved_tab_changes.message")
+        miacode::localizedText(wholeDocument ? "dialog.unsaved_changes.title" : "dialog.unsaved_tab_changes.title"),
+        wholeDocument ? miacode::localizedText("dialog.unsaved_changes.message")
+                      : miacode::localizedText("dialog.unsaved_tab_changes.message")
                             .arg(SimaiDocument::difficultyName(difficultyId)),
         unsavedSectionChoices(),
         QStringLiteral("cancel"),
@@ -1510,7 +1529,8 @@ bool DocumentModel::save()
     if (!runWorkspaceMutation([&] {
             return fileService_->save(sectionId).accepted;
         })) {
-        emit operationFailed(qtTrId("document.save_failed"), qtTrId("document.cannot_write_chart"));
+        uiRequests_->postNotice(miacode::NoticeSeverity::Error,
+            miacode::localizedText("document.save_failed"), miacode::localizedText("document.cannot_write_chart"));
         return false;
     }
     writeUnifiedDesignerPreference(currentFilePath(), unifiedDesignerEnabled_);
@@ -1524,7 +1544,8 @@ bool DocumentModel::saveWholeDocument()
     emit editingFinishedRequested();
     if (fileService_ == nullptr) return false;
     if (!runWorkspaceMutation([&] { return fileService_->save(0).accepted; })) {
-        emit operationFailed(qtTrId("document.save_failed"), qtTrId("document.cannot_write_chart"));
+        uiRequests_->postNotice(miacode::NoticeSeverity::Error,
+            miacode::localizedText("document.save_failed"), miacode::localizedText("document.cannot_write_chart"));
         return false;
     }
     writeUnifiedDesignerPreference(currentFilePath(), unifiedDesignerEnabled_);
@@ -1776,7 +1797,8 @@ bool DocumentModel::saveToPath(const QString& path)
 {
     if (!hasDocument() || fileService_ == nullptr || path.trimmed().isEmpty()) return false;
     if (!runWorkspaceMutation([&] { return fileService_->saveAs(path, 0).accepted; })) {
-        emit operationFailed(qtTrId("document.save_failed"), qtTrId("document.cannot_write_chart"));
+        uiRequests_->postNotice(miacode::NoticeSeverity::Error,
+            miacode::localizedText("document.save_failed"), miacode::localizedText("document.cannot_write_chart"));
         return false;
     }
     publishWorkspaceCommit(WorkspaceCommitKind::SavePoint);
@@ -1868,6 +1890,7 @@ QVariantList DocumentModel::chartTransformMenu() const
     for (const miacode::ui::ChartTransformSpec& spec : miacode::ui::chartTransformSpecs()) {
         rows.append(QVariantMap{
             {QStringLiteral("id"), spec.id},
+            {QStringLiteral("labelKey"), spec.labelKey},
             {QStringLiteral("label"), qtTrId(spec.labelKey.toUtf8().constData())},
             {QStringLiteral("section"), spec.section},
         });

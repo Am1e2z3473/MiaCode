@@ -1,4 +1,7 @@
+#include "common/LocalizedText.h"
+
 #include "media/MediaToolsModel.h"
+#include "ui/preferences/LocaleService.h"
 
 #include "app/services/MediaToolsEngine.h"
 
@@ -25,7 +28,10 @@ MediaToolsModel::MediaToolsModel(                               miacode::UiReque
     , jobProgress_(&jobProgress)
     , engineSlot_(&engineSlot)
 {
-    batchSummary_ = qtTrId("media_tools.batch_pv_empty");
+    qRegisterMetaType<miacode::LocalizedText>();
+    connect(&miacode::LocaleService::instance(), &miacode::LocaleService::languageChanged,
+            this, [this](const QString&) { emit batchChanged(); });
+    batchSummary_ = miacode::localizedText("media_tools.batch_pv_empty");
 }
 
 MediaToolsModel::~MediaToolsModel()
@@ -51,7 +57,7 @@ QVariantList MediaToolsModel::batchJobs() const
             QStringLiteral("size"),
             job.originalBytes > 0 ? QLocale().formattedDataSize(job.originalBytes) : QString());
         row.insert(
-            QStringLiteral("status"), i < jobStatuses_.size() ? jobStatuses_.at(i) : QString());
+            QStringLiteral("status"), i < jobStatuses_.size() ? jobStatuses_.at(i).text() : QString());
         list.append(row);
     }
     return list;
@@ -102,7 +108,7 @@ void MediaToolsModel::chooseBatchDirectory()
         return;
     }
     miacode::FileRequest request;
-    request.title = qtTrId("media_tools.batch_pv_choose_folder");
+    request.title = miacode::localizedText("media_tools.batch_pv_choose_folder");
     request.startPath = batchDirectory_;
     request.selectFolder = true;
     requests->requestFile(request, [this](const QString& path) { setBatchDirectory(path); });
@@ -134,8 +140,8 @@ void MediaToolsModel::rescanBatchDirectory()
         jobStatuses_.append(QString());
     }
     batchSummary_ = jobs_.isEmpty()
-        ? qtTrId("media_tools.batch_pv_empty")
-        : qtTrId("media_tools.batch_pv_added_1_total_2")
+        ? miacode::localizedText("media_tools.batch_pv_empty")
+        : miacode::localizedText("media_tools.batch_pv_added_1_total_2")
               .arg(added)
               .arg(jobs_.size());
     emit batchChanged();
@@ -160,11 +166,11 @@ void MediaToolsModel::clearBatchQueue()
     }
     jobs_.clear();
     jobStatuses_.clear();
-    batchSummary_ = qtTrId("media_tools.batch_pv_empty");
+    batchSummary_ = miacode::localizedText("media_tools.batch_pv_empty");
     emit batchChanged();
 }
 
-void MediaToolsModel::setRowStatus(int row, const QString& status)
+void MediaToolsModel::setRowStatus(int row, const miacode::LocalizedText& status)
 {
     if (row < 0 || row >= jobStatuses_.size()) {
         return;
@@ -188,20 +194,20 @@ void MediaToolsModel::startBatchCompression()
     if (!hasCompressibleVideo) {
         requests->postNotice(
             miacode::NoticeSeverity::Information,
-            qtTrId("media_tools.batch_pv_title"),
-            qtTrId("media_tools.batch_pv_already_small"));
+            miacode::localizedText("media_tools.batch_pv_title"),
+            miacode::localizedText("media_tools.batch_pv_already_small"));
         return;
     }
 
     batchCancelRequested_ = false;
     batchRunning_ = true;
-    jobStatuses_ = QStringList(jobs_.size());
+    jobStatuses_ = QList<miacode::LocalizedText>(jobs_.size());
     emit batchRunningChanged();
     emit batchChanged();
 
     batchJobToken_ = jobProgress->begin(
-        qtTrId("media_tools.batch_pv_title"),
-        qtTrId("media_tools.batch_pv_title"),
+        miacode::localizedText("media_tools.batch_pv_title"),
+        miacode::localizedText("media_tools.batch_pv_title"),
         /*cancellable=*/true);
 
     auto* thread = new QThread(this);
@@ -220,10 +226,10 @@ void MediaToolsModel::startBatchCompression()
                 }
                 jobProgress->report(
                     total > 0 ? completed * 100 / total : 0,
-                    qtTrId("media_tools.batch_pv_queue_total_1").arg(total));
+                    miacode::localizedText("media_tools.batch_pv_queue_total_1").arg(total));
             });
     connect(worker, &miacode::media::PvBatchCompressionWorker::summary, this,
-            [this](const QString& message) {
+            [this](const miacode::LocalizedText& message) {
                 batchSummary_ = message;
                 emit batchChanged();
             });
@@ -246,7 +252,7 @@ void MediaToolsModel::startBatchCompression()
 }
 
 void MediaToolsModel::finishBatch(
-    int succeeded, int failed, bool canceled, const QString& fatalError)
+    int succeeded, int failed, bool canceled, const miacode::LocalizedText& fatalError)
 {
     miacode::JobProgressService* const jobProgress = jobProgress_;
     if (jobProgress != nullptr && jobProgress->token() == batchJobToken_) {
@@ -259,9 +265,9 @@ void MediaToolsModel::finishBatch(
     if (!fatalError.isEmpty()) {
         batchSummary_ = fatalError;
     } else if (canceled) {
-        batchSummary_ = qtTrId("media_tools.batch_pv_canceled");
+        batchSummary_ = miacode::localizedText("media_tools.batch_pv_canceled");
     } else {
-        batchSummary_ = qtTrId("media_tools.batch_pv_complete_1_2")
+        batchSummary_ = miacode::localizedText("media_tools.batch_pv_complete_1_2")
                             .arg(succeeded)
                             .arg(failed);
     }

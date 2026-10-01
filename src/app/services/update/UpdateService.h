@@ -31,6 +31,7 @@ class UpdateService final : public QObject
     Q_PROPERTY(bool checkInFlight READ checkInFlight NOTIFY findingChanged)
     Q_PROPERTY(bool updateAvailable READ updateAvailable NOTIFY findingChanged)
     Q_PROPERTY(QString availableVersion READ availableVersion NOTIFY findingChanged)
+    Q_PROPERTY(QVariantMap availableDetails READ availableDetail NOTIFY findingChanged)
     Q_PROPERTY(QString currentVersion READ currentVersion CONSTANT)
 
 public:
@@ -47,6 +48,7 @@ public:
     bool checkInFlight() const { return inFlight_; }
     bool updateAvailable() const { return updateAvailable_; }
     QString availableVersion() const { return availableVersion_; }
+    void setLanguageToken(const QString& token);
     QString currentVersion() const { return environment_.versionText; }
 
     // 有效通道：用户显式选择优先，否则按本构建是否为 prerelease 决定。

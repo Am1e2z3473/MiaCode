@@ -12,6 +12,8 @@ AppDialog {
     required property var mediaTools
 
     property bool isTrack: true
+    title: isTrack ? qsTrId("media_tools.prepend_track_silence")
+                   : qsTrId("media_tools.prepend_pv_black_screen")
     property string inputName: ""
     property string backupName: ""
     property bool hasBackup: false
@@ -30,7 +32,6 @@ AppDialog {
 
     function loadContext(context) {
         root.isTrack = context.isTrack
-        root.title = context.title
         root.inputName = context.inputName
         root.backupName = context.backupName
         root.hasBackup = context.hasBackup

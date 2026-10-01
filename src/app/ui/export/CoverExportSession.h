@@ -72,7 +72,7 @@ class CoverExportSession final : public QObject
     Q_PROPERTY(bool chartFramePlaying READ chartFramePlaying NOTIFY chartFramePlayingChanged)
     Q_PROPERTY(bool liveChartSceneBound READ liveChartSceneBound NOTIFY liveChartSceneBoundChanged)
     Q_PROPERTY(double activeChartFrameSeconds READ activeChartFrameSeconds NOTIFY activeChartFrameSecondsChanged)
-    Q_PROPERTY(QVariantList builtinPresets READ builtinPresets CONSTANT)
+    Q_PROPERTY(QVariantList builtinPresets READ builtinPresets NOTIFY localeLabelsChanged)
     Q_PROPERTY(QVariantList presets READ presets NOTIFY presetsChanged)
     Q_PROPERTY(QStringList recentLayoutFiles READ recentLayoutFiles NOTIFY recentLayoutFilesChanged)
     Q_PROPERTY(bool busy READ busy NOTIFY busyChanged)
@@ -194,6 +194,7 @@ public:
     void setOutputDirectory(const QString& path);
 
 signals:
+    void localeLabelsChanged();
     void pageSessionActiveChanged();
     void selectedDifficultyIdChanged();
     void difficultiesChanged();
@@ -236,7 +237,7 @@ private:
     void persistComposition();
     void requestFont(bool displayFont, bool textLayerFont);
     void setBusy(bool busy);
-    void notifyError(const QString& title, const QString& text, const QString& details = QString()) const;
+    void notifyError(const miacode::LocalizedText& title, const miacode::LocalizedText& text, const miacode::LocalizedText& details = QString()) const;
     // Bound to the assembly's slot, not a snapshot; same shape as the other
     // v2 QML models that reach the coordinator's single playback authority.
     miacode::PlaybackControl* playbackControl() const

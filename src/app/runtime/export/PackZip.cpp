@@ -1,3 +1,5 @@
+#include "common/LocalizedText.h"
+
 #include "runtime/export/VideoExportHost.h"
 #include "runtime/Shared.h"
 #include "runtime/document/DocumentSessionHost.h"
@@ -28,7 +30,7 @@ void miacode::runtime::VideoExportHost::onPackAsZip()
         return;
     }
 
-    const QString dialogTitle = qtTrId("export.export_as_zip");
+    const miacode::LocalizedText dialogTitle = miacode::localizedText("export.export_as_zip");
 
     // Flush the in-progress editor field into the document so the packaged
     // maidata.txt matches what the user sees (same contract as save-to-path).
@@ -42,7 +44,7 @@ void miacode::runtime::VideoExportHost::onPackAsZip()
         requests->postNotice(
             miacode::NoticeSeverity::Warning,
             dialogTitle,
-            qtTrId("export.the_chart_is_empty_there"));
+            miacode::localizedText("export.the_chart_is_empty_there"));
         return;
     }
 
@@ -59,7 +61,7 @@ void miacode::runtime::VideoExportHost::onPackAsZip()
     miacode::FileRequest request;
     request.title = dialogTitle;
     request.startPath = defaultDir.isEmpty() ? defaultName : QDir(defaultDir).filePath(defaultName);
-    request.nameFilters = QStringList{QStringLiteral("ZIP (*.zip)")};
+    request.nameFilters = {miacode::localizedText("file_filter.zip")};
     request.saveMode = true;
     requests->requestFile(request, [this, chartText, chartPath, dialogTitle](const QString& picked) {
         packChartToZipAtPath(chartText, chartPath, dialogTitle, picked);
@@ -69,7 +71,7 @@ void miacode::runtime::VideoExportHost::onPackAsZip()
 void miacode::runtime::VideoExportHost::packChartToZipAtPath(
     const QString& chartText,
     const QString& chartPath,
-    const QString& dialogTitle,
+    const miacode::LocalizedText& dialogTitle,
     const QString& pickedPath)
 {
     MC_OP("miacode::runtime::VideoExportHost::packChartToZipAtPath");
@@ -94,7 +96,7 @@ void miacode::runtime::VideoExportHost::packChartToZipAtPath(
 
     jobProgress->begin(
         dialogTitle,
-        qtTrId("export.preparing_package"),
+        miacode::localizedText("export.preparing_package"),
         /*cancellable=*/true);
 
     // The packager is synchronous and reports from the UI thread, so pump the
@@ -105,7 +107,7 @@ void miacode::runtime::VideoExportHost::packChartToZipAtPath(
         const int safeTotal = qMax(1, total);
         jobProgress->report(
             qRound(static_cast<double>(current - 1) * 100.0 / safeTotal),
-            qtTrId("export.packaging_1_2_3")
+            miacode::localizedText("export.packaging_1_2_3")
                 .arg(current)
                 .arg(total)
                 .arg(entryName));
@@ -122,7 +124,7 @@ void miacode::runtime::VideoExportHost::packChartToZipAtPath(
         requests->postNotice(
             miacode::NoticeSeverity::Information,
             dialogTitle,
-            qtTrId("export.packaging_canceled"));
+            miacode::localizedText("export.packaging_canceled"));
         return;
     }
 
@@ -131,7 +133,7 @@ void miacode::runtime::VideoExportHost::packChartToZipAtPath(
         requests->postNotice(
             miacode::NoticeSeverity::Error,
             dialogTitle,
-            qtTrId("export.packaging_failed_1").arg(result.errorMessage));
+            miacode::localizedText("export.packaging_failed_1").arg(result.errorMessage));
         return;
     }
 
@@ -142,12 +144,12 @@ void miacode::runtime::VideoExportHost::packChartToZipAtPath(
     requests->requestNoticeAction(
         miacode::NoticeSeverity::Information,
         dialogTitle,
-        qtTrId("export.exported_to_1_2_file")
+        miacode::localizedText("export.exported_to_1_2_file")
             .arg(QDir::toNativeSeparators(outputPath))
             .arg(result.includedEntries.size())
             .arg(QString()),
         details,
-        qtTrId("action.open_folder"),
+        miacode::localizedText("action.open_folder"),
         [outputPath](bool openFolder) {
             if (!openFolder) {
                 return;
