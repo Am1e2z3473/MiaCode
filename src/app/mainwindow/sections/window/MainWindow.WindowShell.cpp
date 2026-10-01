@@ -17,9 +17,14 @@
 #include "preview/runtime/PreviewRuntime.h"
 #include "preview/runtime/PreviewStageMediaHost.h"
 #include "core/scene/PreviewProgressStatsCache.h"
+#include "extensions/ExtensionManager.h"
 #include "tools/export_page/ExportLauncherPage.h"
 #include "tools/latency/LatencyDetectionPage.h"
+#include "tools/net/NetBatchUploadDialog.h"
+#include "tools/media/PvBatchCompressionDialog.h"
 #include "tools/video_export/VideoExportDialog.h"
+#include "tools/video_export/BatchExportPanel.h"
+#include "app/ui/AppBackgroundPainter.h"
 
 #include <QtCore>
 #include <QtGui>
@@ -417,7 +422,8 @@ void MainWindow::WindowSection::updateShellPreviewScrub(double second, bool cent
             .arg(clampedSecond, 0, 'f', 6)
             .arg(centerView ? 1 : 0)
     );
-    owner_.qtPreviewPauseSecond_ = clampedSecond;
+    miacode::mainwindow::shared::writePreviewPauseSecond(
+        owner_.qtPreviewPauseSecond_, clampedSecond, owner_.qtPreviewPlaying_, "update_shell_preview_scrub");
     if (owner_.previewFullscreenActive_) {
         owner_.showPreviewFullscreenControls(false);
     }
@@ -447,6 +453,9 @@ void MainWindow::WindowSection::updateShellPreviewScrub(double second, bool cent
 void MainWindow::WindowSection::endShellPreviewScrub(double second, bool centerView)
 {
     if (owner_.handleExportIntroSliderSeek(second)) {
+        owner_.stopPreviewHeldSeek();
+        owner_.previewScrubDragging_ = false;
+        owner_.previewScrubRenderElapsed_.invalidate();
         return;
     }
     const double clampedSecond = qBound(0.0, second, owner_.previewDurationSeconds());
@@ -460,7 +469,8 @@ void MainWindow::WindowSection::endShellPreviewScrub(double second, bool centerV
     owner_.stopPreviewHeldSeek();
     owner_.previewScrubDragging_ = false;
     owner_.previewScrubRenderElapsed_.invalidate();
-    owner_.qtPreviewPauseSecond_ = clampedSecond;
+    miacode::mainwindow::shared::writePreviewPauseSecond(
+        owner_.qtPreviewPauseSecond_, clampedSecond, owner_.qtPreviewPlaying_, "end_shell_preview_scrub");
     if (owner_.previewSeekDebounceTimer_ != nullptr) {
         owner_.previewSeekDebounceTimer_->stop();
     }
@@ -482,6 +492,24 @@ void MainWindow::WindowSection::endShellPreviewScrub(double second, bool centerV
 void MainWindow::WindowSection::setShellPreviewRate(double rate)
 {
     owner_.applyPreviewPlaybackRate(rate);
+}
+
+void MainWindow::WindowSection::toggleShellMuriRenderMode()
+{
+    // Three exclusive preview modes, so the shell shortcut cycles rather than toggles.
+    RenderMode nextMode = RenderMode::MaimuriDxStyle;
+    switch (owner_.muriRenderOptions_.renderMode) {
+        case RenderMode::Native:
+            nextMode = RenderMode::EraseByArea;
+            break;
+        case RenderMode::EraseByArea:
+            nextMode = RenderMode::MaimuriDxStyle;
+            break;
+        case RenderMode::MaimuriDxStyle:
+            nextMode = RenderMode::Native;
+            break;
+    }
+    owner_.setMuriRenderMode(nextMode);
 }
 
 void MainWindow::WindowSection::nudgeShellPreviewRate(int direction)
@@ -722,6 +750,11 @@ QString MainWindow::WindowSection::shellPreviewSpeedLabel() const
         rateText.chop(1);
     }
     return QStringLiteral("%1x").arg(rateText);
+}
+
+bool MainWindow::WindowSection::shellMuriCheckRenderMode() const
+{
+    return owner_.muriRenderOptions_.renderMode == RenderMode::MaimuriDxStyle;
 }
 
 bool MainWindow::WindowSection::shellPreviewPlaying() const
@@ -983,6 +1016,15 @@ void MainWindow::WindowSection::applyUiTheme()
         // own background rule is slow to repaint; this re-themes its children.)
         owner_.embeddedVideoExportPanel_->applyThemeStyles();
     }
+    if (!owner_.embeddedBatchExportPanel_.isNull()) {
+        owner_.embeddedBatchExportPanel_->applyThemeStyles();
+    }
+    if (!owner_.netBatchUploadDialog_.isNull()) {
+        static_cast<miacode::net::NetBatchUploadDialog*>(owner_.netBatchUploadDialog_.data())->applyThemeStyles();
+    }
+    if (!owner_.pvBatchCompressionDialog_.isNull()) {
+        static_cast<miacode::media::PvBatchCompressionDialog*>(owner_.pvBatchCompressionDialog_.data())->applyThemeStyles();
+    }
     if (owner_.metadataEmptyHintLabel_ != nullptr) {
         owner_.metadataEmptyHintLabel_->setStyleSheet(UiTheme::metadataEmptyHintLabelStyleSheet());
     }
@@ -1009,10 +1051,11 @@ void MainWindow::WindowSection::applyUiTheme()
     }
     if (owner_.outlineList_ != nullptr) {
         owner_.outlineList_->setStyleSheet(UiTheme::outlineListStyleSheet());
-    }
-    if (owner_.deleteDifficultyButton_ != nullptr) {
-        owner_.deleteDifficultyButton_->setStyleSheet(UiTheme::deleteDifficultyButtonStyleSheet());
-        owner_.deleteDifficultyButton_->setIcon(makeOutlineCloseIcon(UiTheme::colors().iconSecondary));
+        // The scroll bar was styled once at construction — re-style it here or
+        // it keeps the previous theme's colors after a light/dark switch.
+        if (QScrollBar* vbar = owner_.outlineList_->verticalScrollBar()) {
+            vbar->setStyleSheet(UiTheme::scrollBarStyleSheet());
+        }
     }
     if (owner_.timelineView_ != nullptr) {
         owner_.timelineView_->refreshTheme();
@@ -1028,6 +1071,24 @@ void MainWindow::WindowSection::applyUiTheme()
         editorShell->setStyleSheet(UiTheme::editorShellStyleSheet());
     }
     const UiTheme::Colors& themeColors = UiTheme::colors();
+    const bool appBackgroundActive = miacode::ui::appBackgroundIsActiveForTheme();
+    const auto backgroundSurfaceColor = [appBackgroundActive](const QColor& color, int alpha) {
+        return appBackgroundActive
+            ? QStringLiteral("rgba(%1, %2, %3, %4)")
+                .arg(color.red())
+                .arg(color.green())
+                .arg(color.blue())
+                .arg(alpha)
+            : color.name(QColor::HexRgb);
+    };
+    const auto backgroundActiveSurfaceColor = [
+        appBackgroundActive,
+        backgroundSurfaceColor
+    ](const QColor& activeColor, const QColor& inactiveColor, int alpha) {
+        return appBackgroundActive
+            ? backgroundSurfaceColor(activeColor, alpha)
+            : inactiveColor.name(QColor::HexRgb);
+    };
     if (owner_.editorHeaderWidget_ != nullptr) {
         owner_.editorHeaderWidget_->setAttribute(Qt::WA_StyledBackground, true);
         owner_.editorHeaderWidget_->setStyleSheet(
@@ -1040,11 +1101,16 @@ void MainWindow::WindowSection::applyUiTheme()
                 "QWidget#EditorDifficultyControls QLineEdit { background: %5; color: %3; border: 1px solid %6; border-radius: 6px; padding: 4px 6px; selection-background-color: %7; selection-color: %8; }"
                 "QWidget#EditorDifficultyControls QLineEdit:focus { border-color: %9; }"
             )
-                .arg(themeColors.cardBg.name(QColor::HexRgb))
+                .arg(backgroundActiveSurfaceColor(
+                    themeColors.toolbarBg,
+                    themeColors.cardBg,
+                    UiTheme::appBackgroundOverlayAlpha(UiTheme::AppBackgroundOverlayRole::EditorHeader, themeColors.dark)))
                 .arg(themeColors.border.name(QColor::HexRgb))
                 .arg(themeColors.textPrimary.name(QColor::HexRgb))
                 .arg(themeColors.textSecondary.name(QColor::HexRgb))
-                .arg(themeColors.inputBg.name(QColor::HexRgb))
+                .arg(backgroundSurfaceColor(
+                    themeColors.inputBg,
+                    UiTheme::appBackgroundOverlayAlpha(UiTheme::AppBackgroundOverlayRole::Input, themeColors.dark)))
                 .arg(themeColors.borderSoft.name(QColor::HexRgb))
                 .arg(themeColors.selection.name(QColor::HexRgb))
                 .arg(themeColors.selectionText.name(QColor::HexRgb))
@@ -1056,7 +1122,7 @@ void MainWindow::WindowSection::applyUiTheme()
         owner_.previewPanel_->setStyleSheet(previewPanelStyle);
     }
     QSet<QMenu*> refreshedMenus;
-    refreshMenuBarTheme(owner_.menuBar(), &refreshedMenus);
+    refreshMenuBarTheme(owner_.mainMenuBar_, &refreshedMenus);
     refreshMenuThemeRecursive(owner_.toolboxMenu_, &refreshedMenus);
     const QList<QMenu*> menus = owner_.findChildren<QMenu*>();
     for (QMenu* menu : menus) {
@@ -1105,6 +1171,9 @@ void MainWindow::WindowSection::applyUiTheme()
         owner_.previewStatsCard_->setStyleSheet(QString());
     }
     owner_.updateEditorValidationSummary();
+    if (owner_.extensionManager_ != nullptr) {
+        owner_.extensionManager_->refreshMenuSelectionIcons();
+    }
     owner_.updatePauseButtonAppearance();
     owner_.updatePreviewFullscreenButtonAppearance();
     owner_.update();
@@ -1118,8 +1187,8 @@ void MainWindow::WindowSection::updateOutlineDockCollapseButton()
     owner_.outlineCollapseButton_->setText(owner_.outlineDockCollapsed_ ? QStringLiteral("▶") : QStringLiteral("◀"));
     owner_.outlineCollapseButton_->setToolTip(
         owner_.outlineDockCollapsed_
-            ? (UiText::isChineseUi() ? QStringLiteral("展开左侧字段栏") : QStringLiteral("Expand left sidebar"))
-            : (UiText::isChineseUi() ? QStringLiteral("折叠左侧字段栏") : QStringLiteral("Collapse left sidebar"))
+            ? UiText::text(QStringLiteral("window.expand_left_sidebar"))
+            : UiText::text(QStringLiteral("window.collapse_left_sidebar"))
     );
 }
 
@@ -1140,9 +1209,6 @@ void MainWindow::WindowSection::setOutlineDockCollapsed(bool collapsed)
 
     owner_.outlineDockCollapsed_ = collapsed;
     owner_.outlineList_->setVisible(!collapsed);
-    if (collapsed) {
-        owner_.updateDifficultyDeleteButton(false);
-    }
 
     const int targetWidth = collapsed ? kCollapsedWidth : qMax(kExpandedMinWidth, owner_.outlineDockExpandedWidth_);
     owner_.outlineDock_->setMinimumWidth(targetWidth);

@@ -7,6 +7,7 @@
 #include "LatencyAnalysis.h"
 
 class MainWindow;
+class QComboBox;
 class QDoubleSpinBox;
 class QEvent;
 class QLabel;
@@ -74,10 +75,10 @@ private:
     void updateAuditionUi(bool running);
     void updatePositionLabel(double seconds);
     void updateAutoDetectAvailability();
-    void ensureAudioEnvelopeReady();
+    bool ensureAudioEnvelopeReady();
     void clearAudioEnvelopeCache();
+    miacode::audio_decode::BackendPreference selectedAudioDecodeBackend() const;
     QString formatPosition(double seconds) const;
-    QString localizedText(const QString& zh, const QString& en) const;
     QString currentTrackPath() const;
     double documentOffsetSeconds() const;
     double documentWholeBpm() const;
@@ -103,6 +104,7 @@ private:
 
     // Clock count (spin box only; auto-filled together with BPM detection)
     QSpinBox* clockCountEdit_ = nullptr;
+    QComboBox* audioDecoderCombo_ = nullptr;
 
     // Audition card
     QRadioButton* subdivision4Radio_ = nullptr;

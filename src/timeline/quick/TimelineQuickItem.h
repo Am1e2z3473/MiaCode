@@ -9,6 +9,7 @@
 
 #include <memory>
 
+#include "common/LogEmissionPolicy.h"
 #include "timeline/TimelineSceneState.h"
 
 class QHoverEvent;
@@ -21,16 +22,14 @@ class TimelineQuickGridLinesLayer;
 class TimelineQuickNotesLayer;
 class TimelineQuickOverlayLayer;
 
-namespace miacode::preview::dcomp {
-class TimelineRenderView;
-}
-
 class TimelineQuickItem : public QQuickItem
 {
     Q_OBJECT
     Q_PROPERTY(QObject* stateBridge READ stateBridgeObject WRITE setStateBridgeObject NOTIFY stateBridgeChanged)
     Q_PROPERTY(int headerLeftLimit READ headerLeftLimit WRITE setHeaderLeftLimit NOTIFY headerInsetsChanged)
     Q_PROPERTY(int headerRightLimit READ headerRightLimit WRITE setHeaderRightLimit NOTIFY headerInsetsChanged)
+    Q_PROPERTY(int headerMarkerLeftLimit READ headerMarkerLeftLimit WRITE setHeaderMarkerLeftLimit NOTIFY headerInsetsChanged)
+    Q_PROPERTY(int headerMarkerRightLimit READ headerMarkerRightLimit WRITE setHeaderMarkerRightLimit NOTIFY headerInsetsChanged)
     Q_PROPERTY(qreal zoomScale READ zoomScale NOTIFY zoomScaleChanged)
     Q_PROPERTY(bool followPreviewEnabled READ followPreviewEnabled WRITE setFollowPreviewEnabled NOTIFY followPreviewEnabledChanged)
     Q_PROPERTY(bool viewportLockEnabled READ viewportLockEnabled WRITE setViewportLockEnabled NOTIFY viewportLockEnabledChanged)
@@ -51,6 +50,10 @@ public:
     void setHeaderLeftLimit(int value);
     int headerRightLimit() const;
     void setHeaderRightLimit(int value);
+    int headerMarkerLeftLimit() const;
+    void setHeaderMarkerLeftLimit(int value);
+    int headerMarkerRightLimit() const;
+    void setHeaderMarkerRightLimit(int value);
 
     qreal zoomScale() const;
     bool followPreviewEnabled() const;
@@ -63,6 +66,12 @@ public:
     bool isReady() const;
 
     Q_INVOKABLE void cycleZoomPreset();
+    Q_INVOKABLE void stepZoomPreset(int deltaSteps);
+    Q_INVOKABLE void setZoomScale(qreal scale);
+    Q_INVOKABLE void setZoomControlPressedPart(int part);
+    Q_INVOKABLE void setZoomControlHoveredPart(int part);
+    Q_INVOKABLE void setSettingsControlHovered(bool hovered);
+    Q_INVOKABLE void setSettingsControlPressed(bool pressed);
     Q_INVOKABLE void refreshTheme();
 
 signals:
@@ -90,6 +99,7 @@ signals:
 protected:
     QSGNode* updatePaintNode(QSGNode* oldNode, UpdatePaintNodeData* data) override;
     void geometryChange(const QRectF& newGeometry, const QRectF& oldGeometry) override;
+    void itemChange(ItemChange change, const ItemChangeData& value) override;
     void hoverMoveEvent(QHoverEvent* event) override;
     void hoverLeaveEvent(QHoverEvent* event) override;
     void mousePressEvent(QMouseEvent* event) override;
@@ -105,16 +115,27 @@ private:
     bool canBecomeReady() const;
     miacode::timeline::TimelineSceneState currentSceneState() const;
     double clampSceneSecond(double second) const;
-    double viewportCenterSecondForScroll(int horizontalScrollValue) const;
+    double viewportCenterSecondForScroll(double horizontalScrollValue) const;
     bool playheadNearViewportCenter() const;
     void beginHeldHorizontalKeyScroll(int direction, int key);
     void stopHeldHorizontalKeyScroll(int key = 0);
     void applyHeldHorizontalKeyScrollTick();
+    void bindRenderCadence(QQuickWindow* window);
     QPointer<TimelineQuickStateBridge> stateBridge_;
     QMetaObject::Connection bridgeRenderStateConnection_;
     QMetaObject::Connection bridgePlayheadConnection_;
+    // afterAnimating hook on the item's current window — the phase-locked sampling point for
+    // playback. Rebound whenever the item moves between windows (ItemSceneChange).
+    QMetaObject::Connection renderCadenceConnection_;
+    QPointer<QQuickWindow> boundCadenceWindow_;
     int headerLeftLimit_ = 0;
     int headerRightLimit_ = 0;
+    int headerMarkerLeftLimit_ = 0;
+    int headerMarkerRightLimit_ = 0;
+    int zoomControlPressedPart_ = 0;
+    int zoomControlHoveredPart_ = 0;
+    bool settingsControlHovered_ = false;
+    bool settingsControlPressed_ = false;
     qreal cachedZoomScale_ = 0.5;
     bool cachedFollowPreviewEnabled_ = false;
     bool cachedViewportLockEnabled_ = false;
@@ -154,6 +175,8 @@ private:
     mutable double cachedSceneBuildContentScale_ = -1.0;
     mutable int cachedSceneBuildHeaderLeftLimit_ = 0;
     mutable int cachedSceneBuildHeaderRightLimit_ = 0;
+    mutable int cachedSceneBuildHeaderMarkerLeftLimit_ = 0;
+    mutable int cachedSceneBuildHeaderMarkerRightLimit_ = 0;
     mutable quint64 cachedSceneBuildAppearanceRevision_ = 0;
     mutable quint64 cachedSceneBuildGridRevision_ = 0;
     mutable quint64 cachedSceneBuildWaveformRevision_ = 0;
@@ -161,11 +184,11 @@ private:
     mutable quint64 cachedSceneBuildNotesRevision_ = 0;
     mutable quint64 cachedSceneBuildOverlayRevision_ = 0;
     mutable quint64 sceneStateRebuildCount_ = 0;
+    mutable miacode::diagnostics::RebuildWindow sceneRebuildLogWindow_;
     // Per-second timing of updatePaintNode itself, so we can locate the
     // actual cost (currentSceneState walk, layer updateNode work, QSG
     // sync handoff). Logged once per second to avoid spamming the
-    // hot path. Tells us whether the GUI-thread block we see in
-    // PreviewDCompSurface::presented_gap_stats is coming from this
+    // hot path. Tells us whether a GUI-thread block is coming from this
     // updatePaintNode running long, or from the QSG infrastructure
     // surrounding it.
     mutable qint64 updatePaintNodeCount_ = 0;
@@ -175,8 +198,8 @@ private:
     mutable qint64 renderMapLastLogMs_ = 0;
     bool dragActive_ = false;
     int dragStartX_ = 0;
-    int dragStartScrollValue_ = 0;
-    int lastPaintedHorizontalScrollValue_ = -1;
+    double dragStartScrollValue_ = 0.0;
+    double lastPaintedHorizontalScrollValue_ = -1.0;
     int heldHorizontalKeyScrollDirection_ = 0;
     int heldHorizontalKeyScrollKey_ = 0;
     int heldHorizontalKeyScrollLastElapsedMs_ = 0;
@@ -191,14 +214,4 @@ private:
     std::unique_ptr<TimelineQuickNotesLayer> notesLayer_;
     std::unique_ptr<TimelineQuickOverlayLayer> overlayLayer_;
 
-    // Phase 3c — DComp render view for the timeline pane. Nullptr when
-    // previewTimelineUseDCompEnabled() returned false at construction.
-    // Lives next to the QSG paint code: the QSG path keeps drawing
-    // (so the editor stays functional if DComp fails), and the DComp
-    // top-level popup HWND overlays the QSG output. Phase 3e drops
-    // the QSG path entirely once timeline-DComp ships its remaining
-    // primitive types.
-    std::unique_ptr<miacode::preview::dcomp::TimelineRenderView> dcompView_;
-    QMetaObject::Connection dcompWindowConnection_;
-    void pushSceneStateToDComp();
 };

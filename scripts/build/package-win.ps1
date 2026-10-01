@@ -5,7 +5,8 @@ param(
     [string]$BuildDir = "build",
     [string]$DistDir = "",
     [switch]$IncludeDevTools,
-    [int]$BuildJobs = 8
+    [ValidateRange(1, 4)]
+    [int]$BuildJobs = 4
 )
 
 $ErrorActionPreference = "Stop"
@@ -112,10 +113,6 @@ function Invoke-MiaCodeBuild {
         [string]$Config,
         [int]$BuildJobs
     )
-
-    if ($BuildJobs -lt 1) {
-        throw "BuildJobs must be >= 1."
-    }
 
     Write-Host "Precheck: building MiaCode ($Config) in $BuildDir with --parallel $BuildJobs ..."
     & cmake --build $BuildDir --target MiaCode --config $Config --parallel $BuildJobs | Out-Host
@@ -446,6 +443,7 @@ $vcRuntimeSrc = $null
 # roots and pick the highest-versioned Microsoft.VC14X.CRT folder under
 # x64. Tested against BuildTools, Community, Professional, Enterprise.
 $vsCandidateRoots = @(
+    'C:\BuildTools\VC\Redist\MSVC',
     'C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Redist\MSVC',
     'C:\Program Files\Microsoft Visual Studio\2022\BuildTools\VC\Redist\MSVC',
     'C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Redist\MSVC',
@@ -619,6 +617,22 @@ if (Test-Path $ffmpegSrc) {
     throw "Missing required ffmpeg binary: $ffmpegSrc"
 }
 
+$extensionGuideSrc = Join-Path $repoRoot "resources\\extensions\\README.md"
+$bundledExtensionsSrc = Join-Path $repoRoot "resources\\extensions\\bundled"
+Remove-Item (Join-Path $appDir "extensions") -Recurse -Force -ErrorAction SilentlyContinue
+
+$extensionsDistDir = Join-Path $DistDir "extensions"
+New-Item -ItemType Directory -Path $extensionsDistDir -Force | Out-Null
+if (!(Test-Path $extensionGuideSrc)) {
+    throw "Missing extension guide: $extensionGuideSrc"
+}
+Copy-Item $extensionGuideSrc (Join-Path $extensionsDistDir "README.md") -Force
+if (Test-Path $bundledExtensionsSrc) {
+    foreach ($extensionDir in Get-ChildItem -Path $bundledExtensionsSrc -Directory) {
+        Copy-Item $extensionDir.FullName (Join-Path $extensionsDistDir $extensionDir.Name) -Recurse -Force
+    }
+}
+
 $requiredPackagePaths = @(
     # Root: user-facing entry points + content + log dirs only.
     "MiaCode.exe",
@@ -626,6 +640,7 @@ $requiredPackagePaths = @(
     "logs",
     "logs\\worker-hwnd",
     "assets\\SFX",
+    "extensions\\README.md",
     "licenses\\Resource-Han-Rounded-OFL.txt",
     "LICENSE",
     "LICENSE_SCOPE.md",
@@ -679,6 +694,7 @@ $unexpectedPackagePaths = @(
     "Start_MiaCode_Debug_View.bat",
     "Start_MiaCode_Debug_Widget.bat",
     "Start_MiaCode_QuickShell_Debug.bat",
+    "app\\extensions",
     # Start_MiaCode_Debug.bat is the only launcher shipped. Assert old
     # local/A-B diagnostic launchers don't accidentally come back via a stray
     # build step or leftover output dir.

@@ -16,7 +16,6 @@ struct TimelineQuickHeaderRootNode : public QSGNode {
     quint64 staticRevision = 0;
     quint64 gridRevision = 0;
     quint64 headerRevision = 0;
-    quint64 dynamicRevision = 0;
     quint64 appearanceRevision = 0;
 };
 
@@ -139,19 +138,16 @@ QSGNode* TimelineQuickHeaderLayer::updateNode(
         for (const auto& rect : state.laneOverlayRects) {
             staticRoot->appendChildNode(buildTimelineRectNode(rect));
         }
-        // Header controls (zoom button + follow checkbox). Mirrors the
-        // DComp TimelineHeaderSource rendering at lines 146-220 of
-        // src/sources/timeline/TimelineHeaderSource.cpp. Lives in
-        // staticRoot (no horizontal-scroll transform) because the
-        // controls are screen-space — pinned to viewport corners,
-        // independent of timeline scroll position.
+        // Header control (zoom button). Lives in staticRoot (no
+        // horizontal-scroll transform) because the controls are
+        // screen-space — pinned to viewport corners, independent of
+        // timeline scroll position.
         //
-        // Without this block the zoom% button and Follow Preview
-        // checkbox are missing from the QSG render path; they exist
-        // as data on TimelineSceneState but only the DComp path was
-        // emitting them as visible pixels.
+        // Without this block the zoom% button is missing entirely: it
+        // exists as data on TimelineSceneState but nothing would emit
+        // it as visible pixels.
         if (state.hasHeaderControls) {
-            // Order matters — same as the DComp source path:
+            // Order matters:
             //   1. zoomButtonBg (covers widget area)
             //   2. zoom button border (4 hairlines)
             //   3. zoom text label (via texture cache)
@@ -166,6 +162,9 @@ QSGNode* TimelineQuickHeaderLayer::updateNode(
             // QSG scene, which has been observed to silently abort the
             // process under x64 emulation on Apple-Silicon Windows VMs.
             staticRoot->appendChildNode(buildTimelineRectNode(state.zoomButtonBg));
+            for (const auto& rect : state.zoomButtonOverlayRects) {
+                staticRoot->appendChildNode(buildTimelineRectNode(rect));
+            }
             const auto pushFrame = [&staticRoot](
                 const miacode::timeline::TimelineSceneRect& r) {
                 const qreal x0 = r.rect.left();
@@ -187,16 +186,33 @@ QSGNode* TimelineQuickHeaderLayer::updateNode(
                         QPointF(x0, y1), QPointF(x0, y0), c, 1.0}));
             };
             pushFrame(state.zoomButtonBorder);
+            for (const auto& line : state.zoomButtonInteriorLines) {
+                staticRoot->appendChildNode(buildTimelineLineNode(line));
+            }
+            for (const auto& triangle : state.zoomButtonGlyphTriangles) {
+                staticRoot->appendChildNode(buildTimelineTriangleNode(triangle));
+            }
             if (textures != nullptr) {
-                const TimelineQuickTextureHandle zoomHandle =
-                    textures->textTexture(state.zoomButtonLabel);
-                if (zoomHandle.texture != nullptr) {
-                    auto* node = new QSGSimpleTextureNode();
-                    node->setTexture(zoomHandle.texture);
-                    node->setRect(QRectF(state.zoomButtonLabel.topLeft,
-                                          zoomHandle.logicalSize));
-                    staticRoot->appendChildNode(node);
-                }
+                const auto pushLabel =
+                    [&](const miacode::timeline::TimelineSceneTextLabel& label) {
+                        const TimelineQuickTextureHandle handle = textures->textTexture(label);
+                        if (handle.texture == nullptr) {
+                            return;
+                        }
+                        auto* node = new QSGSimpleTextureNode();
+                        node->setTexture(handle.texture);
+                        node->setRect(QRectF(label.topLeft, handle.logicalSize));
+                        staticRoot->appendChildNode(node);
+                };
+                pushLabel(state.zoomButtonLabel);
+            }
+            staticRoot->appendChildNode(buildTimelineRectNode(state.settingsButtonBg));
+            pushFrame(state.settingsButtonBorder);
+            for (const auto& line : state.settingsButtonInteriorLines) {
+                staticRoot->appendChildNode(buildTimelineLineNode(line));
+            }
+            for (const auto& rect : state.settingsButtonGlyphRects) {
+                staticRoot->appendChildNode(buildTimelineRectNode(rect));
             }
         }
         root->staticRevision = state.gridRevision;
@@ -211,19 +227,8 @@ QSGNode* TimelineQuickHeaderLayer::updateNode(
         clearChildren(gridContentRoot);
         root->gridRevision = state.gridRevision;
     }
-    if (appearanceChanged
-        || root->headerRevision != state.headerRevision
-        || root->dynamicRevision != state.overlayDynamicRevision) {
+    if (appearanceChanged || root->headerRevision != state.headerRevision) {
         clearChildren(headerContentRoot);
-        for (const auto& triangle : state.headerMarkers) {
-            headerContentRoot->appendChildNode(buildTimelineTriangleNode(triangle));
-        }
-        if (state.hasEntryMarker) {
-            headerContentRoot->appendChildNode(buildTimelineTriangleNode(state.entryMarker));
-        }
-        if (state.hasCursorMarker) {
-            headerContentRoot->appendChildNode(buildTimelineTriangleNode(state.cursorMarker));
-        }
         if (textures != nullptr) {
             for (const auto& label : state.headerLabels) {
                 const TimelineQuickTextureHandle handle = textures->textTexture(label);
@@ -237,7 +242,6 @@ QSGNode* TimelineQuickHeaderLayer::updateNode(
             }
         }
         root->headerRevision = state.headerRevision;
-        root->dynamicRevision = state.overlayDynamicRevision;
     }
     root->appearanceRevision = state.appearanceRevision;
     return root;

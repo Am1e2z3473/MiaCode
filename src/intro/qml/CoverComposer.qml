@@ -150,7 +150,44 @@ Item {
     // ---- per-layer pixel geometry helpers (used by selection chrome) ----
     function layerContentH(l) { return (l ? l.sizeFraction : 0.85) * canvas.height }
     function layerContentW(l) {
-        return layerContentH(l) * ((l && l.kind === "card") ? cardAspect : 1.0)
+        if (!l)
+            return layerContentH(l)
+        if (l.kind === "card")
+            return layerContentH(l) * cardAspect
+        // Image / text layers keep their true proportions: box width = height ×
+        // intrinsic (image) / laid-out (text) aspect. Both store it in contentAspect.
+        if (l.kind === "image" || l.kind === "text")
+            return layerContentH(l) * (l.contentAspect > 0 ? l.contentAspect : 1.0)
+        return layerContentH(l)
+    }
+
+    // Absolute filesystem path → file URL (custom image / text-layer font). Empty
+    // stays empty; an already-schemed value is used verbatim.
+    function localFileUrl(p) {
+        if (!p) return ""
+        var s = p.toString()
+        if (s.length === 0) return ""
+        if (s.indexOf("://") >= 0) return s
+        if (s.charAt(0) === "/") return "file://" + encodeURI(s)
+        return "file:///" + encodeURI(s)   // Windows drive path (C:/…)
+    }
+    // Text-layer font: the layer's custom fontPath (absolute) if set, else the
+    // bundled Heavy display font.
+    function fontSourceUrlForLayer(ld) {
+        var p = ld ? ld.fontPath : ""
+        if (p && p.toString().length > 0)
+            return canvas.localFileUrl(p)
+        return "qrc:/intro/assets/fonts/ResourceHanRoundedCN-Heavy.ttf"
+    }
+    // Write the text's true aspect (from an unconstrained probe) back onto the
+    // layer so its box hugs the glyphs. The probe's pixelSize is fixed, so this
+    // never feeds back into the probe → no binding loop.
+    function writeTextAspect(ld, probe) {
+        if (!ld || !probe) return
+        var w = probe.contentWidth
+        var h = probe.contentHeight
+        if (w > 0.5 && h > 0.5)
+            ld.contentAspect = w / h
     }
     function pointInLayer(l, px, py) {
         if (!l || !l.visible)
@@ -161,10 +198,20 @@ Item {
         var top = l.ny * canvas.height - h / 2
         return px >= left && px <= left + w && py >= top && py <= top + h
     }
+    function scaleHandleSize() { return Math.max(44, canvas.height * 0.04) }
+    function pointInSelectionScaleHandle(px, py) {
+        var l = selectedLayer
+        if (!editable || !l || !l.visible || l.locked)
+            return false
+        var s = scaleHandleSize()
+        var left = l.nx * canvas.width + layerContentW(l) / 2 - s / 2
+        var top = l.ny * canvas.height + layerContentH(l) / 2 - s / 2
+        return px >= left && px <= left + s && py >= top && py <= top + s
+    }
     function topHitLayerAt(px, py) {
         if (!coverLayout)
             return null
-        if (selectedLayer && pointInLayer(selectedLayer, px, py))
+        if (pointInSelectionScaleHandle(px, py))
             return selectedLayer
         var layers = coverLayout.layers
         var best = null
@@ -176,6 +223,13 @@ Item {
                 best = l
         }
         return best
+    }
+    function dragLayerAt(px, py) {
+        if (pointInSelectionScaleHandle(px, py))
+            return null
+        if (selectedLayer && !selectedLayer.locked && pointInLayer(selectedLayer, px, py))
+            return selectedLayer
+        return topHitLayerAt(px, py)
     }
     function hitKeyAt(px, py) {
         var l = topHitLayerAt(px, py)
@@ -222,6 +276,62 @@ Item {
         onTapped: {
             if (canvas.chartSceneBinder)
                 canvas.chartSceneBinder.selectLayerKey(canvas.hitKeyAt(point.position.x, point.position.y))
+        }
+    }
+
+    // Canvas-level move drag. This must live above the layer delegates because a
+    // lower selected layer's own handler does not receive pointer events through an
+    // overlapping upper layer. Taps still use visual z-order; drags use dragLayerAt().
+    DragHandler {
+        id: moveDrag
+        target: null
+        enabled: canvas.editable
+        grabPermissions: PointerHandler.CanTakeOverFromAnything
+                         | PointerHandler.ApprovesTakeOverByAnything
+                         | PointerHandler.ApprovesCancellation
+        property var dragLayer: null
+        property real startNx: 0.5
+        property real startNy: 0.5
+        // Cursor position (scene px) AT ACTIVATION — the drag reference.
+        property real grabSceneX: 0
+        property real grabSceneY: 0
+        onActiveChanged: {
+            if (active) {
+                dragLayer = canvas.dragLayerAt(
+                        centroid.scenePressPosition.x,
+                        centroid.scenePressPosition.y)
+                if (!dragLayer) {
+                    dragLayer = null
+                    return
+                }
+                if (canvas.chartSceneBinder)
+                    canvas.chartSceneBinder.selectLayerKey(dragLayer.key)
+                startNx = dragLayer.nx
+                startNy = dragLayer.ny
+                // Reference the delta from the centroid AT ACTIVATION, not the
+                // press: a DragHandler only activates AFTER the cursor passes the
+                // drag threshold, so press-referenced movement would jump.
+                grabSceneX = centroid.scenePosition.x
+                grabSceneY = centroid.scenePosition.y
+            } else {
+                dragLayer = null
+                canvas.clearGuides()
+            }
+        }
+        onCentroidChanged: {
+            if (!active || !dragLayer) return
+            var dx = centroid.scenePosition.x - grabSceneX
+            var dy = centroid.scenePosition.y - grabSceneY
+            var w = canvas.layerContentW(dragLayer)
+            var h = canvas.layerContentH(dragLayer)
+            var cx = startNx * canvas.width + dx
+            var cy = startNy * canvas.height + dy
+            var snapped = canvas.applySnap(cx, cy, w, h)
+            // Keep >=25% of the layer on the clipped canvas so it can't be stranded.
+            var sx = canvas.clampCentre(snapped.x, w, canvas.width)
+            var sy = canvas.clampCentre(snapped.y, h, canvas.height)
+            dragLayer.nx = sx / canvas.width
+            dragLayer.ny = sy / canvas.height
         }
     }
 
@@ -285,6 +395,8 @@ Item {
             readonly property var ld: modelData       // CoverLayer
             readonly property bool isCard: ld && ld.kind === "card"
             readonly property bool isChartFrame: ld && ld.kind === "chartFrame"
+            readonly property bool isImage: ld && ld.kind === "image"
+            readonly property bool isText: ld && ld.kind === "text"
             readonly property bool isActiveChartFrame:
                 isChartFrame && layerItem.ld && layerItem.ld.key === canvas.activeChartFrameKey
             readonly property bool frameBgEnabled:
@@ -460,6 +572,63 @@ Item {
                     smooth: true
                     mipmap: true
                 }
+
+                // Custom image layer. The box aspect already tracks the image's
+                // intrinsic aspect (CoverLayer.contentAspect), so PreserveAspectFit
+                // exactly fills the box with no letterbox / distortion. Direct child
+                // (visible-gated), mirroring the chart-frame still Image above.
+                Image {
+                    anchors.fill: parent
+                    visible: layerItem.isImage
+                    source: (layerItem.isImage && layerItem.ld && layerItem.ld.imagePath)
+                            ? canvas.localFileUrl(layerItem.ld.imagePath) : ""
+                    fillMode: Image.PreserveAspectFit
+                    // Cap the decoded texture to the on-screen size (preview small,
+                    // export full-res) so a huge source doesn't decode at native
+                    // megapixels.
+                    sourceSize: (layerItem.isImage && width > 1 && height > 1)
+                                ? Qt.size(Math.ceil(width), Math.ceil(height)) : undefined
+                    asynchronous: false
+                    cache: false
+                    smooth: true
+                    mipmap: true
+                }
+
+                // Custom text layer. A hidden probe measures the glyphs' true aspect
+                // (unconstrained, fixed pixelSize) and writes it back onto the layer;
+                // the visible Text then Fits the aspect-correct box. Empty text (any
+                // non-text layer) yields a zero-width probe → writeTextAspect no-ops.
+                FontLoader {
+                    id: textFont
+                    source: canvas.fontSourceUrlForLayer(layerItem.ld)
+                }
+                Text {
+                    id: textProbe
+                    visible: false
+                    text: (layerItem.isText && layerItem.ld) ? layerItem.ld.text : ""
+                    font.family: textFont.name
+                    font.bold: (layerItem.isText && layerItem.ld) ? layerItem.ld.textBold : false
+                    font.pixelSize: 100
+                    wrapMode: Text.NoWrap
+                    maximumLineCount: 1
+                    onContentWidthChanged: { if (layerItem.isText) canvas.writeTextAspect(layerItem.ld, textProbe) }
+                    onContentHeightChanged: { if (layerItem.isText) canvas.writeTextAspect(layerItem.ld, textProbe) }
+                }
+                Text {
+                    anchors.fill: parent
+                    visible: layerItem.isText
+                    text: (layerItem.isText && layerItem.ld) ? layerItem.ld.text : ""
+                    color: (layerItem.ld && layerItem.ld.textColor) ? layerItem.ld.textColor : "#FFFFFF"
+                    font.family: textFont.name
+                    font.bold: (layerItem.isText && layerItem.ld) ? layerItem.ld.textBold : false
+                    font.pixelSize: Math.max(1, Math.round(parent.height))
+                    minimumPixelSize: 1
+                    fontSizeMode: Text.Fit
+                    wrapMode: Text.NoWrap
+                    maximumLineCount: 1
+                    horizontalAlignment: Text.AlignHCenter
+                    verticalAlignment: Text.AlignVCenter
+                }
             }
 
             TapHandler {
@@ -472,55 +641,6 @@ Item {
                 }
             }
 
-            // Drag to move, with canvas centre/edge snapping. target:null — we
-            // write normalized coords back to the model from the centroid delta,
-            // so the model stays the single source of truth (no binding fight).
-            DragHandler {
-                id: moveDrag
-                target: null
-                enabled: canvas.editable && layerItem.ld && !layerItem.ld.locked
-                property real startNx: 0.5
-                property real startNy: 0.5
-                // Cursor position (scene px) AT ACTIVATION — the drag reference.
-                property real grabSceneX: 0
-                property real grabSceneY: 0
-                property bool ownsGesture: false
-                onActiveChanged: {
-                    if (active) {
-                        var hitKey = canvas.hitKeyAt(centroid.scenePosition.x, centroid.scenePosition.y)
-                        ownsGesture = hitKey === layerItem.ld.key
-                        if (canvas.chartSceneBinder)
-                            canvas.chartSceneBinder.selectLayerKey(hitKey)
-                        if (!ownsGesture)
-                            return
-                        startNx = layerItem.ld.nx
-                        startNy = layerItem.ld.ny
-                        // Reference the delta from the centroid AT ACTIVATION, not the
-                        // press: a DragHandler only activates AFTER the cursor passes
-                        // the drag threshold (plus any fast pre-activation motion), so a
-                        // press-referenced delta would jump the layer by that whole
-                        // distance the instant the drag begins.
-                        grabSceneX = centroid.scenePosition.x
-                        grabSceneY = centroid.scenePosition.y
-                    } else {
-                        ownsGesture = false
-                        canvas.clearGuides()
-                    }
-                }
-                onCentroidChanged: {
-                    if (!active || !ownsGesture || !layerItem.ld) return
-                    var dx = centroid.scenePosition.x - grabSceneX
-                    var dy = centroid.scenePosition.y - grabSceneY
-                    var cx = startNx * canvas.width + dx
-                    var cy = startNy * canvas.height + dy
-                    var snapped = canvas.applySnap(cx, cy, layerItem.width, layerItem.height)
-                    // Keep ≥25% of the card on the clipped canvas so it can't be stranded.
-                    var sx = canvas.clampCentre(snapped.x, layerItem.width, canvas.width)
-                    var sy = canvas.clampCentre(snapped.y, layerItem.height, canvas.height)
-                    layerItem.ld.nx = sx / canvas.width
-                    layerItem.ld.ny = sy / canvas.height
-                }
-            }
         }
     }
 
@@ -539,13 +659,11 @@ Item {
     // Live chart-frame scene (edit mode, A2). A bare PreviewQuickSceneRoot whose
     // layer flags / shared frame state are wired in C++ by
     // CoverComposerView::bindLiveChartScene (overlay layers only over transparent).
-    // dcompFallbackActive is pre-set here so the very first frame renders via the
-    // QSG path even before C++ binds. anchors.fill tracks the layer's drag/scale.
+    // anchors.fill tracks the layer's drag/scale.
     Component {
         id: liveChartComponent
         PreviewQuickSceneRoot {
             anchors.fill: parent
-            dcompFallbackActive: true
             // The export grab clips overlay geometry to its square framebuffer
             // (SceneFrameRenderer renders into a side×side window). Clip the live
             // scene to the same square box so out-of-bounds effects (fireworks /
@@ -574,26 +692,38 @@ Item {
         antialiasing: true
         z: 9000
     }
-    Rectangle {
+    // Scale handle — visual indicator + its own DragHandler for the full hit zone.
+    // The handle is a canvas-level hit target, and hitKeyAt() also treats it as the
+    // selected layer so overlapping layers cannot become active during resize.
+    Item {
         id: scaleHandle
         readonly property var l: canvas.selectedLayer
         visible: canvas.editable && l !== null && l.visible && !l.locked
-        width: 18
-        height: 18
-        radius: 4
-        color: "#3DA9FC"
-        border.color: "#FFFFFF"
-        border.width: 2
+        width: canvas.scaleHandleSize()
+        height: width
         z: 9001
         x: l ? (l.nx * canvas.width + canvas.layerContentW(l) / 2 - width / 2) : -100
         y: l ? (l.ny * canvas.height + canvas.layerContentH(l) / 2 - height / 2) : -100
+        // Visual indicator (same 18×18 blue square, centred inside the larger hit zone)
+        Rectangle {
+            anchors.centerIn: parent
+            width: 18
+            height: 18
+            radius: 4
+            color: "#3DA9FC"
+            border.color: "#FFFFFF"
+            border.width: 2
+        }
         DragHandler {
+            id: scaleDrag
             target: null
             enabled: scaleHandle.visible
+            grabPermissions: PointerHandler.CanTakeOverFromAnything
+                             | PointerHandler.ApprovesCancellation
             // Start state captured AT ACTIVATION so the scale is a delta from the
             // grab, not an absolute |cursor − centre|. This avoids the activation
-            // jump (drag threshold + wherever on the 18px handle you grabbed) and
-            // the old Math.abs flip (growing again when dragged past the centre).
+            // jump (drag threshold + wherever on the handle you grabbed) and the
+            // old Math.abs flip (growing again when dragged past the centre).
             property real grabSceneY: 0
             property real startHeightPx: 0
             onActiveChanged: {

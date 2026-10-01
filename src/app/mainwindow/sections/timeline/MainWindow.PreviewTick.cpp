@@ -9,6 +9,7 @@
 #include "TimelineView.h"
 #include "UiText.h"
 #include "UiTheme.h"
+#include "audio/PreviewAudioPlaybackFlowPolicy.h"
 #include "app/quick_shell/QuickShellPreviewCompositeSurface.h"
 #include "app/quick_shell/QuickShellPreviewSurfacePolicy.h"
 #include "common/ChartAssetPaths.h"
@@ -25,6 +26,7 @@
 #include "core/scene/PreviewProgressStatsCache.h"
 #include "core/chart/transform/ChartBatchTransform.h"
 #include "core/chart/transform/ChartNormalization.h"
+#include "timeline/TimelineCadenceArbitrationPolicy.h"
 #include "timeline/quick/TimelineQuickStateBridge.h"
 #include "tools/muri/MuriAnalyzer.h"
 #include "tools/muri/MuriPanelEntries.h"
@@ -38,6 +40,7 @@
 #include "MainWindow.TimelinePlayback.Internal.h"
 
 using namespace miacode::mainwindow::shared;
+
 using namespace miacode::mainwindow::timeline_playback_detail;
 
 void MainWindow::TimelineSection::applyQtPreviewPosition(double second, bool centerView)
@@ -46,7 +49,8 @@ void MainWindow::TimelineSection::applyQtPreviewPosition(double second, bool cen
         !state_.quickShellUiFocusBridgeMode_ || state_.quickTimelineSurfaceReady_;
     const double timelineCadenceSeconds =
         static_cast<double>(qMax<qint64>(1, timelineTargetFrameIntervalNs())) / 1000000000.0;
-    state_.qtPreviewPauseSecond_ = second;
+    miacode::mainwindow::shared::writePreviewPauseSecond(
+        state_.qtPreviewPauseSecond_, second, state_.qtPreviewPlaying_, "apply_qt_preview_position");
     const bool timelineShouldCenter = centerView && (!state_.qtPreviewPlaying_ || state_.previewProgressFollowEnabled_);
     if (!state_.qtPreviewPlaying_
         && state_.timelineQuickStateBridge_ != nullptr
@@ -93,6 +97,42 @@ void MainWindow::TimelineSection::syncPausedPreviewMediaTimestamps(double second
     owner_.seekPreviewStageMediaRouteWhilePaused(second);
 }
 
+qint64 MainWindow::TimelineSection::timelineCadenceWatchdogThresholdMs() const
+{
+    return miacode::timeline::cadence::watchdogThresholdMs(
+        timelineTargetFrameIntervalNs() / 1000000);
+}
+
+void MainWindow::TimelineSection::onTimelineRenderCadenceTick()
+{
+    if (!state_.qtPreviewPlaying_) {
+        return;
+    }
+    state_.qtPreviewLastTimelineCadenceMs_ = state_.qtPreviewWatchdogElapsed_.elapsed();
+    const qint64 nowNs = state_.qtPreviewWatchdogElapsed_.nsecsElapsed();
+    if (!miacode::timeline::cadence::renderCadenceShouldFlush(
+            nowNs,
+            timelineTargetFrameIntervalNs(),
+            &state_.qtPreviewLastTimelineCadenceFlushNs_)) {
+        return;
+    }
+    flushQtPreviewTimelinePosition();
+}
+
+void MainWindow::TimelineSection::onTimelineCadenceWatchdogTick()
+{
+    miacode::timeline::cadence::ArbitrationState arbitration;
+    arbitration.playing = state_.qtPreviewPlaying_;
+    arbitration.lastCadenceMs = state_.qtPreviewLastTimelineCadenceMs_;
+    arbitration.nowMs = state_.qtPreviewWatchdogElapsed_.elapsed();
+    arbitration.thresholdMs = timelineCadenceWatchdogThresholdMs();
+    if (!miacode::timeline::cadence::watchdogShouldFlush(arbitration)) {
+        // Render cadence is alive and owns the sampling phase; stay out of its way.
+        return;
+    }
+    flushQtPreviewTimelinePosition();
+}
+
 void MainWindow::TimelineSection::flushQtPreviewTimelinePosition()
 {
     if (state_.qtPreviewPlaying_) {
@@ -101,7 +141,14 @@ void MainWindow::TimelineSection::flushQtPreviewTimelinePosition()
             || !timelineTabIsForeground()) {
             return;
         }
-        const double second = qMax(0.0, owner_.currentPreviewAuthoritativeAudioClockSecond());
+        miacode::preview_audio::playback_flow::State playbackFlowState;
+        playbackFlowState.pendingPlayingSeekSequence = state_.previewPlayingSeekPendingSequence_;
+        playbackFlowState.visualSecond = state_.previewPlayingSeekVisualSecond_;
+        const miacode::preview_audio::playback_flow::TickDecision tickDecision =
+            miacode::preview_audio::playback_flow::decidePlayingTick(
+                playbackFlowState,
+                qMax(0.0, owner_.currentPreviewAuthoritativeAudioClockSecond()));
+        const double second = tickDecision.visualSecond;
         state_.timelineQuickStateBridge_->setPlayheadSeconds(second, state_.previewProgressFollowEnabled_);
         state_.timelineQuickStateBridge_->focusPlayhead(false);
         state_.qtPreviewLastTimelineSecond_ = second;
@@ -135,20 +182,40 @@ void MainWindow::TimelineSection::onQtPreviewTick()
     }
     const double elapsedSeconds = static_cast<double>(state_.qtPreviewElapsed_.nsecsElapsed()) / 1000000000.0;
     const double fallbackSecond = state_.qtPreviewStartSecond_ + (elapsedSeconds * state_.previewPlaybackRate_);
-    // G1 Commit 5: the old syncPreviewPlaybackClockTransaction call is gone. Its three
-    // side effects are now driven directly off wall-clock chart-second:
-    //   * SFX drain — handled by drainEvents() inside onQtPreviewTickAtSecond.
-    //   * Pending-BGM-start (BGM with positive offset) — handled by syncBackgroundTrack
-    //     called below; it forwards to maybeStartPendingBackgroundTrack on the backend.
-    //   * BASS_SYNC_POS re-arming — retired (see armNextGroupSync, which is now an
-    //     early-return no-op pending Commit 7's full deletion). With wall-clock-driven
-    //     drainEvents, the BASS SYNC chain can only produce duplicate triggers and
-    //     buys nothing.
+    miacode::preview_audio::playback_flow::State playbackFlowState;
+    playbackFlowState.pendingPlayingSeekSequence = state_.previewPlayingSeekPendingSequence_;
+    playbackFlowState.visualSecond = state_.previewPlayingSeekVisualSecond_;
+    const miacode::preview_audio::playback_flow::TickDecision tickDecision =
+        miacode::preview_audio::playback_flow::decidePlayingTick(playbackFlowState, fallbackSecond);
+    if (tickDecision.holdsPendingPlayingSeek) {
+        applyQtPreviewPosition(tickDecision.visualSecond, false);
+        if (previewCanvasUsesFrameSwappedPacing()) {
+            requestNextDisplayRefreshPreviewFrame();
+        } else {
+            requestNextFixedIntervalPreviewFrame();
+        }
+        return;
+    }
+    // Live BASS playback owns SFX and pending-BGM timing through the master
+    // mixer. The tick remains responsible for visual advancement, health
+    // observation, and the non-BASS fallback backend.
     if (state_.previewSfxRuntime_ != nullptr) {
         state_.previewSfxRuntime_->syncBackgroundTrack(fallbackSecond);
     }
-    const double second = fallbackSecond;
-    const bool hasAudioClock = false;
+    const double second = owner_.currentPreviewAuthoritativeAudioClockSecond();
+    // extensionManager_ is created unconditionally at bootstrap, so without the
+    // subscriber pre-check this built two nested QJsonObjects on every playback
+    // tick (60-180 Hz) for an event that, with no extension subscribed, nothing
+    // ever reads.
+    static const QString kPreviewPositionChangedEvent = QStringLiteral("preview.position.changed");
+    if (owner_.extensionManager_ != nullptr
+        && owner_.extensionManager_->hasEventSubscribers(kPreviewPositionChangedEvent)) {
+        owner_.extensionManager_->publishEvent(kPreviewPositionChangedEvent, QJsonObject{
+            {QStringLiteral("source"), QStringLiteral("preview")},
+            {QStringLiteral("data"), QJsonObject{{QStringLiteral("second"), second}}},
+        }, true);
+    }
+    const bool hasAudioClock = state_.previewSfxRuntime_ != nullptr;
     onQtPreviewTickAtSecond(second, fallbackSecond, hasAudioClock);
 }
 
@@ -157,18 +224,15 @@ double MainWindow::TimelineSection::applyVisualClockSmoothing(
 {
     Q_UNUSED(fallbackSecond);
     Q_UNUSED(hasAudioClock);
-    // G1 Commit 4: smoothing collapsed to pass-through.
-    //
-    // The pre-G1 implementation existed to absorb jitter in the BASS-master-mixer cursor
-    // (~50-100ms stalls from DXGI back-pressure, tempo-stream stalls, buffer underrun).
-    // With wall-clock now the master timeline (`qtPreviewElapsed_`), the input here is
-    // monotonic and rate-correct by construction — there is nothing to smooth.
-    //
+    // Device-clock quantization and backwards corrections are handled by the
+    // facade's monotonic interpolator before all visual consumers sample it.
     // What's preserved: the lookahead-vsync shift. That compensates for GPU pipeline
     // latency (GUI → render → composite → present takes 1-2 vsyncs after the tick that
     // samples chart-second) and is independent of the audio backend, so it survives the
-    // clock flip. State variables are still maintained so debug overlays and the
-    // smoothing-enabled toggle continue to work without dangling references.
+    // clock flip; it keeps its own lookahead-vsyncs env control (see DEBUG_INDEX).
+    // State variables are still maintained so debug overlays keep working without
+    // dangling references. The smoothing-enabled env gate that used to wrap this body
+    // went away with the algorithm it gated; it is now a retired flag.
     //
     // See docs/PREVIEW_AUDIO_CLOCK_ALIGNMENT_HANDOFF_ZH.md §3.6, §5.3, §6.1 step 4.
     const qint64 targetIntervalNs = qMax<qint64>(1, previewCanvasTargetFrameIntervalNs());
@@ -216,6 +280,9 @@ void MainWindow::TimelineSection::onQtPreviewTickAtSecond(double second, double 
         second = playbackEndSecond;
         applyQtPreviewPosition(second, true);
         if (state_.previewSfxRuntime_ != nullptr) {
+            // Non-BASS fallback needs a terminal flush. The live BASS backend
+            // ignores this call because its master-mixer sync owns the final
+            // note timing as well.
             state_.previewSfxRuntime_->drainEvents(second);
         }
         finishQtPreviewPlaybackAndReturnToEntry("Qt preview reached the end of current timeline.");
@@ -303,6 +370,10 @@ void MainWindow::TimelineSection::onQtPreviewTickAtSecond(double second, double 
     }
     const qint64 beforeDrainNs = diagEnabled ? tickProfileTimer.nsecsElapsed() : 0;
     if (state_.previewSfxRuntime_ != nullptr) {
+        // BASS ignores this compatibility drain while its mixer scheduler is
+        // active; the call remains for the fallback backend, which drains on the
+        // wall clock. `second` IS that wall clock: onQtPreviewTick is the only
+        // caller and passes fallbackSecond with hasAudioClock=false.
         state_.previewSfxRuntime_->drainEvents(second);
     }
     maybeFireExportAuditionClockTicks(second);
@@ -322,6 +393,13 @@ void MainWindow::TimelineSection::onQtPreviewTickAtSecond(double second, double 
         if (state_.qtPreviewFramePacingDiagLastTickLogMs_ < 0
             || nowMs - state_.qtPreviewFramePacingDiagLastTickLogMs_ >= sampleMs) {
             state_.qtPreviewFramePacingDiagLastTickLogMs_ = nowMs;
+            qint64 previewTickCount = 0;
+            if (state_.previewCanvas_ != nullptr) {
+                const auto snapshot = state_.previewCanvas_->frameStateSnapshot();
+                if (snapshot != nullptr) {
+                    previewTickCount = snapshot->tickCount;
+                }
+            }
             appendPreviewFramePacingDiagLog(
                 isAnomaly ? QStringLiteral("tick_large_step") : QStringLiteral("tick_sample"),
                 QStringLiteral(
@@ -329,7 +407,7 @@ void MainWindow::TimelineSection::onQtPreviewTickAtSecond(double second, double 
                     "fallback_delta_ms=%7 audio_delta_ms=%8 audio_minus_fallback_ms=%9 time_authority=%10 "
                     "tick_exec_ms=%11 sync_media_ms=%12 notes_ms=%13 apply_position_ms=%14 smoothing_ms=%15 drain_events_ms=%16"
                 )
-                    .arg(state_.previewCanvas_ != nullptr ? state_.previewCanvas_->frameState().tickCount : 0)
+                    .arg(previewTickCount)
                     .arg(static_cast<double>(wallDeltaNs) / 1000000.0, 0, 'f', 3)
                     .arg(playheadDeltaSeconds * 1000.0, 0, 'f', 3)
                     .arg(speedRatio, 0, 'f', 4)

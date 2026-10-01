@@ -12,6 +12,7 @@
 #include <QDir>
 #include <QFile>
 #include <QJsonDocument>
+#include <QJsonArray>
 #include <QJsonObject>
 #include <QJsonParseError>
 #include <QString>
@@ -131,6 +132,18 @@ int runCliVideoExportWorker(QApplication& app, QString* errorMessage)
     }
     workerJobId = snapshot.jobId;
     miacode::debug_log::setSessionProjectLogDirectory(videoExportWorkerProjectLogDirectory(snapshot));
+    // Co-locate the startup beacon and op-chain shadow with the worker's
+    // runtime/export logs under the project's .miacode/logs/.
+    {
+        const QString projectLogDir = videoExportWorkerProjectLogDirectory(snapshot);
+        if (!projectLogDir.isEmpty()) {
+            miacode::oplog::relocateLogs(projectLogDir);
+        }
+    }
+    // Re-emit the P0/P2/P3 startup diagnostics into the worker's now-bound
+    // project log so the export-worker's GPU policy (which the GUI forwards via
+    // env) is visible alongside the GUI's in the same collected .miacode/logs/.
+    logProcessStartupDiagnostics(QStringLiteral("log_dir_rebound"));
 
     writeWorkerJsonLine(QJsonObject{
         {QStringLiteral("event"), QStringLiteral("accepted")},
@@ -174,6 +187,11 @@ int runCliVideoExportWorker(QApplication& app, QString* errorMessage)
     };
     if (result.success) {
         finishedObject.insert(QStringLiteral("output_path"), task.outputPath);
+        QJsonArray outputPaths;
+        for (const QString& path : videoExportOutputPaths(task.outputPath, task.outputMode)) {
+            outputPaths.append(path);
+        }
+        finishedObject.insert(QStringLiteral("output_paths"), outputPaths);
     } else {
         finishedObject.insert(QStringLiteral("error"), result.message);
         finishedObject.insert(QStringLiteral("details"), result.details);

@@ -24,6 +24,11 @@ QString clearCompleteElementsInSelection(
     int selectionStart,
     int selectionEnd,
     int* changedCount = nullptr);
+QString resetTapNotesInSelection(
+    const QString& text,
+    int selectionStart,
+    int selectionEnd,
+    int* changedCount = nullptr);
 }
 
 class PlainCodeEditor : public QTextEdit
@@ -42,8 +47,8 @@ public:
     void setMoreBatchTransformActions(const QList<QAction*>& actions);
     void setPreviewFollowVisualCaret(bool active, int line = 1, int col = 1);
     void setBookmarkedLines(const QSet<int>& lines);
+    const QSet<int>& bookmarkedLines() const { return bookmarkedLines_; }
     int lineNumberAtGlobalPosition(const QPoint& globalPos) const;
-    void setBookmarkDropPreviewLine(int line);
     bool applyPreviewFollowCursor(const QTextCursor& cursor, bool centerView, bool suppressSignals = true);
     QPointF normalizedViewportHitPosition(const QPointF& position) const;
     void setHalfWidthInputEnabled(bool enabled);
@@ -63,7 +68,8 @@ public:
     // affordance in the chart editor (controlled via the editor section of the
     // Preferences dialog; default on). When enabled:
     //   * typing { [ ( auto-inserts the matching close and parks the caret
-    //     between the pair (with type-over and empty-pair backspace to match);
+    //     between the pair, replacing any selected text with the empty pair
+    //     instead of surrounding it (with type-over and empty-pair backspace to match);
     //   * opening a bracket pops a simai-aware suggestion list (durations /
     //     subdivisions / BPMs) anchored under the caret, non-blocking;
     //   * typing the simai hold letter 'h' offers the full "[8:1]"-style
@@ -71,6 +77,16 @@ public:
     // Previously these were three separate toggles; they are unified here.
     void setAutoCompletionEnabled(bool enabled);
     bool autoCompletionEnabled() const { return autoCompletionEnabled_; }
+    // Allows the document's final line to scroll to the top portion of the
+    // viewport by extending the vertical scrollbar range. The extra space is
+    // visual only and never mutates the QTextDocument or its undo history.
+    void setScrollBeyondLastLineEnabled(bool enabled);
+    bool scrollBeyondLastLineEnabled() const { return scrollBeyondLastLineEnabled_; }
+    // Treat double-clicks and subsequent clicks as ordinary clicks so repeated
+    // clicking only moves the caret instead of selecting a word or paragraph.
+    // Drag selection and keyboard selection are unaffected.
+    void setPreventMultiClickSelectionEnabled(bool enabled);
+    bool preventMultiClickSelectionEnabled() const { return preventMultiClickSelectionEnabled_; }
     // Feeds the '(' suggestion list. The chart body editor never holds the
     // &wholebpm metadata line, so the owning window pushes it in on load /
     // difficulty switch (see MainWindow::DocumentSection::setEditorText).
@@ -79,19 +95,22 @@ public:
 signals:
     void undoShortcutRequested();
     void redoShortcutRequested();
+    void selectionReplacementAboutToEdit(int anchor, int position);
     void clearCompleteElementsShortcutRequested();
+    void resetTapNotesShortcutRequested();
     void raiseSubdivisionHalfStepShortcutRequested();
     void lowerSubdivisionHalfStepShortcutRequested();
     void editorOverwriteModeChanged(bool enabled);
-    void lineNumberBookmarkMoveRequested(int fromLine, int toLine);
     void lineNumberBookmarkActivated(int line);
+    // Bookmark redesign — the editor only announces intent; MainWindow owns
+    // the actual actions (sidebar inline rename, delete confirmation, and the
+    // line-number-gutter context menu).
+    void lineNumberBookmarkRenameRequested(int line);
+    void lineNumberBookmarkDeleteRequested(int line);
+    void lineNumberBookmarkContextMenuRequested(int line, const QPoint& globalPos);
+    void exportRangeRequested(int selectionStart, int selectionEnd);
 
 protected:
-    void dragEnterEvent(QDragEnterEvent* event) override;
-    void dragMoveEvent(QDragMoveEvent* event) override;
-    void dragLeaveEvent(QDragLeaveEvent* event) override;
-    void dropEvent(QDropEvent* event) override;
-    void mouseReleaseEvent(QMouseEvent* event) override;
     bool event(QEvent* event) override;
     void changeEvent(QEvent* event) override;
     void contextMenuEvent(QContextMenuEvent* event) override;
@@ -100,6 +119,7 @@ protected:
     void inputMethodEvent(QInputMethodEvent* event) override;
     void insertFromMimeData(const QMimeData* source) override;
     void keyPressEvent(QKeyEvent* event) override;
+    void mouseDoubleClickEvent(QMouseEvent* event) override;
     void mousePressEvent(QMouseEvent* event) override;
     void paintEvent(QPaintEvent* event) override;
     void resizeEvent(QResizeEvent* event) override;
@@ -113,6 +133,7 @@ private:
     QRect previewFollowVisualCaretRect() const;
     int lineNumberAtAreaPosition(const QPoint& pos) const;
     void syncCursorVisualState();
+    void updateScrollBeyondLastLineRange();
     void updateCursorVisibility();
     void updateCurrentLineHighlightRegion(const QRect& previousRect, const QRect& currentRect);
     // Bracket auto-pairing helpers. Each returns true when it consumed the input
@@ -122,6 +143,9 @@ private:
     // Bracket-completion helpers. tryBracketInput() wraps the auto-close path so
     // the suggestion popup opens on the same (normalized) key/IME bracket input.
     bool tryBracketInput(const QString& text);
+    // Typing '[' immediately before an existing '[' steps into the existing
+    // duration slot instead of inserting a duplicate bracket pair.
+    bool tryOverwriteOpeningSquareBracket(const QString& text);
     // simai hold shortcut — typing 'h' inserts a bare 'h' and offers the
     // full-bracket hold-duration tokens ("[8:1]" …) as a completion popup. It
     // inserts no bracket itself, so a following '[' yields the normal "h[]"
@@ -155,9 +179,14 @@ private:
 
     int blockSpacingPixels_ = 0;
     int topOverlayInsetPixels_ = 0;
+    QWidget* topOverlayArea_ = nullptr;
     bool halfWidthInputEnabled_ = true;
     bool imeInputDisabled_ = false;
     bool autoCompletionEnabled_ = true;
+    bool scrollBeyondLastLineEnabled_ = true;
+    bool preventMultiClickSelectionEnabled_ = false;
+    int verticalScrollBaseMaximum_ = 0;
+    bool updatingScrollBeyondLastLineRange_ = false;
     // Live state for the bracket-completion popup. completionOpening_ is null
     // when no popup is active; completionStartPos_ marks the document position
     // right after the opening bracket (where the user's filter text begins);
@@ -178,8 +207,5 @@ private:
     int previewFollowVisualCaretLine_ = 1;
     int previewFollowVisualCaretCol_ = 1;
     QSet<int> bookmarkedLines_;
-    int hoveredBookmarkDropLine_ = -1;
-    int pressedBookmarkLine_ = -1;
-    QPoint lineNumberPressPos_;
     LineNumberArea* lineNumberArea_;
 };

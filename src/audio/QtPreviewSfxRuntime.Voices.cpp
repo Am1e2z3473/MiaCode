@@ -1,5 +1,11 @@
-bool QtPreviewSfxRuntime::playKindInternal(const QString& kind, double gain)
+bool QtPreviewSfxRuntime::playKindInternal(
+    const QString& kind,
+    double gain,
+    int* nativeErrorCode)
 {
+    if (nativeErrorCode != nullptr) {
+        *nativeErrorCode = 0;
+    }
     const QString lowered = previewSfxNormalizedKind(kind);
     if (lowered.isEmpty()) {
         return false;
@@ -28,8 +34,10 @@ bool QtPreviewSfxRuntime::playKindInternal(const QString& kind, double gain)
         bank = &touchSfx_;
     } else if (lowered == "firework") {
         bank = &fireworkSfx_;
+    } else if (lowered == "track_start") {
+        bank = &trackStartSfx_;
     } else if (lowered == "touchhold") {
-        return playTouchholdAudition();
+        return playTouchholdAudition(nativeErrorCode);
     }
 
     if (bank == nullptr || !bank->configured || bank->voices.isEmpty()) {
@@ -46,15 +54,20 @@ bool QtPreviewSfxRuntime::playKindInternal(const QString& kind, double gain)
         return true;
     }
     const double effectiveGain = qMax(0.0, gain);
-    const double effectiveVolume = qBound(0.0, volume * effectiveGain, 1.5);
-    ma_sound_stop(&voice->sound);
+    const double effectiveVolume = qBound(0.0, volume * effectiveGain, 2.0);
+    if (!acceptMiniaudioResult(ma_sound_stop(&voice->sound), nativeErrorCode)) {
+        return false;
+    }
     ma_sound_set_volume(&voice->sound, static_cast<float>(effectiveVolume));
-    ma_sound_seek_to_pcm_frame(&voice->sound, 0);
-    ma_sound_start(&voice->sound);
-    return true;
+    if (!acceptMiniaudioResult(
+            ma_sound_seek_to_pcm_frame(&voice->sound, 0),
+            nativeErrorCode)) {
+        return false;
+    }
+    return acceptMiniaudioResult(ma_sound_start(&voice->sound), nativeErrorCode);
 }
 
-bool QtPreviewSfxRuntime::playTouchholdAudition()
+bool QtPreviewSfxRuntime::playTouchholdAudition(int* nativeErrorCode)
 {
     if (previewSfxVolumeForKind(settings_, QStringLiteral("touchhold")) <= 0.0 || touchholdVoice_ == nullptr
         || !touchholdVoice_->initialized) {
@@ -62,8 +75,13 @@ bool QtPreviewSfxRuntime::playTouchholdAudition()
     }
 
     touchholdOwnerSpanIndex_ = -1;
-    ma_sound_stop(&touchholdVoice_->sound);
-    ma_sound_seek_to_pcm_frame(&touchholdVoice_->sound, 0);
-    ma_sound_start(&touchholdVoice_->sound);
-    return true;
+    if (!acceptMiniaudioResult(ma_sound_stop(&touchholdVoice_->sound), nativeErrorCode)) {
+        return false;
+    }
+    if (!acceptMiniaudioResult(
+            ma_sound_seek_to_pcm_frame(&touchholdVoice_->sound, 0),
+            nativeErrorCode)) {
+        return false;
+    }
+    return acceptMiniaudioResult(ma_sound_start(&touchholdVoice_->sound), nativeErrorCode);
 }

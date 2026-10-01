@@ -2,12 +2,19 @@
 
 #include "../../MainWindow.h"
 
+class QMouseEvent;
+class QPoint;
+class QPointF;
+class QString;
+
 class MainWindow::WindowSection {
 public:
     WindowSection(MainWindow& owner, MainWindow::MainWindowUiRefs& ui, MainWindow::MainWindowState& state);
 
     bool quickShellRootWindowFrameGeometryAvailable() const;
     QRect quickShellRootWindowFrameGeometry() const;
+    void setQuickShellRootWindow(QWindow* window);
+    void cancelChartDrop();
     bool confirmShellClose();
     void toggleShellPreviewPlayback();
     void stopShellPreview();
@@ -16,6 +23,7 @@ public:
     void updateShellPreviewScrub(double second, bool centerView);
     void endShellPreviewScrub(double second, bool centerView);
     void setShellPreviewRate(double rate);
+    void toggleShellMuriRenderMode();
     void nudgeShellPreviewRate(int direction);
     bool stepShellPreviewBySeconds(double deltaSeconds, bool centerView);
     void beginShellPreviewHeldSeek(int direction, int key);
@@ -40,6 +48,7 @@ public:
     QString shellWindowTitle() const;
     bool shellWorkspacePanelsSwapped() const;
     QString shellPreviewSpeedLabel() const;
+    bool shellMuriCheckRenderMode() const;
     bool shellPreviewPlaying() const;
     double shellPreviewPositionSeconds() const;
     double shellPreviewDurationSeconds() const;
@@ -122,6 +131,8 @@ private:
     bool quickShellFocusBridgeActive() const;
     QWindow* previewVisibleHostWindow() const;
     void focusPreviewInteractionTarget(QObject* watched, Qt::FocusReason reason);
+    bool touchPadAuthoringEditableContext() const;
+    void setHoveredTouchPad(const QString& pad);
     void handleApplicationFocusChanged(QWidget* old, QWidget* now);
     void handleApplicationStateChanged(Qt::ApplicationState state);
     void recoverPreviewBackendsAfterApplicationResume();
@@ -130,6 +141,10 @@ private:
     void restoreFocusedTextEditState();
     void restoreFocusedTextEditStateAttempt(QPointer<QTextEdit> target, int savedAnchor, int savedPosition, int attempt);
     void clearFocusedTextEditState();
+    bool handleChartDropEvent(QObject* watched, QEvent* event);
+    void scheduleChartDropOverlayHide();
+    void cancelChartDropOverlayHide();
+    void setChartDropOverlayVisible(bool visible);
 
     MainWindow& owner_;
     MainWindow::MainWindowUiRefs& ui_;

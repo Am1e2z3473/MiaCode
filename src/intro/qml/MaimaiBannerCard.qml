@@ -75,19 +75,31 @@ Item {
     // fonts. Resource Han Rounded CN (思源圆体, rounded Source Han) natively covers
     // simplified Chinese (no system fallback) and approximates SEGA's rounded look.
     // Title (display) uses Heavy for prominence; body uses Bold.
+    // Resolve a card font (display/body) to a FontLoader source. template.fonts.*
+    // is normally a bare FILENAME resolved against fontsRoot (the bundled qrc
+    // fonts). The cover / 片头 font pickers instead inject an ABSOLUTE user font as
+    // a file:// URL (see FontLibrary::applyBannerFontOverride), which is used
+    // verbatim so a font outside the qrc tree still loads; an empty/missing value
+    // falls back to the bundled filename (a font absent on another machine → the
+    // default, never blank text).
+    function fontSourceUrl(key, fallbackFile) {
+        var name = (root.template && root.template.fonts && root.template.fonts[key])
+                    ? root.template.fonts[key] : fallbackFile
+        var s = (name === undefined || name === null) ? "" : name.toString()
+        if (s.length === 0)
+            s = fallbackFile
+        if (s.indexOf("://") >= 0 || s.indexOf("qrc:") === 0)
+            return s   // already a full URL → verbatim
+        return Qt.resolvedUrl((root.template.fontsRoot || "qrc:/intro/assets/fonts") + "/" + s)
+    }
+
     FontLoader {
         id: displayFont
-        source: Qt.resolvedUrl(
-            (root.template.fontsRoot || "qrc:/intro/assets/fonts") + "/" +
-            (root.template.fonts ? root.template.fonts.display : "ResourceHanRoundedCN-Heavy.ttf")
-        )
+        source: root.fontSourceUrl("display", "ResourceHanRoundedCN-Heavy.ttf")
     }
     FontLoader {
         id: bodyFont
-        source: Qt.resolvedUrl(
-            (root.template.fontsRoot || "qrc:/intro/assets/fonts") + "/" +
-            (root.template.fonts ? root.template.fonts.body : "ResourceHanRoundedCN-Bold.ttf")
-        )
+        source: root.fontSourceUrl("body", "ResourceHanRoundedCN-Bold.ttf")
     }
 
     implicitWidth: template.canvas.width
@@ -149,8 +161,8 @@ Item {
             },
             colors: {
                 titleOnDark: "#FFFFFF", artistOnDark: "#E8E4F5",
-                designerOnWhite: "#1A1A1A", bpmOnWhite: "#0E2A60",
-                labelOnWhite: "#0E2A60",
+                designerOnWhite: "#365B84", bpmOnWhite: "#4F4F4F",
+                labelOnWhite: "#244A78",
                 lvNumber: "#FFFFFF", lvNumberShadow: "#3A1060",
                 placeholderFill: "#DDD9D2", placeholderEdge: "#DDD9D2"
             },
@@ -455,12 +467,20 @@ Item {
         property string textValue: ""
         property color textColor: "white"
         property string fontFamily: ""
+        property int fontWeight: Font.Normal
         property real basePixel: 20
         property real minPixel: 10
         property int baseAlign: Text.AlignHCenter
+        property bool scrollable: true
+        property real horizontalPadding: 0
         // True width at the FIXED render size (intro) — drives looping.
         readonly property real fixedContentWidth: mqMeasure.contentWidth
-        readonly property bool looping: root.revealStartFrame >= 0 && (fixedContentWidth - mq.width) > 0.5
+        readonly property real contentInset: Math.max(0, Math.min(mq.horizontalPadding, mq.width / 3))
+        readonly property real contentWidth: Math.max(0, mq.width - mq.contentInset * 2)
+        readonly property bool looping: mq.scrollable
+            && root.revealStartFrame >= 0
+            && mq.contentWidth > 0
+            && (fixedContentWidth - mq.contentWidth) > 0.5
         readonly property real period: fixedContentWidth + root.marqueeGap()
         readonly property real loopX: looping ? root.marqueeLoopOffset(mq.stageName, period) : 0
         // Still cover (revealStartFrame<0) only: "ellipsis" keeps the base font and
@@ -471,9 +491,9 @@ Item {
 
         Item {
             id: mqClip
-            x: 0
+            x: mq.contentInset
             y: -mq.verticalOverscan
-            width: mq.width
+            width: mq.contentWidth
             height: mq.height + mq.verticalOverscan * 2
             clip: true
 
@@ -483,6 +503,7 @@ Item {
                 visible: false
                 text: mq.textValue
                 font.family: mq.fontFamily
+                font.weight: mq.fontWeight
                 font.pixelSize: mq.basePixel
                 wrapMode: Text.NoWrap
                 maximumLineCount: 1
@@ -497,6 +518,7 @@ Item {
                 text: mq.textValue
                 color: mq.textColor
                 font.family: mq.fontFamily
+                font.weight: mq.fontWeight
                 font.pixelSize: mq.basePixel
                 // Shrink mode goes much lower than the intro min so the whole string fits.
                 minimumPixelSize: mq.stillEllipsis ? mq.basePixel : Math.max(6, Math.round(mq.basePixel * 0.25))
@@ -504,7 +526,7 @@ Item {
                 maximumLineCount: 1
                 fontSizeMode: (root.revealStartFrame >= 0 || mq.stillEllipsis) ? Text.FixedSize : Text.HorizontalFit
                 elide: mq.stillEllipsis ? Text.ElideRight : Text.ElideNone
-                width: mq.looping ? mq.fixedContentWidth : mq.width
+                width: mq.looping ? mq.fixedContentWidth : mq.contentWidth
                 horizontalAlignment: mq.looping ? Text.AlignLeft : mq.baseAlign
                 x: mq.looping ? -mq.loopX : 0
             }
@@ -517,6 +539,7 @@ Item {
                 text: mq.textValue
                 color: mq.textColor
                 font.family: mq.fontFamily
+                font.weight: mq.fontWeight
                 font.pixelSize: mq.basePixel
                 wrapMode: Text.NoWrap
                 maximumLineCount: 1
@@ -875,6 +898,7 @@ Item {
             basePixel: Math.round(b.h * 0.82)
             minPixel: Math.round(b.h * 0.42)
             baseAlign: Text.AlignHCenter
+            horizontalPadding: 10
         }
 
         // 6) Artist — prefab uses SEGA_MaruGothic-DB (body) → Bold.
@@ -889,6 +913,7 @@ Item {
             basePixel: Math.round(b.h * 0.82)
             minPixel: Math.round(b.h * 0.42)
             baseAlign: Text.AlignHCenter
+            horizontalPadding: 10
         }
 
         // 6a-d) Achievement-row placeholders — shown when chart hasn't been
@@ -946,8 +971,9 @@ Item {
             text: "NOTES DESIGNER"
             color: root.template.colors.labelOnWhite
             font.family: displayFont.name
-            font.pixelSize: Math.round(b.h * 0.55)
-            font.letterSpacing: 0.5
+            font.weight: Font.Black
+            font.pixelSize: Math.round(b.h * 0.62)
+            font.letterSpacing: 0.35
             horizontalAlignment: Text.AlignLeft
             verticalAlignment: Text.AlignVCenter
         }
@@ -964,9 +990,11 @@ Item {
             }
             textColor: root.template.colors.designerOnWhite
             fontFamily: bodyFont.name
-            basePixel: Math.round(b.h * 0.96)
+            fontWeight: Font.Bold
+            basePixel: Math.round(b.h * 1.18)
             minPixel: Math.round(b.h * 0.5)
             baseAlign: Text.AlignLeft
+            horizontalPadding: 0
         }
 
         // 9) BPM — prefab TMP_BPM uses MaruGothic DB → body font.
@@ -980,7 +1008,8 @@ Item {
             textValue: "BPM " + root.oneLine(root.trackValue("bpm"))
             textColor: root.template.colors.bpmOnWhite
             fontFamily: bodyFont.name
-            basePixel: Math.round(b.h * 0.92)
+            fontWeight: Font.Bold
+            basePixel: Math.round(b.h * 1.10)
             minPixel: Math.round(b.h * 0.5)
             baseAlign: Text.AlignLeft
         }

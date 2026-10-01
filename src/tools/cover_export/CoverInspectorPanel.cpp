@@ -2,20 +2,26 @@
 
 #include "tools/cover_export/CoverLayoutModel.h"
 #include "tools/cover_export/CoverStudioPanel.h"
+#include "tools/video_export/FontLibrary.h"
 #include "EditableValueLabel.h"
 #include "UiText.h"
+#include "UiComponents.h"
 #include "UiTheme.h"
 
 #include <QApplication>
 #include <QCheckBox>
+#include <QColor>
+#include <QColorDialog>
 #include <QComboBox>
 #include <QEvent>
+#include <QFileInfo>
 #include <QFormLayout>
 #include <QFont>
 #include <QGroupBox>
 #include <QHBoxLayout>
 #include <QKeyEvent>
 #include <QLabel>
+#include <QLineEdit>
 #include <QPainter>
 #include <QPainterPath>
 #include <QPixmap>
@@ -30,21 +36,16 @@ namespace {
 
 constexpr int kFrameTransportSliderHeight = 24;
 
-QString l10n(const QString& en, const QString& zh)
-{
-    return UiText::isChineseUi() ? zh : en;
-}
-
 QString displayLabel(const CoverLayer* layer)
 {
     if (layer == nullptr) {
         return QString();
     }
     if (layer->kind() == QStringLiteral("card")) {
-        return l10n(QStringLiteral("Difficulty card"), QStringLiteral("难度卡"));
+        return UiText::text(QStringLiteral("cover.difficulty_card"));
     }
     if (layer->kind() == QStringLiteral("chartFrame")) {
-        return l10n(QStringLiteral("Chart frame"), QStringLiteral("谱面帧"));
+        return UiText::text(QStringLiteral("cover.chart_frame"));
     }
     return layer->label();
 }
@@ -172,32 +173,6 @@ void emphasizeGroupTitle(QGroupBox* group)
     }
 }
 
-// A slider + click-to-type value readout (§10). The value mirrors the slider on
-// drag and commits a typed number back through the slider's setValue (which
-// re-fires the studio setter), so dragging and typing behave identically.
-QWidget* makeSliderValueRow(QSlider* slider, miacode::ui::EditableValueLabel** valueOut,
-                            const QString& suffix, QWidget* parent)
-{
-    slider->setStyleSheet(UiTheme::dialogSliderStyleSheet());
-    slider->ensurePolished();
-    slider->setFixedHeight(qMax(slider->sizeHint().height(), 20) + 2);
-    auto* row = new QWidget(parent);
-    auto* layout = new QHBoxLayout(row);
-    layout->setContentsMargins(0, 0, 0, 0);
-    layout->setSpacing(8);
-    auto* value = new miacode::ui::EditableValueLabel(QStringLiteral("0") + suffix, row);
-    value->setMinimumWidth(46);
-    value->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
-    value->bindSlider(slider);
-    layout->addWidget(slider, 1);
-    layout->addWidget(value, 0);
-    QObject::connect(slider, &QSlider::valueChanged, value, [value, suffix](int v) {
-        value->setText(QString::number(v) + suffix);
-    });
-    *valueOut = value;
-    return row;
-}
-
 }  // namespace
 
 CoverInspectorPanel::CoverInspectorPanel(CoverStudioPanel* studio, QWidget* parent)
@@ -209,7 +184,7 @@ CoverInspectorPanel::CoverInspectorPanel(CoverStudioPanel* studio, QWidget* pare
     root->setSpacing(8);
 
     // ---- §3.2 layer (common) ----
-    layerGroup_ = new QGroupBox(l10n(QStringLiteral("Layer"), QStringLiteral("图层")), this);
+    layerGroup_ = new QGroupBox(UiText::text(QStringLiteral("cover.layer")), this);
     auto* form = new QFormLayout(layerGroup_);
     form->setContentsMargins(8, 8, 8, 8);
     form->setSpacing(8);
@@ -217,72 +192,70 @@ CoverInspectorPanel::CoverInspectorPanel(CoverStudioPanel* studio, QWidget* pare
 
     visibleCheck_ = new QCheckBox(this);
     lockedCheck_ = new QCheckBox(this);
-    visibleCheck_->setToolTip(l10n(QStringLiteral("Show or hide this layer (V)"),
-                                   QStringLiteral("显示或隐藏当前图层（快捷键 V）")));
-    lockedCheck_->setToolTip(l10n(QStringLiteral("Lock position and size (L)"),
-                                  QStringLiteral("锁定位置与大小，防止拖动（快捷键 L）")));
-    form->addRow(l10n(QStringLiteral("Visible"), QStringLiteral("显示")), visibleCheck_);
-    form->addRow(l10n(QStringLiteral("Lock"), QStringLiteral("锁定")), lockedCheck_);
+    visibleCheck_->setToolTip(UiText::text(QStringLiteral("cover.show_or_hide_this_layer")));
+    lockedCheck_->setToolTip(UiText::text(QStringLiteral("cover.lock_position_and_size_l")));
+    form->addRow(UiText::text(QStringLiteral("cover.visible")), visibleCheck_);
+    form->addRow(UiText::text(QStringLiteral("cover.lock")), lockedCheck_);
 
     opacitySlider_ = new QSlider(Qt::Horizontal, this);
     opacitySlider_->setRange(0, 100);
-    opacitySlider_->setToolTip(l10n(QStringLiteral("Layer opacity"), QStringLiteral("图层不透明度")));
-    form->addRow(l10n(QStringLiteral("Opacity"), QStringLiteral("不透明度")),
-                 makeSliderValueRow(opacitySlider_, &opacityValue_, QStringLiteral("%"), this));
+    opacitySlider_->setToolTip(UiText::text(QStringLiteral("cover.layer_opacity")));
+    form->addRow(UiText::text(QStringLiteral("cover.opacity")),
+                 miacode::ui::createSliderValueRow(opacitySlider_, &opacityValue_, QStringLiteral("%"), this));
 
     sizeSlider_ = new QSlider(Qt::Horizontal, this);
     sizeSlider_->setRange(5, 200);
-    sizeSlider_->setToolTip(l10n(QStringLiteral("Layer size"), QStringLiteral("图层大小")));
-    form->addRow(l10n(QStringLiteral("Size"), QStringLiteral("大小")),
-                 makeSliderValueRow(sizeSlider_, &sizeValue_, QStringLiteral("%"), this));
+    sizeSlider_->setToolTip(UiText::text(QStringLiteral("cover.layer_size")));
+    form->addRow(UiText::text(QStringLiteral("cover.size")),
+                 miacode::ui::createSliderValueRow(sizeSlider_, &sizeValue_, QStringLiteral("%"), this));
 
     xSlider_ = new QSlider(Qt::Horizontal, this);
     xSlider_->setRange(0, 100);
-    xSlider_->setToolTip(l10n(QStringLiteral("Horizontal position"), QStringLiteral("水平位置")));
-    form->addRow(l10n(QStringLiteral("X"), QStringLiteral("水平位置")),
-                 makeSliderValueRow(xSlider_, &xValue_, QString(), this));
+    xSlider_->setToolTip(UiText::text(QStringLiteral("cover.horizontal_position")));
+    form->addRow(UiText::text(QStringLiteral("cover.x")),
+                 miacode::ui::createSliderValueRow(xSlider_, &xValue_, QString(), this));
 
     ySlider_ = new QSlider(Qt::Horizontal, this);
     ySlider_->setRange(0, 100);
-    ySlider_->setToolTip(l10n(QStringLiteral("Vertical position"), QStringLiteral("垂直位置")));
-    form->addRow(l10n(QStringLiteral("Y"), QStringLiteral("垂直位置")),
-                 makeSliderValueRow(ySlider_, &yValue_, QString(), this));
+    ySlider_->setToolTip(UiText::text(QStringLiteral("cover.vertical_position")));
+    form->addRow(UiText::text(QStringLiteral("cover.y")),
+                 miacode::ui::createSliderValueRow(ySlider_, &yValue_, QString(), this));
 
     root->addWidget(layerGroup_);
 
     // ---- §3.3 chart-frame options (polymorphic; shown only for chart frames) ----
     frameOptionsGroup_ = new QGroupBox(
-        l10n(QStringLiteral("Chart frame options"), QStringLiteral("谱面帧选项")), this);
+        UiText::text(QStringLiteral("cover.chart_frame_options")), this);
     auto* frameForm = new QFormLayout(frameOptionsGroup_);
     frameForm->setContentsMargins(8, 8, 8, 8);
     frameForm->setSpacing(8);
     frameForm->setFieldGrowthPolicy(QFormLayout::ExpandingFieldsGrow);
 
     frameBgModeCombo_ = new QComboBox(this);
-    frameBgModeCombo_->addItem(l10n(QStringLiteral("Jacket"), QStringLiteral("曲绘")),
+    frameBgModeCombo_->setProperty("miacode.combo_text_alignment",
+                                   static_cast<int>(Qt::AlignLeft | Qt::AlignVCenter));
+    frameBgModeCombo_->addItem(UiText::text(QStringLiteral("cover.jacket")),
                                QStringLiteral("image"));
-    frameBgModeCombo_->addItem(l10n(QStringLiteral("Transparent"), QStringLiteral("透明")),
+    frameBgModeCombo_->addItem(UiText::text(QStringLiteral("cover.transparent")),
                                QStringLiteral("transparent"));
-    frameBgModeCombo_->setToolTip(l10n(QStringLiteral("Chart-frame inner background"),
-                                       QStringLiteral("谱面帧内圈背景")));
-    frameForm->addRow(l10n(QStringLiteral("Inner bg"), QStringLiteral("内圈背景")), frameBgModeCombo_);
+    frameBgModeCombo_->setToolTip(UiText::text(QStringLiteral("cover.chart_frame_inner_background")));
+    UiTheme::styleDialogComboBox(frameBgModeCombo_, 12);
+    frameForm->addRow(UiText::text(QStringLiteral("cover.inner_bg")), frameBgModeCombo_);
 
     frameBgBrightnessSlider_ = new QSlider(Qt::Horizontal, this);
     frameBgBrightnessSlider_->setRange(0, 100);
-    frameBgBrightnessSlider_->setToolTip(l10n(QStringLiteral("Chart-frame background brightness"),
-                                              QStringLiteral("谱面帧背景亮度")));
-    frameBgBrightnessRow_ = makeSliderValueRow(frameBgBrightnessSlider_, &frameBgBrightnessValue_,
-                                               QStringLiteral("%"), this);
-    frameForm->addRow(l10n(QStringLiteral("Brightness"), QStringLiteral("亮度")),
+    frameBgBrightnessSlider_->setToolTip(UiText::text(QStringLiteral("cover.chart_frame_background_brightness")));
+    frameBgBrightnessRow_ = miacode::ui::createSliderValueRow(
+        frameBgBrightnessSlider_, &frameBgBrightnessValue_, QStringLiteral("%"), this);
+    frameForm->addRow(UiText::text(QStringLiteral("cover.brightness")),
                       frameBgBrightnessRow_);
 
     frameBgTransparencySlider_ = new QSlider(Qt::Horizontal, this);
     frameBgTransparencySlider_->setRange(0, 100);
-    frameBgTransparencySlider_->setToolTip(l10n(QStringLiteral("Chart-frame background transparency"),
-                                                QStringLiteral("谱面帧背景透明度")));
-    frameBgTransparencyRow_ = makeSliderValueRow(frameBgTransparencySlider_, &frameBgTransparencyValue_,
-                                                 QStringLiteral("%"), this);
-    frameForm->addRow(l10n(QStringLiteral("Transparency"), QStringLiteral("透明度")),
+    frameBgTransparencySlider_->setToolTip(UiText::text(QStringLiteral("cover.chart_frame_background_transparency")));
+    frameBgTransparencyRow_ = miacode::ui::createSliderValueRow(
+        frameBgTransparencySlider_, &frameBgTransparencyValue_, QStringLiteral("%"), this);
+    frameForm->addRow(UiText::text(QStringLiteral("cover.transparency")),
                       frameBgTransparencyRow_);
 
     auto* frameTimeRow = new QWidget(this);
@@ -294,14 +267,12 @@ CoverInspectorPanel::CoverInspectorPanel(CoverStudioPanel* studio, QWidget* pare
     framePlayButton_->setIconSize(QSize(16, 16));
     framePlayButton_->setStyleSheet(frameTimeButtonStyle());
     framePlayButton_->setFixedSize(28, 28);
-    framePlayButton_->setToolTip(l10n(QStringLiteral("Play / pause (Space)"),
-                                      QStringLiteral("播放 / 暂停（空格）")));
+    framePlayButton_->setToolTip(UiText::text(QStringLiteral("cover.play_pause_space")));
     framePlayButton_->setAccessibleName(framePlayButton_->toolTip());
     frameTimeSlider_ = new QSlider(Qt::Horizontal, frameTimeRow);
     frameTimeSlider_->setRange(0, qMax(1, qRound(studio_ != nullptr ? studio_->contentDurationSeconds() * 1000.0 : 1.0)));
     configureTransportSlider(frameTimeSlider_);
-    frameTimeSlider_->setToolTip(l10n(QStringLiteral("Frame time for the selected chart frame"),
-                                      QStringLiteral("当前谱面帧的帧时间")));
+    frameTimeSlider_->setToolTip(UiText::text(QStringLiteral("cover.frame_time_for_the_selected_2")));
     frameTimeSlider_->installEventFilter(this);
     frameTimeReadout_ = new QLabel(formatFrameTimeWithDuration(0.0, studio_ != nullptr ? studio_->contentDurationSeconds() : 0.0), frameTimeRow);
     frameTimeReadout_->setMinimumWidth(100);
@@ -309,16 +280,68 @@ CoverInspectorPanel::CoverInspectorPanel(CoverStudioPanel* studio, QWidget* pare
     frameTimeLayout->addWidget(framePlayButton_, 0);
     frameTimeLayout->addWidget(frameTimeSlider_, 1);
     frameTimeLayout->addWidget(frameTimeReadout_, 0);
-    auto* frameTimeLabel = new QLabel(l10n(QStringLiteral("Frame time"), QStringLiteral("帧时间")), frameOptionsGroup_);
+    auto* frameTimeLabel = new QLabel(UiText::text(QStringLiteral("cover.frame_time")), frameOptionsGroup_);
     frameTimeLabel->setProperty("role", QStringLiteral("coverFrameTimeLabel"));
     frameTimeLabel->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Preferred);
     frameTimeLayout->insertWidget(0, frameTimeLabel, 0);
     frameForm->addRow(frameTimeRow);
 
+    // ---- §3.3 image options (polymorphic; shown only for image layers) ----
+    imageOptionsGroup_ = new QGroupBox(UiText::text(QStringLiteral("cover.image_options")), this);
+    auto* imageForm = new QFormLayout(imageOptionsGroup_);
+    imageForm->setContentsMargins(8, 8, 8, 8);
+    imageForm->setSpacing(8);
+    imageForm->setFieldGrowthPolicy(QFormLayout::ExpandingFieldsGrow);
+    auto* imageRow = new QWidget(imageOptionsGroup_);
+    auto* imageRowLayout = new QHBoxLayout(imageRow);
+    imageRowLayout->setContentsMargins(0, 0, 0, 0);
+    imageRowLayout->setSpacing(6);
+    imagePathEdit_ = new QLineEdit(imageRow);
+    imagePathEdit_->setPlaceholderText(UiText::text(QStringLiteral("cover.image_file")));
+    imageBrowseButton_ = miacode::ui::createDialogAuxiliaryButton(
+        imageRow, UiText::text(QStringLiteral("cover.browse")));
+    imageRowLayout->addWidget(imagePathEdit_, 1);
+    imageRowLayout->addWidget(imageBrowseButton_, 0);
+    imageForm->addRow(UiText::text(QStringLiteral("cover.image_file")), imageRow);
+
+    // ---- §3.3 text options (polymorphic; shown only for text layers) ----
+    textOptionsGroup_ = new QGroupBox(UiText::text(QStringLiteral("cover.text_options")), this);
+    auto* textForm = new QFormLayout(textOptionsGroup_);
+    textForm->setContentsMargins(8, 8, 8, 8);
+    textForm->setSpacing(8);
+    textForm->setFieldGrowthPolicy(QFormLayout::ExpandingFieldsGrow);
+    textEdit_ = new QLineEdit(textOptionsGroup_);
+    textEdit_->setPlaceholderText(UiText::text(QStringLiteral("cover.text_content")));
+    textForm->addRow(UiText::text(QStringLiteral("cover.text_content")), textEdit_);
+
+    auto* fontRow = new QWidget(textOptionsGroup_);
+    auto* fontRowLayout = new QHBoxLayout(fontRow);
+    fontRowLayout->setContentsMargins(0, 0, 0, 0);
+    fontRowLayout->setSpacing(6);
+    textFontCombo_ = miacode::ui::createDialogComboBox(fontRow, 12, Qt::AlignLeft | Qt::AlignVCenter);
+    miacode::video_export::configureFontComboWidth(
+        textFontCombo_, miacode::video_export::FontComboWidthMode::NarrowInspector);
+    textFontImportButton_ = miacode::ui::createDialogAuxiliaryButton(
+        fontRow, UiText::text(QStringLiteral("card_font.import")));
+    fontRowLayout->addWidget(textFontCombo_, 1);
+    fontRowLayout->addWidget(textFontImportButton_, 0);
+    refreshTextFontCombo(QString());
+    textForm->addRow(UiText::text(QStringLiteral("cover.font")), fontRow);
+
+    textColorButton_ = miacode::ui::createDialogAuxiliaryButton(textOptionsGroup_, QStringLiteral("#FFFFFF"));
+    textForm->addRow(UiText::text(QStringLiteral("cover.text_color")), textColorButton_);
+
+    textBoldCheck_ = new QCheckBox(textOptionsGroup_);
+    textForm->addRow(UiText::text(QStringLiteral("cover.bold")), textBoldCheck_);
+
     emphasizeGroupTitle(layerGroup_);
     emphasizeGroupTitle(frameOptionsGroup_);
+    emphasizeGroupTitle(imageOptionsGroup_);
+    emphasizeGroupTitle(textOptionsGroup_);
 
     root->addWidget(frameOptionsGroup_);
+    root->addWidget(imageOptionsGroup_);
+    root->addWidget(textOptionsGroup_);
     root->addStretch(1);
 
     // ---- wiring (identical setters to the old inspector) ----
@@ -365,6 +388,51 @@ CoverInspectorPanel::CoverInspectorPanel(CoverStudioPanel* studio, QWidget* pare
     });
     connect(frameTimeSlider_, &QSlider::valueChanged, this, [this](int value) {
         if (studio_ != nullptr) studio_->setActiveLayerFrameSeconds(value / 1000.0);
+    });
+
+    // ---- image options wiring ----
+    connect(imageBrowseButton_, &QPushButton::clicked, this, [this] {
+        if (studio_ != nullptr) studio_->browseActiveLayerImage();
+    });
+    connect(imagePathEdit_, &QLineEdit::editingFinished, this, [this] {
+        if (studio_ != nullptr) studio_->setActiveLayerImagePath(imagePathEdit_->text().trimmed());
+    });
+
+    // ---- text options wiring ----
+    connect(textEdit_, &QLineEdit::textEdited, this, [this](const QString& value) {
+        if (studio_ != nullptr) studio_->setActiveLayerText(value);
+    });
+    connect(textFontCombo_, qOverload<int>(&QComboBox::currentIndexChanged), this, [this](int index) {
+        if (studio_ != nullptr && textFontCombo_ != nullptr) {
+            studio_->setActiveLayerFontPath(textFontCombo_->itemData(index).toString());
+        }
+    });
+    connect(textFontImportButton_, &QPushButton::clicked, this, [this] {
+        const QString imported = miacode::video_export::importFontIntoLibrary(this);
+        if (imported.isEmpty()) {
+            return;
+        }
+        refreshTextFontCombo(imported);
+        if (studio_ != nullptr) studio_->setActiveLayerFontPath(imported);
+    });
+    connect(textColorButton_, &QPushButton::clicked, this, [this] {
+        CoverLayer* layer = nullptr;
+        if (studio_ != nullptr && studio_->layoutModel() != nullptr) {
+            layer = studio_->layoutModel()->layer(studio_->activeLayerKey());
+        }
+        const QColor initial(layer != nullptr ? layer->textColor() : QStringLiteral("#FFFFFF"));
+        const QColor chosen = QColorDialog::getColor(
+            initial.isValid() ? initial : QColor(Qt::white), this,
+            UiText::text(QStringLiteral("cover.text_color")));
+        if (!chosen.isValid()) {
+            return;
+        }
+        const QString hex = chosen.name(QColor::HexRgb);
+        updateTextColorSwatch(hex);
+        if (studio_ != nullptr) studio_->setActiveLayerTextColor(hex);
+    });
+    connect(textBoldCheck_, &QCheckBox::toggled, this, [this](bool checked) {
+        if (studio_ != nullptr) studio_->setActiveLayerTextBold(checked);
     });
 
     if (studio_ != nullptr) {
@@ -442,8 +510,8 @@ void CoverInspectorPanel::refresh()
 
     layerGroup_->setVisible(hasLayer);
     layerGroup_->setTitle(hasLayer
-        ? l10n(QStringLiteral("Layer · "), QStringLiteral("图层 · ")) + displayLabel(layer)
-        : l10n(QStringLiteral("Layer"), QStringLiteral("图层")));
+        ? UiText::text(QStringLiteral("cover.layer_2")) + displayLabel(layer)
+        : UiText::text(QStringLiteral("cover.layer")));
 
     {
         const QSignalBlocker b(visibleCheck_);
@@ -554,6 +622,71 @@ void CoverInspectorPanel::refresh()
         frameBgTransparencySlider_->setEnabled(frameControlsEnabled && !imageMode);
         frameBgTransparencyValue_->setEnabled(frameControlsEnabled && !imageMode);
     }
+
+    // ---- image layer ----
+    const bool isImage = hasLayer && layer->kind() == QStringLiteral("image");
+    imageOptionsGroup_->setVisible(isImage);
+    if (isImage && imagePathEdit_ != nullptr) {
+        // Lock freezes position + size only (§12.6) — the image source, like
+        // opacity / visibility, stays editable while locked.
+        if (imagePathEdit_->text() != layer->imagePath()) {
+            const QSignalBlocker b(imagePathEdit_);
+            imagePathEdit_->setText(layer->imagePath());
+        }
+    }
+
+    // ---- text layer ----
+    const bool isText = hasLayer && layer->kind() == QStringLiteral("text");
+    textOptionsGroup_->setVisible(isText);
+    if (isText) {
+        if (textEdit_ != nullptr && textEdit_->text() != layer->text()) {
+            const QSignalBlocker b(textEdit_);
+            textEdit_->setText(layer->text());
+        }
+        if (textFontCombo_ != nullptr) {
+            const QString fontPath = layer->fontPath();
+            const int idx = textFontCombo_->findData(fontPath);
+            if (idx < 0 && !fontPath.isEmpty()) {
+                refreshTextFontCombo(fontPath);   // font added elsewhere — re-list
+            } else {
+                const QSignalBlocker b(textFontCombo_);
+                textFontCombo_->setCurrentIndex(idx >= 0 ? idx : 0);
+            }
+        }
+        if (textBoldCheck_ != nullptr) {
+            const QSignalBlocker b(textBoldCheck_);
+            textBoldCheck_->setChecked(layer->textBold());
+        }
+        updateTextColorSwatch(layer->textColor());
+    }
+}
+
+void CoverInspectorPanel::refreshTextFontCombo(const QString& selectedPath)
+{
+    if (textFontCombo_ == nullptr) {
+        return;
+    }
+    miacode::video_export::populateFontCombo(
+        textFontCombo_, selectedPath, /*includeDefault=*/true,
+        UiText::text(QStringLiteral("card_font.default")));
+    miacode::ui::applyDialogComboBoxStyle(textFontCombo_, 12);
+}
+
+void CoverInspectorPanel::updateTextColorSwatch(const QString& color)
+{
+    if (textColorButton_ == nullptr) {
+        return;
+    }
+    QColor c(color);
+    if (!c.isValid()) {
+        c = QColor(Qt::white);
+    }
+    const QString fg = (c.lightnessF() > 0.6) ? QStringLiteral("#101010") : QStringLiteral("#FFFFFF");
+    textColorButton_->setText(c.name(QColor::HexRgb).toUpper());
+    textColorButton_->setStyleSheet(QStringLiteral(
+        "QPushButton { background: %1; color: %2; border: 1px solid rgba(128,128,128,120);"
+        " border-radius: 6px; padding: 4px 12px; }")
+        .arg(c.name(QColor::HexRgb), fg));
 }
 
 }  // namespace miacode::cover_export

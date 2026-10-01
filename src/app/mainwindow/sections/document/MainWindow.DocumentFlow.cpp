@@ -48,6 +48,78 @@ MainWindow::DocumentSection::DocumentSection(
     , state_(state)
 {}
 
+bool MainWindow::DocumentSection::saveExportOriginFieldToDisk()
+{
+    const SimaiDocument documentBeforeSave = state_.document_;
+    const bool documentDirtyBeforeSave = state_.documentDirty_;
+    const bool currentFieldDirtyBeforeSave = state_.currentFieldDirty_;
+    const int editorUndoSaveAnchorBeforeSave = state_.editorUndoSaveAnchor_;
+    auto* editor = qobject_cast<PlainCodeEditor*>(ui_.editorWidget_);
+    const bool editorModifiedBeforeSave = editor != nullptr && editor->document() != nullptr
+        ? editor->document()->isModified()
+        : false;
+    const int previousDifficultyId = state_.activeDifficultyId_;
+    const QString previousOutlineKey = state_.activeOutlineKey_;
+    state_.activeDifficultyId_ = state_.exportOriginDifficultyId_;
+    state_.activeOutlineKey_ = QStringLiteral("chart");
+    const bool saved = onSaveFile();
+    state_.activeDifficultyId_ = previousDifficultyId;
+    state_.activeOutlineKey_ = previousOutlineKey;
+    if (!saved) {
+        state_.document_ = documentBeforeSave;
+        state_.documentDirty_ = documentDirtyBeforeSave;
+        state_.currentFieldDirty_ = currentFieldDirtyBeforeSave;
+        state_.editorUndoSaveAnchor_ = editorUndoSaveAnchorBeforeSave;
+        if (editor != nullptr && editor->document() != nullptr) {
+            editor->document()->setModified(editorModifiedBeforeSave);
+        }
+        updateDirtyState();
+        owner_.updateWindowTitle();
+    }
+    return saved;
+}
+
+void MainWindow::DocumentSection::discardExportOriginChanges()
+{
+    if (state_.exportOriginDocumentSnapshotValid_) {
+        state_.document_ = state_.exportOriginDocumentSnapshot_;
+    }
+    state_.currentFieldDirty_ = false;
+    state_.documentDirty_ = state_.exportOriginDocumentDirty_;
+    updateDirtyState();
+    owner_.updateWindowTitle();
+    clearExportSelectionContext();
+}
+
+bool MainWindow::DocumentSection::maybeSaveExportOriginFieldChanges()
+{
+    if (!state_.exportSelectionContextActive_
+        || !SimaiDocument::isDifficultyId(state_.exportOriginDifficultyId_)
+        || !state_.exportOriginFieldDirty_) {
+        return true;
+    }
+
+    const QString fieldName = SimaiDocument::difficultyName(state_.exportOriginDifficultyId_);
+    const UnsavedChangesChoice choice = showUnsavedChangesDialog(
+        &owner_,
+        UiText::text(QStringLiteral("dialog.unsaved_field_changes.title")),
+        UiText::text(QStringLiteral("dialog.unsaved_field_changes.message")).arg(fieldName)
+    );
+    if (choice == UnsavedChangesChoice::Cancel) {
+        return false;
+    }
+    if (choice == UnsavedChangesChoice::Discard) {
+        discardExportOriginChanges();
+        return true;
+    }
+
+    const bool saved = saveExportOriginFieldToDisk();
+    if (saved) {
+        clearExportSelectionContext();
+    }
+    return saved;
+}
+
 bool MainWindow::DocumentSection::maybeSaveCurrentFieldChanges()
 {
     QElapsedTimer totalTimer;
@@ -63,15 +135,22 @@ bool MainWindow::DocumentSection::maybeSaveCurrentFieldChanges()
         return true;
     }
 
+    // The export page clears activeDifficultyId_ while retaining the dirty
+    // state from the chart that opened it. Keep the save prompt attached to
+    // that originating difficulty instead of treating it as metadata.
+    if (!owner_.hasActiveDifficulty() && state_.exportSelectionContextActive_) {
+        return maybeSaveExportOriginFieldChanges();
+    }
+
     const QString fieldName = owner_.hasActiveDifficulty()
         ? SimaiDocument::difficultyName(state_.activeDifficultyId_)
-        : uiText("dialog.unsaved_field_changes.field.metadata", "Metadata");
+        : UiText::text(QStringLiteral("dialog.unsaved_field_changes.field.metadata"));
     QElapsedTimer dialogTimer;
     dialogTimer.start();
     const UnsavedChangesChoice choice = showUnsavedChangesDialog(
         &owner_,
-        uiText("dialog.unsaved_field_changes.title", "Unsaved Field Changes"),
-        uiText("dialog.unsaved_field_changes.message", "%1 has unsaved changes. Save before switch?").arg(fieldName)
+        UiText::text(QStringLiteral("dialog.unsaved_field_changes.title")),
+        UiText::text(QStringLiteral("dialog.unsaved_field_changes.message")).arg(fieldName)
     );
     miacode::debug_log::appendTimingLine(
         miacode::debug_log::Channel::Runtime,
@@ -82,22 +161,21 @@ bool MainWindow::DocumentSection::maybeSaveCurrentFieldChanges()
             .arg(unsavedChangesChoiceName(choice), fieldName)
     );
     if (choice == UnsavedChangesChoice::Save) {
-        QElapsedTimer applyTimer;
-        applyTimer.start();
-        const bool wasDocumentDirty = state_.documentDirty_;
-        const bool applied = applyCurrentFieldToDocument();
-        if (applied) {
-            state_.documentDirty_ = wasDocumentDirty;
-            updateDirtyState();
-            owner_.updateWindowTitle();
-        }
+        QElapsedTimer saveTimer;
+        saveTimer.start();
+        // "Save" must have the same durable meaning everywhere. Merely
+        // applying the active editor field to SimaiDocument and restoring the
+        // previous documentDirty flag made the UI look clean without writing
+        // the file, so a later close silently lost the edit. onSaveFile()
+        // commits the current field first and then atomically writes it.
+        const bool saved = onSaveFile();
         miacode::debug_log::appendTimingLine(
             miacode::debug_log::Channel::Runtime,
             QStringLiteral("close_timing/document"),
-            QStringLiteral("apply_current_field_to_document"),
-            applyTimer.elapsed(),
+            QStringLiteral("on_save_file"),
+            saveTimer.elapsed(),
             QStringLiteral("trigger=unsaved_field_changes result=%1 field=%2")
-                .arg(applied ? QStringLiteral("applied") : QStringLiteral("failed"), fieldName)
+                .arg(saved ? QStringLiteral("saved") : QStringLiteral("failed"), fieldName)
         );
         miacode::debug_log::appendTimingLine(
             miacode::debug_log::Channel::Runtime,
@@ -105,9 +183,9 @@ bool MainWindow::DocumentSection::maybeSaveCurrentFieldChanges()
             QStringLiteral("maybe_save_current_field_changes"),
             totalTimer.elapsed(),
             QStringLiteral("result=%1 field=%2")
-                .arg(applied ? QStringLiteral("saved") : QStringLiteral("save_failed"), fieldName)
+                .arg(saved ? QStringLiteral("saved") : QStringLiteral("save_failed"), fieldName)
         );
-        return applied;
+        return saved;
     }
     if (choice == UnsavedChangesChoice::Discard) {
         if (owner_.hasActiveDifficulty()) {
@@ -175,8 +253,26 @@ bool MainWindow::DocumentSection::applyCurrentFieldToDocument()
         const QString newTitle = ui_.titleEdit_ != nullptr ? ui_.titleEdit_->text() : QString();
         const QString newArtist = ui_.artistEdit_ != nullptr ? ui_.artistEdit_->text() : QString();
         const QString newDesigner = ui_.designerEdit_ != nullptr ? ui_.designerEdit_->text() : QString();
+        const QString rawExtraFields = ui_.metadataExtraEdit_ != nullptr
+            ? ui_.metadataExtraEdit_->toPlainText() : QString();
+        const QVector<int> invalidPropertyLines = SimaiDocument::invalidPropertyLineNumbers(rawExtraFields);
+        if (!invalidPropertyLines.isEmpty()) {
+            QStringList lineNumbers;
+            for (int line : invalidPropertyLines) lineNumbers.append(QString::number(line));
+            owner_.statusBar()->showMessage(
+                UiText::text(QStringLiteral("metadata.invalid_property_status"))
+                    .arg(lineNumbers.join(QStringLiteral(", "))), 6000);
+            if (ui_.metadataExtraEdit_ != nullptr) {
+                QTextCursor cursor(ui_.metadataExtraEdit_->document()->findBlockByLineNumber(
+                    invalidPropertyLines.first() - 1));
+                ui_.metadataExtraEdit_->setTextCursor(cursor);
+                ui_.metadataExtraEdit_->setFocus();
+            }
+            rebuildFieldSidebar();
+            return false;
+        }
         QVector<SimaiRawField> newExtraFields = SimaiDocument::parseUnmanagedFields(
-            ui_.metadataExtraEdit_ != nullptr ? ui_.metadataExtraEdit_->toPlainText() : QString(),
+            rawExtraFields,
             true
         );
         SimaiDocument::ensureDefaultClockCount(&newExtraFields);
@@ -302,6 +398,18 @@ bool MainWindow::DocumentSection::applyBatchTransform(const QString& opName, con
 
 bool MainWindow::DocumentSection::applySelectionBatchTransform(const QString& opName, const BatchTransform& transform)
 {
+    if (!transform) {
+        return false;
+    }
+    return applySelectionBatchTransform(
+        opName,
+        [transform](const QString& selected, const miacode::chart_transform::SelectionContext&, int* changedCount) {
+            return transform(selected, changedCount);
+        });
+}
+
+bool MainWindow::DocumentSection::applySelectionBatchTransform(const QString& opName, const SelectionContextBatchTransform& transform)
+{
     MC_OP("MainWindow::DocumentSection::applySelectionBatchTransform");
     _mc_op_.note(QStringLiteral("op=%1").arg(opName));
     auto* editor = qobject_cast<PlainCodeEditor*>(ui_.editorWidget_);
@@ -325,7 +433,8 @@ bool MainWindow::DocumentSection::applySelectionBatchTransform(const QString& op
 
     const QString selected = original.mid(begin, finish - begin);
     int changed = 0;
-    const QString transformed = transform(selected, &changed);
+    const QString transformed = transform(
+        selected, {original.left(begin), original.mid(finish)}, &changed);
     if (transformed == selected) {
         owner_.statusBar()->showMessage(QString("%1: no note index changed.").arg(opName));
         return false;
@@ -428,6 +537,10 @@ void MainWindow::addRecentFilePath(const QString& path)
         recentFilePaths_.removeLast();
     }
     savePortableState();
+    if (recentFilesMenu_ != nullptr) {
+        recentFilesMenu_->setEnabled(true);
+        refreshRecentFilesMenu(recentFilesMenu_);
+    }
 }
 
 void MainWindow::openRecentFilePath(const QString& path)
@@ -440,7 +553,10 @@ void MainWindow::openRecentFilePath(const QString& path)
     if (!fileInfo.exists() || !fileInfo.isFile()) {
         recentFilePaths_.removeAll(normalizedPath);
         savePortableState();
-        UiDialogs::showMessageBox(QMessageBox::Warning, this, uiText("action.open_recent", "Open Recent"), "File no longer exists:\n" + normalizedPath);
+        UiDialogs::showMessageBox(QMessageBox::Warning, this, UiText::text(QStringLiteral("action.open_recent")), "File no longer exists:\n" + normalizedPath);
+        return;
+    }
+    if (!maybeSaveBeforeContinue()) {
         return;
     }
     openFileAtPath(normalizedPath, true, true);
@@ -476,7 +592,7 @@ void MainWindow::refreshRecentFilesMenu(QMenu* recentFilesMenu)
         savePortableState();
     }
     if (existingPaths.isEmpty()) {
-        QAction* emptyAction = recentFilesMenu->addAction(uiText("action.open_recent.empty", "No Recent Files"));
+        QAction* emptyAction = recentFilesMenu->addAction(UiText::text(QStringLiteral("action.open_recent.empty")));
         emptyAction->setEnabled(false);
         return;
     }
@@ -524,12 +640,9 @@ bool MainWindow::openStartupTarget(const QString& path)
         UiDialogs::showMessageBox(
             QMessageBox::Warning,
             this,
-            uiText("dialog.open_startup_folder.missing_maidata.title", "maidata.txt Not Found"),
-            uiText(
-                "dialog.open_startup_folder.missing_maidata.message",
-                QStringLiteral("No maidata.txt was found in the dropped folder:\n%1")
-                    .arg(QDir::toNativeSeparators(info.absoluteFilePath()))
-            )
+            UiText::text(QStringLiteral("dialog.open_startup_folder.missing_maidata.title")),
+            UiText::text(QStringLiteral("dialog.open_startup_folder.missing_maidata.message"))
+                .arg(QDir::toNativeSeparators(info.absoluteFilePath()))
         );
         return false;
     }
@@ -541,14 +654,16 @@ bool MainWindow::openStartupTarget(const QString& path)
     UiDialogs::showMessageBox(
         QMessageBox::Warning,
         this,
-        uiText("dialog.open_startup_target.missing.title", "Open Failed"),
-        uiText(
-            "dialog.open_startup_target.missing.message",
-            QStringLiteral("The dropped file or folder does not exist:\n%1")
-                .arg(QDir::toNativeSeparators(normalizedPath))
-        )
+        UiText::text(QStringLiteral("dialog.open_startup_target.missing.title")),
+        UiText::text(QStringLiteral("dialog.open_startup_target.missing.message"))
+            .arg(QDir::toNativeSeparators(normalizedPath))
     );
     return false;
+}
+
+bool MainWindow::openOnlinePreviewAtPath(const QString& path)
+{
+    return documentSection_ != nullptr && documentSection_->openOnlinePreviewAtPath(path);
 }
 
 bool MainWindow::restoreLastSessionFile()
@@ -625,6 +740,13 @@ bool MainWindow::onSaveFileAs()
 bool MainWindow::saveToPath(const QString& path)
 {
     return documentSection_->saveToPath(path);
+}
+
+void MainWindow::handleAudioDrop(const QStringList& audioPaths)
+{
+    if (documentSection_ != nullptr) {
+        documentSection_->createChartsFromAudioDrop(audioPaths);
+    }
 }
 
 bool MainWindow::applyBatchTransform(const QString& opName, const BatchTransform& transform)
@@ -735,11 +857,6 @@ void MainWindow::updateMetadataPageMode()
 bool MainWindow::deleteDifficultyField(int difficultyId)
 {
     return documentSection_->deleteDifficultyField(difficultyId);
-}
-
-void MainWindow::updateDifficultyDeleteButton(bool visible)
-{
-    documentSection_->updateDifficultyDeleteButton(visible);
 }
 
 void MainWindow::rebuildFieldSidebar()

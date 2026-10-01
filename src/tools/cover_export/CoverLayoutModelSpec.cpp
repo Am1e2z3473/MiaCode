@@ -1,11 +1,16 @@
 #include "tools/cover_export/CoverCompositionState.h"
+#include "tools/cover_export/CoverCompositionPersistenceGuard.h"
 #include "tools/cover_export/CoverLayoutModel.h"
+#include "app/ui/UiText.h"
 
 #include <QCoreApplication>
+#include <QFile>
 #include <QJsonArray>
+#include <QStandardPaths>
 #include <QTextStream>
 
 using miacode::cover_export::CoverCompositionState;
+using miacode::cover_export::CoverCompositionPersistenceGuard;
 using miacode::cover_export::CoverLayer;
 using miacode::cover_export::CoverLayoutModel;
 
@@ -18,6 +23,43 @@ bool require(bool condition, const QString& message, QTextStream& err)
         return false;
     }
     return true;
+}
+
+bool testCompositionPersistenceLifecycle(QTextStream& err)
+{
+    QJsonObject current{{QStringLiteral("revision"), 1}};
+    QList<QJsonObject> writes;
+    {
+        CoverCompositionPersistenceGuard guard(
+            [&current]() { return current; },
+            [&writes](const QJsonObject& object) { writes.append(object); return true; });
+        if (!require(guard.persistNow(), QStringLiteral("explicit persistence succeeds"), err)) return false;
+        if (!require(writes.size() == 1, QStringLiteral("explicit persistence writes once"), err)) return false;
+        current.insert(QStringLiteral("revision"), 2);
+    }
+    if (!require(writes.size() == 2 && writes.constLast().value(QStringLiteral("revision")).toInt() == 2,
+                 QStringLiteral("teardown persists edits made after explicit export"), err)) return false;
+
+    writes.clear();
+    {
+        CoverCompositionPersistenceGuard guard(
+            [&current]() { return current; },
+            [&writes](const QJsonObject& object) { writes.append(object); return true; });
+        guard.persistNow();
+    }
+    if (!require(writes.size() == 1,
+                 QStringLiteral("unchanged teardown payload is content-idempotent"), err)) return false;
+
+    const QJsonObject preferences{
+        {QStringLiteral("kind"), QStringLiteral("miacode-cover-composition")},
+        {QStringLiteral("revision"), 3},
+    };
+    if (!require(CoverCompositionState::savePreferences(preferences),
+                 QStringLiteral("cover composition preference save reports success"), err)) return false;
+    const QJsonObject restored = CoverCompositionState::loadPreferences();
+    return require(restored.value(QStringLiteral("kind")) == preferences.value(QStringLiteral("kind"))
+                       && restored.value(QStringLiteral("revision")) == preferences.value(QStringLiteral("revision")),
+                   QStringLiteral("cover composition preferences round-trip in the isolated test path"), err);
 }
 
 bool testMultiFrameModel(QTextStream& err)
@@ -372,12 +414,99 @@ bool testMoveByViewRows(QTextStream& err)
     return true;
 }
 
+bool testImageAndTextLayers(QTextStream& err)
+{
+    CoverLayoutModel model;
+    // A non-existent path keeps the intrinsic aspect at its default; the stored
+    // contentAspect is what must survive a round-trip (cross-machine safety).
+    CoverLayer* image = model.addImageLayer(QStringLiteral("/nonexistent/cover-spec-image.png"));
+    if (!require(image != nullptr && image->kind() == QStringLiteral("image"),
+                 QStringLiteral("adds an image layer"), err)) return false;
+    image->setContentAspect(1.75);
+    image->setOpacity(0.8);
+
+    CoverLayer* text = model.addTextLayer(QStringLiteral("Hello"));
+    if (!require(text != nullptr && text->kind() == QStringLiteral("text"),
+                 QStringLiteral("adds a text layer"), err)) return false;
+    if (!require(text->text() == QStringLiteral("Hello"), QStringLiteral("text layer seeds its text"), err)) return false;
+    if (!require(image->key() != text->key(), QStringLiteral("image / text keys are unique"), err)) return false;
+    text->setFontPath(QStringLiteral("/nonexistent/font.ttf"));
+    text->setTextColor(QStringLiteral("#FF8800"));
+    text->setTextBold(true);
+    text->setContentAspect(3.5);
+
+    CoverLayoutModel restored;
+    restored.fromJson(model.toJson());
+    CoverLayer* ri = restored.layer(image->key());
+    CoverLayer* rt = restored.layer(text->key());
+    if (!require(ri != nullptr && ri->kind() == QStringLiteral("image"),
+                 QStringLiteral("round-trip restores the image layer"), err)) return false;
+    if (!require(ri->imagePath() == image->imagePath(), QStringLiteral("round-trip keeps image path"), err)) return false;
+    if (!require(qAbs(ri->contentAspect() - 1.75) < 0.001,
+                 QStringLiteral("round-trip keeps image aspect for a missing file"), err)) return false;
+    if (!require(qAbs(ri->opacity() - 0.8) < 0.001, QStringLiteral("round-trip keeps image opacity"), err)) return false;
+    if (!require(rt != nullptr && rt->kind() == QStringLiteral("text"),
+                 QStringLiteral("round-trip restores the text layer"), err)) return false;
+    if (!require(rt->text() == QStringLiteral("Hello"), QStringLiteral("round-trip keeps text"), err)) return false;
+    if (!require(rt->fontPath() == text->fontPath(), QStringLiteral("round-trip keeps text font path"), err)) return false;
+    if (!require(rt->textColor() == QStringLiteral("#FF8800"), QStringLiteral("round-trip keeps text color"), err)) return false;
+    if (!require(rt->textBold(), QStringLiteral("round-trip keeps text bold"), err)) return false;
+    if (!require(qAbs(rt->contentAspect() - 3.5) < 0.001, QStringLiteral("round-trip keeps text aspect"), err)) return false;
+
+    CoverLayer* dup = model.duplicateLayer(text->key());
+    if (!require(dup != nullptr && dup->text() == QStringLiteral("Hello") && dup->textBold()
+                     && dup->textColor() == QStringLiteral("#FF8800"),
+                 QStringLiteral("duplicate copies text-layer fields"), err)) return false;
+    return true;
+}
+
+bool testBatchPresetFrameBounds(QTextStream& err)
+{
+    const auto presets = CoverCompositionState::builtInPresets();
+    if (!require(presets.size() == 4, QStringLiteral("built-in cover presets are shared"), err)) return false;
+    QJsonObject preset = presets.at(2).composition;
+    QJsonObject layout = preset.value(QStringLiteral("layout")).toObject();
+    QJsonArray layers = layout.value(QStringLiteral("layers")).toArray();
+    QJsonObject first = layers.at(1).toObject();
+    first.insert(QStringLiteral("frameSeconds"), 3.0);
+    layers[1] = first;
+    QJsonObject second = layers.at(2).toObject();
+    second.insert(QStringLiteral("frameSeconds"), 30.0);
+    layers[2] = second;
+    layout.insert(QStringLiteral("layers"), layers);
+    preset.insert(QStringLiteral("layout"), layout);
+
+    QJsonObject prepared;
+    QStringList adjustments;
+    QString error;
+    if (!require(CoverCompositionState::prepareBatchPreset(
+            preset, 5.0, true, &prepared, &adjustments, &error),
+            QStringLiteral("multi-frame preset is prepared"), err)) return false;
+    const QJsonArray resultLayers = prepared.value(QStringLiteral("layout")).toObject()
+        .value(QStringLiteral("layers")).toArray();
+    if (!require(qAbs(resultLayers.at(1).toObject().value(QStringLiteral("frameSeconds")).toDouble() - 3.0) < 0.001,
+                 QStringLiteral("in-range frame time is preserved"), err)) return false;
+    if (!require(resultLayers.at(2).toObject().value(QStringLiteral("frameSeconds")).toDouble() < 5.0
+            && adjustments.size() == 1,
+            QStringLiteral("out-of-range second frame is clamped and reported"), err)) return false;
+    if (!require(!CoverCompositionState::prepareBatchPreset(
+            preset, 5.0, false, &prepared, nullptr, &error),
+            QStringLiteral("unrenderable chart frames fail the cover"), err)) return false;
+    return require(CoverCompositionState::prepareBatchPreset(
+            presets.constFirst().composition, 0.0, false, &prepared, nullptr, &error),
+            QStringLiteral("card-only cover does not require chart frames"), err);
+}
+
 }  // namespace
 
 int main(int argc, char** argv)
 {
+    QStandardPaths::setTestModeEnabled(true);
     QCoreApplication app(argc, argv);
+    QCoreApplication::setApplicationName(QStringLiteral("MiaCodeCoverLayoutModelSpec"));
+    QFile::remove(UiText::preferencesFilePath());
     QTextStream err(stderr);
+    if (!testCompositionPersistenceLifecycle(err)) return 1;
     if (!testMultiFrameModel(err)) return 1;
     if (!testRoundTrip(err)) return 1;
     if (!testTemplatedChartFrameKeepsSettingsExceptPosition(err)) return 1;
@@ -388,6 +517,9 @@ int main(int argc, char** argv)
     if (!testDeleteSelectsNeighbour(err)) return 1;
     if (!testBackgroundBrightnessRoundTrip(err)) return 1;
     if (!testMoveByViewRows(err)) return 1;
+    if (!testImageAndTextLayers(err)) return 1;
     if (!testCoverPresetPersistence(err)) return 1;
+    if (!testBatchPresetFrameBounds(err)) return 1;
+    QFile::remove(UiText::preferencesFilePath());
     return 0;
 }

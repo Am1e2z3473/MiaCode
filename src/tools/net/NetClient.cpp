@@ -15,15 +15,21 @@
 #include <QNetworkReply>
 #include <QNetworkRequest>
 #include <QSet>
+#include <QSaveFile>
 #include <QTimer>
 #include <QUrlQuery>
 
+#include <algorithm>
 #include <cstring>
 
 namespace miacode::net {
 namespace {
 
 constexpr int kRequestTimeoutMs = 60000;
+constexpr int kConnectionProbeTimeoutMs = 8000;
+constexpr int kRemoteHostClosedRetryDelayMs = 1000;
+constexpr int kRemoteHostClosedMaxRetries = 1;
+constexpr qint64 kQueryCandidateCacheLifetimeMs = 5 * 60 * 1000;
 
 QString stringValue(const QJsonObject& object, const QString& key)
 {
@@ -134,6 +140,11 @@ QStringList fuzzyUploaderFallbackQueriesFor(const QString& username)
     return queries;
 }
 
+QString encodedUrl(const QUrl& url)
+{
+    return QString::fromLatin1(url.toEncoded(QUrl::FullyEncoded));
+}
+
 QString resourceFileName(const QString& resourcePath)
 {
     if (resourcePath == QStringLiteral("track")) {
@@ -149,6 +160,20 @@ QString resourceFileName(const QString& resourcePath)
 }
 
 }  // namespace
+
+bool netDownloadLengthIsComplete(qint64 expectedBytes, qint64 bytesWritten)
+{
+    return bytesWritten > 0 && (expectedBytes < 0 || bytesWritten == expectedBytes);
+}
+
+QString netUserSpaceReferer(const QString& username)
+{
+    QUrl url(QStringLiteral("https://majdata.net/space"));
+    QUrlQuery query;
+    query.addQueryItem(QStringLiteral("id"), username.trimmed());
+    url.setQuery(query);
+    return encodedUrl(url);
+}
 
 QList<NetChartSummary> parseChartListJson(const QByteArray& payload, QString* errorMessage)
 {
@@ -226,6 +251,110 @@ QString formatLevels(const QStringList& levels)
         }
     }
     return nonEmpty.join(QStringLiteral(" / "));
+}
+
+namespace {
+
+QString normalizedTagKeyword(const QString& tagKeyword)
+{
+    QString normalized = tagKeyword.trimmed();
+    if (normalized.startsWith(QStringLiteral("tag:"), Qt::CaseInsensitive)) {
+        normalized = normalized.mid(4).trimmed();
+    }
+    return normalized;
+}
+
+QString queryCandidateCacheKey(
+    const QString& field,
+    const QString& value,
+    bool fuzzyCaseInsensitive)
+{
+    QString normalizedValue = value.trimmed();
+    if (fuzzyCaseInsensitive) {
+        normalizedValue = normalizedValue.toLower();
+    }
+    return QStringLiteral("%1\n%2\n%3")
+        .arg(field, fuzzyCaseInsensitive ? QStringLiteral("i") : QStringLiteral("s"), normalizedValue);
+}
+
+}  // namespace
+
+void sortNetDownloadJobs(QList<NetDownloadJob>* jobs, NetDownloadSortOrder order)
+{
+    if (jobs == nullptr) {
+        return;
+    }
+
+    const auto highestLevel = [](const QStringList& levels, double* value) {
+        bool found = false;
+        double highest = 0.0;
+        for (QString level : levels) {
+            level = level.trimmed();
+            const bool plus = level.endsWith(QLatin1Char('+'));
+            if (plus) {
+                level.chop(1);
+            }
+            bool ok = false;
+            double numeric = level.toDouble(&ok);
+            if (!ok) {
+                continue;
+            }
+            if (plus) {
+                numeric += 0.5;
+            }
+            if (!found || numeric > highest) {
+                highest = numeric;
+                found = true;
+            }
+        }
+        if (found && value != nullptr) {
+            *value = highest;
+        }
+        return found;
+    };
+    const auto titleLess = [](const NetDownloadJob& lhs, const NetDownloadJob& rhs) {
+        return QString::localeAwareCompare(lhs.chart.title, rhs.chart.title) < 0;
+    };
+
+    std::stable_sort(jobs->begin(), jobs->end(), [&](const NetDownloadJob& lhs, const NetDownloadJob& rhs) {
+        switch (order) {
+        case NetDownloadSortOrder::LevelAscending:
+        case NetDownloadSortOrder::LevelDescending: {
+            double lhsLevel = 0.0;
+            double rhsLevel = 0.0;
+            const bool lhsValid = highestLevel(lhs.chart.levels, &lhsLevel);
+            const bool rhsValid = highestLevel(rhs.chart.levels, &rhsLevel);
+            if (lhsValid != rhsValid) {
+                return lhsValid;
+            }
+            if (lhsValid && lhsLevel != rhsLevel) {
+                return order == NetDownloadSortOrder::LevelAscending
+                    ? lhsLevel < rhsLevel
+                    : lhsLevel > rhsLevel;
+            }
+            return titleLess(lhs, rhs);
+        }
+        case NetDownloadSortOrder::UploadedNewest:
+        case NetDownloadSortOrder::UploadedOldest:
+            if (lhs.chart.timestampUtc != rhs.chart.timestampUtc) {
+                return order == NetDownloadSortOrder::UploadedNewest
+                    ? lhs.chart.timestampUtc > rhs.chart.timestampUtc
+                    : lhs.chart.timestampUtc < rhs.chart.timestampUtc;
+            }
+            return titleLess(lhs, rhs);
+        case NetDownloadSortOrder::StatusAscending:
+        case NetDownloadSortOrder::StatusDescending: {
+            const int statusOrder = QString::localeAwareCompare(lhs.status, rhs.status);
+            if (statusOrder != 0) {
+                return order == NetDownloadSortOrder::StatusAscending
+                    ? statusOrder < 0
+                    : statusOrder > 0;
+            }
+            return titleLess(lhs, rhs);
+        }
+        }
+        return false;
+    });
 }
 
 QString chartDirectoryPathForTitle(const QString& outputDirectory, const QString& title, const QString& chartId)
@@ -432,30 +561,96 @@ QList<NetChartSummary> NetClient::queryCharts(
     const NetQueryOptions& options,
     QString* errorMessage)
 {
+    if (errorMessage != nullptr) {
+        errorMessage->clear();
+    }
     const QString trimmedUser = username.trimmed();
     const QString tagSearch = tagSearchQueryFor(tagKeyword);
+    const QString plainTag = normalizedTagKeyword(tagKeyword);
     const QString titleSearch = options.titleKeyword.trimmed();
+    if (trimmedUser.isEmpty() && tagSearch.isEmpty() && titleSearch.isEmpty()) {
+        if (errorMessage != nullptr) {
+            *errorMessage = QStringLiteral("Please enter a user ID, tag, or song title.");
+        }
+        return {};
+    }
+
+    enum class QueryField {
+        Uploader,
+        Tag,
+        Title,
+    };
+
+    struct QueryCandidateSource {
+        QueryField field;
+        QString cacheKey;
+    };
+    QList<QueryCandidateSource> sources;
+    if (!trimmedUser.isEmpty()) {
+        sources.append({
+            QueryField::Uploader,
+            queryCandidateCacheKey(QStringLiteral("uploader"), trimmedUser, options.fuzzyCaseInsensitive),
+        });
+    }
+    if (!tagSearch.isEmpty()) {
+        sources.append({
+            QueryField::Tag,
+            queryCandidateCacheKey(QStringLiteral("tag"), plainTag, options.fuzzyCaseInsensitive),
+        });
+    }
+    if (!titleSearch.isEmpty()) {
+        sources.append({
+            QueryField::Title,
+            queryCandidateCacheKey(QStringLiteral("title"), titleSearch, options.fuzzyCaseInsensitive),
+        });
+    }
+
+    const qint64 nowMs = QDateTime::currentMSecsSinceEpoch();
+    for (auto cached = queryCandidateCache_.begin(); cached != queryCandidateCache_.end();) {
+        if (cached->expiresAtMs <= nowMs) {
+            cached = queryCandidateCache_.erase(cached);
+        } else {
+            ++cached;
+        }
+    }
+    // A candidate set for any populated AND predicate is a superset of the
+    // final result, so an unchanged cached predicate can avoid all network work.
+    for (const QueryCandidateSource& source : std::as_const(sources)) {
+        const auto cached = queryCandidateCache_.constFind(source.cacheKey);
+        if (cached != queryCandidateCache_.cend() && cached->expiresAtMs > nowMs) {
+            return cached->charts;
+        }
+    }
+
     QList<NetChartSummary> merged;
     QSet<QString> seenIds;
-
     const auto appendUnique = [&](const QList<NetChartSummary>& charts) {
         for (const NetChartSummary& chart : charts) {
-            if (seenIds.contains(chart.id)) {
-                continue;
+            if (!seenIds.contains(chart.id)) {
+                seenIds.insert(chart.id);
+                merged.append(chart);
             }
-            seenIds.insert(chart.id);
-            merged.append(chart);
         }
     };
 
-    if (!trimmedUser.isEmpty()) {
-        const QString referer = QStringLiteral("https://majdata.net/space?id=%1").arg(trimmedUser);
-        appendUnique(querySearchText(QStringLiteral("uploader:%1").arg(trimmedUser), referer, errorMessage));
+    // Without a reusable candidate set, query only the most selective source.
+    // The dialog applies every populated predicate locally below this boundary.
+    const QueryCandidateSource source = sources.constFirst();
+    switch (source.field) {
+    case QueryField::Uploader: {
+        const QString referer = netUserSpaceReferer(trimmedUser);
+        const QString exactQuery = QStringLiteral("uploader:%1").arg(trimmedUser);
+        QSet<QString> attemptedQueries{exactQuery};
+        appendUnique(querySearchText(exactQuery, referer, errorMessage));
         if (errorMessage != nullptr && !errorMessage->isEmpty()) {
             return {};
         }
         if (options.fuzzyCaseInsensitive && merged.isEmpty()) {
             for (const QString& fuzzyQuery : fuzzyUploaderFallbackQueriesFor(trimmedUser)) {
+                if (attemptedQueries.contains(fuzzyQuery)) {
+                    continue;
+                }
+                attemptedQueries.insert(fuzzyQuery);
                 appendUnique(querySearchText(fuzzyQuery, referer, errorMessage));
                 if (errorMessage != nullptr && !errorMessage->isEmpty()) {
                     return {};
@@ -465,8 +660,9 @@ QList<NetChartSummary> NetClient::queryCharts(
                 }
             }
         }
+        break;
     }
-    if (trimmedUser.isEmpty() && !tagSearch.isEmpty()) {
+    case QueryField::Tag: {
         appendUnique(querySearchText(tagSearch, QStringLiteral("https://majdata.net/"), errorMessage));
         if (errorMessage != nullptr && !errorMessage->isEmpty()) {
             return {};
@@ -478,10 +674,6 @@ QList<NetChartSummary> NetClient::queryCharts(
                 if (errorMessage != nullptr && !errorMessage->isEmpty()) {
                     return {};
                 }
-            }
-            QString plainTag = tagKeyword.trimmed();
-            if (plainTag.startsWith(QStringLiteral("tag:"), Qt::CaseInsensitive)) {
-                plainTag = plainTag.mid(4).trimmed();
             }
             if (!plainTag.isEmpty() && plainTag != tagSearch) {
                 appendUnique(querySearchText(plainTag, QStringLiteral("https://majdata.net/"), errorMessage));
@@ -497,8 +689,9 @@ QList<NetChartSummary> NetClient::queryCharts(
                 }
             }
         }
+        break;
     }
-    if (!titleSearch.isEmpty()) {
+    case QueryField::Title:
         appendUnique(querySearchText(titleSearch, QStringLiteral("https://majdata.net/"), errorMessage));
         if (errorMessage != nullptr && !errorMessage->isEmpty()) {
             return {};
@@ -512,10 +705,13 @@ QList<NetChartSummary> NetClient::queryCharts(
                 }
             }
         }
+        break;
     }
-    if (trimmedUser.isEmpty() && tagSearch.isEmpty() && titleSearch.isEmpty() && errorMessage != nullptr) {
-        *errorMessage = QStringLiteral("Please enter a user ID, tag, or song title.");
-    }
+
+    queryCandidateCache_.insert(source.cacheKey, {
+        merged,
+        QDateTime::currentMSecsSinceEpoch() + kQueryCandidateCacheLifetimeMs,
+    });
     return merged;
 }
 
@@ -537,6 +733,9 @@ QList<NetChartSummary> NetClient::querySearchText(
         errorMessage,
         &blocking);
     if (payload.isEmpty()) {
+        if (errorMessage != nullptr && !errorMessage->isEmpty()) {
+            *errorMessage = QStringLiteral("Query: %1\n%2").arg(searchText, *errorMessage);
+        }
         return {};
     }
     if (blocking && errorMessage != nullptr) {
@@ -559,9 +758,14 @@ QByteArray NetClient::downloadResource(
 NetDownloadResult NetClient::downloadResourceToFile(
     const QString& chartId,
     const QString& resourcePath,
-    const QString& outputPath)
+    const QString& outputPath,
+    const std::atomic_bool* cancelRequested)
 {
     NetDownloadResult result;
+    if (cancelRequested != nullptr && cancelRequested->load()) {
+        result.canceled = true;
+        return result;
+    }
     QDir().mkpath(QFileInfo(outputPath).absolutePath());
 
     const QUrl url(QStringLiteral("https://majdata.net/api3/api/maichart/%1/%2").arg(chartId, resourcePath));
@@ -575,14 +779,23 @@ NetDownloadResult NetClient::downloadResourceToFile(
     QNetworkReply* reply = manager_.get(request);
     QEventLoop loop;
     QTimer timeout;
+    QTimer cancelPoll;
     timeout.setSingleShot(true);
+    cancelPoll.setInterval(25);
     QObject::connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
     QObject::connect(&timeout, &QTimer::timeout, &loop, [&]() {
         reply->abort();
         loop.quit();
     });
+    QObject::connect(&cancelPoll, &QTimer::timeout, &loop, [&]() {
+        if (cancelRequested != nullptr && cancelRequested->load()) {
+            result.canceled = true;
+            reply->abort();
+            loop.quit();
+        }
+    });
 
-    QFile file(outputPath);
+    QSaveFile file(outputPath);
     if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
         reply->abort();
         reply->deleteLater();
@@ -590,62 +803,174 @@ NetDownloadResult NetClient::downloadResourceToFile(
         return result;
     }
 
-    QObject::connect(reply, &QNetworkReply::readyRead, &loop, [&]() {
+    QByteArray probe;
+    const auto writeAvailable = [&]() {
         const QByteArray chunk = reply->readAll();
+        if (probe.size() < 4096) {
+            probe.append(chunk.left(4096 - probe.size()));
+        }
         result.bytesWritten += file.write(chunk);
-    });
+    };
+    QObject::connect(reply, &QNetworkReply::readyRead, &loop, writeAvailable);
     timeout.start(kRequestTimeoutMs);
+    cancelPoll.start();
     loop.exec();
     if (reply->bytesAvailable() > 0) {
-        const QByteArray chunk = reply->readAll();
-        result.bytesWritten += file.write(chunk);
+        writeAvailable();
     }
-    file.close();
-
     const QVariant statusVariant = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute);
     result.statusCode = statusVariant.isValid() ? statusVariant.toInt() : 0;
     const QString contentType = reply->header(QNetworkRequest::ContentTypeHeader).toString();
     const bool timedOut = !timeout.isActive();
     timeout.stop();
+    cancelPoll.stop();
 
     const QNetworkReply::NetworkError networkError = reply->error();
     const QString networkErrorText = reply->errorString();
+    const QVariant contentLength = reply->header(QNetworkRequest::ContentLengthHeader);
+    const qint64 expectedBytes = contentLength.isValid() ? contentLength.toLongLong() : -1;
     reply->deleteLater();
     result.elapsedMs = elapsed.elapsed();
 
-    QFile payloadProbe(outputPath);
-    QByteArray probe;
-    if (payloadProbe.open(QIODevice::ReadOnly)) {
-        probe = payloadProbe.read(4096);
-    }
     result.blockingResponse =
         result.statusCode == 403
         || result.statusCode == 429
         || looksLikeChallengePage(probe, contentType);
 
+    if (result.canceled) {
+        file.cancelWriting();
+        return result;
+    }
+
     if (timedOut) {
-        QFile::remove(outputPath);
+        file.cancelWriting();
         result.errorMessage = QStringLiteral("Request timed out.");
         return result;
     }
     if (result.blockingResponse) {
-        QFile::remove(outputPath);
+        file.cancelWriting();
         result.errorMessage = QStringLiteral("Request was blocked by Net/Cloudflare.");
         return result;
     }
     if (networkError != QNetworkReply::NoError || result.statusCode < 200 || result.statusCode >= 300) {
-        QFile::remove(outputPath);
+        file.cancelWriting();
         result.errorMessage = result.statusCode > 0
             ? QStringLiteral("HTTP %1: %2").arg(result.statusCode).arg(networkErrorText)
             : networkErrorText;
         return result;
     }
 
-    result.ok = result.bytesWritten > 0 || resourceFileName(resourcePath) == QStringLiteral("maidata.txt");
+    const bool emptyMaidata =
+        resourceFileName(resourcePath) == QStringLiteral("maidata.txt") && expectedBytes == 0;
+    result.ok = emptyMaidata || netDownloadLengthIsComplete(expectedBytes, result.bytesWritten);
     if (!result.ok) {
-        QFile::remove(outputPath);
-        result.errorMessage = QStringLiteral("Downloaded resource is empty.");
+        file.cancelWriting();
+        result.errorMessage = expectedBytes >= 0
+            ? QStringLiteral("Incomplete response: expected %1 bytes, received %2.")
+                  .arg(expectedBytes)
+                  .arg(result.bytesWritten)
+            : QStringLiteral("Downloaded resource is empty.");
+        return result;
     }
+    if (!file.commit()) {
+        result.ok = false;
+        result.errorMessage = QStringLiteral("Could not commit %1: %2").arg(outputPath, file.errorString());
+    }
+    return result;
+}
+
+NetConnectionProbeResult NetClient::probeConnection(const std::atomic_bool* cancelRequested)
+{
+    NetConnectionProbeResult result;
+    if (cancelRequested != nullptr && cancelRequested->load()) {
+        result.canceled = true;
+        return result;
+    }
+
+    QUrl url(QStringLiteral("https://majdata.net/api3/api/maichart/list"));
+    QUrlQuery query;
+    query.addQueryItem(QStringLiteral("sort"), QString());
+    query.addQueryItem(QStringLiteral("search"), QStringLiteral("__miacode_connection_probe__"));
+    url.setQuery(query);
+
+    QNetworkRequest request(url);
+    request.setRawHeader("User-Agent", "MiaCode/net-downloader");
+    request.setRawHeader("Accept", "application/json");
+    request.setRawHeader("Referer", "https://majdata.net/");
+
+    QElapsedTimer elapsed;
+    elapsed.start();
+    QNetworkReply* reply = manager_.get(request);
+    QEventLoop loop;
+    QTimer timeout;
+    QTimer cancelPoll;
+    timeout.setSingleShot(true);
+    cancelPoll.setInterval(25);
+    QObject::connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
+    QObject::connect(&timeout, &QTimer::timeout, &loop, [&]() {
+        reply->abort();
+        loop.quit();
+    });
+    QObject::connect(&cancelPoll, &QTimer::timeout, &loop, [&]() {
+        if (cancelRequested != nullptr && cancelRequested->load()) {
+            result.canceled = true;
+            reply->abort();
+            loop.quit();
+        }
+    });
+
+    timeout.start(kConnectionProbeTimeoutMs);
+    cancelPoll.start();
+    loop.exec();
+
+    const QVariant statusVariant = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute);
+    result.statusCode = statusVariant.isValid() ? statusVariant.toInt() : 0;
+    const QString contentType = reply->header(QNetworkRequest::ContentTypeHeader).toString();
+    const QByteArray payload = reply->readAll();
+    result.timedOut = !timeout.isActive();
+    timeout.stop();
+    cancelPoll.stop();
+
+    const QNetworkReply::NetworkError networkError = reply->error();
+    const QString networkErrorText = reply->errorString();
+    reply->deleteLater();
+    result.elapsedMs = elapsed.elapsed();
+    result.blockingResponse =
+        result.statusCode == 403
+        || result.statusCode == 429
+        || looksLikeChallengePage(payload, contentType);
+
+    const QString diagnostics =
+        QStringLiteral("URL: %1\nHTTP: %2\nQt network error: %3 (%4)")
+            .arg(encodedUrl(url))
+            .arg(result.statusCode)
+            .arg(static_cast<int>(networkError))
+            .arg(networkErrorText);
+    if (result.canceled) {
+        return result;
+    }
+    if (result.timedOut) {
+        result.errorMessage = QStringLiteral("Connection probe timed out.\n%1").arg(diagnostics);
+        return result;
+    }
+    if (result.blockingResponse) {
+        result.errorMessage = QStringLiteral("Connection probe was blocked by Net/Cloudflare.\n%1").arg(diagnostics);
+        return result;
+    }
+    if (networkError != QNetworkReply::NoError
+        || result.statusCode < 200
+        || result.statusCode >= 300) {
+        result.errorMessage = QStringLiteral("Connection probe failed.\n%1").arg(diagnostics);
+        return result;
+    }
+
+    QJsonParseError parseError;
+    const QJsonDocument document = QJsonDocument::fromJson(payload, &parseError);
+    if (parseError.error != QJsonParseError::NoError || !document.isArray()) {
+        result.errorMessage = QStringLiteral("Connection probe returned an invalid chart list.\n%1").arg(diagnostics);
+        return result;
+    }
+    result.ok = true;
     return result;
 }
 
@@ -655,65 +980,86 @@ QByteArray NetClient::getUrl(const QUrl& url, const QString& referer, QString* e
         *blockingResponse = false;
     }
 
-    QNetworkRequest request(url);
-    request.setRawHeader("User-Agent", "MiaCode/net-downloader");
-    request.setRawHeader("Accept", "*/*");
-    if (!referer.isEmpty()) {
-        request.setRawHeader("Referer", referer.toUtf8());
-    }
-
-    QNetworkReply* reply = manager_.get(request);
-    QEventLoop loop;
-    QTimer timeout;
-    timeout.setSingleShot(true);
-    QObject::connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
-    QObject::connect(&timeout, &QTimer::timeout, &loop, [&]() {
-        reply->abort();
-        loop.quit();
-    });
-    timeout.start(kRequestTimeoutMs);
-    loop.exec();
-
-    const QVariant statusVariant = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute);
-    const int statusCode = statusVariant.isValid() ? statusVariant.toInt() : 0;
-    const QString contentType = reply->header(QNetworkRequest::ContentTypeHeader).toString();
-    const QByteArray payload = reply->readAll();
-    const bool timedOut = !timeout.isActive();
-    timeout.stop();
-
-    const QNetworkReply::NetworkError networkError = reply->error();
-    const QString networkErrorText = reply->errorString();
-    reply->deleteLater();
-
-    const bool blocking =
-        statusCode == 403
-        || statusCode == 429
-        || looksLikeChallengePage(payload, contentType);
-    if (blockingResponse != nullptr) {
-        *blockingResponse = blocking;
-    }
-
-    if (timedOut) {
-        if (errorMessage != nullptr) {
-            *errorMessage = QStringLiteral("Request timed out.");
+    for (int attempt = 0; attempt <= kRemoteHostClosedMaxRetries; ++attempt) {
+        QNetworkRequest request(url);
+        request.setRawHeader("User-Agent", "MiaCode/net-downloader");
+        request.setRawHeader("Accept", "*/*");
+        if (!referer.isEmpty()) {
+            request.setRawHeader("Referer", referer.toLatin1());
         }
-        return {};
-    }
-    if (blocking) {
-        if (errorMessage != nullptr) {
-            *errorMessage = QStringLiteral("Request was blocked by Net/Cloudflare.");
+
+        QNetworkReply* reply = manager_.get(request);
+        QEventLoop loop;
+        QTimer timeout;
+        timeout.setSingleShot(true);
+        QObject::connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
+        QObject::connect(&timeout, &QTimer::timeout, &loop, [&]() {
+            reply->abort();
+            loop.quit();
+        });
+        timeout.start(kRequestTimeoutMs);
+        loop.exec();
+
+        const QVariant statusVariant = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute);
+        const int statusCode = statusVariant.isValid() ? statusVariant.toInt() : 0;
+        const QString contentType = reply->header(QNetworkRequest::ContentTypeHeader).toString();
+        const QByteArray payload = reply->readAll();
+        const bool timedOut = !timeout.isActive();
+        timeout.stop();
+
+        const QNetworkReply::NetworkError networkError = reply->error();
+        const QString networkErrorText = reply->errorString();
+        reply->deleteLater();
+
+        const bool blocking =
+            statusCode == 403
+            || statusCode == 429
+            || looksLikeChallengePage(payload, contentType);
+        if (blockingResponse != nullptr) {
+            *blockingResponse = blocking;
         }
-        return {};
-    }
-    if (networkError != QNetworkReply::NoError || statusCode < 200 || statusCode >= 300) {
-        if (errorMessage != nullptr) {
-            *errorMessage = statusCode > 0
-                ? QStringLiteral("HTTP %1: %2").arg(statusCode).arg(networkErrorText)
-                : networkErrorText;
+
+        const bool canRetry =
+            !timedOut
+            && !blocking
+            && networkError == QNetworkReply::RemoteHostClosedError
+            && attempt < kRemoteHostClosedMaxRetries;
+        if (canRetry) {
+            QEventLoop retryDelay;
+            QTimer::singleShot(kRemoteHostClosedRetryDelayMs, &retryDelay, &QEventLoop::quit);
+            retryDelay.exec();
+            continue;
         }
-        return {};
+
+        const QString diagnostics =
+            QStringLiteral("URL: %1\nHTTP: %2\nQt network error: %3 (%4)\nRetries: %5/%6")
+                .arg(encodedUrl(url))
+                .arg(statusCode)
+                .arg(static_cast<int>(networkError))
+                .arg(networkErrorText)
+                .arg(attempt)
+                .arg(kRemoteHostClosedMaxRetries);
+        if (timedOut) {
+            if (errorMessage != nullptr) {
+                *errorMessage = QStringLiteral("Request timed out.\n%1").arg(diagnostics);
+            }
+            return {};
+        }
+        if (blocking) {
+            if (errorMessage != nullptr) {
+                *errorMessage = QStringLiteral("Request was blocked by Net/Cloudflare.\n%1").arg(diagnostics);
+            }
+            return {};
+        }
+        if (networkError != QNetworkReply::NoError || statusCode < 200 || statusCode >= 300) {
+            if (errorMessage != nullptr) {
+                *errorMessage = QStringLiteral("Request failed.\n%1").arg(diagnostics);
+            }
+            return {};
+        }
+        return payload;
     }
-    return payload;
+    return {};
 }
 
 }  // namespace miacode::net

@@ -43,6 +43,19 @@ using namespace miacode::mainwindow::shared;
 
 namespace {
 
+void appendPreviewInteractionLog(const QString& action, const QString& payload = QString())
+{
+    QString text = QStringLiteral("action=%1").arg(action);
+    if (!payload.trimmed().isEmpty()) {
+        text += QStringLiteral(" ") + payload.trimmed();
+    }
+    miacode::debug_log::appendLine(
+        miacode::debug_log::Channel::Runtime,
+        QStringLiteral("preview/interaction"),
+        text
+    );
+}
+
 void appendPreviewFramePacingDiagLog(const QString& action, const QString& payload = QString())
 {
     if (!miacode::debug_options::previewFramePacingDiagnosticsEnabled()) {
@@ -70,7 +83,10 @@ int previewFrameSwapWatchdogTimeoutMs(qint64 frameIntervalNs)
 
 }  // namespace
 
-void MainWindow::finishFrameBootstrap(QToolBar* toolBar, const std::function<void(const QString&)>& logStartupStage)
+void MainWindow::finishFrameBootstrap(
+    QToolBar* toolBar,
+    const std::function<void(const QString&)>& logStartupStage,
+    bool explicitStartupOpenPending)
 {
     constexpr int kToolbarLeadingSpacerWidth = 6;
     auto* toolbarLeadingSpacer = new QWidget(toolBar);
@@ -82,7 +98,7 @@ void MainWindow::finishFrameBootstrap(QToolBar* toolBar, const std::function<voi
     // button to a 64-px floor with 12-px synthetic side padding. That
     // floor was wider than the natural width of Qt's own
     // addAction()-managed buttons next to it (Open / Save), so after
-    // the recent label shortening (Audio Settings → Audio, etc.) the
+    // settings labels changed width over time, so the
     // pair sat in a visibly oversized cell with empty air on each side
     // of the text. We now let `sizeHint()` produce the natural width
     // exactly the way `addAction()` would, and only sync Audio/Video
@@ -101,12 +117,20 @@ void MainWindow::finishFrameBootstrap(QToolBar* toolBar, const std::function<voi
 
     previewAudioSettingsButton_ = makeCompactToolbarButton(previewAudioSettingsAction_);
     previewVideoSettingsButton_ = makeCompactToolbarButton(previewVideoSettingsAction_);
+    // 皮肤 sits between 预览设置 and 导出 but matches the 导出 button width (computed
+    // below), NOT the wider 音频设置/预览设置 equal-width pair.
+    skinSettingsButton_ = makeCompactToolbarButton(skinSettingsAction_);
     int settingsButtonWidth = 1;
     if (previewAudioSettingsButton_ != nullptr) {
         settingsButtonWidth = qMax(settingsButtonWidth, previewAudioSettingsButton_->sizeHint().width());
     }
     if (previewVideoSettingsButton_ != nullptr) {
         settingsButtonWidth = qMax(settingsButtonWidth, previewVideoSettingsButton_->sizeHint().width());
+    }
+    // Shared by the 皮肤 + 导出 buttons = the Open toolbar button's width.
+    int actionButtonWidth = kToolbarActionButtonWidth;
+    if (QWidget* openWidget = toolBar->widgetForAction(openAction_); openWidget != nullptr) {
+        actionButtonWidth = qMax(1, openWidget->sizeHint().width());
     }
     if (previewAudioSettingsButton_ != nullptr) {
         previewAudioSettingsButton_->setFixedWidth(settingsButtonWidth);
@@ -116,11 +140,15 @@ void MainWindow::finishFrameBootstrap(QToolBar* toolBar, const std::function<voi
         previewVideoSettingsButton_->setFixedWidth(settingsButtonWidth);
         toolBar->addWidget(previewVideoSettingsButton_);
     }
+    if (skinSettingsButton_ != nullptr) {
+        skinSettingsButton_->setFixedWidth(actionButtonWidth);
+        toolBar->addWidget(skinSettingsButton_);
+    }
     settingsPlaceholderAction_ = toolBar->addAction(
         makeSettingsGearIcon(QColor("#5D6E83")),
-        uiText("action.preferences", "Preferences...")
+        UiText::text(QStringLiteral("action.preferences"))
     );
-    settingsPlaceholderAction_->setToolTip(uiText("action.preferences", "Preferences..."));
+    settingsPlaceholderAction_->setToolTip(UiText::text(QStringLiteral("action.preferences")));
     connect(settingsPlaceholderAction_, &QAction::triggered, this, &MainWindow::onPreferences);
     // The toolbar Export button jumps straight to the Export hub page (the
     // sidebar "export" item equivalent) — the old dropdown menu + 250ms
@@ -129,15 +157,9 @@ void MainWindow::finishFrameBootstrap(QToolBar* toolBar, const std::function<voi
     // page is reachable without an active difficulty and greys its own cards.
     exportVideoButton_ = makeCompactToolbarButton(nullptr);
     if (exportVideoButton_ != nullptr) {
-        exportVideoButton_->setText(uiText("toolbar.export", "Export"));
-        exportVideoButton_->setToolTip(UiText::isChineseUi()
-            ? QStringLiteral("打开导出页：导出视频 / 导出封面 / 批量导出 / 打包ZIP")
-            : QStringLiteral("Open the Export page: video / cover / batch / ZIP"));
-        int openButtonWidth = kToolbarActionButtonWidth;
-        if (QWidget* openWidget = toolBar->widgetForAction(openAction_); openWidget != nullptr) {
-            openButtonWidth = qMax(1, openWidget->sizeHint().width());
-        }
-        exportVideoButton_->setFixedWidth(openButtonWidth);
+        exportVideoButton_->setText(UiText::text(QStringLiteral("toolbar.export")));
+        exportVideoButton_->setToolTip(UiText::text(QStringLiteral("document.open_the_export_page_video")));
+        exportVideoButton_->setFixedWidth(actionButtonWidth);
         toolBar->insertWidget(settingsPlaceholderAction_, exportVideoButton_);
         connect(exportVideoButton_, &QToolButton::clicked, this, [this]() {
             switchToExportField();
@@ -179,6 +201,13 @@ void MainWindow::finishFrameBootstrap(QToolBar* toolBar, const std::function<voi
             if (qtPreviewAwaitingFrameSwapSinceMs_ >= 0
                 && nowMs - qtPreviewAwaitingFrameSwapSinceMs_ >= stallTimeoutMs) {
                 const qint64 waitMs = nowMs - qtPreviewAwaitingFrameSwapSinceMs_;
+                if (state_.previewStageMediaHost_ != nullptr) {
+                    state_.previewStageMediaHost_->noteFirstPlaybackRenderStall(
+                        state_.activePreviewPlaybackTransactionId_,
+                        waitMs,
+                        qMax(0.0, qtPreviewPauseSecond_),
+                        qMax(0.0, currentPreviewAuthoritativeAudioClockSecond()));
+                }
                 qtPreviewDisplayRefreshConsecutiveWatchdogs_ += 1;
                 if (previewCanvas_ != nullptr) {
                     previewCanvas_->noteDisplayRefreshWatchdogTimeout();
@@ -214,6 +243,13 @@ void MainWindow::finishFrameBootstrap(QToolBar* toolBar, const std::function<voi
         if (qtPreviewFixedAwaitingFrameSinceMs_ >= 0
             && nowMs - qtPreviewFixedAwaitingFrameSinceMs_ >= stallTimeoutMs) {
             const qint64 waitMs = nowMs - qtPreviewFixedAwaitingFrameSinceMs_;
+            if (state_.previewStageMediaHost_ != nullptr) {
+                state_.previewStageMediaHost_->noteFirstPlaybackRenderStall(
+                    state_.activePreviewPlaybackTransactionId_,
+                    waitMs,
+                    qMax(0.0, qtPreviewPauseSecond_),
+                    qMax(0.0, currentPreviewAuthoritativeAudioClockSecond()));
+            }
             if (previewCanvas_ != nullptr) {
                 previewCanvas_->noteFixedGateWatchdogKick();
             }
@@ -243,6 +279,15 @@ void MainWindow::finishFrameBootstrap(QToolBar* toolBar, const std::function<voi
         scheduleNextQtPreviewTick();
     });
 
+    // Watchdog, not the visual cadence. The timeline's playback sampling is driven by
+    // TimelineQuickItem's afterAnimating hook (bridge::renderCadenceTick, connected in
+    // MainWindow.FrameBootstrap.cpp), which is phase-locked to the frame being synced.
+    // Driving the sample from this free-running timer instead was the timeline judder: the
+    // timer's phase drifts against vsync (~2.3us/frame measured), so sample->present latency
+    // wandered across the whole frame interval and 16% of on-time frames were drawn for the
+    // wrong moment. The timer stays at the frame interval so that if the cadence dies the
+    // fallback runs at full rate exactly as before; onTimelineCadenceWatchdogTick() no-ops
+    // while the cadence is alive.
     qtPreviewTimelineTimer_ = new QChronoTimer(this);
     qtPreviewTimelineTimer_->setInterval(std::chrono::nanoseconds(
         qMax<qint64>(
@@ -251,7 +296,7 @@ void MainWindow::finishFrameBootstrap(QToolBar* toolBar, const std::function<voi
                 ? timelineSection_->timelineTargetFrameIntervalNs()
                 : previewCanvasTargetFrameIntervalNs())));
     qtPreviewTimelineTimer_->setTimerType(Qt::PreciseTimer);
-    connect(qtPreviewTimelineTimer_, &QChronoTimer::timeout, this, &MainWindow::flushQtPreviewTimelinePosition);
+    connect(qtPreviewTimelineTimer_, &QChronoTimer::timeout, this, &MainWindow::onTimelineCadenceWatchdogTick);
 
     previewStatsUiTimer_ = new QTimer(this);
     previewStatsUiTimer_->setInterval(67);
@@ -355,6 +400,21 @@ void MainWindow::finishFrameBootstrap(QToolBar* toolBar, const std::function<voi
         previewSlider_->installEventFilter(this);
         connect(previewSlider_, &QSlider::sliderPressed, this, [this]() {
             stopPreviewHeldSeek();
+            const quint64 interactionId = ++previewInteractionSequence_;
+            const bool wasPlaying = qtPreviewPlaying_;
+            const double authoritativeSecond = currentPreviewAuthoritativeAudioClockSecond();
+            previewScrubInteractionId_ = interactionId;
+            previewScrubMoveCount_ = 0;
+            previewScrubStartSliderValue_ = previewSlider_ != nullptr ? previewSlider_->value() : 0;
+            previewScrubLastSliderValue_ = previewScrubStartSliderValue_;
+            appendPreviewInteractionLog(
+                QStringLiteral("scrub_press"),
+                QString("op=%1 slider_ms=%2 slider_second=%3 playing_before=%4 authoritative_second=%5")
+                    .arg(interactionId)
+                    .arg(previewScrubStartSliderValue_)
+                    .arg(static_cast<double>(previewScrubStartSliderValue_) / 1000.0, 0, 'f', 6)
+                    .arg(wasPlaying ? 1 : 0)
+                    .arg(authoritativeSecond, 0, 'f', 6));
             if (previewSlider_ != nullptr) {
                 previewSlider_->setFocus(Qt::MouseFocusReason);
             }
@@ -364,6 +424,15 @@ void MainWindow::finishFrameBootstrap(QToolBar* toolBar, const std::function<voi
             if (qtPreviewPlaying_) {
                 pauseQtPreviewPlaybackExact();
             }
+            appendPreviewInteractionLog(
+                QStringLiteral("scrub_pause_transition"),
+                QString("op=%1 playing_after=%2 pause_second=%3 manual_generation=%4 manual_txn=%5 manual_sequence=%6")
+                    .arg(interactionId)
+                    .arg(qtPreviewPlaying_ ? 1 : 0)
+                    .arg(qtPreviewPauseSecond_, 0, 'f', 6)
+                    .arg(previewPendingManualPauseGeneration_)
+                    .arg(previewPendingManualPauseTransactionId_)
+                    .arg(previewPendingManualPauseSequence_));
             previewScrubDragging_ = true;
             previewScrubRenderElapsed_.invalidate();
             if (previewSlider_ != nullptr) {
@@ -379,19 +448,47 @@ void MainWindow::finishFrameBootstrap(QToolBar* toolBar, const std::function<voi
             }
             showPreviewSliderTimeHint(value);
             const double second = static_cast<double>(value) / 1000.0;
+            const quint64 interactionId = previewScrubInteractionId_;
+            const int moveIndex = ++previewScrubMoveCount_;
+            const int previousValue = previewScrubLastSliderValue_;
+            previewScrubLastSliderValue_ = value;
             // Negative-time intro region: a drag into [-duration, 0) renders a
             // static intro frame instead of a chart seek.
             if (handleExportIntroSliderSeek(second)) {
+                appendPreviewInteractionLog(
+                    QStringLiteral("scrub_move_intro"),
+                    QString("op=%1 index=%2 from_ms=%3 target_ms=%4 target_second=%5")
+                        .arg(interactionId)
+                        .arg(moveIndex)
+                        .arg(previousValue)
+                        .arg(value)
+                        .arg(second, 0, 'f', 6));
                 return;
             }
             const bool shouldRenderNow = !previewScrubRenderElapsed_.isValid()
                 || previewScrubRenderElapsed_.elapsed() >= kPreviewScrubRenderIntervalMs;
+            const quint64 generationBefore = pausedSeekGeneration_;
             if (shouldRenderNow) {
                 requestPausedPreviewSeek(second, true, false, false);
                 previewScrubRenderElapsed_.restart();
             } else {
                 schedulePreviewSeek(second, true);
             }
+            appendPreviewInteractionLog(
+                QStringLiteral("scrub_move"),
+                QString("op=%1 index=%2 from_ms=%3 target_ms=%4 target_second=%5 render_now=%6 "
+                        "seek_generation_before=%7 seek_generation_after=%8 visual_pause_second=%9 "
+                        "manual_pause_sequence=%10")
+                    .arg(interactionId)
+                    .arg(moveIndex)
+                    .arg(previousValue)
+                    .arg(value)
+                    .arg(second, 0, 'f', 6)
+                    .arg(shouldRenderNow ? 1 : 0)
+                    .arg(generationBefore)
+                    .arg(pausedSeekGeneration_)
+                    .arg(qtPreviewPauseSecond_, 0, 'f', 6)
+                    .arg(previewPendingManualPauseSequence_));
         });
         connect(previewSlider_, &QSlider::sliderReleased, this, [this]() {
             stopPreviewHeldSeek();
@@ -408,10 +505,36 @@ void MainWindow::finishFrameBootstrap(QToolBar* toolBar, const std::function<voi
                 previewSeekDebounceTimer_->stop();
             }
             const double releasedSecond = static_cast<double>(previewSlider_->value()) / 1000.0;
+            const quint64 interactionId = previewScrubInteractionId_;
+            appendPreviewInteractionLog(
+                QStringLiteral("scrub_release"),
+                QString("op=%1 moves=%2 start_ms=%3 target_ms=%4 target_second=%5 pause_second=%6 "
+                        "manual_generation=%7 manual_txn=%8 manual_sequence=%9")
+                    .arg(interactionId)
+                    .arg(previewScrubMoveCount_)
+                    .arg(previewScrubStartSliderValue_)
+                    .arg(previewSlider_->value())
+                    .arg(releasedSecond, 0, 'f', 6)
+                    .arg(qtPreviewPauseSecond_, 0, 'f', 6)
+                    .arg(previewPendingManualPauseGeneration_)
+                    .arg(previewPendingManualPauseTransactionId_)
+                    .arg(previewPendingManualPauseSequence_));
             if (handleExportIntroSliderSeek(releasedSecond)) {
+                appendPreviewInteractionLog(
+                    QStringLiteral("scrub_release_intro"),
+                    QString("op=%1 target_second=%2").arg(interactionId).arg(releasedSecond, 0, 'f', 6));
+                previewScrubInteractionId_ = 0;
                 return;
             }
             seekPreviewToSecond(releasedSecond, true);
+            appendPreviewInteractionLog(
+                QStringLiteral("scrub_release_dispatched"),
+                QString("op=%1 target_second=%2 final_pause_second=%3 manual_sequence_after=%4")
+                    .arg(interactionId)
+                    .arg(releasedSecond, 0, 'f', 6)
+                    .arg(qtPreviewPauseSecond_, 0, 'f', 6)
+                    .arg(previewPendingManualPauseSequence_));
+            previewScrubInteractionId_ = 0;
         });
     }
     if (previewControlCard_ != nullptr) {
@@ -502,7 +625,7 @@ void MainWindow::finishFrameBootstrap(QToolBar* toolBar, const std::function<voi
     windowSection_->applyFindOverlayInset();
     const auto applyEditorFontDelta = [this](int delta) {
         applyEditorTextFontSize(editorTextFontPointSize_ + delta, true);
-        statusBar()->showMessage(uiText("status.editor_text_display_updated", "Editor text display updated."));
+        statusBar()->showMessage(UiText::text(QStringLiteral("status.editor_text_display_updated")));
     };
     fontDecreaseAction_ = new QAction(QStringLiteral("Decrease Editor Font"), this);
     ShortcutRegistry::instance().applyShortcut(
@@ -527,6 +650,7 @@ void MainWindow::finishFrameBootstrap(QToolBar* toolBar, const std::function<voi
     statusBar()->showMessage("PlainCodeEditor ready.");
 
     loadPortableState();
+    applyAppBackgroundSettings(appBackgroundSettings_, false);
     applyWorkspacePanelArrangement();
     windowSection_->setOutlineDockCollapsed(outlineDockCollapsed_);
     logStartupStage("portable_state_loaded");
@@ -541,15 +665,9 @@ void MainWindow::finishFrameBootstrap(QToolBar* toolBar, const std::function<voi
     }
     applyPreviewStageMediaRoutePlaybackRate(previewPlaybackRate_, "frame_bootstrap_finalize");
     applyPreviewStageMediaRouteVisualSettings();
-    if (previewSfxRuntime_ != nullptr) {
-        previewSfxRuntime_->setChartPath(currentFilePath_);
-        logStartupStage("preview_sfx_set_chart_path_done");
-        previewSfxRuntime_->setBackgroundTrackPlaybackRate(previewPlaybackRate_);
-        logStartupStage("preview_sfx_set_playback_rate_done");
-    }
     if (previewCanvas_ != nullptr) {
         applyEffectivePreviewOutlineVariantToCanvas();
-        previewCanvas_->setSkinDirectory(resolvePreviewSkinDir());
+        applyPreviewSkinDirectoryToSurfaces();
         previewCanvas_->setBackgroundBrightnessOuter(previewBackgroundBrightnessOuter_);
         previewCanvas_->setBackgroundBrightnessInner(previewBackgroundBrightnessInner_);
         previewCanvas_->setLayoutSquareScale(previewLayoutSquareScale_);
@@ -558,6 +676,8 @@ void MainWindow::finishFrameBootstrap(QToolBar* toolBar, const std::function<voi
         previewCanvas_->setTapFlowSpeed(previewTapFlowSpeed_);
         previewCanvas_->setTouchFlowSpeed(previewTouchFlowSpeed_);
         previewCanvas_->setSlideEarlierSecondAndTextOnTop(previewSlideEarlierSecondAndTextOnTop_);
+        previewCanvas_->setTapJudgeTextDistance(previewTapJudgeTextDistance_);
+        previewCanvas_->setJudgeEffectStyle(previewJudgeEffectStyle_);
         previewCanvas_->setShowDebugInfo(previewShowDebugInfo_);
         previewCanvas_->setShowTimestamp(previewShowTimestamp_);
         previewCanvas_->setShowObjectStatsHud(previewShowObjectStatsHud_);
@@ -570,7 +690,13 @@ void MainWindow::finishFrameBootstrap(QToolBar* toolBar, const std::function<voi
     applyMuriRenderOptions();
     windowSection_->applyUiTheme();
     updatePauseButtonAppearance();
-    const bool restoredStartupDocument = restoreLastSessionFile();
+    // A file/folder passed on the command line is the startup document. Do not
+    // first restore and warm up the previous session only to replace it on the
+    // first event-loop turn: concurrent launches can otherwise make every new
+    // process decode the old chart's audio/PV while the explicit target is
+    // loading, producing avoidable resource spikes and stale preparation races.
+    const bool restoredStartupDocument =
+        !explicitStartupOpenPending && restoreLastSessionFile();
     if (!restoredStartupDocument) {
         loadDocument(SimaiDocument::createEmpty());
         logStartupStage("initial_empty_document_applied");

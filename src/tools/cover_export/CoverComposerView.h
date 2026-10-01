@@ -124,7 +124,7 @@ public:
 
     // Called from QML (CoverComposer.qml's chart-frame Loader) when the live
     // PreviewQuickSceneRoot is created / destroyed. bind configures it (layer
-    // flags, DComp fallback, shared frame state); unbind clears our pointer.
+    // flags, shared frame state); unbind clears our pointer.
     Q_INVOKABLE void bindLiveChartScene(QObject* sceneRoot);
     Q_INVOKABLE void unbindLiveChartScene();
 
@@ -171,6 +171,7 @@ QImage renderCoverComposite(CoverLayoutModel* model,
 CoverExportResult exportCoverComposite(CoverLayoutModel* model,
                                        const CoverComposerInputs& inputs,
                                        const QSize& fullSize,
-                                       const QString& outputDirectory);
+                                       const QString& outputDirectory,
+                                       const QString& fileStem = QStringLiteral("card"));
 
 }  // namespace miacode::cover_export

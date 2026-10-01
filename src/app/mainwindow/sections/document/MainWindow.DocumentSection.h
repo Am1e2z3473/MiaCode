@@ -24,6 +24,7 @@ public:
     void onNewFile();
     void onOpenFile();
     bool openFileAtPath(const QString& path, bool showStatusMessage = true, bool showErrors = true);
+    bool openOnlinePreviewAtPath(const QString& path);
     void refreshRestoreBackupMenu(QMenu* restoreBackupMenu);
     void restoreBackupFilePath(const QString& path, bool mentionAbnormalExit = false);
     bool restoreLastSessionFile();
@@ -35,7 +36,8 @@ public:
         TextEncoding encodingUsed,
         const SimaiDocument& document,
         bool showStatusMessage,
-        double knownTrackDurationSeconds = -1.0
+        double knownTrackDurationSeconds = -1.0,
+        bool onlinePreview = false
     );
     void resetAutosaveState(const QString& referenceText);
     // Drop the in-memory crash-recovery snapshot AND delete the
@@ -52,11 +54,16 @@ public:
     bool saveToPath(const QString& path);
     bool applyBatchTransform(const QString& opName, const BatchTransform& transform);
     bool applySelectionBatchTransform(const QString& opName, const BatchTransform& transform);
+    bool applySelectionBatchTransform(const QString& opName, const SelectionContextBatchTransform& transform);
     std::pair<int, int> currentCursorLineCol() const;
     std::pair<int, int> currentSelectionOrCursorLineCol() const;
     bool currentSelectionRange(int* startPos, int* endPos) const;
     void setMetadataExtraText(const QString& text);
     void setEditorText(const QString& text);
+    void clearExportSelectionContext();
+    bool maybeSaveExportOriginFieldChanges();
+    bool saveExportOriginFieldToDisk();
+    void discardExportOriginChanges();
     void updatePauseButtonAppearance();
     void updateDirtyState();
     bool currentFieldHasUndoChanges() const;
@@ -67,10 +74,21 @@ public:
     bool undoDeletedDifficultyField();
     void clearChartSelectionTransformUndoEntries();
     void syncChartSelectionTransformUndoState();
+    // `originalAnchor`/`originalPosition` are PRE-EDIT offsets and must be read
+    // as ints before the document is touched: a live QTextCursor is adjusted by
+    // the very edit being recorded, so reading .position() off one afterwards
+    // hands undo an offset shifted by the inserted/removed length.
+    void recordChartCursorUndoEntry(
+        int originalAnchor,
+        int originalPosition,
+        const QTextCursor& transformedCursor,
+        double previewSecond);
+    void recordChartSelectionUndoRestoreAfterNextEdit(int originalAnchor, int originalPosition);
     bool undoChartEditorWithSelectionRestore();
     bool redoChartEditorWithSelectionRestore();
     QString resolveInitialOpenDirectory() const;
     void setLastOpenDirectory(const QString& pathOrDir);
+    bool createChartsFromAudioDrop(const QStringList& audioPaths);
     QString transformChartText(const QString& input, ChartTransformOp op, int* changedCount = nullptr) const;
     void onMirrorLeftRight();
     void onMirrorUpDown();
@@ -83,6 +101,7 @@ public:
     void onToggleFireworkSelection();
     void onRandomRotateSelection();
     void onClearCompleteElementsSelection();
+    void onResetTapNotesSelection();
     void onRaiseSubdivisionSelection();
     void onLowerSubdivisionSelection();
     void onRaiseSubdivisionHalfStepSelection();
@@ -95,8 +114,18 @@ public:
     void updateEditorEmptyState();
     void updateMetadataPageMode();
     bool deleteDifficultyField(int difficultyId);
-    void updateDifficultyDeleteButton(bool visible);
     void rebuildFieldSidebar();
+    // Sidebar bookmark-group fold state. Only explicit toggles are recorded;
+    // an untouched difficulty defaults to expanded when active, collapsed
+    // otherwise (see the bookmark redesign spec).
+    bool isBookmarkGroupExpanded(int difficultyId) const;
+    void setBookmarkGroupExpanded(int difficultyId, bool expanded);
+    // Expands the difficulty's bookmark group, rebuilds the sidebar, selects
+    // and centers the bookmark row; beginRename additionally starts the
+    // inline name editor. Safe no-op when the bookmark does not exist.
+    void revealBookmarkInSidebar(int difficultyId, int line, bool beginRename);
+    // The bookmark list item for (difficultyId, line), or nullptr.
+    QListWidgetItem* findBookmarkSidebarItem(int difficultyId, int line) const;
     void populateMetadataPage();
     void populateDifficultyPage(int difficultyId);
     void syncHeaderDesignerEditFromModel();
@@ -105,8 +134,13 @@ public:
     bool switchToDifficultyField(int difficultyId);
     bool switchToLatencyField();
     bool switchToExportField();
+    bool switchToExportFieldWithoutSave(
+        int difficultyId, double rangeStart, double rangeEnd, int documentRevision);
     // Floats the busy spinner over the "Export" sidebar row / hides it. Shown
     // while the (slow) export-page build runs after switchToExportField().
+    // Positioning is separate so sidebar rebuilds can re-anchor an active
+    // spinner after rows move.
+    bool positionOutlineExportBusySpinner();
     void showOutlineExportBusySpinner();
     void hideOutlineExportBusySpinner();
     void activateInitialField();
@@ -135,7 +169,11 @@ private:
     void setChartBottomTabsMode(bool enabled);
     void pruneChartSelectionTransformUndoEntriesFromStep(int undoStepThreshold);
     void updateLastObservedChartEditorUndoRedoSteps();
-    void recordChartSelectionTransformUndoEntry(int originalAnchor, int originalPosition, const QTextCursor& transformedCursor);
+    void recordChartSelectionTransformUndoEntry(
+        int originalAnchor,
+        int originalPosition,
+        const QTextCursor& transformedCursor,
+        double previewSecond = -1.0);
     const SelectionTransformUndoEntry* findChartSelectionTransformUndoEntry(int undoStepAfterApply) const;
     bool restoreChartSelectionTransformCursor(const SelectionTransformUndoEntry& entry, bool transformedSelection);
 

@@ -7,6 +7,8 @@
 
 namespace {
 
+constexpr QLatin1StringView kBookmarksFieldKey{"miacode_bookmarks"};
+
 // Trim every trailing whitespace character (spaces, tabs, CR/LF — i.e. any
 // trailing blank lines too) from a field value. A &key= header is now allowed
 // to sit behind leading horizontal whitespace, and that indentation is ignored
@@ -54,7 +56,7 @@ bool isReservedMetadataKey(const QString& key)
 {
     if (key == QLatin1String("title") || key == QLatin1String("artist")
         || key == QLatin1String("first") || key == QLatin1String("des")
-        || key == QLatin1String("video")) {
+        || key == QLatin1String("video") || key == kBookmarksFieldKey) {
         return true;
     }
     QString prefix;
@@ -135,6 +137,11 @@ SimaiDocument SimaiDocument::fromText(const QString& text)
             // path resolution to absolute filesystem location happens at
             // chart-load time in the calling code.
             doc.videoPath = field.value;
+            continue;
+        }
+        if (field.key == kBookmarksFieldKey) {
+            // Obsolete dev-only bookmark payload. It is hidden from the
+            // free-form metadata editor and intentionally not persisted.
             continue;
         }
 
@@ -222,6 +229,21 @@ QVector<SimaiRawField> SimaiDocument::parseRawFields(const QString& text, bool p
     }
 
     return fields;
+}
+
+QVector<int> SimaiDocument::invalidPropertyLineNumbers(const QString& text)
+{
+    QVector<int> invalidLines;
+    const QStringList lines = text.split(QChar('\n'));
+    for (int i = 0; i < lines.size(); ++i) {
+        QString line = lines.at(i);
+        if (line.endsWith(QChar('\r'))) line.chop(1);
+        const QString trimmed = line.trimmed();
+        if (!trimmed.startsWith(QChar('&'))) continue;
+        const int equals = trimmed.indexOf(QChar('='), 1);
+        if (equals <= 1 || trimmed.mid(1, equals - 1).trimmed().isEmpty()) invalidLines.append(i + 1);
+    }
+    return invalidLines;
 }
 
 QVector<SimaiRawField> SimaiDocument::parseUnmanagedFields(const QString& text, bool prefixDummyIfNeeded)

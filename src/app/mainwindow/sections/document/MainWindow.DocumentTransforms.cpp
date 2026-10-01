@@ -1,8 +1,10 @@
 #include "MainWindow.DocumentSection.h"
+#include "../editor/MainWindow.EditorSection.h"
 #include "../../MainWindowShared.h"
 
 #include "DialogLocalization.h"
 #include "PlainCodeEditor.h"
+#include "UiComponents.h"
 #include "UiText.h"
 #include "UiTheme.h"
 #include "common/OperationLog.h"
@@ -43,11 +45,12 @@ NormalizeDialogResult showNormalizeSelectionDialog(
 {
     NormalizeDialogResult result;
     result.options = initialOptions;
+    result.options.startAtNewMeasure = true;
 
     QDialog dialog(UiDialogs::effectiveParentWidget(&owner));
-    dialog.setWindowTitle(uiText("dialog.normalize.title", QStringLiteral("Format Chart")));
+    dialog.setWindowTitle(UiText::text(QStringLiteral("dialog.normalize.title")));
     dialog.setModal(true);
-    dialog.setMinimumWidth(300);
+    dialog.setMinimumWidth(360);
     dialog.setStyleSheet(UiTheme::aboutDialogStyleSheet());
     UiDialogs::prepareDialogWindow(&dialog, &owner);
 
@@ -70,32 +73,80 @@ NormalizeDialogResult showNormalizeSelectionDialog(
     summaryLayout->addWidget(hintLabel, 1);
     rootLayout->addWidget(summaryRow);
 
-    auto* startAtNewMeasureCheck = new QCheckBox(
-        UiText::isChineseUi()
-            ? QStringLiteral("选区起点视作小节线开始")
-            : QStringLiteral("Treat selection start as measure boundary"),
-        &dialog);
-    startAtNewMeasureCheck->setChecked(initialOptions.startAtNewMeasure);
-    rootLayout->addWidget(startAtNewMeasureCheck);
+    const auto createDialogComboBox = [&dialog]() {
+        return miacode::ui::createDialogComboBox(&dialog, 12);
+    };
+    const auto setComboToBool = [](QComboBox* combo, bool value) {
+        const int index = combo->findData(value);
+        combo->setCurrentIndex(index >= 0 ? index : 0);
+    };
+    const auto comboBoolValue = [](const QComboBox* combo, bool fallback) {
+        if (combo == nullptr || combo->currentIndex() < 0) {
+            return fallback;
+        }
+        const QVariant value = combo->itemData(combo->currentIndex());
+        return value.isValid() ? value.toBool() : fallback;
+    };
 
-    auto* reduceTo384Check = new QCheckBox(
-        UiText::isChineseUi()
-            ? QStringLiteral("统一近似至384分音")
-            : QStringLiteral("Snap approximately to 384 grid"),
-        &dialog);
-    reduceTo384Check->setChecked(initialOptions.reduceTo384Grid);
-    rootLayout->addWidget(reduceTo384Check);
+    auto* optionsGroup = new QGroupBox(UiText::text(QStringLiteral("dialog.normalize.options")), &dialog);
+    auto* optionsForm = new QFormLayout(optionsGroup);
+    optionsForm->setFieldGrowthPolicy(QFormLayout::ExpandingFieldsGrow);
+    optionsForm->setHorizontalSpacing(10);
+    optionsForm->setVerticalSpacing(8);
+    optionsForm->setContentsMargins(10, 8, 10, 8);
+    rootLayout->addWidget(optionsGroup);
 
-    const auto publishOptionsChanged = [startAtNewMeasureCheck, reduceTo384Check, optionsChanged]() {
+    auto* reduceTo384Combo = createDialogComboBox();
+    reduceTo384Combo->addItem(UiText::text(QStringLiteral("preferences.on")), true);
+    reduceTo384Combo->addItem(UiText::text(QStringLiteral("preferences.off")), false);
+    setComboToBool(reduceTo384Combo, initialOptions.reduceTo384Grid);
+    optionsForm->addRow(
+        UiText::text(QStringLiteral("document.snap_approximately_to_384_grid")),
+        reduceTo384Combo);
+
+    auto* sectioningCombo = createDialogComboBox();
+    sectioningCombo->addItem(
+        UiText::text(QStringLiteral("document.chart_section_every_4_measures")),
+        4);
+    sectioningCombo->addItem(
+        UiText::text(QStringLiteral("document.chart_section_every_2_measures")),
+        2);
+    sectioningCombo->addItem(UiText::text(QStringLiteral("document.chart_section_none")), 0);
+    sectioningCombo->setCurrentIndex(sectioningCombo->findData(initialOptions.sectionMeasureCount));
+    optionsForm->addRow(UiText::text(QStringLiteral("document.chart_sectioning")), sectioningCombo);
+
+    auto* syntaxCombo = createDialogComboBox();
+    syntaxCombo->addItem(QStringLiteral("分段保留"), static_cast<int>(miacode::chart_transform::ChartNormalizationSyntax::SegmentPreserving));
+    syntaxCombo->addItem(QStringLiteral("单行紧凑"), static_cast<int>(miacode::chart_transform::ChartNormalizationSyntax::CompactSingleLine));
+    syntaxCombo->setCurrentIndex(syntaxCombo->findData(static_cast<int>(initialOptions.syntax)));
+    optionsForm->addRow(QStringLiteral("整理语法"), syntaxCombo);
+
+    const auto publishOptionsChanged = [reduceTo384Combo, sectioningCombo, syntaxCombo, comboBoolValue, optionsChanged]() {
         if (!optionsChanged) {
             return;
         }
         optionsChanged(miacode::chart_transform::ChartNormalizationOptions{
-            startAtNewMeasureCheck->isChecked(),
-            reduceTo384Check->isChecked()});
+            true,
+            comboBoolValue(reduceTo384Combo, false),
+            sectioningCombo->currentData().toInt() == 4,
+            static_cast<miacode::chart_transform::ChartNormalizationSyntax>(syntaxCombo->currentData().toInt()),
+            sectioningCombo->currentData().toInt()});
     };
-    QObject::connect(startAtNewMeasureCheck, &QCheckBox::toggled, &dialog, publishOptionsChanged);
-    QObject::connect(reduceTo384Check, &QCheckBox::toggled, &dialog, publishOptionsChanged);
+    QObject::connect(
+        reduceTo384Combo,
+        qOverload<int>(&QComboBox::currentIndexChanged),
+        &dialog,
+        [publishOptionsChanged](int) { publishOptionsChanged(); });
+    QObject::connect(
+        sectioningCombo,
+        qOverload<int>(&QComboBox::currentIndexChanged),
+        &dialog,
+        [publishOptionsChanged](int) { publishOptionsChanged(); });
+    QObject::connect(
+        syntaxCombo,
+        qOverload<int>(&QComboBox::currentIndexChanged),
+        &dialog,
+        [publishOptionsChanged](int) { publishOptionsChanged(); });
 
     auto* buttonBox = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
     UiDialogs::localizeButtonBox(buttonBox);
@@ -108,8 +159,13 @@ NormalizeDialogResult showNormalizeSelectionDialog(
     }
 
     result.accepted = true;
-    result.options.startAtNewMeasure = startAtNewMeasureCheck->isChecked();
-    result.options.reduceTo384Grid = reduceTo384Check->isChecked();
+    result.options.startAtNewMeasure = true;
+    result.options.reduceTo384Grid = comboBoolValue(reduceTo384Combo, initialOptions.reduceTo384Grid);
+    result.options.splitEveryFourMeasures =
+        sectioningCombo->currentData().toInt() == 4;
+    result.options.sectionMeasureCount = sectioningCombo->currentData().toInt();
+    result.options.syntax = static_cast<miacode::chart_transform::ChartNormalizationSyntax>(
+        syntaxCombo->currentData().toInt());
     return result;
 }
 
@@ -216,12 +272,12 @@ void MainWindow::DocumentSection::onMirrorLeftRight()
         owner_.statusBar()->showMessage("Select a difficulty field first.");
         return;
     }
-    if (!applySelectionBatchTransform(uiText("action.transform.mirror_lr", "Mirror Left/Right"), [this](const QString& text, int* changedCount) {
+    if (!applySelectionBatchTransform(UiText::text(QStringLiteral("action.transform.mirror_lr")), [this](const QString& text, int* changedCount) {
         return miacode::chart_transform::transformChartSelectionText(text, miacode::chart_transform::ChartTransformOp::MirrorLeftRight, changedCount);
     })) {
         return;
     }
-    owner_.statusBar()->showMessage(uiText("status.transform.mirror_lr", "Mirror Left/Right applied."));
+    owner_.statusBar()->showMessage(UiText::text(QStringLiteral("status.transform.mirror_lr")));
 }
 
 void MainWindow::DocumentSection::onMirrorUpDown()
@@ -232,12 +288,12 @@ void MainWindow::DocumentSection::onMirrorUpDown()
         owner_.statusBar()->showMessage("Select a difficulty field first.");
         return;
     }
-    if (!applySelectionBatchTransform(uiText("action.transform.mirror_ud", "Mirror Up/Down"), [this](const QString& text, int* changedCount) {
+    if (!applySelectionBatchTransform(UiText::text(QStringLiteral("action.transform.mirror_ud")), [this](const QString& text, int* changedCount) {
         return miacode::chart_transform::transformChartSelectionText(text, miacode::chart_transform::ChartTransformOp::MirrorUpDown, changedCount);
     })) {
         return;
     }
-    owner_.statusBar()->showMessage(uiText("status.transform.mirror_ud", "Mirror Up/Down applied."));
+    owner_.statusBar()->showMessage(UiText::text(QStringLiteral("status.transform.mirror_ud")));
 }
 
 void MainWindow::DocumentSection::onRotate180()
@@ -248,12 +304,12 @@ void MainWindow::DocumentSection::onRotate180()
         owner_.statusBar()->showMessage("Select a difficulty field first.");
         return;
     }
-    if (!applySelectionBatchTransform(uiText("action.transform.rotate_180", "Rotate 180"), [this](const QString& text, int* changedCount) {
+    if (!applySelectionBatchTransform(UiText::text(QStringLiteral("action.transform.rotate_180")), [this](const QString& text, int* changedCount) {
         return miacode::chart_transform::transformChartSelectionText(text, miacode::chart_transform::ChartTransformOp::Rotate180, changedCount);
     })) {
         return;
     }
-    owner_.statusBar()->showMessage(uiText("status.transform.rotate_180", "Rotate 180 applied."));
+    owner_.statusBar()->showMessage(UiText::text(QStringLiteral("status.transform.rotate_180")));
 }
 
 void MainWindow::DocumentSection::onRotate45CounterClockwise()
@@ -264,12 +320,12 @@ void MainWindow::DocumentSection::onRotate45CounterClockwise()
         owner_.statusBar()->showMessage("Select a difficulty field first.");
         return;
     }
-    if (!applySelectionBatchTransform(uiText("action.transform.rotate_ccw_45", "Rotate -45"), [this](const QString& text, int* changedCount) {
+    if (!applySelectionBatchTransform(UiText::text(QStringLiteral("action.transform.rotate_ccw_45")), [this](const QString& text, int* changedCount) {
         return miacode::chart_transform::transformChartSelectionText(text, miacode::chart_transform::ChartTransformOp::Rotate45CounterClockwise, changedCount);
     })) {
         return;
     }
-    owner_.statusBar()->showMessage(uiText("status.transform.rotate_ccw_45", "Rotate -45 applied."));
+    owner_.statusBar()->showMessage(UiText::text(QStringLiteral("status.transform.rotate_ccw_45")));
 }
 
 void MainWindow::DocumentSection::onRotate45Clockwise()
@@ -280,12 +336,12 @@ void MainWindow::DocumentSection::onRotate45Clockwise()
         owner_.statusBar()->showMessage("Select a difficulty field first.");
         return;
     }
-    if (!applySelectionBatchTransform(uiText("action.transform.rotate_cw_45", "Rotate +45"), [this](const QString& text, int* changedCount) {
+    if (!applySelectionBatchTransform(UiText::text(QStringLiteral("action.transform.rotate_cw_45")), [this](const QString& text, int* changedCount) {
         return miacode::chart_transform::transformChartSelectionText(text, miacode::chart_transform::ChartTransformOp::Rotate45Clockwise, changedCount);
     })) {
         return;
     }
-    owner_.statusBar()->showMessage(uiText("status.transform.rotate_cw_45", "Rotate +45 applied."));
+    owner_.statusBar()->showMessage(UiText::text(QStringLiteral("status.transform.rotate_cw_45")));
 }
 
 void MainWindow::DocumentSection::onNormalizeWholeChart()
@@ -311,48 +367,52 @@ void MainWindow::DocumentSection::onNormalizeWholeChart()
 
     QString dialogDescription;
     if (wholeTextSelected) {
-        dialogDescription = UiText::isChineseUi()
-            ? QStringLiteral("选中范围：全文")
-            : QStringLiteral("Selection: full chart");
+        dialogDescription = UiText::text(QStringLiteral("document.selection_full_chart"));
     } else {
         const auto [startLine, startCol] = lineColForPosition(editor->document(), begin);
         const auto [endLine, endCol] = lineColForPosition(editor->document(), qMax(begin, finish - 1));
-        dialogDescription = UiText::isChineseUi()
-            ? QStringLiteral("选中范围：%1行%2列 ~ %3行%4列")
-                  .arg(startLine)
-                  .arg(startCol)
-                  .arg(endLine)
-                  .arg(endCol)
-            : QStringLiteral("Selection: L%1C%2 ~ L%3C%4")
-                  .arg(startLine)
+        dialogDescription = UiText::text(QStringLiteral("document.selection_l_1c_2_l")).arg(startLine)
                   .arg(startCol)
                   .arg(endLine)
                   .arg(endCol);
     }
 
     miacode::chart_transform::ChartNormalizationOptions options;
-    options.startAtNewMeasure = state_.chartNormalizeStartAtNewMeasure_;
+    options.startAtNewMeasure = true;
     options.reduceTo384Grid = state_.chartNormalizeReduceTo384Grid_;
+    options.splitEveryFourMeasures = state_.chartNormalizeSplitEveryFourMeasures_;
+    options.sectionMeasureCount = state_.chartNormalizeSectionMeasureCount_;
+    options.syntax = state_.chartNormalizeSyntax_;
     const NormalizeDialogResult dialogResult =
         showNormalizeSelectionDialog(
             owner_,
             dialogDescription,
             options,
             [this](const miacode::chart_transform::ChartNormalizationOptions& changedOptions) {
-                if (state_.chartNormalizeStartAtNewMeasure_ == changedOptions.startAtNewMeasure
-                    && state_.chartNormalizeReduceTo384Grid_ == changedOptions.reduceTo384Grid) {
+                if (state_.chartNormalizeReduceTo384Grid_ == changedOptions.reduceTo384Grid
+                    && state_.chartNormalizeSplitEveryFourMeasures_
+                        == changedOptions.splitEveryFourMeasures
+                    && state_.chartNormalizeSectionMeasureCount_ == changedOptions.sectionMeasureCount
+                    && state_.chartNormalizeSyntax_ == changedOptions.syntax) {
                     return;
                 }
-                state_.chartNormalizeStartAtNewMeasure_ = changedOptions.startAtNewMeasure;
+                state_.chartNormalizeStartAtNewMeasure_ = true;
                 state_.chartNormalizeReduceTo384Grid_ = changedOptions.reduceTo384Grid;
+                state_.chartNormalizeSplitEveryFourMeasures_ =
+                    changedOptions.splitEveryFourMeasures;
+                state_.chartNormalizeSectionMeasureCount_ = changedOptions.sectionMeasureCount;
+                state_.chartNormalizeSyntax_ = changedOptions.syntax;
                 owner_.savePortableState();
             });
     if (!dialogResult.accepted) {
         return;
     }
 
-    state_.chartNormalizeStartAtNewMeasure_ = dialogResult.options.startAtNewMeasure;
+    state_.chartNormalizeStartAtNewMeasure_ = true;
     state_.chartNormalizeReduceTo384Grid_ = dialogResult.options.reduceTo384Grid;
+    state_.chartNormalizeSplitEveryFourMeasures_ = dialogResult.options.splitEveryFourMeasures;
+    state_.chartNormalizeSectionMeasureCount_ = dialogResult.options.sectionMeasureCount;
+    state_.chartNormalizeSyntax_ = dialogResult.options.syntax;
 
     if (begin < 0 || finish < begin || finish > original.size()) {
         owner_.statusBar()->showMessage(QStringLiteral("Format Chart: invalid selection range."));
@@ -370,11 +430,9 @@ void MainWindow::DocumentSection::onNormalizeWholeChart()
         UiDialogs::showMessageBox(
             QMessageBox::Warning,
             &owner_,
-            uiText("dialog.normalize.title", QStringLiteral("Format Chart")),
+            UiText::text(QStringLiteral("dialog.normalize.title")),
             normalized.errorMessage.isEmpty()
-                ? uiText(
-                      "dialog.normalize.failed",
-                      QStringLiteral("Failed to normalize the current chart."))
+                ? UiText::text(QStringLiteral("dialog.normalize.failed"))
                 : normalized.errorMessage
         );
         return;
@@ -383,9 +441,7 @@ void MainWindow::DocumentSection::onNormalizeWholeChart()
     const QString replacement = composeNormalizedSelectionReplacement(original, begin, finish, normalized.text);
     if (replacement == original.mid(begin, finish - begin)) {
         owner_.statusBar()->showMessage(
-            uiText(
-                "status.normalize.already_normalized",
-                QStringLiteral("Format Chart: already normalized."))
+            UiText::text(QStringLiteral("status.normalize.already_normalized"))
         );
         return;
     }
@@ -428,11 +484,12 @@ void MainWindow::DocumentSection::onNormalizeWholeChart()
     markCurrentFieldDirty();
     state_.lastPreviewNoteMarkerSignature_.clear();
     owner_.refreshTimelineMetadata();
+    if (owner_.editorSection_ != nullptr) {
+        owner_.editorSection_->syncBookmarksFromEditorText();
+    }
 
     owner_.statusBar()->showMessage(
-        uiText(
-            "status.normalize.applied",
-            QStringLiteral("Format Chart applied: %1 measure line(s)."))
+        UiText::text(QStringLiteral("status.normalize.applied"))
             .arg(normalized.measureLineCount)
     );
 }
@@ -575,6 +632,64 @@ void MainWindow::DocumentSection::onClearCompleteElementsSelection()
     owner_.statusBar()->showMessage(QStringLiteral("一键清空 applied on selection: %1 replacement(s).").arg(changed));
 }
 
+void MainWindow::DocumentSection::onResetTapNotesSelection()
+{
+    MC_OP("MainWindow::DocumentSection::onResetTapNotesSelection");
+    if (!owner_.hasActiveDifficulty()) {
+        _mc_op_.fail(QStringLiteral("no active difficulty"));
+        owner_.statusBar()->showMessage("Select a difficulty field first.");
+        return;
+    }
+    auto* editor = qobject_cast<PlainCodeEditor*>(ui_.editorWidget_);
+    if (editor == nullptr) {
+        owner_.statusBar()->showMessage(QStringLiteral("重置摆键: editor unavailable."));
+        return;
+    }
+    int startPos = -1;
+    int endPos = -1;
+    if (!currentSelectionRange(&startPos, &endPos)) {
+        owner_.statusBar()->showMessage(QStringLiteral("重置摆键: no selection."));
+        return;
+    }
+    const QTextCursor oldCursor = editor->textCursor();
+    const int oldVScroll = editor->verticalScrollBar() != nullptr ? editor->verticalScrollBar()->value() : 0;
+    const int oldHScroll = editor->horizontalScrollBar() != nullptr ? editor->horizontalScrollBar()->value() : 0;
+    const QString original = owner_.editorText();
+    const int begin = qMin(startPos, endPos);
+    const int finish = qMax(startPos, endPos);
+    int changed = 0;
+    const QString transformedFull = miacode::editor::resetTapNotesInSelection(original, begin, finish, &changed);
+    if (transformedFull == original) {
+        owner_.statusBar()->showMessage(QStringLiteral("重置摆键: no note changed."));
+        return;
+    }
+    const int unchangedSuffixLength = original.size() - finish;
+    const int transformedSelectionEnd = transformedFull.size() - unchangedSuffixLength;
+    const QString transformedSelection = transformedFull.mid(begin, transformedSelectionEnd - begin);
+    const bool forwardSelection = oldCursor.hasSelection() ? (oldCursor.position() >= oldCursor.anchor()) : true;
+    const int originalAnchor = forwardSelection ? begin : finish;
+    const int originalPosition = forwardSelection ? finish : begin;
+    QTextCursor editCursor = oldCursor;
+    editCursor.beginEditBlock();
+    editCursor.setPosition(begin);
+    editCursor.setPosition(finish, QTextCursor::KeepAnchor);
+    editCursor.insertText(transformedSelection);
+    editCursor.endEditBlock();
+    QTextCursor restoredCursor(editor->document());
+    const int maxPos = editor->document()->characterCount() - 1;
+    const int transformedEnd = begin + transformedSelection.size();
+    restoredCursor.setPosition(qBound(0, forwardSelection ? begin : transformedEnd, maxPos));
+    restoredCursor.setPosition(qBound(0, forwardSelection ? transformedEnd : begin, maxPos), QTextCursor::KeepAnchor);
+    editor->setTextCursor(restoredCursor);
+    recordChartSelectionTransformUndoEntry(originalAnchor, originalPosition, restoredCursor);
+    if (editor->verticalScrollBar() != nullptr) editor->verticalScrollBar()->setValue(qBound(editor->verticalScrollBar()->minimum(), oldVScroll, editor->verticalScrollBar()->maximum()));
+    if (editor->horizontalScrollBar() != nullptr) editor->horizontalScrollBar()->setValue(qBound(editor->horizontalScrollBar()->minimum(), oldHScroll, editor->horizontalScrollBar()->maximum()));
+    markCurrentFieldDirty();
+    state_.lastPreviewNoteMarkerSignature_.clear();
+    owner_.refreshTimelineMetadata();
+    owner_.statusBar()->showMessage(QStringLiteral("重置摆键 applied on selection: %1 replacement(s).").arg(changed));
+}
+
 void MainWindow::DocumentSection::onRaiseSubdivisionSelection()
 {
     MC_OP("MainWindow::DocumentSection::onRaiseSubdivisionSelection");
@@ -584,9 +699,9 @@ void MainWindow::DocumentSection::onRaiseSubdivisionSelection()
         return;
     }
     applySelectionBatchTransform(
-        UiText::isChineseUi() ? QStringLiteral("分音提升一档") : QStringLiteral("Subdivision +1"),
-        [](const QString& text, int* changedCount) {
-            return miacode::chart_transform::raiseSubdivisionForSelection(text, changedCount);
+        UiText::text(QStringLiteral("document.subdivision_plus_1")),
+        [](const QString& text, const miacode::chart_transform::SelectionContext& context, int* changedCount) {
+            return miacode::chart_transform::raiseSubdivisionForSelection(text, context, changedCount);
         });
 }
 
@@ -599,9 +714,9 @@ void MainWindow::DocumentSection::onLowerSubdivisionSelection()
         return;
     }
     applySelectionBatchTransform(
-        UiText::isChineseUi() ? QStringLiteral("分音降低一档") : QStringLiteral("Subdivision -1"),
-        [](const QString& text, int* changedCount) {
-            return miacode::chart_transform::lowerSubdivisionForSelection(text, changedCount);
+        UiText::text(QStringLiteral("document.subdivision_minus_1")),
+        [](const QString& text, const miacode::chart_transform::SelectionContext& context, int* changedCount) {
+            return miacode::chart_transform::lowerSubdivisionForSelection(text, context, changedCount);
         });
 }
 
@@ -614,9 +729,9 @@ void MainWindow::DocumentSection::onRaiseSubdivisionHalfStepSelection()
         return;
     }
     applySelectionBatchTransform(
-        UiText::isChineseUi() ? QStringLiteral("分音提升半档") : QStringLiteral("Subdivision +1/2"),
-        [](const QString& text, int* changedCount) {
-            return miacode::chart_transform::raiseSubdivisionHalfStepForSelection(text, changedCount);
+        UiText::text(QStringLiteral("document.subdivision_plus_half")),
+        [](const QString& text, const miacode::chart_transform::SelectionContext& context, int* changedCount) {
+            return miacode::chart_transform::raiseSubdivisionHalfStepForSelection(text, context, changedCount);
         });
 }
 
@@ -629,9 +744,9 @@ void MainWindow::DocumentSection::onLowerSubdivisionHalfStepSelection()
         return;
     }
     applySelectionBatchTransform(
-        UiText::isChineseUi() ? QStringLiteral("分音降低半档") : QStringLiteral("Subdivision -1/2"),
-        [](const QString& text, int* changedCount) {
-            return miacode::chart_transform::lowerSubdivisionHalfStepForSelection(text, changedCount);
+        UiText::text(QStringLiteral("document.subdivision_minus_half")),
+        [](const QString& text, const miacode::chart_transform::SelectionContext& context, int* changedCount) {
+            return miacode::chart_transform::lowerSubdivisionHalfStepForSelection(text, context, changedCount);
         });
 }
 
@@ -703,6 +818,11 @@ void MainWindow::onRandomRotateSelection()
 void MainWindow::onClearCompleteElementsSelection()
 {
     documentSection_->onClearCompleteElementsSelection();
+}
+
+void MainWindow::onResetTapNotesSelection()
+{
+    documentSection_->onResetTapNotesSelection();
 }
 
 void MainWindow::onRaiseSubdivisionSelection()

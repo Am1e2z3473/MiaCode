@@ -3,10 +3,12 @@
 #include "BusySpinner.h"
 #include "DialogLocalization.h"
 #include "EditableValueLabel.h"
+#include "UiComponents.h"
 #include "UiText.h"
 #include "UiTheme.h"
 #include "common/DebugLog.h"
 #include "common/PreviewInteractionConfig.h"
+#include "common/PreviewSfxAssets.h"
 #include "core/scene/PreviewHudState.h"
 #include "tools/video_export/HudFontSettings.h"
 #include "tools/video_export/IntroPreviewWidget.h"
@@ -91,6 +93,14 @@ void VideoExportDialog::syncLivePreviewChartInfoVisibility()
     previewChartInfoCallback_(showChartInfoCheck_->isChecked());
 }
 
+void VideoExportDialog::syncLivePreviewHudTextLayout()
+{
+    if (fixHudTextLayoutCheck_ == nullptr || !previewHudTextLayoutCallback_) {
+        return;
+    }
+    previewHudTextLayoutCallback_(fixHudTextLayoutCheck_->isChecked());
+}
+
 void VideoExportDialog::restoreLivePreviewState()
 {
     if (previewStateRestored_) {
@@ -106,30 +116,17 @@ void VideoExportDialog::restoreLivePreviewState()
     if (previewChartInfoCallback_) {
         previewChartInfoCallback_(initialShowChartInfo_);
     }
+    if (previewHudTextLayoutCallback_) {
+        previewHudTextLayoutCallback_(false);
+    }
     if (previewAspectRatioCallback_) {
         previewAspectRatioCallback_(1.0);
     }
 }
 
-void VideoExportDialog::openHudFontSettingsDialog()
-{
-    // Shared dialog (tools/video_export/HudFontSettings.cpp). The callback
-    // re-renders this dialog's paused preview frame so the new HUD font shows
-    // immediately.
-    miacode::video_export::openHudFontSettingsDialog(this, [this]() {
-        refreshLivePreviewHudFont();
-    });
-}
-
-void VideoExportDialog::refreshLivePreviewHudFont()
-{
-    const double second = currentPreviewSecond();
-    if (qIsFinite(second)) {
-        seekPreview(second);
-    } else {
-        seekPreview(previewCursorSecond_);
-    }
-}
+// HUD font is edited from the shared 皮肤 tab (buildSkinSettings) now; the
+// dialog no longer owns a font button. The global font applies process-wide and
+// the on-screen preview re-reads it on its next repaint.
 
 void VideoExportDialog::refreshAddIntroEnabledState()
 {
@@ -167,6 +164,9 @@ void VideoExportDialog::syncIntroControlsEnabled()
         && addIntroCheck_->isEnabled() && addIntroCheck_->isChecked();
     const bool customBg = introBackgroundCombo_ != nullptr
         && introBackgroundCombo_->currentData().toString() == QStringLiteral("custom");
+    if (introSoundCombo_ != nullptr) introSoundCombo_->setEnabled(introOn);
+    if (introSoundImportButton_ != nullptr) introSoundImportButton_->setEnabled(introOn);
+    if (introSoundVolumeSlider_ != nullptr) introSoundVolumeSlider_->setEnabled(introOn);
     if (introBackgroundCombo_ != nullptr) introBackgroundCombo_->setEnabled(introOn);
     if (introBackgroundPathEdit_ != nullptr) introBackgroundPathEdit_->setEnabled(introOn && customBg);
     if (introBackgroundBrowse_ != nullptr) introBackgroundBrowse_->setEnabled(introOn && customBg);
@@ -176,14 +176,56 @@ void VideoExportDialog::syncIntroControlsEnabled()
     if (introLevelTextCheck_ != nullptr) introLevelTextCheck_->setEnabled(introOn);
 }
 
+void VideoExportDialog::importIntroSound()
+{
+    const QString selectedPath = QFileDialog::getOpenFileName(
+        this,
+        UiText::text(QStringLiteral("dialog.render_settings.music.intro_sound")),
+        QString(),
+        QStringLiteral("Audio (*.wav *.mp3 *.ogg *.flac)"));
+    if (selectedPath.isEmpty()) {
+        return;
+    }
+
+    const QString musicDirectory = miacode::preview_sfx::assetMusicDirectory();
+    if (musicDirectory.isEmpty() || !QDir().mkpath(musicDirectory)) {
+        return;
+    }
+
+    const QFileInfo sourceInfo(selectedPath);
+    QString importedName = sourceInfo.fileName();
+    QString importedPath = QDir(musicDirectory).filePath(importedName);
+    if (QFileInfo(selectedPath).canonicalFilePath() != QFileInfo(importedPath).canonicalFilePath()) {
+        int suffix = 2;
+        while (QFileInfo::exists(importedPath)) {
+            importedName = QStringLiteral("%1_%2.%3")
+                .arg(sourceInfo.completeBaseName())
+                .arg(suffix++)
+                .arg(sourceInfo.suffix());
+            importedPath = QDir(musicDirectory).filePath(importedName);
+        }
+        if (!QFile::copy(selectedPath, importedPath)) {
+            return;
+        }
+    }
+
+    int index = introSoundCombo_ != nullptr ? introSoundCombo_->findData(importedName) : -1;
+    if (introSoundCombo_ != nullptr && index < 0) {
+        introSoundCombo_->addItem(importedName, importedName);
+        index = introSoundCombo_->count() - 1;
+    }
+    if (introSoundCombo_ != nullptr) {
+        introSoundCombo_->setCurrentIndex(index);
+    }
+}
+
 void VideoExportDialog::browseIntroBackground()
 {
     const QString file = QFileDialog::getOpenFileName(
         this,
-        l10n(QStringLiteral("Choose background image"), QStringLiteral("选择背景图片")),
+        UiText::text(QStringLiteral("cover.choose_background_image")),
         QString(),
-        l10n(QStringLiteral("Images (*.png *.jpg *.jpeg *.bmp *.webp)"),
-             QStringLiteral("图片 (*.png *.jpg *.jpeg *.bmp *.webp)")));
+        UiText::text(QStringLiteral("cover.images_png_jpg_jpeg_bmp")));
     if (file.isEmpty()) {
         return;
     }
@@ -214,9 +256,18 @@ bool VideoExportDialog::isAddIntroActiveForPreview() const
 
 IntroBannerSpec VideoExportDialog::currentIntroSpec() const
 {
+    IntroBannerSpec spec = currentIntroSpecForExportTask();
+    if (isAutoIntroBannerMode(spec.mode)) {
+        spec.mode = detectedIntroCardMode();
+    }
+    return spec;
+}
+
+IntroBannerSpec VideoExportDialog::currentIntroSpecForExportTask() const
+{
     IntroBannerSpec spec = baseTask_.intro;   // chart payload: title/level/曲绘…
     if (introCardModeCombo_ != nullptr) {
-        spec.mode = introCardModeCombo_->currentData().toString();
+        spec.mode = selectedIntroCardMode(/*resolveAuto=*/false);
     }
     if (introLevelTextCheck_ != nullptr) {
         spec.lvRenderMode = introLevelTextCheck_->isChecked()
@@ -235,7 +286,46 @@ IntroBannerSpec VideoExportDialog::currentIntroSpec() const
     if (introCardShadowCheck_ != nullptr) {
         spec.cardShadow = introCardShadowCheck_->isChecked();
     }
+    if (introCardFontSelector_.widget != nullptr) {
+        spec.fontDisplayPath = introCardFontSelector_.displayPath();
+        spec.fontBodyPath = introCardFontSelector_.bodyPath();
+    }
     return spec;
+}
+
+QString VideoExportDialog::detectedIntroCardMode() const
+{
+    return normalizedIntroBannerMode(baseTask_.intro.mode);
+}
+
+QString VideoExportDialog::selectedIntroCardMode(bool resolveAuto) const
+{
+    if (introCardModeCombo_ == nullptr) {
+        return detectedIntroCardMode();
+    }
+    const QString mode = introCardModeCombo_->currentData().toString();
+    if (isAutoIntroBannerMode(mode)) {
+        return resolveAuto ? detectedIntroCardMode() : QStringLiteral("auto");
+    }
+    return normalizedIntroBannerMode(mode);
+}
+
+void VideoExportDialog::refreshIntroCardModeAutoLabel()
+{
+    if (introCardModeCombo_ == nullptr) {
+        return;
+    }
+    const int autoIndex = introCardModeCombo_->findData(QStringLiteral("auto"));
+    if (autoIndex < 0) {
+        return;
+    }
+    const QString label = UiText::text(QStringLiteral("cover.chart_type_auto_result"))
+        .arg(introBannerModeAbbreviation(detectedIntroCardMode()));
+    {
+        const QSignalBlocker blocker(introCardModeCombo_);
+        introCardModeCombo_->setItemText(autoIndex, label);
+    }
+    miacode::ui::applyDialogComboBoxStyle(introCardModeCombo_, 12);
 }
 
 void VideoExportDialog::refreshIntroPreview()

@@ -27,15 +27,18 @@ Implication:
 - Timeline note-head art selection should mirror preview base/overlay precedence: break or each chooses the base icon first, and EX overlays on top of that base instead of replacing break/each state in the timeline.
 - `TimelineQuickModel` is now the owner of comma-only `C` anchor lookup for editor cursor sync, header/timeline `R -> C` jumps, and playback follow.
 - Timeline beat-grid semantics are mirrored between `SimaiNativeParser` and `TimelineQuickModel`: every comma remains a beat line, while measure lines are generated on an independent meter timeline. The current meter now comes from shared `SimaiTimingMetadata` (`&whole_time_signature=`), inline `|| x/y` comments restart that meter timeline at the exact comment position, `{beats}` only changes comma spacing, and `(BPM)` changes restart the independent measure-line timeline at the BPM-change position.
-- Guide-layer state should group each-guide connectors by parser-derived `eachGroupId` when available; do not merge backtick-separated groups just because their `marker.second` matches.
-- Timeline note sprite stacking is intentionally preview-mirrored for overlapping markers: `TimelineView::paintEvent` keeps slide/wifi tracks behind note heads, uses the preview-style descending-`second` stack for tap/hold/slide/wifi heads, and then draws touch above that stack with touch-hold above touch. If preview object-layer order changes, review `src/timeline/TimelineView.Paint.cpp`, `src/preview/scene/PreviewLayerOrder.h`, and `src/preview/quick_scene/*` together.
-- Same-second slide/head/track/motion stacking is now shared by `src/preview/scene/PreviewMarkerDrawOrder.*` plus the prepared `drawOrder` in `PreviewPreparedSceneCache`. If you change who sits “on top” for overlapping slides, update the helper and review `PreviewHeadLayerState.cpp`, `PreviewTrackLayerState.cpp`, `PreviewSlideMotionLayerState.cpp`, and the related preview specs together instead of patching one layer locally.
+- Guide-layer state should group each-guide connectors by parser-derived `eachGroupId` when available; do not merge backtick-separated groups just because their `marker.second` matches. Consecutive backticks are accepted as input compatibility and collapse to one backtick separator, with no extra timing gap.
+- Timeline note sprite stacking is intentionally preview-mirrored for overlapping markers: `TimelineView::paintEvent` keeps slide/wifi tracks behind note heads, uses the preview-style descending-`second` stack for tap/hold/slide/wifi heads, and then draws touch above that stack with touch-hold above touch. If preview object-layer order changes, review `src/timeline/TimelineView.Paint.cpp`, `src/core/scene/PreviewLayerOrder.h`, and `src/preview/quick_scene/*` together.
+- Same-second slide/head/track/motion stacking is now shared by `src/core/scene/PreviewMarkerDrawOrder.*` plus the prepared `drawOrder` in `PreviewPreparedSceneCache`. If you change who sits “on top” for overlapping slides, update the helper and review `PreviewHeadLayerState.cpp`, `PreviewTrackLayerState.cpp`, `PreviewSlideMotionLayerState.cpp`, and the related preview specs together instead of patching one layer locally.
 - The slide stacking direction is now runtime state, not a hardwired preview-only branch: `PreviewFrameState::render.slideEarlierSecondAndTextOnTop` is seeded from the common default constant, persisted by main-window render settings, and serialized through `VideoExportTask` / `VideoExportSnapshot` so the export worker sees the same DX-vs-FiNALE choice as the live preview.
 - On-screen preview and export now flow through `PreviewRuntime` / `PreviewQuickExportSession` plus the active layers in `src/preview/quick_scene/*`. Shared assets now come from `PreviewSceneAssetLoader` and `PreviewSceneAssetRepository`. If you change preview setters, frame pacing hooks, layer data contracts, or export-session ownership, review both `src/preview/runtime/*` and `src/preview/quick_scene/*` in the same patch.
+- Realtime QSG/HUD render paths must consume `PreviewRuntime::frameStateSnapshot()` instead of `PreviewRuntime::frameState()`. `frameState_` is GUI-side mutable builder state; render-side code should take one shared immutable snapshot pointer per paint/snapshot build and keep that pointer alive while reading `QString`, `QVector`, media, asset, and marker fields. HUD and center-display object stats must read the value-only `PreviewFrameState::hudStatsSnapshot` prepared before publication/export ticks, not call `PreviewProgressStatsCache::hudStatsAt()` on the render thread. `PreviewQuickExportSession`, `PreviewQuickD3D11ExportSession`, and cover-render helpers may still bind their own local frame-state objects because those are not shared live `PreviewRuntime` state, but they must refresh the HUD stats snapshot before rendering a frame.
 - Preview-time background media is still selected once from `MainWindow::FrontendHostMode`: widget shell keeps the internal-layer `PreviewMediaController` path for both images and videos, while `--quickshell-beta` keeps `PreviewStageMediaHost` as the background-media owner for both images and videos. Quickshell presentation now splits after that host choice: images stay on the inline `QuickShellPreviewSurface.qml` item, while videos move into `QuickShellPreviewCompositeSurface` so the external `VideoOutput` stack presents from its own `QQuickView`. Do not reintroduce media-type-based switching between the widget-shell and quickshell host owners.
-- The realtime and export Quick scene roots now also share `PreviewPreparedSceneCache`-driven note windows. If you change note-driven layer inputs, visible-window timing, or scene-content revision invalidation, review `src/preview/scene/PreviewPreparedSceneCache.*`, `src/preview/quick_scene/PreviewQuickSceneRoot.*`, and the affected `PreviewQuick*Layer` wrappers together.
-- Runtime and export layer order are both owned by `PreviewQuickSceneRoot` plus `PreviewLayerOrder.h`. If you change layer ordering or add a new visible layer, review `src/preview/scene/PreviewLayerOrder.h`, `src/preview/quick_scene/*`, and `src/tools/video_export/VideoExportQuickRenderBackend.*` together.
-- Firework overlay visuals now depend on the custom `PreviewQuickJudgeFireworkLayer` material path rather than pie-sector geometry plus sprite overlays. If you change firework timing curves, additive blending, source texture use, hole-mask math, or stage clipping, review `src/preview/scene/PreviewJudgeFireworkLayerState.*`, `src/preview/quick_scene/PreviewQuickJudgeFireworkLayer.*`, `src/preview/quick_scene/shaders/PreviewFireworkMaterial.*`, and the historical `PreviewCanvas` reference behavior together. The legacy contract is a playfield-centered judgment-ring clip, not a second local clip around the trigger point.
+- The Windows QtAVPlayer D3D11 bridge must preserve the decoded texture's real pixel format when producing `QVideoFrame`: `DXGI_FORMAT_NV12`, `DXGI_FORMAT_P010`, and `DXGI_FORMAT_P016` map to their matching `QVideoFrameFormat` values. `AV_PIX_FMT_D3D11` identifies the hardware-surface container only; never use it as a reason to hardcode `Format_NV12`, or HEVC Main10 P010 video will be sampled with incompatible plane views.
+- The realtime and export Quick scene roots now also share `PreviewPreparedSceneCache`-driven note windows. If you change note-driven layer inputs, visible-window timing, or scene-content revision invalidation, review `src/core/scene/PreviewPreparedSceneCache.*`, `src/preview/quick_scene/PreviewQuickSceneRoot.*`, and the affected `PreviewQuick*Layer` wrappers together.
+- Runtime and export layer order are both owned by `PreviewQuickSceneRoot` plus `PreviewLayerOrder.h`. If you change layer ordering or add a new visible layer, review `src/core/scene/PreviewLayerOrder.h`, `src/preview/quick_scene/*`, and `src/tools/video_export/VideoExportQuickRenderBackend.*` together.
+- QSG textures belong to the render-side `PreviewQuickRootNode` generation for one `QQuickWindow`. Cache/skin invalidation from GUI code may only request a generation reset; `updatePaintNode()` must delete child nodes/materials before clearing textures. Transient/retained replacements retire for a later render frame instead of deleting in place. QuickShell embedded/fullscreen inline surfaces stay allocated after first creation and route by visibility/binding, so F11 does not destroy a live QSG owner from the GUI side. Review `PreviewQuickSceneRoot.*`, `PreviewTextureRepository.*`, and `QuickShellMain.qml` together when changing these lifetimes.
+- Firework overlay visuals now depend on the custom `PreviewQuickJudgeFireworkLayer` material path rather than pie-sector geometry plus sprite overlays. If you change firework timing curves, additive blending, source texture use, hole-mask math, or stage clipping, review `src/core/scene/PreviewJudgeFireworkLayerState.*`, `src/preview/quick_scene/PreviewQuickJudgeFireworkLayer.*`, `src/preview/quick_scene/shaders/PreviewFireworkMaterial.*`, and the historical `PreviewCanvas` reference behavior together. The legacy contract is a playfield-centered judgment-ring clip, not a second local clip around the trigger point.
 - While preview playback is running, slow-refresh note-marker updates still feed the latest validation and Muri worker inputs, but preview audio/canvas/object stats stay on the frozen play-start snapshot until playback stops; validation and Muri panel/decorations may defer their visible UI apply until playback returns to a paused state.
 - When preview is paused or idle, Muri analysis should still publish fresh overlay state into preview/timeline as soon as the aligned report lands, but the full bottom-tab Muri list may stay lazily materialized until the `Muri` tab is actually visible. Keep summary chips and overlay alignment up to date even when the hidden tab content is stale on purpose.
 - Preview object stats now share one `PreviewProgressStatsCache` across realtime HUD, the main-window side stats card, and export HUD rendering. Hold-family played counts and score-style progress must use judge/end timing in every consumer; if you touch the cache, keep that timing aligned with the HUD's finale/deluxe progression.
@@ -82,11 +85,11 @@ Current contract:
 - `MainWindow::currentTimingMetadata` reads live metadata text from the metadata editor when available, so unsaved `&whole_time_signature=` edits still affect validation and timeline refresh.
 - `parsedLatencyMeterId` now reads the effective chart default meter from timing metadata for latency-detector defaults; latency detection still writes `&first` and `&wholebpm`, but it no longer writes meter metadata back into the chart.
 - Any caller that uses `SimaiNativeParser::parseForTimeline` or `buildValidationReport` should pass timing metadata when document metadata is available, or fast/slow preview, export, and tooling timelines will drift.
-- Quick-timeline token parsing should stay aligned with parser note legality for timeline-visible syntax, including bare zero-duration `h` holds; if parser and quick-model note acceptance diverge, the editor timeline can silently drop notes that preview/export still keep.
+- Quick-timeline token parsing should stay aligned with parser note legality for timeline-visible syntax, including bare zero-duration `h` holds and zero-duration touch-holds such as `Ch`, `A1h`, and `Ch[]`; if parser and quick-model note acceptance diverge, the editor timeline can silently drop notes that preview/export still keep.
 
 If you change timing-metadata semantics, review all of:
 
-- `src/simai/document/SimaiTimingMetadata.cpp`
+- `src/core/chart/document/SimaiTimingMetadata.cpp`
 - `src/app/mainwindow/sections/timeline/MainWindow.PreviewTimelineFlow.cpp`
 - `src/app/mainwindow/sections/validation/MainWindow.ValidationFlow.cpp`
 - `src/timeline/TimelineQuickModel.cpp`
@@ -104,8 +107,9 @@ Canonical sync pair:
 Current runtime ownership note:
 
 - `QtPreviewSfxRuntime` is now the stable facade owned by `MainWindow`, while concrete runtime behavior lives behind `src/preview/audio/PreviewAudioBackend.h`.
-- `MiniaudioPreviewAudioBackend` now remains the non-Windows compatibility implementation and still owns the existing `QtPreviewSfxRuntime.*.cpp` split internals.
-- `BassPreviewAudioBackend` now owns the Windows preview-time BASS transport path with no Windows-side miniaudio fallback: repo-local runtime DLL loading, the master mixer authority clock, preloaded note-SFX channels, background-track tempo control through `bass_fx`, and backend-side event draining. It also keeps a lightweight rolling scheduler by arming only the next mixer sync position at a time instead of relying on UI tick direct one-shots.
+- `MiniaudioPreviewAudioBackend` remains the unsupported-platform compatibility implementation and still owns the existing `QtPreviewSfxRuntime.*.cpp` split internals.
+- `BassPreviewAudioBackend` owns the Windows, macOS, and Linux preview-time BASS transport path with no supported-platform miniaudio fallback: bundled runtime-library loading, preloaded note-SFX channels, background-track tempo control through `bass_fx`, and a one-next-group `BASS_SYNC_POS | BASS_SYNC_MIXTIME | BASS_SYNC_ONETIME` chain on the always-running master mixer. Each session maps chart seconds to the master's absolute decode position, so GUI/QSG stalls cannot catch up or replay live note SFX.
+- BASS binds to the resolved concrete Core Audio endpoint, rather than following the default device. `PreviewAudioDeviceWatcher` (`src/audio/`, constructed only under `MIACODE_HAS_BASS_AUDIO`) uses IMM endpoint callbacks as its sole Windows source when native registration succeeds; it must not construct or synchronously enumerate `QMediaDevices` on that path, because Qt Multimedia may block the GUI in AudioSes during hotplug. `QMediaDevices::audioOutputsChanged` remains only the native-registration and non-Windows fallback; `PreviewAudioDeviceChangePolicy.h` decides whether its sorted device list or default id really changed. Its direct handler runs on the Core Audio MTA and posts one worker `DeviceChangePause` barrier. While playing it captures one monotonic cutoff second, immediately pauses the old BASS output, and `TimelineSection` freezes from that exact second without posting a second pause. While already paused it posts a route-invalidation-only barrier: no GUI pause/clock write, but the concrete endpoint and retained stream are destroyed. The first explicit Play after either path always cold-Prepares on the current endpoint; there is no auto-resume, in-place re-anchor, drift threshold, or debounce-based recovery.
 
 Shared concerns:
 
@@ -142,13 +146,18 @@ Current contract:
 - Quickshell-beta presentation split: `QuickShellPreviewSurface.qml` keeps inline presentation for images and no-media states, while `QuickShellPreviewCompositeSurface` hosts `QuickShellPreviewSurface.qml` inside a dedicated `QQuickView` whenever the active quickshell media is video
 - Export route: export stays separate from the preview host split and still consumes the shared resolver through `VideoExportController`; Windows export audio now renders a single mixed WAV through `BassExportAudioBackend`, while non-Windows keeps `LegacyExportAudioBackend` as a non-parity fallback
 
+Lifetime contract:
+
+- A background video's `EndOfMedia` is never a main-transport event. The only natural end of the preview transport stays `MainWindow.PreviewTick.cpp::onQtPreviewTickAtSecond()` against `previewPlaybackEndSeconds()`; a PV that ends early must leave BGM, SFX, chart and timeline running (`docs/audit/PREVIEW_AUTO_PAUSE_INITIAL_DIAGNOSIS_ZH.md`).
+- Every backend `EndOfMedia` is classified by `src/core/video/PreviewEndOfMediaPolicy.h` (spec `preview_end_of_media_policy_spec`) against the media's OWN duration versus the decoder's own progress — never the chart length, never a "shorter than N seconds" threshold. `natural` keeps the last frame, `stale` runs the bounded seek-then-reload recovery in `PreviewStageMediaHost_Timeout.cpp` (`docs/audit/PREVIEW_FIRST_PLAY_RENDER_STALL_HANDOFF_AUDIT_ZH.md` §5.2), `unknown` does nothing. Both backends route through `PreviewStageMediaHost::handleVideoEndOfMedia`; change the classifier and its spec together.
+
 Timing contract:
 
 - Preview UI follow, export-dialog current second, and weak video late-start alignment must read `MainWindow::currentPreviewAuthoritativeAudioClockSecond` instead of branching between audio and `PreviewStageMediaHost::currentPlaybackSecond()`
 - `PreviewStageMediaHost::currentPlaybackSecond()` and `clockDeltaSeconds()` remain video-local observability only; they are not shared SFX/BGM/UI authority clocks
-- Realtime preview BGM rate control is backend-owned: Windows keeps the BASS/BASSmix path and defaults BGM rate changes to pitch-preserving BASS_FX tempo with the compact `40/15/8` window preset; `MIACODE_BASS_BGM_RATE_MODE=rate_transpose` switches Windows BGM to source-time-priority `BASS_ATTRIB_FREQ` rate transpose for A/B diagnosis. The non-Windows compatibility backend still uses the stretched `SoundTouch` data-source path for every playback rate, including `1.0x`; do not reintroduce another runtime BGM decoder path without reviewing preview clock ownership.
-- Timeline waveform cache generation is also decoder-sensitive: on Windows, `src/common/WaveformCache.cpp` decodes through BASS so MP3 delay/padding matches preview BGM playback. If the Windows preview BGM decoder changes away from BASS, review waveform cache generation and bump the waveform cache schema if the time mapping changes.
-- The non-Windows stretched runtime clock is not the data-source cursor. Runtime authoritative preview audio time there now anchors to `ma_engine_get_time_in_pcm_frames()` plus the chart-second start point recorded when background playback starts; `getCursorCallback()` may still expose a raw delivery cursor for diagnostics, but it is not the authority clock.
+- Realtime preview BGM rate control is backend-owned: Windows, macOS, and Linux use the BASS/BASSmix path and default BGM rate changes to pitch-preserving BASS_FX tempo with the compact `40/15/8` window preset; `MIACODE_BASS_BGM_RATE_MODE=rate_transpose` switches BGM to source-time-priority `BASS_ATTRIB_FREQ` rate transpose for A/B diagnosis. The compatibility backend still uses the stretched `SoundTouch` data-source path; do not reintroduce another supported-platform BGM decoder path without reviewing preview clock ownership.
+- Timeline waveform cache generation is decoder-sensitive: Windows, macOS, and Linux decode through BASS so MP3 delay/padding matches preview BGM playback. If a supported platform changes away from BASS, review waveform cache generation and bump the waveform cache schema if the time mapping changes.
+- The compatibility backend's stretched runtime clock is not the data-source cursor. Runtime authoritative preview audio time there anchors to `ma_engine_get_time_in_pcm_frames()` plus the chart-second start point recorded when background playback starts; `getCursorCallback()` may still expose a raw delivery cursor for diagnostics, but it is not the authority clock.
 - Before the non-Windows stretched source has emitted its first output frames after seek/start, realtime preview should keep using the fallback elapsed clock so SFX do not lock to a pre-output stretched cursor.
 
 Current filename convention:
@@ -158,6 +167,8 @@ Current filename convention:
 - `bg.jpg`
 - `bg.png`
 - `bg.jpeg`
+
+The metadata page's direct media import is a preview/export synchronization entry point. Image import preserves JPG/JPEG/PNG bytes under `bg.<source-extension>`; video import writes `pv.mp4` and updates the document's explicit `&video=` value to `pv.mp4`. `ChartMediaImport.h` moves other same-kind candidates aside before committing and retains them after success as uniquely numbered `<stem>_bak[_N].<ext>` copies, so resolver priority cannot leave an older `bg.*` active and replacement remains recoverable. The dialog must release the preview decoder before replacement and re-sync the stage-media route afterward; export then observes the same shared resolver/document field without a separate export-side copy path.
 
 If you add or remove supported media names, keep preview and export aligned.
 If you change preview-time background-media ownership or media lookup, review `MainWindow.*`, `sections/preview/MainWindow.PreviewStageMediaRoute.cpp`, `PreviewMediaController.*`, `PreviewStageMediaHost.*`, `PreviewStageMediaItem.qml`, `QuickShellPreviewCompositeSurface.*`, `QuickShellPreviewSurface.qml`, and the export path in the same patch.
@@ -172,7 +183,8 @@ Current lookup owners:
 
 Current convention:
 
-- chart-directory sibling `track.mp3`
+- chart-directory sibling track candidates from `miacode::chart_assets::trackCandidateFileNames()`:
+  `track.mp3`, `track.wav`, `track.flac`, `track.ogg`
 - optional environment override for some paths via `MIACODE_TRACK_PATH` on main-window export path
 
 If you support new track filenames or lookup rules, update all relevant owners and `assets-and-tools.md`.
@@ -184,6 +196,7 @@ Asset root:
 - `miacode::assets::findAssetRoot`
 - `miacode::assets::assetPath`
 - Skin import opens `assets/skin`; built-in and user skins are sibling child directories and only complete core skins are listed
+- Timeline note art follows the current preview skin directory via `MainWindow::applyPreviewSkinDirectoryToSurfaces` -> `TimelineQuickStateBridge::setSkinDirectory`; keep `TimelineView`, `TimelineQuickTextureCache`, and `TimelineSceneStateBuilder` cache invalidation aligned when changing skin lookup
 - Judge-line import opens `assets/background/outlines`; custom PNG selections must flow through realtime preview and export task/snapshot state together with the built-in `PreviewOutlineVariant` fallback
 
 Preview-time consumers:
@@ -230,6 +243,7 @@ Wifi-specific note:
 
 - `RenderMode::MaimuriDxStyle` wifi track erasure is not driven by static `wifiTrackAreaCheckpoints`.
 - `MuriAnalyzer` reconstructs runtime lane progress in `MarkerMuriState::wifiLaneProgressSeconds`, mirrors judged lane areas in `MarkerMuriState::wifiLaneAreas`, and records the actual `C` release time in `MarkerMuriState::wifiPadCSecond`.
+- `RenderMode::EraseByArea` crosses every surface the other render modes do: the menu action in `MainWindow.BootstrapAndMenus.cpp` (in the exclusive `renderModeGroup`), the action check state in `MainWindow.ValidationRender.cpp`, the shell cycle in `MainWindow.WindowShell.cpp`, portable preview persistence in `MainWindow.EditorDisplay.cpp`, and `VideoExportSnapshot::toJson/fromJson`. Both persistence sites now share `muriRenderModeToken` / `muriRenderModeFromToken` in `src/common/MuriRenderOptions.h`, so a new mode cannot be added to one and forgotten in the other. Adding a `RenderMode` value means auditing every `== RenderMode::Native` comparison, not just the `MaimuriDxStyle` ones: `PreviewChartReviewLayerState` gated its overlays on `!= Native` and now gates on `== MaimuriDxStyle`, so chart-review overlays stay on in the new mode. `PreviewTrackLayerState` is the only consumer of the trim behaviour, so realtime preview and video export follow automatically; the trim math lives in `PreviewTrackShared` and is shared with `PreviewSlideMotionLayerState` through `previewSlideStarSegment` so the clear cannot drift away from the drawn star.
 - `PreviewTrackLayerState` must trim the shared middle-track body by the slowest lane's current area index, using `wifiLaneProgressSeconds` first and `wifiLaneAreas` as a fallback if the progress array is unavailable.
 - In `RenderMode::MaimuriDxStyle`, wifi track completion should stay erased after the runtime clear; do not repaint a full-track flash on top of the erased body. When `wifiNeedC` is enabled, the last area must still remain visible until `wifiPadCSecond`.
 
@@ -240,9 +254,10 @@ Shared render settings include:
 - fixed outline playfield diameter ratio from `src/common/LayoutRingConfig.h`; preview and export should not diverge by re-detecting ring size from texture pixels
 - outline variant / judge-line background overlay selection
 - smooth brightness
-- background scale mode (`fill`, `fit`, and `square_fit`; `square_fit` means center the largest 1:1 square in the render canvas, keep the outside black, and fit-contain the full PV/BG inside that square)
+- background scale mode (`fill`, `fit`, `square_fit`, and `inner_circle_fit_outer_fill`; `square_fit` means center the largest 1:1 square in the render canvas, keep the outside black, and fit-contain the full PV/BG inside that square; `inner_circle_fit_outer_fill` draws a fill-cropped outer PV/BG plus a fit-contained inner copy clipped to the layout-size circle)
 - tap/touch flow speed (persisted as separate values with legacy single-speed fallback)
-- chart-review judge overlay toggles for slide/wifi-family and tap/hold-family effects
+- tap-family chart-review judge text distance (`inner` / `middle` / `outer`; `outer` preserves the legacy simple judge-text offset, default is `inner`)
+- chart-review judge overlay toggles for slide/wifi-family, tap/hold-family, ordinary break, and touch/touch-hold-family effects
 - timestamp/object-stats HUD flags
 - Muri render options
 
@@ -294,7 +309,7 @@ Implication:
   - Check packaging or ffmpeg assumptions if format support changes
 - Change preview timing constants:
   - Check `PreviewGameplayConfig.h`
-  - Check `src/preview/scene/PreviewOpacityCurves.cpp`
+  - Check `src/core/scene/PreviewOpacityCurves.cpp`
   - Check `VideoExportController.cpp` diagnostics and timeline assumptions
 - Change Muri static thresholds:
   - Check `MuriConfig.h`
@@ -304,6 +319,10 @@ Implication:
   - Check `MuriPanelEntries.cpp`
   - Check `MainWindow.ValidationFlow.cpp`
   - Check `MuriSpec.cpp`
+- Add a BASS consumer or another BASS process-level config:
+  - Check that it cannot run before `main()` calls `disableBassDefaultDeviceEntry` (`src/audio/PreviewBassDefaultDevice.h`); Windows `BASS_CONFIG_DEV_DEFAULT` closes at the process's first BASS device enumeration or `BASS_Init`, on any thread or device, including the waveform decoder's no-sound device 0
+
+Selection-to-range export flows from `PlainCodeEditor` through `MainWindow::ExportSection` and `TimelineQuickModel::resolveExportRangeForSelection` into `VideoExportDialog`'s existing range page. The resolver snaps to comma-delimited objects, preserves slash/chained-slide tokens, includes explicitly selected comma timing, uses preview flow speed for the pre-render lead-in, and ends one frame after selected visual/judge tails reported by the export-only `timelineRenderNoteExportVisualEndSecond`. The global timeline snapshot keeps the pre-existing `timelineRenderLineVisualEndSecond` semantics unchanged.
 
 ## Update This File When
 

@@ -3,6 +3,7 @@
 #include <QFont>
 #include <QHash>
 #include <QSize>
+#include <QString>
 
 #include <memory>
 
@@ -20,9 +21,16 @@ struct TimelineSceneBuildRequest {
     QHash<quint64, QString> muriMarkerTooltips;
     QSize viewportSize;
     QFont headerLineNumberFont;
-    int horizontalScrollValue = 0;
+    QString skinDirectory;
+    // Sub-pixel. Follow-mode playback moves this by ~1-4 logical px per frame, so rounding it
+    // to whole pixels quantised the scroll velocity and produced visible judder (see
+    // cross-chain-linkage.md §14). Consumers that genuinely need an integer (QScrollBar, the
+    // cull-bucket index, the extension payload) round at their own boundary.
+    double horizontalScrollValue = 0.0;
     int headerLeftLimit = 0;
     int headerRightLimit = 0;
+    int headerMarkerLeftLimit = 0;
+    int headerMarkerRightLimit = 0;
     // Phase 7 — scroll-bucket viewport culling. When > 0, the builder
     // emits waveform / grid / note primitives only for the visible
     // second range expanded by this many pixels on each side. The
@@ -39,6 +47,7 @@ struct TimelineSceneBuildRequest {
     double zoomScale = 0.5;
     double contentScale = 1.0;
     double waveformBrightness = kTimelineWaveformBrightnessDefault;
+    double measureLineBrightness = kTimelineMeasureLineBrightnessDefault;
     double waveformPhaseCompensationSeconds = 0.0;
     double playbackEntrySeconds = 0.0;
     double playheadSeconds = 0.0;
@@ -47,14 +56,15 @@ struct TimelineSceneBuildRequest {
     bool showSlideTracks = true;
     bool playheadIndicatorSuppressed = false;
     bool dragActive = false;
-    // Phase 9d-native — header control state (mirrors the QML
-    // ToolButton + CheckBox in TimelineTabSurface.qml). The DComp
-    // path renders these natively in the popup composition plane
-    // because DWM stacks the popup HWND above the QQuickWindow's
-    // surface and QML siblings can't paint above it.
+    // Phase 9d-native — header control state. Drives the zoom visual
+    // emitted into TimelineSceneState and drawn by
+    // TimelineQuickHeaderLayer; the QML ToolButton handles input only.
+    int zoomControlPressedPart = 0;
+    int zoomControlHoveredPart = 0;
+    bool settingsControlHovered = false;
+    bool settingsControlPressed = false;
     bool followPreviewEnabled = false;
     bool followProgressEnabled = true;
-    bool isChineseUi = false;
     quint64 appearanceRevision = 0;
     quint64 gridRevision = 0;
     quint64 waveformRevision = 0;
@@ -70,6 +80,9 @@ public:
     static TimelineSceneLayoutMetrics layoutMetrics(const TimelineSceneBuildRequest& request);
     static int maxHorizontalScrollValue(const TimelineSceneLayoutMetrics& metrics);
     static int secondToSceneX(const TimelineSceneLayoutMetrics& metrics, double second);
+    // Un-rounded counterpart of secondToSceneX. Scroll targets must use this: rounding the
+    // target is what quantises follow-playback motion.
+    static qreal secondToSceneXExact(const TimelineSceneLayoutMetrics& metrics, double second);
     static TimelineSceneState build(const TimelineSceneBuildRequest& request);
     static int secondToSceneX(const TimelineSceneState& state, double second);
     static double sceneXToSecond(const TimelineSceneState& state, qreal x);

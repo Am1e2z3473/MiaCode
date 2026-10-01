@@ -312,7 +312,8 @@ double QtPreviewSfxRuntime::authoritativePlaybackSecond() const
 
 bool QtPreviewSfxRuntime::audition(const QString& kind, double gain)
 {
-    return playKindInternal(kind, gain);
+    lastNativeErrorCode_ = 0;
+    return playKindInternal(kind, gain, &lastNativeErrorCode_);
 }
 
 void QtPreviewSfxRuntime::stopAll()
@@ -336,6 +337,7 @@ void QtPreviewSfxRuntime::stopAll()
     stopBank(exSfx_);
     stopBank(touchSfx_);
     stopBank(fireworkSfx_);
+    stopBank(trackStartSfx_);
     if (backgroundTrackVoice_ != nullptr && backgroundTrackVoice_->initialized) {
         ma_sound_stop(&backgroundTrackVoice_->sound);
     }
@@ -347,4 +349,3 @@ void QtPreviewSfxRuntime::stopAll()
     preparedPlayback_ = PreparedPlaybackState();
     pauseTouchholdVoices();
 }
-

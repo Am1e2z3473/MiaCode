@@ -7,6 +7,7 @@
 #include <QChronoTimer>
 #include <QElapsedTimer>
 #include <QHash>
+#include <QJsonObject>
 #include <QMainWindow>
 #include <QPointer>
 #include <QPoint>
@@ -32,6 +33,10 @@
 #include "tools/video_export/VideoExportSnapshot.h"
 #include "common/PreviewGameplayConfig.h"
 #include "common/PreviewVideoGeometryConfig.h"
+#include "extensions/ExtensionManager.h"
+#include "app/ui/AppBackgroundSettings.h"
+#include "core/chart/transform/ChartBatchTransform.h"
+#include "core/chart/transform/ChartNormalization.h"
 
 class QAction;
 class QByteArray;
@@ -54,7 +59,11 @@ class LatencyDetectionPage;
 namespace miacode::export_page {
 class ExportLauncherPage;
 }
+namespace miacode::video_export {
+class BatchExportPanel;
+}
 namespace miacode::ui {
+class AppBackgroundPainter;
 class BusySpinner;
 }
 class QListWidget;
@@ -62,6 +71,7 @@ class QListWidgetItem;
 class QJsonObject;
 class QLineEdit;
 class QMenu;
+class QMenuBar;
 class QMoveEvent;
 class QTabWidget;
 class QToolBar;
@@ -88,6 +98,7 @@ class QToolButton;
 class QWidget;
 class QWheelEvent;
 class QWindow;
+class PreviewAudioDeviceWatcher;
 class QtPreviewSfxRuntime;
 class TimelineView;
 class TimelineQuickStateBridge;
@@ -126,12 +137,9 @@ class MainWindow : public QMainWindow,
     friend class miacode::export_page::ExportLauncherPage;
 
 public:
-    // Phase 4c — non-owning accessor + signal so the QuickShellBootstrap can
-    // wire the host (QMediaPlayer + QVideoSink) into PreviewDCompSurface
-    // for StageBackgroundSource video-frame lookup. The host is created
-    // lazily inside MainWindow.PreviewStageMediaRoute on first chart-load;
-    // the signal lets the bootstrap connect once and react to its
-    // appearance without polling.
+    // Phase 4c — non-owning accessor for the preview stage-media host
+    // (QMediaPlayer + QVideoSink). The host is created lazily inside
+    // MainWindow.PreviewStageMediaRoute on first chart-load.
     PreviewStageMediaHost* previewStageMediaHost() const;
 
     // Accessor for the latency-detection sandbox controller. The
@@ -141,19 +149,8 @@ public:
     miacode::latency::LatencySandboxController* latencySandboxController() const;
 
 signals:
-    void previewStageMediaHostInitialized(PreviewStageMediaHost* host);
-    // Issue #3 fix — emitted whenever the user changes the preview canvas
-    // frame-rate option in Render Settings. Carries the SyncInterval
-    // value (1, 2, 3) for the DComp renderer's Present(N, 0) call.
-    // The GUI computes N = round(target_interval_ns / display_vsync_ns)
-    // because only the GUI has QScreen::refreshRate() — the render
-    // thread can't safely query Qt screen state.
-    //   - 1 = present every vsync (display rate; this is the
-    //         DisplayRefresh option AND also Fps60 on a 60 Hz display).
-    //   - 2 = present every other vsync (60 FPS on 120 Hz, 50 on 100 Hz).
-    //   - 3 = present every third vsync.
-    void previewCanvasPresentSyncIntervalChanged(unsigned int syncInterval);
-
+    void chartDropOverlayVisibleChanged(bool visible);
+    void chartDropOverlayModeChanged(int mode);
 public:
     struct CliVideoExportRequest {
         QString chartPathOrDirectory;
@@ -179,10 +176,15 @@ public:
         PreviewBackgroundScaleMode backgroundScaleMode = PreviewBackgroundScaleMode::FillCrop;
         double noteFlowSpeed = miacode::preview_gameplay::kPreviewTimingDefaultFlowSpeed;
         double touchFlowSpeed = miacode::preview_gameplay::kPreviewTimingDefaultFlowSpeed;
+        PreviewTapJudgeTextDistance tapJudgeTextDistance = PreviewTapJudgeTextDistance::Inner;
+        PreviewJudgeEffectStyle judgeEffectStyle = PreviewJudgeEffectStyle::Standard;
         int skinLoadWaitMs = 2000;
     };
 
-    explicit MainWindow(bool quickShellBootstrapMode = false, QWidget* parent = nullptr);
+    explicit MainWindow(
+        bool quickShellBootstrapMode = false,
+        QWidget* parent = nullptr,
+        bool explicitStartupOpenPending = false);
     ~MainWindow() override;
     bool exportPreviewVideoFromCli(
         const CliVideoExportRequest& request,
@@ -191,6 +193,10 @@ public:
         QString* details = nullptr
     );
     bool openStartupTarget(const QString& path);
+    bool openOnlinePreviewAtPath(const QString& path);
+    void setQuickShellRootWindow(QWindow* window);
+    void cancelChartDrop();
+    void handleAudioDrop(const QStringList& audioPaths);
     // Shows the first-run welcome / initial-config dialog (preview side +
     // theme). Called from QuickShellBootstrap after the UI is ready.
     void showWelcomeDialog();
@@ -208,6 +214,7 @@ public:
     void updateShellPreviewScrub(double second, bool centerView) override;
     void endShellPreviewScrub(double second, bool centerView) override;
     void setShellPreviewRate(double rate) override;
+    void toggleShellMuriRenderMode() override;
     void nudgeShellPreviewRate(int direction) override;
     bool stepShellPreviewBySeconds(double deltaSeconds, bool centerView) override;
     void beginShellPreviewHeldSeek(int direction, int key) override;
@@ -232,6 +239,7 @@ public:
     QString shellWindowTitle() const override;
     bool shellWorkspacePanelsSwapped() const override;
     QString shellPreviewSpeedLabel() const override;
+    bool shellMuriCheckRenderMode() const override;
     bool shellPreviewPlaying() const override;
     double shellPreviewPositionSeconds() const override;
     double shellPreviewDurationSeconds() const override;
@@ -254,6 +262,7 @@ public:
     bool shellMuriTabVisible() const override;
     bool shellExportPageActive() const override;
     QWidget* shellWindowWidget() const override;
+    QMenuBar* shellMenuBarWidget() const override;
     QDockWidget* shellOutlineDockWidget() const override;
     bool shellOutlineDockCollapsed() const override;
     int shellOutlineDockExpandedWidth() const override;
@@ -296,6 +305,7 @@ private slots:
     void onToggleFireworkSelection();
     void onRandomRotateSelection();
     void onClearCompleteElementsSelection();
+    void onResetTapNotesSelection();
     void onRaiseSubdivisionSelection();
     void onLowerSubdivisionSelection();
     void onRaiseSubdivisionHalfStepSelection();
@@ -310,8 +320,10 @@ private slots:
     void onBatchExportPreviewVideo();
     void onPackAsZip();
     void onNetBatchDownload();
+    void onNetBatchUpload();
     void onPreviewAudioSettings();
     void onPreviewVideoSettings();
+    void onSkinSettings();
     void onMediaProcessingTools();
     void onPrependTrackSilence();
     void onPrependPvBlack();
@@ -320,11 +332,15 @@ private slots:
     void onReadTitleFromTrack();
     void onReadArtistFromTrack();
     void onExtractBackgroundFromTrack();
+    void onImportBackgroundImage();
+    void onImportBackgroundVideo();
+    void onDeleteBackgroundVideo();
     // Opens the "manage per-difficulty designers" dialog (rows for &des_1..7
     // plus the "all difficulties share one designer" toggle). See
     // DocumentSection::openPerDifficultyDesignerDialog() in DocumentFlow.
     void onManagePerDifficultyDesigners();
     void onPreferences();
+    void showExtensionDevToolsDialog();
     void onAbout();
     void onToggleFindReplace();
     void onFindNext();
@@ -334,11 +350,10 @@ private slots:
     void onErrorItemActivated(QListWidgetItem* item);
     void onMuriItemActivated(QListWidgetItem* item);
 public:
-    // Issue #3 fix — moved from private so QuickShellBootstrap can read
-    // the cached mode at attach-time and seed the DComp renderer's
-    // target-frame-interval cap. Exposing the enum doesn't widen any
+    // Public so callers outside MainWindow (the preferences dialog)
+    // can read the cached mode. Exposing the enum doesn't widen any
     // mutation surface (the setter setPreviewCanvasFrameRateMode
-    // remains internal); only the value type is now visible.
+    // remains internal); only the value type is visible.
     enum class PreviewCanvasFrameRateMode {
         Fps30,
         Fps60,
@@ -347,6 +362,8 @@ public:
     };
 private:
     using BatchTransform = std::function<QString(const QString&, int*)>;
+    using SelectionContextBatchTransform = std::function<QString(
+        const QString&, const miacode::chart_transform::SelectionContext&, int*)>;
     enum class ChartTransformOp {
         MirrorLeftRight,
         MirrorUpDown,
@@ -395,6 +412,7 @@ private:
     };
 
     #include "MainWindowPrivateMethodsA.inc"
+    void showExtensionRequestedWelcomeDialogWhenReady();
     double previewDurationSeconds() const;
     double previewPlaybackEndSeconds() const;
     void applyPreviewPlaybackRate(double rate);
@@ -414,6 +432,10 @@ private:
     QRect previewFullscreenControlCardRect(bool visible) const;
     void setPreviewCanvasAspectRatio(double ratio, bool persistState);
     double normalizedPreviewCanvasAspectRatio(double ratio) const;
+    void applyAppBackgroundSettings(
+        const miacode::ui::AppBackgroundSettings& settings,
+        bool persistPreference,
+        bool refreshTheme = true);
     void setPreviewCanvasFrameRateMode(PreviewCanvasFrameRateMode mode, bool persistState);
     PreviewCanvasFrameRateMode previewFrameRateModeFromStorageValue(
         const QString& value,
@@ -424,12 +446,9 @@ private:
     QString previewStageMediaFrameRateModeStorageValue() const;
     QString timelineFrameRateModeStorageValue() const;
 public:
-    // Issue #3 fix — public getter for the current preview canvas
-    // frame-rate mode. QuickShellBootstrap needs it to seed the DComp
-    // renderer's target-interval at attach time (before the user has
-    // touched Render Settings, the cached value is already set from
-    // the persisted project / portable state). Read-only — the setter
-    // setPreviewCanvasFrameRateMode stays internal.
+    // Public getter for the current preview canvas frame-rate mode,
+    // read by the preferences dialog to seed its combo box. Read-only
+    // — the setter setPreviewCanvasFrameRateMode stays internal.
     PreviewCanvasFrameRateMode currentPreviewCanvasFrameRateMode() const;
     PreviewCanvasFrameRateMode currentPreviewStageMediaFrameRateMode() const;
     PreviewCanvasFrameRateMode currentTimelineFrameRateMode() const;
@@ -458,13 +477,16 @@ private:
     void setPreviewStageMediaFrameRateMode(PreviewCanvasFrameRateMode mode, bool persistState);
     void setVideoDecodePrefersSoftware(bool preferSoftware, bool persistState);
     void setTimelineFrameRateMode(PreviewCanvasFrameRateMode mode, bool persistState);
+    void setTouchPadAuthoringAnchor(double seekSecond, double tokenSecond);
     double timelineSecondForCursor(int line, int col) const;
+    bool resolveTimelineSecondForCursor(int line, int col, double* second) const;
     void jumpToLocation(int line, int col);
     QString transformChartText(const QString& input, ChartTransformOp op, int* changedCount = nullptr) const;
     QString editorText() const;
     QString resolveDefaultTrackPath() const;
     QString resolvePreviewSkinDir() const;
     QString resolvePreviewSkinRootDir() const;
+    void applyPreviewSkinDirectoryToSurfaces();
     QString resolveProjectRenderStateFilePath() const;
     QString resolveInitialOpenDirectory() const;
     void resetPortablePreviewSettingsToDefaults();
@@ -476,14 +498,16 @@ private:
     void applyEditorHalfWidthInputEnabled(bool enabled, bool persistPreference);
     void applyEditorOverwriteModeEnabled(bool enabled, bool persistPreference);
     void applyEditorAutoCompletionEnabled(bool enabled, bool persistPreference);
+    void applyEditorScrollBeyondLastLineEnabled(bool enabled, bool persistPreference);
+    void applyEditorSelectionBeatDisplayEnabled(bool enabled, bool persistPreference);
+    void applyEditorPreventMultiClickSelectionEnabled(bool enabled, bool persistPreference);
     void applyEditorImeInputDisabled(bool disabled, bool persistPreference);
     void applyEditorHeaderTopDisplay(EditorHeaderTopDisplay mode, bool persistPreference);
     // Transient Alt-hold override: while the preview is paused, holding Alt
     // flips the "暂停时显示判定区" pause display (judge area ⇄ PV/BG) until released.
     void setPauseDisplayAltHoldActive(bool active);
-    void showCreateBookmarkDialog();
-    void showBookmarkManager();
-    void openBookmarkAtLine(int line);
+    void setTouchPadAuthoringCtrlHoldActive(bool active);
+    void activateBookmarkAtLine(int line);
     void setFullCopyAreaVisible(bool visible);
     void syncCopyAreaEditorAppearance();
     void syncCopyAreaLineCount();
@@ -495,6 +519,8 @@ private:
     void saveProjectRenderState() const;
     void removeProjectRenderState() const;
     void applyPreviewAudioSettingsToRuntime();
+    void loadProjectAudioPreferences();
+    void saveProjectAudioPreferences() const;
     void setLastOpenDirectory(const QString& pathOrDir);
     bool runValidateSimaiSilently(bool focusFirstIssue = false);
     bool preparePreviewStartState();
@@ -536,6 +562,7 @@ private:
     QString currentValidationIgnoreScopeKey() const;
     bool isIssueTypeIgnoredInHeaderForCurrentFile(const QString& issueTypeKey) const;
     void setIssueTypeIgnoredInHeaderForCurrentFile(const QString& issueTypeKey, bool ignored);
+    QJsonObject handleExtensionHostRequest(const QString& method, const QJsonObject& params);
     void loadProjectValidationPreferences();
     void saveProjectValidationPreferences(const QString& chartFilePath = QString()) const;
     void applyIgnoreMuriIssuePrompts(bool enabled, bool persistPreference);
@@ -574,7 +601,7 @@ private:
 
     struct ValidationCacheEntry {
         QString chartText;
-        bool chineseUi = false;
+        SimaiNativeValidationLocale validationLocale = SimaiNativeValidationLocale::English;
         miacode::simai::SimaiTimingMetadata timingMetadata;
         bool ok = true;
         int errorCount = 0;
@@ -584,6 +611,25 @@ private:
         int strictNoteCount = 0;
         int strictErrorCount = 0;
         QVector<ValidationCachedIssue> issues;
+    };
+
+    struct ExtensionDiagnosticEntry {
+        QString ownerId;
+        int line = 1;
+        int col = 1;
+        int endCol = 1;
+        QString message;
+        QString severity;
+        QString source;
+    };
+
+    struct ExtensionTimelineMarkerEntry {
+        QString ownerId;
+        QString id;
+        double second = 0.0;
+        double endSecond = -1.0;
+        QString label;
+        QString color;
     };
 
     struct DeletedDifficultyUndoState {
@@ -599,14 +645,27 @@ private:
         int originalPosition = -1;
         int transformedAnchor = -1;
         int transformedPosition = -1;
+        double previewSecond = -1.0;
     };
 
+public:
+    // Derived sidebar bookmark for a non-control `||` chart comment. This is a
+    // transient view cache rebuilt from chart text, never a persisted object.
     struct EditorBookmark {
         QString title;
         QString text;
         int line = 1;
+        QString source;
+        QString commentText;
+        QString commentFingerprint;
+        QString contextBefore;
+        QString contextAfter;
+        int difficultyId = 0;
+        // True when the name comes from an explicit `[label]` comment prefix.
+        bool nameLocked = false;
     };
 
+private:
     class EditorSection;
     class PreferencesSection;
     class PreviewSection;

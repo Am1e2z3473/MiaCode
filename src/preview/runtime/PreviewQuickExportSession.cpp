@@ -72,6 +72,7 @@ PreviewQuickExportSession::~PreviewQuickExportSession()
 void PreviewQuickExportSession::setFrameState(const miacode::preview::scene::PreviewFrameState& state)
 {
     frameState_ = state;
+    miacode::preview::scene::refreshPreviewFrameStateHudStatsSnapshot(frameState_);
     applyFrameState();
 }
 
@@ -91,6 +92,7 @@ void PreviewQuickExportSession::applyExportFrameTick(
     frameState_.usedGpuRendererThisFrame = usedGpuRendererThisFrame;
     frameState_.cpuFallbackCount = cpuFallbackCount;
     frameState_.fpsDisplay = fpsDisplay;
+    miacode::preview::scene::refreshPreviewFrameStateHudStatsSnapshot(frameState_);
     requestFrameRefresh();
 }
 
@@ -176,6 +178,29 @@ bool PreviewQuickExportSession::initialize(
         return false;
     }
 
+    // P1 — record the actual OpenGL renderer for the export session. The CLI
+    // export / worker path forces OpenGL, and on hybrid-graphics Windows the
+    // GL renderer string is the only signal we get about which GPU the export
+    // context landed on (an adapter is not guaranteed for OpenGL). Stashed for
+    // the render_backend summary line too.
+    if (QOpenGLFunctions* gl = context_->functions(); gl != nullptr) {
+        const auto glStr = [gl](GLenum name) -> QString {
+            const GLubyte* value = gl->glGetString(name);
+            return value != nullptr
+                ? QString::fromLatin1(reinterpret_cast<const char*>(value))
+                : QStringLiteral("(null)");
+        };
+        lastGlRenderer_ = glStr(GL_RENDERER);
+        appendExportSessionLog(
+            QStringLiteral("export_gl_renderer"),
+            QStringLiteral(
+                "rhi_api=OpenGL gl_vendor=\"%1\" gl_renderer=\"%2\" gl_version=\"%3\" "
+                "note=renderer_string_only_adapter_not_guaranteed")
+                .arg(glStr(GL_VENDOR))
+                .arg(lastGlRenderer_)
+                .arg(glStr(GL_VERSION)));
+    }
+
     renderControl_ = new QQuickRenderControl();
     quickWindow_ = new QQuickWindow(renderControl_);
     quickWindow_->setColor(Qt::transparent);
@@ -196,23 +221,9 @@ bool PreviewQuickExportSession::initialize(
 
     sceneRoot_ = new PreviewQuickSceneRoot(rootItem_);
     sceneRoot_->setZ(0.0);
-    // Force the QSG chart-render path on for the export scene graph.
-    //
-    // PreviewQuickSceneRoot::updatePaintNode and PreviewQuickHudLayer::paint
-    // both early-return when previewDCompExclusiveEnabled() is true, because
-    // for the live preview the DComp popup HWND is the authoritative chart
-    // renderer and the QSG layer would just duplicate work. The export path
-    // is offscreen (QQuickRenderControl + framebuffer) — there is no DComp
-    // popup to render anything, so the early-return drops every chart
-    // sprite from the encoded frames. Reusing the existing
-    // `dcompFallbackActive` override (set by QuickShellMain.qml on the
-    // secondary fullscreen surface for the same structural reason) tells
-    // both items to render normally regardless of the exclusive flag.
-    sceneRoot_->setDCompFallbackActive(true);
 
     hudLayer_ = new PreviewQuickHudLayer(rootItem_);
     hudLayer_->setZ(1.0);
-    hudLayer_->setDCompFallbackActive(true);
 
     applyFrameSize();
     applyFrameState();
@@ -1151,8 +1162,11 @@ bool PreviewQuickExportSession::mapOffscreenReadbackPbo(
 
 bool PreviewQuickExportSession::renderSceneIntoFramebuffer(QString* errorMessage)
 {
+    QElapsedTimer stageTimer;
+    stageTimer.start();
     applyFrameSize();
     applyFrameState();
+    lastRenderStats_.stateUpdateNs = stageTimer.nsecsElapsed();
 
     if (!framebuffer_->bind()) {
         if (errorMessage != nullptr) {
@@ -1177,12 +1191,18 @@ bool PreviewQuickExportSession::renderSceneIntoFramebuffer(QString* errorMessage
 
     QElapsedTimer renderTimer;
     renderTimer.start();
+    stageTimer.restart();
     renderControl_->polishItems();
+    lastRenderStats_.polishNs = stageTimer.nsecsElapsed();
+    stageTimer.restart();
     renderControl_->beginFrame();
     renderControl_->sync();
+    lastRenderStats_.syncNs = stageTimer.nsecsElapsed();
+    stageTimer.restart();
     renderControl_->render();
     renderControl_->endFrame();
     gl->glFlush();
+    lastRenderStats_.renderSubmitNs = stageTimer.nsecsElapsed();
     lastRenderStats_.renderNs = renderTimer.nsecsElapsed();
     return true;
 }

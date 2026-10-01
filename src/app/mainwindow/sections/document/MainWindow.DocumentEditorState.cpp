@@ -130,7 +130,8 @@ void MainWindow::DocumentSection::syncChartSelectionTransformUndoState()
 void MainWindow::DocumentSection::recordChartSelectionTransformUndoEntry(
     int originalAnchor,
     int originalPosition,
-    const QTextCursor& transformedCursor)
+    const QTextCursor& transformedCursor,
+    double previewSecond)
 {
     auto* editor = qobject_cast<PlainCodeEditor*>(ui_.editorWidget_);
     if (editor == nullptr || editor->document() == nullptr) {
@@ -149,6 +150,7 @@ void MainWindow::DocumentSection::recordChartSelectionTransformUndoEntry(
     entry.originalPosition = originalPosition;
     entry.transformedAnchor = transformedCursor.anchor();
     entry.transformedPosition = transformedCursor.position();
+    entry.previewSecond = previewSecond;
     state_.chartSelectionTransformUndoEntries_.append(entry);
     logSelectionRestore(
         QStringLiteral("record"),
@@ -166,6 +168,52 @@ void MainWindow::DocumentSection::recordChartSelectionTransformUndoEntry(
             .arg(state_.chartSelectionTransformUndoEntries_.size())
     );
     updateLastObservedChartEditorUndoRedoSteps();
+}
+
+void MainWindow::DocumentSection::recordChartCursorUndoEntry(
+    int originalAnchor,
+    int originalPosition,
+    const QTextCursor& transformedCursor,
+    double previewSecond)
+{
+    recordChartSelectionTransformUndoEntry(
+        originalAnchor,
+        originalPosition,
+        transformedCursor,
+        previewSecond);
+}
+
+void MainWindow::DocumentSection::recordChartSelectionUndoRestoreAfterNextEdit(
+    int originalAnchor,
+    int originalPosition)
+{
+    auto* editor = qobject_cast<PlainCodeEditor*>(ui_.editorWidget_);
+    if (editor == nullptr || editor->document() == nullptr) {
+        return;
+    }
+    if (originalAnchor == originalPosition || state_.editorSelectionUndoRedoRestoreInProgress_) {
+        return;
+    }
+
+    const int undoStepsBefore = editor->document()->availableUndoSteps();
+    const QPointer<PlainCodeEditor> guard(editor);
+    QTimer::singleShot(0, editor, [this, guard, originalAnchor, originalPosition, undoStepsBefore]() {
+        if (guard.isNull() || guard->document() == nullptr) {
+            return;
+        }
+        if (guard->document()->availableUndoSteps() <= undoStepsBefore) {
+            logSelectionRestore(
+                QStringLiteral("record_deferred_skip"),
+                QStringLiteral("reason=no_new_undo_step before=%1 after=%2 original_anchor=%3 original_pos=%4")
+                    .arg(undoStepsBefore)
+                    .arg(guard->document()->availableUndoSteps())
+                    .arg(originalAnchor)
+                    .arg(originalPosition)
+            );
+            return;
+        }
+        recordChartSelectionTransformUndoEntry(originalAnchor, originalPosition, guard->textCursor());
+    });
 }
 
 const MainWindow::SelectionTransformUndoEntry* MainWindow::DocumentSection::findChartSelectionTransformUndoEntry(
@@ -222,6 +270,9 @@ bool MainWindow::DocumentSection::restoreChartSelectionTransformCursor(
     );
     editor->setFocus(Qt::ShortcutFocusReason);
     applySelection(editor);
+    if (entry.previewSecond >= 0.0) {
+        owner_.seekPreviewDiscreteToSecond(entry.previewSecond, true);
+    }
     logSelectionRestore(
         QStringLiteral("restore_immediate"),
         QStringLiteral("mode=%1 focus_after=%2 current={%3}")
@@ -400,6 +451,11 @@ void MainWindow::DocumentSection::setEditorText(const QString& text)
     editor->document()->setModified(false);
     state_.editorUndoSaveAnchor_ = editor->document()->availableUndoSteps();
     clearChartSelectionTransformUndoEntries();
+    // Loading a file / switching difficulty repoints every second at different
+    // text, so the last authoring click's playhead anchor no longer means
+    // anything here.
+    state_.touchPadAuthoringAnchorSeekSecond_ = -1.0;
+    state_.touchPadAuthoringAnchorTokenSecond_ = -1.0;
     // QSignalBlocker suppresses blockCountChanged, so force line-number gutter recompute.
     editor->refreshLineNumberAreaLayout();
     state_.suppressTextDirtyTracking_ = previousSuppress;
@@ -415,16 +471,16 @@ void MainWindow::DocumentSection::updatePauseButtonAppearance()
     const bool previewPlaying = state_.qtPreviewPlaying_ || state_.exportIntroLeadInActive_;
     if (previewPlaying) {
         ui_.pausePreviewAction_->setIcon(makePreviewPauseIcon(iconColor));
-        ui_.pausePreviewAction_->setText(uiText("preview.pause", "Pause"));
+        ui_.pausePreviewAction_->setText(UiText::text(QStringLiteral("preview.pause")));
     } else {
         ui_.pausePreviewAction_->setIcon(makePreviewPlayIcon(iconColor));
-        ui_.pausePreviewAction_->setText(uiText("preview.play", "Play"));
+        ui_.pausePreviewAction_->setText(UiText::text(QStringLiteral("preview.play")));
     }
     if (ui_.pausePreviewButton_ != nullptr) {
         ui_.pausePreviewButton_->setText(
             previewPlaying
-                ? uiText("preview.pause", "Pause")
-                : uiText("preview.play", "Play")
+                ? UiText::text(QStringLiteral("preview.pause"))
+                : UiText::text(QStringLiteral("preview.play"))
         );
         ui_.pausePreviewButton_->setStyleSheet(
             state_.previewFullscreenActive_
@@ -548,7 +604,7 @@ void MainWindow::DocumentSection::markCurrentFieldDirty()
     // produces a recovery file. Cheap: bounded memcpy + atomic store,
     // no disk I/O. The 2-second debounced .bak write below is for
     // routine autosave; this is the per-edit safety net.
-    if (!state_.currentFilePath_.isEmpty()) {
+    if (!state_.currentFilePath_.isEmpty() && !state_.onlinePreviewDocument_) {
         miacode::crash_recovery::updateSnapshot(
             state_.currentFilePath_,
             currentDocumentTextForAutosave());

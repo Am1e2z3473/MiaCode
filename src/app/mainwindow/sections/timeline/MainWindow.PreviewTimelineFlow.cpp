@@ -11,11 +11,13 @@
 #include "TimelineView.h"
 #include "UiText.h"
 #include "UiTheme.h"
+#include "MainEntrypoints.h"
 #include "app/quick_shell/QuickShellPreviewCompositeSurface.h"
 #include "app/quick_shell/QuickShellPreviewSurfacePolicy.h"
 #include "common/ChartAssetPaths.h"
 #include "common/ChartClockCount.h"
 #include "common/CrashRecovery.h"
+#include "common/OperationLog.h"
 #include "common/DebugLog.h"
 #include "common/ProcessDiagnostics.h"
 #include "common/DebugOptions.h"
@@ -26,6 +28,7 @@
 #include "core/scene/PreviewProgressStatsCache.h"
 #include "core/chart/transform/ChartBatchTransform.h"
 #include "core/chart/transform/ChartNormalization.h"
+#include "timeline/TimelineMarkerOffset.h"
 #include "timeline/quick/TimelineQuickStateBridge.h"
 #include "tools/muri/MuriAnalyzer.h"
 #include "tools/muri/MuriPanelEntries.h"
@@ -194,50 +197,6 @@ void updatePreviewControlsLayout(
         previewControlsLayout->addWidget(previewSpeedButton, 0);
         previewControlsLayout->addWidget(previewFullscreenButton, 0);
     }
-}
-
-double shiftedTimelineSecond(double second, double offsetSeconds)
-{
-    if (!qIsFinite(second) || !qIsFinite(offsetSeconds)) {
-        return second;
-    }
-    return second + offsetSeconds;
-}
-
-QVector<TimelineBeatMarker> shiftedBeatMarkers(
-    const QVector<TimelineBeatMarker>& beatMarkers,
-    double offsetSeconds
-)
-{
-    QVector<TimelineBeatMarker> shifted = beatMarkers;
-    for (TimelineBeatMarker& marker : shifted) {
-        marker.second = shiftedTimelineSecond(marker.second, offsetSeconds);
-    }
-    return shifted;
-}
-
-QVector<TimelineNoteMarker> shiftedNoteMarkers(
-    const QVector<TimelineNoteMarker>& noteMarkers,
-    double offsetSeconds
-)
-{
-    QVector<TimelineNoteMarker> shifted = noteMarkers;
-    for (TimelineNoteMarker& marker : shifted) {
-        marker.second = shiftedTimelineSecond(marker.second, offsetSeconds);
-        if (marker.endSecond >= 0.0) {
-            marker.endSecond = shiftedTimelineSecond(marker.endSecond, offsetSeconds);
-        }
-        if (marker.slideTraceSecond >= 0.0) {
-            marker.slideTraceSecond = shiftedTimelineSecond(marker.slideTraceSecond, offsetSeconds);
-        }
-        if (marker.availableSecond >= 0.0) {
-            marker.availableSecond = shiftedTimelineSecond(marker.availableSecond, offsetSeconds);
-        }
-        for (double& shootSecond : marker.slideSegmentShootSeconds) {
-            shootSecond = shiftedTimelineSecond(shootSecond, offsetSeconds);
-        }
-    }
-    return shifted;
 }
 
 std::pair<int, int> lineColForTextOffset(const QString& text, int offset)
@@ -532,13 +491,7 @@ double MainWindow::TimelineSection::parsedRawFirstSeconds(bool* ok) const
     if (hasActiveDifficulty() && ui_.firstEdit_ != nullptr) {
         rawValue = ui_.firstEdit_->text();
     }
-    const QString trimmedRawValue = rawValue.trimmed();
-    bool localOk = false;
-    const double value = trimmedRawValue.isEmpty() ? 0.0 : trimmedRawValue.toDouble(&localOk);
-    if (ok != nullptr) {
-        *ok = trimmedRawValue.isEmpty() ? true : localOk;
-    }
-    return (trimmedRawValue.isEmpty() || localOk) ? value : 0.0;
+    return miacode::timeline::offset::parsedFirstSeconds(rawValue, ok);
 }
 
 double MainWindow::TimelineSection::parsedFirstSeconds(bool* ok) const
@@ -658,6 +611,19 @@ void MainWindow::TimelineSection::setCurrentFilePath(const QString& path, bool s
             ? QString()
             : QDir(projectDataDirectoryPath).filePath(QStringLiteral("logs"))
     );
+    // Relocate the startup beacon and op-chain shadow so they co-locate
+    // with the runtime/export logs under this chart's .miacode/logs/.
+    if (!projectDataDirectoryPath.isEmpty()) {
+        miacode::oplog::relocateLogs(
+            QDir(projectDataDirectoryPath).filePath(QStringLiteral("logs")));
+    }
+    // The runtime log directory just rebound to this chart's .miacode/logs/;
+    // re-emit the P0/P2/P3 startup diagnostics (process identity / GPU hint /
+    // resolved GPU policy) so the per-chart log a user collects is self-contained
+    // rather than only holding them in the app-local boot log.
+    if (!projectDataDirectoryPath.isEmpty()) {
+        miacode::app::entry::logProcessStartupDiagnostics(QStringLiteral("log_dir_rebound"));
+    }
     if (!state_.currentFilePath_.isEmpty()) {
         owner_.setLastOpenDirectory(state_.currentFilePath_);
 
@@ -681,13 +647,23 @@ void MainWindow::TimelineSection::setCurrentFilePath(const QString& path, bool s
     updateCurrentFileLabel();
     if (pathChanged) {
         owner_.loadProjectRenderState();
+        // Rebind the project-scoped mixer BEFORE the SFX reload / level
+        // dispatch below, so the new chart's volumes are the ones handed to
+        // reloadAssetsForChart and applyPreviewAudioSettingsToRuntime rather
+        // than the outgoing chart's.
+        owner_.loadProjectAudioPreferences();
     }
     owner_.syncPreviewStageMediaRouteChartPath(state_.currentFilePath_, state_.lastTrackPath_, state_.qtPreviewPauseSecond_, state_.document_.videoPath);  // Phase 4c &video= override
     if (state_.previewCanvas_ != nullptr) {
         state_.previewCanvas_->setPlayheadSeconds(state_.qtPreviewPauseSecond_, false);
     }
-    if (state_.previewSfxRuntime_ != nullptr) {
-        state_.previewSfxRuntime_->setChartPath(state_.currentFilePath_);
+    if (state_.previewSfxRuntime_ != nullptr && pathChanged) {
+        // The next warm-up result submits one atomic path+asset reload. Mark
+        // the old chart's completed (or pending) assets unusable immediately
+        // so an early Play cannot start them while that preload is queued.
+        state_.previewSfxRuntimePrepared_ = false;
+        state_.previewSfxRuntimePreparationAssetGeneration_ = 0;
+        state_.previewSfxRuntimePreparationSequence_ = 0;
     }
     owner_.applyPreviewAudioSettingsToRuntime();
     if (!suppressImmediateRefresh) {
@@ -735,11 +711,14 @@ QString MainWindow::TimelineSection::editorText() const
 
 void MainWindow::TimelineSection::scheduleTimelineRefresh()
 {
-    if (!hasActiveDifficulty() || state_.timelineQuickStateBridge_ == nullptr) {
+    if (!hasActiveDifficulty()) {
         return;
     }
     ++state_.timelineRevision_;
-    refreshTimelineQuickModelFromCurrentText();
+
+    if (state_.timelineQuickStateBridge_ != nullptr) {
+        refreshTimelineQuickModelFromCurrentText();
+    }
     requestTimelineSlowRefresh();
 }
 
@@ -756,6 +735,12 @@ void MainWindow::TimelineSection::onTimelineHeaderNavigateRequested(double secon
 
 void MainWindow::TimelineSection::onTimelineUserInteractionStarted()
 {
+    if (owner_.extensionManager_ != nullptr) {
+        owner_.extensionManager_->publishEvent(QStringLiteral("timeline.interaction.started"), QJsonObject{
+            {QStringLiteral("source"), QStringLiteral("pointer")},
+            {QStringLiteral("data"), QJsonObject{{QStringLiteral("kind"), QStringLiteral("timeline")}}},
+        });
+    }
     const bool pauseForViewportLock =
         state_.previewFollowEnabled_ && state_.previewViewportLockEnabled_;
     if (!state_.previewProgressFollowEnabled_ && !pauseForViewportLock) {
@@ -795,6 +780,12 @@ void MainWindow::TimelineSection::onTimelineDragStarted()
 
 void MainWindow::TimelineSection::onTimelineCenterNavigateRequested(double second)
 {
+    if (owner_.extensionManager_ != nullptr) {
+        owner_.extensionManager_->publishEvent(QStringLiteral("timeline.interaction.updated"), QJsonObject{
+            {QStringLiteral("source"), QStringLiteral("pointer")},
+            {QStringLiteral("data"), QJsonObject{{QStringLiteral("kind"), QStringLiteral("drag")}, {QStringLiteral("second"), second}}},
+        }, true);
+    }
     if (!state_.previewProgressFollowEnabled_) {
         Q_UNUSED(second);
         return;
@@ -817,6 +808,12 @@ void MainWindow::TimelineSection::onTimelineCenterNavigateRequested(double secon
 
 void MainWindow::TimelineSection::onTimelineWheelNavigateRequested(double second)
 {
+    if (owner_.extensionManager_ != nullptr) {
+        owner_.extensionManager_->publishEvent(QStringLiteral("timeline.wheel"), QJsonObject{
+            {QStringLiteral("source"), QStringLiteral("pointer")},
+            {QStringLiteral("data"), QJsonObject{{QStringLiteral("second"), second}}},
+        }, true);
+    }
     if (!state_.previewProgressFollowEnabled_) {
         Q_UNUSED(second);
         if (ui_.previewSeekDebounceTimer_ != nullptr) {
@@ -833,6 +830,12 @@ void MainWindow::TimelineSection::onTimelineWheelNavigateRequested(double second
 
 void MainWindow::TimelineSection::onTimelineDragFinished(double second)
 {
+    if (owner_.extensionManager_ != nullptr) {
+        owner_.extensionManager_->publishEvent(QStringLiteral("timeline.interaction.finished"), QJsonObject{
+            {QStringLiteral("source"), QStringLiteral("pointer")},
+            {QStringLiteral("data"), QJsonObject{{QStringLiteral("kind"), QStringLiteral("drag")}, {QStringLiteral("second"), second}}},
+        });
+    }
     appendTimelineInteractionLog(
         QStringLiteral("drag_scrub_end"),
         QString("second=%1")
@@ -868,15 +871,18 @@ void MainWindow::TimelineSection::onTimelineFollowPreviewToggled(bool enabled)
     }
     invalidatePreviewFollowBindingCache();
     owner_.savePortableState();
-    if (!enabled) {
+    if (!hasActiveDifficulty()) {
         owner_.clearPreviewFollowDecoration();
         return;
     }
-    if (!hasActiveDifficulty()) {
-        return;
-    }
+    // Turning the option off stops the caret/viewport follow, not the highlight:
+    // it stays as the on-screen cue for where the playhead is (and as the target
+    // touch-pad click authoring writes to). Refresh it either way.
     const double second = qMax(0.0, owner_.currentPreviewAuthoritativeAudioClockSecond());
-    syncEditorCursorToPreviewSecond(second, state_.qtPreviewPlaying_ && state_.previewViewportLockEnabled_, !state_.qtPreviewPlaying_);
+    syncEditorCursorToPreviewSecond(
+        second,
+        enabled && state_.qtPreviewPlaying_ && state_.previewViewportLockEnabled_,
+        !state_.qtPreviewPlaying_);
 }
 
 void MainWindow::TimelineSection::onTimelineViewportLockToggled(bool enabled)
@@ -955,7 +961,7 @@ void MainWindow::TimelineSection::requestTimelineSlowRefresh()
     state_.pendingTimelineSlowRefresh_.chartText = activeChartText();
     state_.pendingTimelineSlowRefresh_.firstSeconds = parsedFirstSeconds();
     state_.pendingTimelineSlowRefresh_.timingMetadata = currentTimingMetadata();
-    state_.pendingTimelineSlowRefresh_.chineseUi = UiText::isChineseUi();
+    state_.pendingTimelineSlowRefresh_.validationLocale = uiValidationLocale();
     state_.timelineSlowRequestedRevision_ = state_.pendingTimelineSlowRefresh_.revision;
     if (state_.pendingPreviewPlaybackStart_) {
         state_.pendingPreviewPlaybackRevision_ = state_.timelineRevision_;
@@ -1077,6 +1083,11 @@ double MainWindow::TimelineSection::timelineSecondForCursor(int line, int col) c
         );
     }
     return second;
+}
+
+bool MainWindow::TimelineSection::resolveTimelineSecondForCursor(int line, int col, double* second) const
+{
+    return state_.timelineQuickModel_.resolveTimelineSecondForCursor(line, col, second);
 }
 
 void MainWindow::TimelineSection::seekTimelineToCursor(int line, int col)
@@ -1383,7 +1394,12 @@ void MainWindow::flushDeferredEditorUiUpdate()
             ensurePreviewFollowVisible);
     }
 
-    if (syncTimelineCursor && !previewFollowHandled) {
+    const bool previewFollowOwnsPlaybackCursor =
+        previewFollowHandled
+        && (state_.qtPreviewPlaying_
+            || state_.previewStartupSyncPending_
+            || state_.previewLateVideoStartPending_);
+    if (syncTimelineCursor && !previewFollowOwnsPlaybackCursor) {
         syncTimelineToEditorCursor(centerView);
     }
 }
@@ -1520,6 +1536,16 @@ void MainWindow::rebuildStaticMuriReferences(const QVector<TimelineNoteMarker>& 
 double MainWindow::timelineSecondForCursor(int line, int col) const
 {
     return timelineSection_->timelineSecondForCursor(line, col);
+}
+
+void MainWindow::setTouchPadAuthoringAnchor(double seekSecond, double tokenSecond)
+{
+    timelineSection_->setTouchPadAuthoringAnchor(seekSecond, tokenSecond);
+}
+
+bool MainWindow::resolveTimelineSecondForCursor(int line, int col, double* second) const
+{
+    return timelineSection_->resolveTimelineSecondForCursor(line, col, second);
 }
 
 void MainWindow::seekTimelineToCursor(int line, int col)

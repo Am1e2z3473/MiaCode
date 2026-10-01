@@ -1,6 +1,7 @@
 #pragma once
 
 #include "QuickShellContracts.h"
+#include "common/LogEmissionPolicy.h"
 
 #include <QObject>
 #include <QKeySequence>
@@ -16,12 +17,15 @@ class QuickShellController : public QObject
     Q_PROPERTY(QString windowTitle READ windowTitle NOTIFY shellStateChanged)
     Q_PROPERTY(bool workspacePanelsSwapped READ workspacePanelsSwapped NOTIFY shellStateChanged)
     Q_PROPERTY(QString previewSpeedLabel READ previewSpeedLabel NOTIFY shellStateChanged)
+    Q_PROPERTY(bool muriCheckRenderMode READ muriCheckRenderMode NOTIFY shellStateChanged)
     Q_PROPERTY(bool previewPlaying READ previewPlaying NOTIFY shellStateChanged)
     Q_PROPERTY(double previewPositionSeconds READ previewPositionSeconds NOTIFY shellStateChanged)
     Q_PROPERTY(double previewDurationSeconds READ previewDurationSeconds NOTIFY shellStateChanged)
     Q_PROPERTY(QStringList previewStatsTexts READ previewStatsTexts NOTIFY shellStateChanged)
     Q_PROPERTY(double previewCanvasAspectRatio READ previewCanvasAspectRatio NOTIFY shellStateChanged)
     Q_PROPERTY(qulonglong previewPaneRestoreGeneration READ previewPaneRestoreGeneration NOTIFY shellStateChanged)
+    // User-selected preview share of the resizable content+preview area. The
+    // fixed sidebar and splitter are excluded from the ratio denominator.
     Q_PROPERTY(double previewPaneWidthRatio READ previewPaneWidthRatio NOTIFY shellStateChanged)
     Q_PROPERTY(double previewSeekSingleStepSeconds READ previewSeekSingleStepSeconds CONSTANT)
     // Inline export progress (export launched from the Export page's embedded
@@ -37,11 +41,6 @@ class QuickShellController : public QObject
     Q_PROPERTY(QObject* previewStageMediaHost READ previewStageMediaHost CONSTANT)
     Q_PROPERTY(QWindow* previewCompositeWindow READ previewCompositeWindow CONSTANT)
     Q_PROPERTY(bool previewUsesSeparateSurface READ previewUsesSeparateSurface NOTIFY shellStateChanged)
-    // Phase 4c — env-driven flag, exposed read-only to QML so siblings of
-    // the DComp surface (PreviewStageMediaItem in particular) can hide
-    // themselves to avoid double-rendering when DComp is the
-    // authoritative chart renderer.
-    Q_PROPERTY(bool previewDCompExclusive READ previewDCompExclusive CONSTANT)
     Q_PROPERTY(QObject* timelineStateBridge READ timelineStateBridge CONSTANT)
     Q_PROPERTY(bool timelineSurfaceReady READ timelineSurfaceReady NOTIFY shellStateChanged)
     Q_PROPERTY(QString bottomTabsCurrentTabId READ bottomTabsCurrentTabId NOTIFY shellStateChanged)
@@ -55,12 +54,15 @@ class QuickShellController : public QObject
     // fullscreen button's visibility to !exportPageActive (stop-gap for the
     // export-page fullscreen + hardware-decode Intel UMD crash).
     Q_PROPERTY(bool exportPageActive READ exportPageActive NOTIFY shellStateChanged)
-    // Localized labels — read here so the QML side doesn't have to know
-    // about the UiText::isChineseUi() switch. Constant per session
-    // (locale isn't switched at runtime), so a CONSTANT property is fine.
+    // Localized labels — read here so the QML side stays on the central
+    // UiText::text() key path. Constant per session (locale isn't switched at
+    // runtime), so CONSTANT properties are fine.
     Q_PROPERTY(QString timelineTabLabel READ timelineTabLabel CONSTANT)
     Q_PROPERTY(QString validationTabLabel READ validationTabLabel CONSTANT)
     Q_PROPERTY(QString muriTabLabel READ muriTabLabel CONSTANT)
+    Q_PROPERTY(QString timelineViewLockLabel READ timelineViewLockLabel CONSTANT)
+    Q_PROPERTY(QString timelineSyncLabel READ timelineSyncLabel CONSTANT)
+    Q_PROPERTY(QString timelineFollowCodeLabel READ timelineFollowCodeLabel CONSTANT)
     Q_PROPERTY(QWindow* topChromeWindow READ topChromeWindow CONSTANT)
     Q_PROPERTY(QWindow* sidebarWindow READ sidebarWindow CONSTANT)
     Q_PROPERTY(QWindow* workspaceWindow READ workspaceWindow CONSTANT)
@@ -78,6 +80,7 @@ public:
     QString windowTitle() const;
     bool workspacePanelsSwapped() const;
     QString previewSpeedLabel() const;
+    bool muriCheckRenderMode() const;
     bool previewPlaying() const;
     double previewPositionSeconds() const;
     double previewDurationSeconds() const;
@@ -93,7 +96,6 @@ public:
     QObject* previewStageMediaHost() const;
     QWindow* previewCompositeWindow() const;
     bool previewUsesSeparateSurface() const;
-    bool previewDCompExclusive() const;
     QObject* timelineStateBridge() const;
     bool timelineSurfaceReady() const;
     QString bottomTabsCurrentTabId() const;
@@ -107,6 +109,9 @@ public:
     QString timelineTabLabel() const;
     QString validationTabLabel() const;
     QString muriTabLabel() const;
+    QString timelineViewLockLabel() const;
+    QString timelineSyncLabel() const;
+    QString timelineFollowCodeLabel() const;
     QWindow* topChromeWindow() const;
     QWindow* sidebarWindow() const;
     QWindow* workspaceWindow() const;
@@ -126,6 +131,7 @@ public:
     Q_INVOKABLE void updatePreviewScrub(double second, bool centerView = true);
     Q_INVOKABLE void endPreviewScrub(double second, bool centerView = true);
     Q_INVOKABLE void setPreviewRate(double rate);
+    Q_INVOKABLE void toggleMuriRenderMode();
     Q_INVOKABLE void setPreviewPaneWidthRatio(double ratio);
     // Step the preview rate one stop (direction = -1 slower / +1 faster). Used
     // by the fullscreen QML Ctrl+O/Ctrl+P shortcuts; mirrors the main window's
@@ -152,6 +158,8 @@ public:
     // workspace / preview windows without the focus quirks of QtQuick
     // Popup.Window.
     Q_INVOKABLE void openTimelineFollowSettingsMenu(int gearGlobalRight, int gearGlobalTop);
+    Q_INVOKABLE void openTimelineBrightnessMenu(int gearGlobalRight, int gearGlobalTop);
+    Q_INVOKABLE void openTimelineZoomMenu(int controlGlobalLeft, int controlGlobalTop, int controlWidth);
     Q_INVOKABLE bool stepPreviewBySeconds(double deltaSeconds, bool centerView = true);
     Q_INVOKABLE void beginPreviewHeldSeek(int direction, int key);
     Q_INVOKABLE void stopPreviewHeldSeek(int key = 0);
@@ -184,6 +192,7 @@ private:
     QString windowTitle_;
     bool workspacePanelsSwapped_ = false;
     QString previewSpeedLabel_;
+    bool muriCheckRenderMode_ = false;
     bool previewPlaying_ = false;
     double previewPositionSeconds_ = 0.0;
     double previewDurationSeconds_ = 0.0;
@@ -206,4 +215,6 @@ private:
     bool exportPageActive_ = false;
     bool previewSpeedToastInitialized_ = false;
     bool closeConfirmedExternally_ = false;
+    miacode::diagnostics::SurfaceLogGate sidebarSurfaceLogGate_;
+    miacode::diagnostics::SurfaceLogGate workspaceSurfaceLogGate_;
 };

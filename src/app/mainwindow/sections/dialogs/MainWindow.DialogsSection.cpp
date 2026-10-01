@@ -10,6 +10,11 @@ void MainWindow::onPreviewVideoSettings()
     dialogsSection_->onPreviewVideoSettings();
 }
 
+void MainWindow::onSkinSettings()
+{
+    dialogsSection_->onSkinSettings();
+}
+
 void MainWindow::onMediaProcessingTools()
 {
     dialogsSection_->onMediaProcessingTools();
@@ -53,4 +58,19 @@ void MainWindow::onReadArtistFromTrack()
 void MainWindow::onExtractBackgroundFromTrack()
 {
     dialogsSection_->onExtractBackgroundFromTrack();
+}
+
+void MainWindow::onImportBackgroundImage()
+{
+    dialogsSection_->onImportBackgroundImage();
+}
+
+void MainWindow::onImportBackgroundVideo()
+{
+    dialogsSection_->onImportBackgroundVideo();
+}
+
+void MainWindow::onDeleteBackgroundVideo()
+{
+    dialogsSection_->onDeleteBackgroundVideo();
 }

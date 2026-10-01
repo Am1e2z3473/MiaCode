@@ -1,6 +1,7 @@
 #include "ChartBatchTransform.h"
 #include "ChartBatchTransform.Internal.h"
 
+#include <QHash>
 #include <QRandomGenerator>
 #include <QStringList>
 
@@ -63,7 +64,8 @@ void scanSelectionTokens(const QString& input, const std::function<void(const QS
     }
 }
 
-QString rewriteSelectionTokens(const QString& input, const std::function<QString(const QString&)>& rewriteToken)
+QString rewriteSelectionTokens(const QString& input, const std::function<QString(const QString&)>& rewriteToken,
+                               const std::function<void()>& endBeat = {})
 {
     QString transformed;
     transformed.reserve(input.size() + 32);
@@ -89,6 +91,9 @@ QString rewriteSelectionTokens(const QString& input, const std::function<QString
             if (ch.isSpace() || ch == QChar('/') || ch == QChar('`') || ch == QChar(',')) {
                 flushToken();
                 transformed.append(ch);
+                if (ch == QChar(',') && endBeat) {
+                    endBeat();
+                }
                 continue;
             }
             if (ch == QChar('(')) {
@@ -146,23 +151,24 @@ ToggleStats collectBreakStats(const QString& input)
 
         TouchTokenParts touch;
         if (parseTouchTokenParts(token, &touch) && touch.valid) {
-            if (!touch.hasHold) {
-                ++stats.eligibleObjects;
-                if (touch.hasBreak) {
-                    ++stats.flaggedObjects;
-                }
+            ++stats.eligibleObjects;
+            if (touch.hasBreak) {
+                ++stats.flaggedObjects;
             }
             return;
         }
 
         SlideTokenParts slide;
         if (parseSlideTokenParts(token, &slide) && slide.valid) {
-            stats.eligibleObjects += 2;
+            stats.eligibleObjects += 1;  // head
             if (slide.headBreak) {
                 ++stats.flaggedObjects;
             }
-            if (slide.trackBreak) {
-                ++stats.flaggedObjects;
+            stats.eligibleObjects += slide.segments.size();  // one per segment
+            for (const auto& seg : slide.segments) {
+                if (seg.segmentBreak) {
+                    ++stats.flaggedObjects;
+                }
             }
             return;
         }
@@ -241,9 +247,6 @@ QString toggleBreakToken(const QString& token, bool enable, int* changedCount)
 
     TouchTokenParts touch;
     if (parseTouchTokenParts(token, &touch) && touch.valid) {
-        if (touch.hasHold) {
-            return token;
-        }
         const QString rebuilt = buildTouchToken(touch, enable, touch.hasEx, touch.hasFirework);
         if (rebuilt != token && changedCount != nullptr) {
             *changedCount += 1;
@@ -253,9 +256,21 @@ QString toggleBreakToken(const QString& token, bool enable, int* changedCount)
 
     SlideTokenParts slide;
     if (parseSlideTokenParts(token, &slide) && slide.valid) {
-        const QString rebuilt = buildSlideToken(slide, enable, slide.headEx, enable, slide.coreWithoutTrackBreak);
+        // Count how many break flags would change
+        int delta = 0;
+        if (slide.headBreak != enable) ++delta;
+        for (const auto& seg : slide.segments) {
+            if (seg.segmentBreak != enable) ++delta;
+        }
+
+        slide.headBreak = enable;
+        for (auto& seg : slide.segments) {
+            seg.segmentBreak = enable;
+        }
+
+        const QString rebuilt = buildSlideToken(slide);
         if (rebuilt != token && changedCount != nullptr) {
-            *changedCount += (slide.headBreak != enable ? 1 : 0) + (slide.trackBreak != enable ? 1 : 0);
+            *changedCount += delta;
         }
         return rebuilt;
     }
@@ -291,7 +306,8 @@ QString toggleExToken(const QString& token, bool enable, int* changedCount)
 
     SlideTokenParts slide;
     if (parseSlideTokenParts(token, &slide) && slide.valid) {
-        const QString rebuilt = buildSlideToken(slide, slide.headBreak, enable, slide.trackBreak, slide.coreWithoutTrackBreak);
+        slide.headEx = enable;
+        const QString rebuilt = buildSlideToken(slide);
         if (rebuilt != token && changedCount != nullptr) {
             *changedCount += 1;
         }
@@ -323,16 +339,18 @@ QString toggleFireworkToken(const QString& token, bool enable, int* changedCount
     return token;
 }
 
-QString rotateRandomToken(const QString& token, const std::function<int()>& nextStep, int* changedCount)
+QString rotateRandomToken(const QString& token,
+                          const std::function<int(QChar, QChar)>& rotationForLane,
+                          int* changedCount)
 {
-    if (!nextStep) {
+    if (!rotationForLane) {
         return token;
     }
 
     if (isSimpleDigitCluster(token)) {
         QString rotated = token;
         for (int i = 0; i < rotated.size(); ++i) {
-            rotated[i] = rotateLaneChar(rotated.at(i), nextStep());
+            rotated[i] = rotateLaneChar(rotated.at(i), rotationForLane(QChar(), token.at(i)));
         }
         if (rotated != token && changedCount != nullptr) {
             int delta = 0;
@@ -348,9 +366,10 @@ QString rotateRandomToken(const QString& token, const std::function<int()>& next
 
     TouchTokenParts touch;
     if (parseTouchTokenParts(token, &touch) && touch.valid) {
-        const int step = nextStep();
         QString rebuilt = buildTouchToken(touch, touch.hasBreak, touch.hasEx, touch.hasFirework);
-        if (touch.prefix.size() >= 2 && isDigitLane(touch.prefix.at(1))) {
+        if (touch.prefix.at(0).toUpper() != QChar('C')
+            && touch.prefix.size() >= 2 && isDigitLane(touch.prefix.at(1))) {
+            const int step = rotationForLane(touch.prefix.at(0).toUpper(), touch.prefix.at(1));
             rebuilt[1] = rotateLaneChar(rebuilt.at(1), step);
         }
         if (rebuilt != token && changedCount != nullptr) {
@@ -361,9 +380,12 @@ QString rotateRandomToken(const QString& token, const std::function<int()>& next
 
     SlideTokenParts slide;
     if (parseSlideTokenParts(token, &slide) && slide.valid) {
-        const int step = nextStep();
-        const QString rotatedCore = rotateSlideCoreOutsideBrackets(slide.coreWithoutTrackBreak, step);
-        const QString rebuilt = buildSlideToken(slide, slide.headBreak, slide.headEx, slide.trackBreak, rotatedCore);
+        const int step = rotationForLane(QChar(), slide.lane);
+        slide.lane = rotateLaneChar(slide.lane, step);
+        for (auto& seg : slide.segments) {
+            seg.text = rotateSlideCoreOutsideBrackets(seg.text, step);
+        }
+        const QString rebuilt = buildSlideToken(slide);
         if (rebuilt != token && changedCount != nullptr) {
             *changedCount += 1;
         }
@@ -372,7 +394,7 @@ QString rotateRandomToken(const QString& token, const std::function<int()>& next
 
     NoteTokenParts note;
     if (parseNoteTokenParts(token, &note) && note.valid) {
-        const int step = nextStep();
+        const int step = rotationForLane(QChar(), note.lane);
         QString rebuilt = buildNoteToken(note, note.hasBreak, note.hasEx);
         rebuilt[0] = rotateLaneChar(rebuilt.at(0), step);
         if (rebuilt != token && changedCount != nullptr) {
@@ -455,10 +477,30 @@ QString randomRotateForSelection(const QString& input, int* changedCount)
 QString randomRotateForSelection(const QString& input, const std::function<int()>& nextStep, int* changedCount)
 {
     int changed = 0;
+    if (!nextStep) {
+        if (changedCount != nullptr) {
+            *changedCount = 0;
+        }
+        return input;
+    }
+    // A one-to-one mapping per beat keeps distinct presses distinct. Touch
+    // rings have separate pad identities; repeated source pads share a mapping.
+    QHash<QChar, QHash<QChar, QChar>> laneMaps;
+    const auto rotationForLane = [&](QChar ring, QChar lane) {
+        auto& laneMap = laneMaps[ring];
+        if (!laneMap.contains(lane)) {
+            QChar target = rotateLaneChar(lane, nextStep());
+            while (laneMap.values().contains(target)) {
+                target = rotateLaneChar(target, 1);
+            }
+            laneMap.insert(lane, target);
+        }
+        return (laneMap.value(lane).digitValue() - lane.digitValue() + 8) % 8;
+    };
     const QString output = rewriteSelectionCore(input, [&](const QString& core) {
         return rewriteSelectionTokens(core, [&](const QString& token) {
-            return rotateRandomToken(token, nextStep, &changed);
-        });
+            return rotateRandomToken(token, rotationForLane, &changed);
+        }, [&]() { laneMaps.clear(); });
     });
     if (changedCount != nullptr) {
         *changedCount = changed;

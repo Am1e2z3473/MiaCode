@@ -16,6 +16,7 @@
 #include "common/CrashRecovery.h"
 #include "common/DebugLog.h"
 #include "common/DebugOptions.h"
+#include "common/Id3TagReader.h"
 #include "common/OperationLog.h"
 #include "common/ProjectPreferences.h"
 #include "common/WaveformCache.h"
@@ -29,10 +30,20 @@
 #include "tools/muri/MuriStaticChecker.h"
 
 #include <algorithm>
+#include <array>
 
 #include <QtCore>
 #include <QtGui>
 #include <QtWidgets>
+
+#ifdef Q_OS_WIN
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#include <windows.h>
+#include <commdlg.h>
+#pragma comment(lib, "Comdlg32.lib")
+#endif
 
 using namespace miacode::mainwindow::shared;
 #include "MainWindow.DocumentFlow.Internal.h"
@@ -40,6 +51,60 @@ using namespace miacode::mainwindow::shared;
 using namespace miacode::mainwindow::documentflow_detail;
 
 namespace {
+
+QString promptForSimaiFile(QWidget* logicalParent, const QString& initialDirectory)
+{
+#ifdef Q_OS_WIN
+    // QuickShell keeps MainWindow as a hidden QWidget backend. A static
+    // QFileDialog therefore gives the Windows picker that hidden HWND as its
+    // owner, while capture/streaming software activates the visible QML root
+    // HWND. Windows then treats the root and picker as unrelated top-level
+    // windows and lets them repeatedly overtake one another. Own the native
+    // picker directly from the visible root so its modal relationship remains
+    // intact across external foreground-window changes.
+    QWindow* ownerWindow = UiDialogs::applicationDialogTransientParent();
+    if (ownerWindow == nullptr && logicalParent != nullptr) {
+        logicalParent->winId();
+        ownerWindow = logicalParent->windowHandle();
+    }
+
+    std::array<wchar_t, 32768> selectedPath{};
+    const std::wstring nativeInitialDirectory =
+        QDir::toNativeSeparators(initialDirectory).toStdWString();
+    constexpr wchar_t nativeFilter[] =
+        L"Simai (*.txt *.simai)\0*.txt;*.simai\0All Files (*.*)\0*.*\0";
+
+    OPENFILENAMEW request{};
+    request.lStructSize = sizeof(request);
+    request.hwndOwner = ownerWindow != nullptr
+        ? reinterpret_cast<HWND>(ownerWindow->winId())
+        : nullptr;
+    request.lpstrFilter = nativeFilter;
+    request.nFilterIndex = 1;
+    request.lpstrFile = selectedPath.data();
+    request.nMaxFile = static_cast<DWORD>(selectedPath.size());
+    request.lpstrInitialDir = nativeInitialDirectory.empty()
+        ? nullptr
+        : nativeInitialDirectory.c_str();
+    request.lpstrTitle = L"Open simai file";
+    request.Flags = OFN_EXPLORER
+        | OFN_FILEMUSTEXIST
+        | OFN_PATHMUSTEXIST
+        | OFN_NOCHANGEDIR
+        | OFN_ENABLESIZING;
+
+    if (::GetOpenFileNameW(&request) != TRUE) {
+        return QString();
+    }
+    return QDir::fromNativeSeparators(QString::fromWCharArray(selectedPath.data()));
+#else
+    return QFileDialog::getOpenFileName(
+        logicalParent,
+        QStringLiteral("Open simai file"),
+        initialDirectory,
+        QStringLiteral("Simai (*.txt *.simai);;All Files (*.*)"));
+#endif
+}
 
 struct PreparedDocumentOpenPayload {
     bool success = false;
@@ -110,6 +175,35 @@ PreparedDocumentOpenPayload prepareDocumentOpenPayload(const QString& path, bool
     return payload;
 }
 
+bool writeDocumentFileAtomically(
+    const QString& path,
+    const SimaiDocument& document,
+    QString* failedStage = nullptr)
+{
+    QStringEncoder encoder(QStringConverter::Utf8);
+    const QByteArray payload = encoder.encode(document.toText());
+    QSaveFile file(path);
+    if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
+        if (failedStage != nullptr) {
+            *failedStage = QStringLiteral("open_maidata");
+        }
+        return false;
+    }
+    if (file.write(payload) != payload.size()) {
+        if (failedStage != nullptr) {
+            *failedStage = QStringLiteral("write_maidata");
+        }
+        return false;
+    }
+    if (!file.commit()) {
+        if (failedStage != nullptr) {
+            *failedStage = QStringLiteral("commit_maidata");
+        }
+        return false;
+    }
+    return true;
+}
+
 }  // namespace
 
 bool MainWindow::DocumentSection::maybeSaveBeforeContinue()
@@ -143,8 +237,8 @@ bool MainWindow::DocumentSection::maybeSaveBeforeContinue()
     dialogTimer.start();
     const UnsavedChangesChoice choice = showUnsavedChangesDialog(
         &owner_,
-        uiText("dialog.unsaved_changes.title", "Unsaved Changes"),
-        uiText("dialog.unsaved_changes.message", "Current document has unsaved changes. Save before continue?")
+        UiText::text(QStringLiteral("dialog.unsaved_changes.title")),
+        UiText::text(QStringLiteral("dialog.unsaved_changes.message"))
     );
     miacode::debug_log::appendTimingLine(
         miacode::debug_log::Channel::Runtime,
@@ -156,7 +250,14 @@ bool MainWindow::DocumentSection::maybeSaveBeforeContinue()
     if (choice == UnsavedChangesChoice::Save) {
         QElapsedTimer saveTimer;
         saveTimer.start();
-        const bool saved = onSaveFile();
+        const bool exportOriginSave = !owner_.hasActiveDifficulty()
+            && state_.exportSelectionContextActive_
+            && SimaiDocument::isDifficultyId(state_.exportOriginDifficultyId_)
+            && state_.exportOriginFieldDirty_;
+        const bool saved = exportOriginSave ? saveExportOriginFieldToDisk() : onSaveFile();
+        if (saved && exportOriginSave) {
+            clearExportSelectionContext();
+        }
         miacode::debug_log::appendTimingLine(
             miacode::debug_log::Channel::Runtime,
             QStringLiteral("close_timing/document"),
@@ -176,11 +277,18 @@ bool MainWindow::DocumentSection::maybeSaveBeforeContinue()
     }
     const bool shouldContinue = choice == UnsavedChangesChoice::Discard;
     if (shouldContinue) {
-        anchorCurrentFieldCleanState();
-        state_.documentDirty_ = false;
-        state_.currentFieldDirty_ = false;
-        updateDirtyState();
-        owner_.updateWindowTitle();
+        if (!owner_.hasActiveDifficulty()
+            && state_.exportSelectionContextActive_
+            && SimaiDocument::isDifficultyId(state_.exportOriginDifficultyId_)
+            && state_.exportOriginFieldDirty_) {
+            discardExportOriginChanges();
+        } else {
+            anchorCurrentFieldCleanState();
+            state_.documentDirty_ = false;
+            state_.currentFieldDirty_ = false;
+            updateDirtyState();
+            owner_.updateWindowTitle();
+        }
     }
     miacode::debug_log::appendTimingLine(
         miacode::debug_log::Channel::Runtime,
@@ -201,7 +309,7 @@ void MainWindow::DocumentSection::onNewFile()
 
     const QString targetDirectory = QFileDialog::getExistingDirectory(
         &owner_,
-        UiText::isChineseUi() ? QStringLiteral("选择谱面文件夹") : QStringLiteral("Select Chart Folder"),
+        UiText::text(QStringLiteral("document.select_chart_folder")),
         owner_.resolveInitialOpenDirectory(),
         QFileDialog::ShowDirsOnly | QFileDialog::DontResolveSymlinks
     );
@@ -215,10 +323,8 @@ void MainWindow::DocumentSection::onNewFile()
         const QMessageBox::StandardButton choice = UiDialogs::showMessageBox(
             QMessageBox::Warning,
             &owner_,
-            UiText::isChineseUi() ? QStringLiteral("文件已存在") : QStringLiteral("File Already Exists"),
-            UiText::isChineseUi()
-                ? QStringLiteral("所选文件夹下已存在 maidata.txt，是否覆盖？")
-                : QStringLiteral("maidata.txt already exists in the selected folder. Overwrite it?"),
+            UiText::text(QStringLiteral("document.file_already_exists")),
+            UiText::text(QStringLiteral("document.maidata_txt_already_exists_in")),
             QMessageBox::Yes | QMessageBox::No,
             QMessageBox::No
         );
@@ -228,24 +334,208 @@ void MainWindow::DocumentSection::onNewFile()
     }
 
     const SimaiDocument newDocument = SimaiDocument::createEmpty();
-    QStringEncoder encoder(QStringConverter::Utf8);
-    const QByteArray payload = encoder.encode(newDocument.toText());
-    QSaveFile file(targetPath);
-    if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
-            UiDialogs::showMessageBox(QMessageBox::Critical, &owner_, "Create Failed", "Cannot write file:\n" + targetPath);
-        return;
-    }
-    if (file.write(payload) != payload.size() || !file.commit()) {
-        UiDialogs::showMessageBox(QMessageBox::Critical, &owner_, "Create Failed", "Write failed:\n" + targetPath);
+    if (!writeDocumentFileAtomically(targetPath, newDocument)) {
+        UiDialogs::showMessageBox(QMessageBox::Critical, &owner_, "Create Failed", "Cannot write file:\n" + targetPath);
         return;
     }
 
     cancelPendingStartupRestore();
+    state_.onlinePreviewDocument_ = false;
     loadDocument(newDocument);
     owner_.clearValidationCache();
     state_.currentEncoding_ = TextEncoding::Utf8;
     owner_.setCurrentFilePath(targetPath);
     owner_.statusBar()->showMessage(QString("Created: %1").arg(targetPath));
+}
+
+namespace {
+
+QString cleanDropFolderName(QString name)
+{
+    name = name.trimmed();
+    name.replace(QRegularExpression(QStringLiteral("[<>:\"/\\\\|?*\\x00-\\x1f]")), QStringLiteral("_"));
+    while (name.endsWith(QLatin1Char('.')) || name.endsWith(QLatin1Char(' '))) {
+        name.chop(1);
+    }
+    const QString device = name.section(QLatin1Char('.'), 0, 0).toUpper();
+    const bool reservedDevice = QSet<QString>{QStringLiteral("CON"), QStringLiteral("PRN"),
+                                              QStringLiteral("AUX"), QStringLiteral("NUL")}.contains(device);
+    const bool numberedDevice = (device.startsWith(QStringLiteral("COM"))
+                                 || device.startsWith(QStringLiteral("LPT")))
+        && device.size() == 4 && device.at(3) >= QLatin1Char('1') && device.at(3) <= QLatin1Char('9');
+    if (reservedDevice || numberedDevice) {
+        name.prepend(QLatin1Char('_'));
+    }
+    name = name.left(80).trimmed();
+    while (name.endsWith(QLatin1Char('.')) || name.endsWith(QLatin1Char(' '))) {
+        name.chop(1);
+    }
+    return name;
+}
+
+struct DroppedChartCandidate {
+    QString sourcePath;
+    QString sourceDirectory;
+    QString extension;
+    QString targetDirectory;
+};
+
+} // namespace
+
+bool MainWindow::DocumentSection::createChartsFromAudioDrop(const QStringList& audioPaths)
+{
+    if (audioPaths.isEmpty()) {
+        return false;
+    }
+    QElapsedTimer dropTimer;
+    dropTimer.start();
+    miacode::debug_log::appendLine(miacode::debug_log::Channel::Runtime,
+        QStringLiteral("ui/chart_drop"),
+        QStringLiteral("drop_received count=%1").arg(audioPaths.size()));
+    const QStringList supported = miacode::chart_assets::supportedTrackFileExtensions();
+    QList<DroppedChartCandidate> candidates;
+    for (const QString& path : audioPaths) {
+        const QFileInfo info(path);
+        const QString extension = info.suffix().toLower();
+        if (!info.isFile() || !supported.contains(extension)) {
+            miacode::debug_log::appendLine(miacode::debug_log::Channel::Runtime,
+                QStringLiteral("ui/chart_drop"),
+                QStringLiteral("unsupported_file_ignored format=%1").arg(extension));
+            continue;
+        }
+        QString title = info.completeBaseName();
+        if (extension == QStringLiteral("mp3")) {
+            const auto tag = miacode::id3::readTagFromFile(path);
+            if (!tag.title.trimmed().isEmpty()) {
+                title = tag.title.trimmed();
+            }
+        }
+        QString folder = cleanDropFolderName(title);
+        if (folder.isEmpty()) {
+            folder = QStringLiteral("Untitled");
+        }
+        candidates.append({info.absoluteFilePath(), info.absolutePath(), extension,
+                           QDir(info.absolutePath()).filePath(folder)});
+        miacode::debug_log::appendLine(miacode::debug_log::Channel::Runtime,
+            QStringLiteral("ui/chart_drop"),
+            QStringLiteral("supported_file_counted format=%1").arg(extension));
+    }
+    if (candidates.isEmpty()) {
+        return false;
+    }
+
+    QHash<QString, QSet<QString>> reserved;
+    QStringList preview;
+    for (DroppedChartCandidate& candidate : candidates) {
+        const QString key = candidate.sourceDirectory.toCaseFolded();
+        QString target = candidate.targetDirectory;
+        int suffix = 2;
+        while (QFileInfo::exists(target) || reserved[key].contains(target.toCaseFolded())) {
+            target = QDir(candidate.sourceDirectory).filePath(
+                QStringLiteral("%1 (%2)").arg(QFileInfo(candidate.targetDirectory).fileName()).arg(suffix++));
+        }
+        candidate.targetDirectory = target;
+        reserved[key].insert(target.toCaseFolded());
+        preview << QDir::toNativeSeparators(target);
+    }
+
+    QMessageBox dialog(
+        QMessageBox::Question,
+        UiText::text(QStringLiteral("drop_chart.preview.title")),
+        UiText::text(QStringLiteral("drop_chart.preview.message"))
+            .arg(candidates.size()) + preview.join(QLatin1Char('\n')),
+        QMessageBox::Yes | QMessageBox::No,
+        UiDialogs::effectiveParentWidget(&owner_));
+    miacode::debug_log::appendLine(miacode::debug_log::Channel::Runtime,
+        QStringLiteral("ui/chart_drop"),
+        QStringLiteral("preview_shown count=%1").arg(candidates.size()));
+    dialog.setButtonText(QMessageBox::Yes,
+        UiText::text(QStringLiteral("drop_chart.preview.create")).arg(candidates.size()));
+    dialog.setButtonText(QMessageBox::No, UiText::text(QStringLiteral("action.cancel")));
+    UiDialogs::prepareDialogWindow(&dialog, &owner_);
+    UiDialogs::localizeMessageBox(&dialog);
+    if (dialog.exec() != QMessageBox::Yes || !maybeSaveBeforeContinue()) {
+        miacode::debug_log::appendLine(miacode::debug_log::Channel::Runtime,
+            QStringLiteral("ui/chart_drop"), QStringLiteral("create_cancelled"));
+        return false;
+    }
+    miacode::debug_log::appendLine(miacode::debug_log::Channel::Runtime,
+        QStringLiteral("ui/chart_drop"),
+        QStringLiteral("create_confirmed count=%1").arg(candidates.size()));
+
+    const SimaiDocument emptyDocument = SimaiDocument::createEmpty();
+    int created = 0;
+    int failed = 0;
+    miacode::debug_log::appendLine(miacode::debug_log::Channel::Runtime,
+        QStringLiteral("ui/chart_drop"),
+        QStringLiteral("batch_create_started count=%1").arg(candidates.size()));
+    for (const DroppedChartCandidate& candidate : candidates) {
+        const QString staging = QDir(candidate.sourceDirectory).filePath(
+            QStringLiteral(".miacode-drop-%1").arg(QUuid::createUuid().toString(QUuid::WithoutBraces)));
+        const QString stagedChart = QDir(staging).filePath(QFileInfo(candidate.targetDirectory).fileName());
+        const QString stagedTrack = QDir(stagedChart).filePath(QStringLiteral("track.%1").arg(candidate.extension));
+        const QString stagedMaidata = QDir(stagedChart).filePath(QStringLiteral("maidata.txt"));
+        QString failedStage = QStringLiteral("create_staging_directory");
+        bool ok = QDir().mkpath(stagedChart);
+        if (ok) {
+            failedStage = QStringLiteral("copy_audio");
+            ok = QFile::copy(candidate.sourcePath, stagedTrack);
+        }
+        if (ok) {
+            failedStage.clear();
+            ok = writeDocumentFileAtomically(stagedMaidata, emptyDocument, &failedStage);
+        }
+        if (ok) {
+            failedStage = QStringLiteral("publish");
+            ok = QDir().rename(stagedChart, candidate.targetDirectory);
+        }
+        QDir(staging).removeRecursively();
+        if (!ok) {
+            ++failed;
+            miacode::debug_log::appendLine(miacode::debug_log::Channel::Runtime,
+                QStringLiteral("ui/chart_drop"),
+                QStringLiteral("chart_create_failed stage=%1 format=%2 created=%3 failed=%4 elapsed_ms=%5")
+                    .arg(failedStage, candidate.extension)
+                    .arg(created).arg(failed).arg(dropTimer.elapsed()));
+            continue;
+        }
+        ++created;
+        miacode::debug_log::appendLine(miacode::debug_log::Channel::Runtime,
+            QStringLiteral("ui/chart_drop"),
+            QStringLiteral("chart_create_succeeded format=%1").arg(candidate.extension));
+    }
+
+    if (created == 0) {
+        UiDialogs::showMessageBox(QMessageBox::Critical, &owner_,
+            UiText::text(QStringLiteral("drop_chart.error.title")),
+            UiText::text(QStringLiteral("drop_chart.create_failed")));
+    } else if (candidates.size() == 1 && created == 1) {
+        miacode::debug_log::appendLine(miacode::debug_log::Channel::Runtime,
+            QStringLiteral("ui/chart_drop"), QStringLiteral("switch_prompt_shown"));
+        const QMessageBox::StandardButton switchChoice = UiDialogs::showMessageBox(
+            QMessageBox::Question, &owner_, UiText::text(QStringLiteral("drop_chart.created_title")),
+            UiText::text(QStringLiteral("drop_chart.confirm_switch")).arg(created),
+            QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
+        if (switchChoice == QMessageBox::Yes) {
+            miacode::debug_log::appendLine(miacode::debug_log::Channel::Runtime,
+                QStringLiteral("ui/chart_drop"), QStringLiteral("switch_confirmed"));
+            owner_.openStartupTarget(candidates.first().targetDirectory);
+        } else {
+            miacode::debug_log::appendLine(miacode::debug_log::Channel::Runtime,
+                QStringLiteral("ui/chart_drop"), QStringLiteral("switch_declined"));
+        }
+    } else if (failed > 0) {
+        UiDialogs::showMessageBox(QMessageBox::Warning, &owner_,
+            UiText::text(QStringLiteral("drop_chart.created_title")),
+            UiText::text(QStringLiteral("drop_chart.created_with_failures"))
+                .arg(created).arg(failed));
+    }
+    owner_.statusBar()->showMessage(UiText::text(QStringLiteral("drop_chart.created_chart")).arg(created));
+    miacode::debug_log::appendLine(miacode::debug_log::Channel::Runtime,
+        QStringLiteral("ui/chart_drop"),
+        QStringLiteral("batch_create_finished count=%1 elapsed_ms=%2")
+            .arg(created).arg(dropTimer.elapsed()));
+    return created > 0;
 }
 
 void MainWindow::DocumentSection::onOpenFile()
@@ -260,12 +550,7 @@ void MainWindow::DocumentSection::onOpenFile()
 
     owner_.windowSection_->logWindowGeometryDebug("open_file_before_dialog");
     owner_.windowSection_->logTopLevelWindowSnapshot("open_file_before_dialog");
-    const QString path = QFileDialog::getOpenFileName(
-        &owner_,
-        QStringLiteral("Open simai file"),
-        owner_.resolveInitialOpenDirectory(),
-        QStringLiteral("Simai (*.txt *.simai);;All Files (*.*)")
-    );
+    const QString path = promptForSimaiFile(&owner_, owner_.resolveInitialOpenDirectory());
     owner_.windowSection_->logWindowGeometryDebug("open_file_after_dialog", QString("selected_empty=%1").arg(path.isEmpty() ? 1 : 0));
     owner_.windowSection_->logTopLevelWindowSnapshot("open_file_after_dialog");
     if (path.isEmpty()) {
@@ -301,6 +586,37 @@ bool MainWindow::DocumentSection::openFileAtPath(const QString& path, bool showS
         showStatusMessage,
         payload.hasTrackDuration ? payload.trackDurationSeconds : -1.0
     );
+    return true;
+}
+
+bool MainWindow::DocumentSection::openOnlinePreviewAtPath(const QString& path)
+{
+    MC_OP("MainWindow::DocumentSection::openOnlinePreviewAtPath");
+    _mc_op_.note(QStringLiteral("path=%1").arg(path));
+    const QString normalizedPath = path.isEmpty() ? QString() : QDir::cleanPath(path);
+    if (normalizedPath.isEmpty() || !maybeSaveBeforeContinue()) {
+        return false;
+    }
+
+    cancelPendingStartupRestore();
+    const PreparedDocumentOpenPayload payload = prepareDocumentOpenPayload(normalizedPath, true);
+    if (!payload.success) {
+        UiDialogs::showMessageBox(
+            QMessageBox::Critical,
+            &owner_,
+            UiText::text(QStringLiteral("net.online_preview")),
+            UiText::text(QStringLiteral("net.online_preview_open_failed")));
+        _mc_op_.fail(QStringLiteral("prepareDocumentOpenPayload failed"));
+        return false;
+    }
+
+    applyOpenedDocumentState(
+        payload.normalizedPath,
+        payload.usedSystemEncoding ? TextEncoding::System : TextEncoding::Utf8,
+        payload.document,
+        true,
+        payload.hasTrackDuration ? payload.trackDurationSeconds : -1.0,
+        true);
     return true;
 }
 
@@ -428,7 +744,8 @@ void MainWindow::DocumentSection::applyOpenedDocumentState(
     TextEncoding encodingUsed,
     const SimaiDocument& document,
     bool showStatusMessage,
-    double knownTrackDurationSeconds)
+    double knownTrackDurationSeconds,
+    bool onlinePreview)
 {
     MC_OP("MainWindow::DocumentSection::applyOpenedDocumentState");
     _mc_op_.note(QStringLiteral("path=%1 dur=%2")
@@ -438,26 +755,40 @@ void MainWindow::DocumentSection::applyOpenedDocumentState(
     owner_.applyWaveformData(
         miacode::waveform::makeWaveformPlaceholder(
             knownTrackDurationSeconds > 0.0 ? knownTrackDurationSeconds : 0.0));
+    const QString previousOpenDirectory = owner_.resolveInitialOpenDirectory();
+    const QString previousSessionFilePath = state_.lastSessionFilePath_;
+    state_.onlinePreviewDocument_ = onlinePreview;
     owner_.setCurrentFilePath(normalizedPath, true);
-    owner_.addRecentFilePath(normalizedPath);
+    if (onlinePreview) {
+        state_.lastSessionFilePath_ = previousSessionFilePath;
+        miacode::crash_recovery::updateSessionMarker(QString());
+        owner_.setLastOpenDirectory(previousOpenDirectory);
+    } else {
+        owner_.addRecentFilePath(normalizedPath);
+    }
 
     // Eagerly create the crash-recovery directory BEFORE the user can
     // edit. Without this, a crash in the first ~1 ms after a keystroke
     // (before the lazy mkpath inside updateSnapshot has run) would find
     // the parent directory missing and fail CreateFileW. mkpath is
     // re-entrant and cheap on warm runs (one stat()).
-    miacode::crash_recovery::prepareForChart(normalizedPath);
+    if (!onlinePreview) {
+        miacode::crash_recovery::prepareForChart(normalizedPath);
+    }
 
     // Abnormal-exit recovery intentionally reuses File -> Restore Backup.
     // Opening the chart must finish first so the restore prompt appears over
     // the fully loaded window and the old on-disk content remains the restore
     // baseline, exactly like a manual menu action.
-    const bool previousSessionAbandoned =
-        miacode::crash_recovery::consumeAbandonedSessionChartMatch(normalizedPath);
-    const QString crashRecoveryPath = miacode::crash_recovery::crashRecoveryFilePath(normalizedPath);
-    const bool crashRecoveryFileExists =
-        !crashRecoveryPath.isEmpty() && QFileInfo(crashRecoveryPath).exists();
-    if (previousSessionAbandoned || crashRecoveryFileExists) {
+    const bool previousSessionAbandoned = !onlinePreview
+        && miacode::crash_recovery::consumeAbandonedSessionChartMatch(normalizedPath);
+    const QString crashRecoveryPath = onlinePreview
+        ? QString()
+        : miacode::crash_recovery::crashRecoveryFilePath(normalizedPath);
+    const bool crashRecoveryFileExists = !onlinePreview
+        && !crashRecoveryPath.isEmpty()
+        && QFileInfo(crashRecoveryPath).exists();
+    if (!onlinePreview && (previousSessionAbandoned || crashRecoveryFileExists)) {
         state_.pendingAbnormalExitBackupRestorePath_ =
             latestBackupRestoreFilePathForChart(normalizedPath);
         state_.pendingAbnormalExitBackupRestoreChartPath_ =
@@ -477,10 +808,15 @@ void MainWindow::DocumentSection::applyOpenedDocumentState(
         schedulePendingAbnormalExitBackupRestore();
     }
     if (showStatusMessage) {
-        owner_.statusBar()->showMessage(
-            QString("Opened: %1 (%2)")
-                .arg(QFileInfo(normalizedPath).fileName())
-                .arg(encodingUsed == TextEncoding::Utf8 ? "UTF-8" : "System encoding")
-        );
+        if (onlinePreview) {
+            owner_.statusBar()->showMessage(
+                UiText::text(QStringLiteral("net.online_preview_opened")));
+        } else {
+            owner_.statusBar()->showMessage(
+                QString("Opened: %1 (%2)")
+                    .arg(QFileInfo(normalizedPath).fileName())
+                    .arg(encodingUsed == TextEncoding::Utf8 ? "UTF-8" : "System encoding")
+            );
+        }
     }
 }

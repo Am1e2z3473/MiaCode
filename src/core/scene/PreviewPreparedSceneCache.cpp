@@ -1,6 +1,7 @@
 #include "core/scene/PreviewPreparedSceneCache.h"
 
 #include "common/DebugLog.h"
+#include "common/DebugOptions.h"
 #include "common/PreviewGameplayConfig.h"
 #include "core/scene/PreviewJudgeOverlayShared.h"
 #include "core/scene/PreviewMarkerDrawOrder.h"
@@ -63,12 +64,11 @@ qreal slideHeadRotateSpeedDegreesPerSecond(const TimelineNoteMarker& marker)
         return 0.0;
     }
 
-    const qreal totalLen = static_cast<qreal>(marker.slideNativeTrackLength);
     const qreal totalDuration = totalSlideTraceDurationSeconds(marker);
-    if (totalLen <= 0.0 || totalDuration <= 0.0) {
-        return 0.0;
-    }
-    return qMax<qreal>(-4.500 * totalLen / totalDuration, -1080.0);
+    return -static_cast<qreal>(
+        miacode::preview_gameplay::previewSlideHeadRotationSpeedDegreesPerSecond(
+            marker.slideNativeTrackLength,
+            totalDuration));
 }
 
 QHash<QString, SlideHeadRepresentative> buildSlideHeadRepresentatives(
@@ -129,8 +129,10 @@ bool PreviewPreparedSceneCache::sync(const PreviewFrameState& state)
     nextKey.renderMode = state.muriRenderOptions.renderMode;
     nextKey.showSlideTracks = state.muriRenderOptions.showSlideTracks;
     nextKey.slideEarlierSecondAndTextOnTop = state.render.slideEarlierSecondAndTextOnTop;
+    nextKey.tapJudgeTextDistance = state.render.tapJudgeTextDistance;
     nextKey.showChartReviewSlideJudgeOverlay = state.muriRenderOptions.showChartReviewSlideJudgeOverlay;
     nextKey.showChartReviewTapJudgeOverlay = state.muriRenderOptions.showChartReviewTapJudgeOverlay;
+    nextKey.showChartReviewBreakJudgeOverlay = state.muriRenderOptions.showChartReviewBreakJudgeOverlay;
     nextKey.showChartReviewTouchJudgeOverlay = state.muriRenderOptions.showChartReviewTouchJudgeOverlay;
 
     if (key_ == nextKey) {
@@ -173,8 +175,16 @@ void PreviewPreparedSceneCache::rebuild(const PreviewFrameState& state)
     // HS diagnostic: once per cache rebuild, log a histogram of marker
     // hsMultiplier values. Routed through the Runtime channel so it
     // appears in miacode_runtime_debug.log alongside other scene-cache
-    // diagnostics. Cheap (one map insertion per marker, one log line).
-    {
+    // diagnostics.
+    //
+    // Gated on the channel BEFORE the payload is built. "One map insertion per
+    // marker" is only cheap when rebuilds are rare — but the firework PSO
+    // warm-up re-centers its synthetic marker on every playhead change while
+    // armed, so for the first seconds of playback this ran per frame: a QHash
+    // over every marker in the chart plus a QTextStream summary, all discarded
+    // inside appendLine() because the Runtime channel is off in a default
+    // release run.
+    if (miacode::debug_options::runtimeDebugOutputEnabled()) {
         QHash<double, int> hsHist;
         for (const TimelineNoteMarker& marker : state.noteMarkers) {
             hsHist[marker.hsMultiplier]++;
@@ -370,7 +380,9 @@ void PreviewPreparedSceneCache::rebuild(const PreviewFrameState& state)
         state.noteMarkers,
         state.muriRenderOptions.showChartReviewSlideJudgeOverlay,
         state.muriRenderOptions.showChartReviewTapJudgeOverlay,
-        state.muriRenderOptions.showChartReviewTouchJudgeOverlay
+        state.muriRenderOptions.showChartReviewBreakJudgeOverlay,
+        state.muriRenderOptions.showChartReviewTouchJudgeOverlay,
+        state.render.tapJudgeTextDistance
     );
     chartReviewLayer_.entries.reserve(chartReviewEvents.size());
     for (const PreviewChartReviewPreparedEvent& event : chartReviewEvents) {

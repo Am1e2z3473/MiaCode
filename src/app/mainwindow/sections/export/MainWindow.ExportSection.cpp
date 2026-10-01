@@ -3,6 +3,7 @@
 #include "../window/MainWindow.WindowSection.h"
 #include "tools/export_page/ExportLauncherPage.h"
 #include "tools/net/NetBatchDownloadDialog.h"
+#include "tools/net/NetBatchUploadDialog.h"
 
 #include <QPointer>
 
@@ -51,6 +52,11 @@ void MainWindow::onNetBatchDownload()
     exportSection_->onNetBatchDownload();
 }
 
+void MainWindow::onNetBatchUpload()
+{
+    exportSection_->onNetBatchUpload();
+}
+
 void MainWindow::ExportSection::onNetBatchDownload()
 {
     if (owner_.netBatchDownloadDialog_ != nullptr) {
@@ -60,13 +66,40 @@ void MainWindow::ExportSection::onNetBatchDownload()
         return;
     }
 
-    auto* dialog = new miacode::net::NetBatchDownloadDialog(nullptr);
+    QPointer<MainWindow> ownerGuard(&owner_);
+    auto* dialog = new miacode::net::NetBatchDownloadDialog(
+        nullptr,
+        [ownerGuard](const QString& chartPath) {
+            return !ownerGuard.isNull() && ownerGuard->openOnlinePreviewAtPath(chartPath);
+        });
     owner_.netBatchDownloadDialog_ = dialog;
     if (owner_.windowSection_ != nullptr) {
         owner_.windowSection_->applySystemWindowBackdrop(dialog);
     }
     QObject::connect(dialog, &QObject::destroyed, &owner_, [&owner = owner_]() {
         owner.netBatchDownloadDialog_ = nullptr;
+    });
+    dialog->show();
+    dialog->raise();
+    dialog->activateWindow();
+}
+
+void MainWindow::ExportSection::onNetBatchUpload()
+{
+    if (owner_.netBatchUploadDialog_ != nullptr) {
+        owner_.netBatchUploadDialog_->showNormal();
+        owner_.netBatchUploadDialog_->raise();
+        owner_.netBatchUploadDialog_->activateWindow();
+        return;
+    }
+
+    auto* dialog = new miacode::net::NetBatchUploadDialog(nullptr);
+    owner_.netBatchUploadDialog_ = dialog;
+    if (owner_.windowSection_ != nullptr) {
+        owner_.windowSection_->applySystemWindowBackdrop(dialog);
+    }
+    QObject::connect(dialog, &QObject::destroyed, &owner_, [&owner = owner_]() {
+        owner.netBatchUploadDialog_ = nullptr;
     });
     dialog->show();
     dialog->raise();

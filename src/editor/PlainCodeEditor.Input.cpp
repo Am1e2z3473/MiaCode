@@ -90,10 +90,12 @@ QString normalizedHalfWidthKeyText(const QKeyEvent* event, const QString& text)
     return normalizedHalfWidthText(text);
 }
 
-QString clearCompleteElementsInSelection(
+namespace {
+QString transformCompleteElementsInSelection(
     const QString& text,
     int selectionStart,
     int selectionEnd,
+    bool resetToTap,
     int* changedCount)
 {
     if (changedCount != nullptr) {
@@ -222,8 +224,9 @@ QString clearCompleteElementsInSelection(
     // directive sits behind a newline/space instead of tight against the prior
     // comma — clearing a passage that spans several {} subdivisions must NOT
     // collapse them into one. Returns true if a note token was actually dropped.
-    const auto appendClearedNoteSpan = [&](int spanStart, int spanEnd) {
+    const auto appendTransformedNoteSpan = [&](int spanStart, int spanEnd) {
         bool droppedNote = false;
+        QString noteText;
         int pos = spanStart;
         while (pos < spanEnd) {
             const QChar ch = text.at(pos);
@@ -244,12 +247,15 @@ QString clearCompleteElementsInSelection(
                 output.append(ch);
                 ++pos;
             } else {
-                // Note token — cleared.
+                if (resetToTap && noteText.isEmpty()) {
+                    output.append(QLatin1Char('1'));
+                }
+                noteText.append(ch);
                 droppedNote = true;
                 ++pos;
             }
         }
-        return droppedNote;
+        return droppedNote && (!resetToTap || noteText != QLatin1String("1"));
     };
     const auto appendClearedSegment = [&](int commaIndex) {
         const int fullPrefixEnd = leadingPrefixEnd(segmentStart, commaIndex);
@@ -259,7 +265,7 @@ QString clearCompleteElementsInSelection(
             && (isElementBoundary(segmentStart) || partialPrefixEnd > segmentStart);
         output.append(text.mid(segmentStart, prefixEnd - segmentStart));
         if (canClear) {
-            if (appendClearedNoteSpan(prefixEnd, commaIndex)) {
+            if (appendTransformedNoteSpan(prefixEnd, commaIndex)) {
                 ++changed;
             }
             output.append(QLatin1Char(','));
@@ -329,6 +335,27 @@ QString clearCompleteElementsInSelection(
     }
     return output;
 }
+}  // namespace
+
+QString clearCompleteElementsInSelection(
+    const QString& text,
+    int selectionStart,
+    int selectionEnd,
+    int* changedCount)
+{
+    return transformCompleteElementsInSelection(
+        text, selectionStart, selectionEnd, false, changedCount);
+}
+
+QString resetTapNotesInSelection(
+    const QString& text,
+    int selectionStart,
+    int selectionEnd,
+    int* changedCount)
+{
+    return transformCompleteElementsInSelection(
+        text, selectionStart, selectionEnd, true, changedCount);
+}
 }
 
 namespace {
@@ -363,10 +390,14 @@ bool matchesShortcutId(const QKeyEvent* event, const QString& id, const QList<QK
         if (!sequence.isEmpty() && pressed == sequence) {
             return true;
         }
+        // A raw key event spells one keystroke several ways: ⌘⇧= arrives as
+        // Ctrl+Shift++ (Ctrl+Shift+= when synthesized), an unshifted + or the
+        // keypad + as Ctrl++. Either binding spelling accepts all of them.
         const QString portable = sequence.toString(QKeySequence::PortableText);
-        if (portable == QStringLiteral("Ctrl+Shift+=")
+        if ((portable == QStringLiteral("Ctrl+Shift+=") || portable == QStringLiteral("Ctrl++"))
             && (pressed == QKeySequence(QStringLiteral("Ctrl++"))
-                || pressed == QKeySequence(QStringLiteral("Ctrl+Shift++")))) {
+                || pressed == QKeySequence(QStringLiteral("Ctrl+Shift++"))
+                || pressed == QKeySequence(QStringLiteral("Ctrl+Shift+=")))) {
             return true;
         }
         if (portable == QStringLiteral("Ctrl+Shift+-")
@@ -376,6 +407,30 @@ bool matchesShortcutId(const QKeyEvent* event, const QString& id, const QList<QK
         }
     }
     return false;
+}
+
+bool shouldRecordSelectionReplacementUndo(const QKeyEvent* event)
+{
+    if (event == nullptr) {
+        return false;
+    }
+    if (event->matches(QKeySequence::Undo)
+        || event->matches(QKeySequence::Redo)
+        || event->matches(QKeySequence::Copy)
+        || event->matches(QKeySequence::SelectAll)) {
+        return false;
+    }
+    if (event->matches(QKeySequence::Cut)) {
+        return true;
+    }
+    if (event->key() == Qt::Key_Backspace || event->key() == Qt::Key_Delete) {
+        return !(event->modifiers() & (Qt::ControlModifier | Qt::AltModifier | Qt::MetaModifier));
+    }
+    if (event->key() == Qt::Key_Return || event->key() == Qt::Key_Enter) {
+        return !(event->modifiers() & (Qt::AltModifier | Qt::MetaModifier));
+    }
+    return !event->text().isEmpty()
+        && !(event->modifiers() & (Qt::ControlModifier | Qt::AltModifier | Qt::MetaModifier));
 }
 
 void insertLineBreakAtCursor(QTextEdit* editor)
@@ -405,7 +460,7 @@ bool PlainCodeEditor::event(QEvent* event)
             || matchesShortcutId(
                 keyEvent,
                 QStringLiteral("transform.subdivision_half_up"),
-                {QKeySequence(QStringLiteral("Ctrl+Shift+=")), QKeySequence(QStringLiteral("Ctrl++"))})
+                {QKeySequence(QStringLiteral("Ctrl++"))})
             || matchesShortcutId(
                 keyEvent,
                 QStringLiteral("transform.subdivision_half_down"),
@@ -524,7 +579,13 @@ void PlainCodeEditor::contextMenuEvent(QContextMenuEvent* event)
         QKeySequence::Cut);
     cutAction->setShortcutVisibleInContextMenu(true);
     cutAction->setEnabled(textCursor().hasSelection());
-    connect(cutAction, &QAction::triggered, this, &QTextEdit::cut);
+    connect(cutAction, &QAction::triggered, this, [this]() {
+        const QTextCursor cursor = textCursor();
+        if (cursor.hasSelection()) {
+            emit selectionReplacementAboutToEdit(cursor.anchor(), cursor.position());
+        }
+        cut();
+    });
 
     auto* copyAction = menu->addAction(translated(QStringLiteral("action.copy"), QStringLiteral("Copy")));
     ShortcutRegistry::instance().applyShortcut(
@@ -543,6 +604,17 @@ void PlainCodeEditor::contextMenuEvent(QContextMenuEvent* event)
     pasteAction->setShortcutVisibleInContextMenu(true);
     pasteAction->setEnabled(canPaste());
     connect(pasteAction, &QAction::triggered, this, &QTextEdit::paste);
+
+    menu->addSeparator();
+    auto* exportRangeAction = menu->addAction(
+        translated(QStringLiteral("video_export.export_range_from_selection"), QStringLiteral("Export Selected Range")));
+    exportRangeAction->setEnabled(textCursor().hasSelection());
+    connect(exportRangeAction, &QAction::triggered, this, [this]() {
+        const QTextCursor cursor = textCursor();
+        if (cursor.hasSelection() && cursor.selectionEnd() > cursor.selectionStart()) {
+            emit exportRangeRequested(cursor.selectionStart(), cursor.selectionEnd());
+        }
+    });
 
     const auto addStyledSubmenu = [&](const QString& title, const QList<QAction*>& actions) {
         auto* submenu = menu->addMenu(title);
@@ -617,12 +689,13 @@ void PlainCodeEditor::inputMethodEvent(QInputMethodEvent* event)
         && event->replacementLength() == 0
         && normalizedCommitString.size() == 1
         && miacode::editor::isBracketOpening(normalizedCommitString.at(0))) {
+        if (tryOverwriteOpeningSquareBracket(normalizedCommitString)) {
+            event->accept();
+            return;
+        }
         const QChar opening = normalizedCommitString.at(0);
-        const bool hadSelection = textCursor().hasSelection();
         if (tryAutoCloseBracket(normalizedCommitString)) {
-            if (!hadSelection) {
-                maybeOpenBracketCompletion(opening, /*closingPresent=*/true);
-            }
+            maybeOpenBracketCompletion(opening, /*closingPresent=*/true);
             event->accept();
             return;
         }
@@ -667,6 +740,9 @@ void PlainCodeEditor::insertFromMimeData(const QMimeData* source)
     }
 
     QTextCursor cursor = textCursor();
+    if (cursor.hasSelection()) {
+        emit selectionReplacementAboutToEdit(cursor.anchor(), cursor.position());
+    }
     const int selectionStart = cursor.selectionStart();
     cursor.beginEditBlock();
     cursor.insertText(text);
@@ -697,6 +773,16 @@ void PlainCodeEditor::keyPressEvent(QKeyEvent* event)
         return;
     }
 
+    const QTextCursor selectionBeforeEdit = textCursor();
+    const bool recordSelectionReplacement =
+        selectionBeforeEdit.hasSelection() && shouldRecordSelectionReplacementUndo(event);
+    const auto emitSelectionReplacementIfNeeded = [this, recordSelectionReplacement, selectionBeforeEdit]() {
+        if (recordSelectionReplacement) {
+            emit selectionReplacementAboutToEdit(selectionBeforeEdit.anchor(), selectionBeforeEdit.position());
+        }
+    };
+    emitSelectionReplacementIfNeeded();
+
     // Backspace between an empty matching pair removes both glyphs at once.
     if (tryDeleteBracketPair(event)) {
         return;
@@ -723,7 +809,7 @@ void PlainCodeEditor::keyPressEvent(QKeyEvent* event)
     if (matchesShortcutId(
             event,
             QStringLiteral("transform.subdivision_half_up"),
-            {QKeySequence(QStringLiteral("Ctrl+Shift+=")), QKeySequence(QStringLiteral("Ctrl++"))})) {
+            {QKeySequence(QStringLiteral("Ctrl++"))})) {
         emit raiseSubdivisionHalfStepShortcutRequested();
         event->accept();
         return;
@@ -731,7 +817,7 @@ void PlainCodeEditor::keyPressEvent(QKeyEvent* event)
     if (matchesShortcutId(
             event,
             QStringLiteral("transform.subdivision_half_down"),
-            {QKeySequence(QStringLiteral("Ctrl+Shift+-")), QKeySequence(QStringLiteral("Ctrl+_"))})) {
+            {QKeySequence(QStringLiteral("Ctrl+Shift+-"))})) {
         emit lowerSubdivisionHalfStepShortcutRequested();
         event->accept();
         return;
@@ -788,6 +874,14 @@ void PlainCodeEditor::keyPressEvent(QKeyEvent* event)
         insertLineBreakAtCursor(this);
         return;
     }
+    if (matchesShortcutId(
+            event,
+            QStringLiteral("transform.reset_tap_notes"),
+            {QKeySequence(Qt::CTRL | Qt::Key_W)})) {
+        emit resetTapNotesShortcutRequested();
+        event->accept();
+        return;
+    }
 
     // Bracket auto-pairing is handled by tryAutoCloseBracket() / tryBracketInput()
     // (members, so the IME commit path in inputMethodEvent can reuse them); the
@@ -797,6 +891,7 @@ void PlainCodeEditor::keyPressEvent(QKeyEvent* event)
     if (!halfWidthInputEnabled_
         || (event->modifiers() & (Qt::ControlModifier | Qt::AltModifier | Qt::MetaModifier))) {
         if (tryOverwriteClosingBracket(event->text())
+            || tryOverwriteOpeningSquareBracket(event->text())
             || tryBracketInput(event->text()) || tryHoldExpand(event->text())) {
             event->accept();
             return;
@@ -813,6 +908,7 @@ void PlainCodeEditor::keyPressEvent(QKeyEvent* event)
 
     const QString normalizedText = miacode::editor::normalizedHalfWidthKeyText(event, inputText);
     if (tryOverwriteClosingBracket(normalizedText)
+        || tryOverwriteOpeningSquareBracket(normalizedText)
         || tryBracketInput(normalizedText) || tryHoldExpand(normalizedText)) {
         event->accept();
         return;
@@ -860,4 +956,26 @@ void PlainCodeEditor::mousePressEvent(QMouseEvent* event)
     adjustedEvent.setAccepted(false);
     QTextEdit::mousePressEvent(&adjustedEvent);
     event->setAccepted(adjustedEvent.isAccepted());
+}
+
+void PlainCodeEditor::mouseDoubleClickEvent(QMouseEvent* event)
+{
+    if (event == nullptr || !preventMultiClickSelectionEnabled_) {
+        QTextEdit::mouseDoubleClickEvent(event);
+        return;
+    }
+
+    QMouseEvent pressEvent(
+        QEvent::MouseButtonPress,
+        event->position(),
+        event->scenePosition(),
+        event->globalPosition(),
+        event->button(),
+        event->buttons(),
+        event->modifiers(),
+        event->pointingDevice()
+    );
+    pressEvent.setAccepted(false);
+    mousePressEvent(&pressEvent);
+    event->setAccepted(pressEvent.isAccepted());
 }

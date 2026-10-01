@@ -23,9 +23,7 @@
 
 #include <cstdio>   // G1 Commit 8 followup: std::snprintf for startup-beacon lines
 
-#ifdef Q_OS_WIN
-#include <windows.h>
-
+#ifdef MIACODE_HAS_BASS_AUDIO
 #include "bass.h"
 #include "bassmix.h"
 #endif
@@ -34,7 +32,7 @@
 
 using namespace miacode::audio::bass_detail;
 
-#ifdef Q_OS_WIN
+#ifdef MIACODE_HAS_BASS_AUDIO
 
 struct BassPreviewAudioBackend::Sample {
     QString name;
@@ -189,7 +187,7 @@ struct BassPreviewAudioBackend::Sample {
         speedChangeSupported = speedMode != SampleSpeedMode::None;
 
         // G1 Commit 8 followup: per-sample create beacon per §7.3. The beacon is
-        // heap-free / pure Win32, so if BASS_StreamCreateFile or BASS_FX_TempoCreate
+        // heap-free and platform-neutral, so if BASS_StreamCreateFile or BASS_FX_TempoCreate
         // crashes mid-call (the (a)-scenario fault locus per
         // PREVIEW_AUDIO_CLOCK_ALIGNMENT_HANDOFF_ZH.md §4.1), this line still lands
         // and lets the next startup pin which sample was in flight. Filename only,
@@ -376,6 +374,11 @@ struct BassPreviewAudioBackend::Sample {
         noteBassErr("sample_set_current_sec");
     }
 
+    bool isAtOrPastEnd(double seconds) const
+    {
+        return miacode::preview_audio::bass::backgroundTrackTargetIsPastEnd(seconds, lengthSeconds);
+    }
+
     double currentSec() const
     {
         if (!valid()) {
@@ -560,16 +563,32 @@ struct BassPreviewAudioBackend::Sample {
         noteBassErr("sample_play/clear_pause_flag");
     }
 
-    void playOneShot(double eventGain)
+    bool playOneShot(double eventGain, int* nativeErrorCode = nullptr)
     {
+        if (nativeErrorCode != nullptr) {
+            *nativeErrorCode = 0;
+        }
         if (!valid()) {
-            return;
+            return false;
         }
         applyVolume(eventGain);
-        BASS_Mixer_ChannelSetPosition(source, 0, BASS_POS_BYTE);
-        noteBassErr("sample_one_shot/seek_zero");
-        BASS_Mixer_ChannelFlags(source, 0, BASS_MIXER_CHAN_PAUSE);
-        noteBassErr("sample_one_shot/clear_pause_flag");
+        const bool seeked = BASS_Mixer_ChannelSetPosition(source, 0, BASS_POS_BYTE);
+        const int seekError = noteBassErr("sample_one_shot/seek_zero");
+        if (!seeked) {
+            if (nativeErrorCode != nullptr) {
+                *nativeErrorCode = seekError;
+            }
+            return false;
+        }
+        const DWORD flags = BASS_Mixer_ChannelFlags(source, 0, BASS_MIXER_CHAN_PAUSE);
+        const int flagsError = noteBassErr("sample_one_shot/clear_pause_flag");
+        if (flags == static_cast<DWORD>(-1)) {
+            if (nativeErrorCode != nullptr) {
+                *nativeErrorCode = flagsError;
+            }
+            return false;
+        }
+        return true;
     }
 
     void pause()

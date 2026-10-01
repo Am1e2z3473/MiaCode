@@ -154,6 +154,20 @@ Map a user-facing feature to the files / classes / functions that own it. Paths 
   `[|]` in one undo step). All gated by the single auto-completion pref; hold shortcut
   `tryHoldExpand` (typing `h` inserts a bare `h` and pops the `[8:1]`-style suggestions — it
   inserts NO bracket itself, so a following `[` yields `h[]`, never the old `h[[]]`).
+- Drag-selection autoscroll on adopted surfaces: `src/common/AdoptedSurfaceDragAutoScroll.{h,cpp}`
+  (`miacode::ui::installAdoptedSurfaceDragAutoScroll(QAbstractScrollArea*)`, **macOS-only body**,
+  no-op elsewhere; geometry helper `planDragAutoScrollStep` compiled everywhere and specced in
+  `plain_code_editor_spec`). Reason: Qt's own autoscroll re-derives the held pointer from
+  `QCursor::pos()` through `QWidget::mapFromGlobal()`, which on the adopted QuickShell surface
+  still resolves through the neutralized orphan NSPanel (see `common/AdoptedWidgetCoordinates.h`),
+  so its synthesized move lands on the wrong line and fights the real drag — the selection strobes
+  whenever the pointer leaves the viewport (the gutter and top overlay inset are viewport margins,
+  so dragging left/up is enough). The installed viewport event filter swallows out-of-viewport
+  moves, re-sends them clamped (which is also what keeps Qt's timer from arming), and steps the
+  scrollbars from a timer fed by real event coordinates. **Install it on every scroll area that
+  supports drag-selection on the workspace/sidebar surfaces** — today `PlainCodeEditor`'s ctor
+  (covers the chart editor + copy area) and `metadataExtraEdit_` (plain `QTextEdit`,
+  `MainWindow.FrameBootstrap.cpp`).
 - Bracket-completion dropdown ("tab 补全"): typing `( [ {` pops a simai-aware suggestion list under
   the caret; typing `h` pops the full-bracket hold durations (`[8:1]` …). Candidate
   data + scans: `src/editor/SimaiCompletionCatalog.{h,cpp}` (pure — `candidatesForOpening` for the
@@ -229,6 +243,54 @@ Map a user-facing feature to the files / classes / functions that own it. Paths 
   path) + batch `MainWindow.ExportFlow.cpp`, and the snapshot rebuild in `VideoExportSnapshot.cpp`
   (`buildVideoExportTaskFromSnapshot`).
 
+## 3b. Editor bookmarks (2026-07-06 redesign)
+
+- Spec: `docs/specs/editor/BOOKMARK_REDESIGN_SPEC.md` (includes the implemented detailed design).
+- **Storage — simai file is authoritative:** one managed single-line field
+  `&miacode_bookmarks={"schema":"miacode_bookmarks_v2","items":[{"d","l","n","s","src","fp","cb","ca","locked"}]}`.
+  Model: `SimaiBookmarkData` + `SimaiDocument::bookmarks` / `bookmarksParseError`
+  (`src/core/chart/document/SimaiDocument.{h,cpp}`). `fromText` routes the key into `bookmarks`
+  (never `extraFields`; bad JSON → ignored + flag, never blocks loading); `toText` emits it after
+  extra fields, before the difficulty triples, and omits it when empty; `parseUnmanagedFields`
+  treats it as reserved so it never shows in the metadata "Other &xx Fields" editor. Spec cases in
+  `simai_document_spec`.
+- **Legacy fallback / migration:** `.miacode/miacode_settings.json` `editor_bookmarks` is read into
+  `state_.legacyJsonEditorBookmarks_` by `EditorSection::loadProjectRenderState` and consumed by
+  `adoptBookmarksForLoadedDocument()` (called from `DocumentSection::loadDocument`) only when the
+  simai payload is absent. `state_.editorBookmarksInSimai_` gates the legacy JSON mirror in
+  `saveProjectRenderState` (kept for crash safety until the first simai save, dropped after).
+  `saveToPath` pushes `editorBookmarks_` into the document via `syncBookmarksIntoDocument` before
+  `toText()` and flips the flag.
+- **In-memory model:** `MainWindow::EditorBookmark` (user-visible face = `title` + `line`;
+  `nameLocked` set on explicit rename; `text` is a legacy import-only field). User-initiated
+  mutations call `EditorSection::markBookmarksMutatedByUser()` (marks the document dirty so the
+  change reaches the file on save); the comment auto-sync (`syncBookmarksFromEditorText`) never
+  dirties and NEVER renames — default names are generated exactly once at creation
+  (`defaultBookmarkNameFromComment`: first token of the `||` comment, else `fallbackBookmarkNameForLine`
+  "第 N 行"/"LN").
+- **Sidebar (IDE-style tree, `outlineList_`):** built by `DocumentSection::rebuildFieldSidebar`
+  (`MainWindow.DocumentUi.cpp`); painted by `OutlineItemDelegate` in `MainWindowShared.h` from the
+  shared `kOutlineItem*Role` constants. Difficulty rows carry the fold chevron at the ROW START
+  (path chevron, `kDifficultyFoldHitZone` click zone in FrameBootstrap; per-difficulty state in
+  `outlineBookmarkGroupExpanded_`, untouched groups default expanded only for the active
+  difficulty); `bookmark` rows (item text = bare name) draw a 1px indent guide + a fixed-width
+  neutral line badge (`kOutlineItemMaxLineRole` sizes it group-wide; solid accent = last-activated).
+  `kOutlineItemActiveRole` on metadata/export/difficulty rows is the persistent "you are here"
+  marker (borderless fill + 3px left accent bar), driven by `activeOutlineKey_`/`activeDifficultyId_`
+  — NOT the list selection, so it survives bookmark clicks. Non-interactive `spacer` kind rows
+  separate the sidebar sections. Rebuild preserves fold state, bookmark selection and scroll
+  position. Single click = jump to
+  line (+ accent marker `activeBookmark*`), double click = inline rename (`editItem`; commit via
+  `itemChanged` → `EditorSection::renameBookmark`, empty name reverts), right click = 重命名 /
+  删除 / 跳到时间轴位置 (difficulty & group rows add 插入书签). Reveal/rename entry:
+  `DocumentSection::revealBookmarkInSidebar`.
+- **Editor entry points (`PlainCodeEditor`):** gutter double-click activates/creates; gutter drag
+  moves; body & gutter right-click add 插入/重命名/删除/在侧边栏显示 via intent signals only
+  (`lineNumberBookmarkCreateRequested/RenameRequested/DeleteRequested/Activated/ContextMenuRequested`)
+  — MainWindow (`FrameBootstrap`) owns the actions. Dialog-free: the old create/detail/manager
+  dialogs and the toolbox 创建书签/书签管理 entries were REMOVED (toolbox keeps JSON
+  import/export as compatibility tools; import marks the document dirty).
+
 ## 4. Parser, validation, markers
 
 - API: `src/core/chart/parser/SimaiNativeParser.h` + `SimaiNativeParser.Driver.cpp`
@@ -268,6 +330,38 @@ Map a user-facing feature to the files / classes / functions that own it. Paths 
 - Slow refresh workers: `src/timeline/TimelineSlowRefresh.{h,cpp}`.
 - Timing getters: same `PreviewTimelineFlow.cpp` (`currentTimingMetadata`, `parsedFirstSeconds`,
   `parsedWholeBpm`, `parsedLatencyMeterId`, `applyLatencyDetectorOffset`).
+- **Preview-follow while PAUSED updates the DECORATION ONLY** — `syncEditorCursorToPreviewSecond`
+  (`MainWindow.TimelinePreviewFollowSync.cpp:217`) returns after `setPreviewFollowDecoration`; the
+  real `QTextCursor` is moved (`applyPreviewFollowCursor`) only while playing. An earlier attempt to
+  move it while paused was reverted because it clobbered drag selections (see the note at
+  `MainWindow.WindowInteraction.cpp:1450`). So the text caret and the playhead legitimately diverge
+  after any paused seek, and that divergence is by design — the decoration is a read-only indicator
+  of where the playhead is. Nothing authors against it: touch-pad click input targets the caret
+  (§5b). The caret does drag the preview the other way, though — `cursorPositionChanged`
+  (`MainWindow.FrameBootstrap.cpp:1794`) syncs the timeline/preview to the caret while paused when
+  `timelineSyncEnabled_`, which is why the two normally agree.
+
+### 5b. Touch-pad click authoring (Ctrl/Cmd + click the preview)
+
+- Setting `preview.touch_pad_authoring_shortcut` (启用touch点击输入); Ctrl-hold gate in
+  `MainWindow.WindowInteraction.cpp:958` → `setTouchPadAuthoringCtrlHoldActive` →
+  `PreviewRuntime::setTouchPadAuthoringEnabled`.
+- Hit test + press/release gesture: `PreviewQuickSceneRoot::mousePressEvent/mouseReleaseEvent`
+  (`touchPadAtItemPoint` → `touchPadTokenAtLogicalPoint`), state machine in
+  `core/scene/TouchPadAuthoringState.h`, signal `PreviewRuntime::touchPadAuthoringClicked`.
+- Click handler: `MainWindow.FrameBootstrap.cpp:1326`. **Target token = the text caret, always** —
+  resolving a playhead second onto a token is not predictable for a user, so the insertion point is
+  the one they set by hand (decided 2026-08-18; an earlier revision targeted the preview-follow
+  highlight). Text edit planned by `planTouchPadAuthoringEdit`
+  (`src/editor/TouchPadAuthoringEdit.cpp`); undo entry recorded with **pre-edit int offsets**
+  (`recordChartCursorUndoEntry` — a live `QTextCursor` would be shifted by the edit itself);
+  preview then seeks to `tokenSecond - 1/60` (a deliberate convention, not a bug).
+- That seek parks the playhead one token EARLY, so `touchPadAuthoringAnchor*`
+  (`MainWindow.TimelinePreviewFollowSync.cpp:43`, cleared in `setEditorText`) maps it back for the
+  highlight. Purely cosmetic — it does not feed the insertion point.
+- Token boundaries come from `src/core/chart/parser/SimaiCommentScan.*` so `||` comments are
+  skipped exactly as the two parsers skip them — see `cross-chain-linkage.md` §15.
+- Spec: `plain_code_editor_spec` (`src/tools/editor/PlainCodeEditorSpec.cpp`).
 
 ## 6. Preview video, media, render state
 
@@ -306,18 +400,23 @@ Map a user-facing feature to the files / classes / functions that own it. Paths 
     "掉帧→必须重启/闪退" root cause (`docs/PREVIEW_FRAMEDROP_DIAGNOSIS_AND_FIX_SPEC_ZH.md` §8). Any
     new ad-hoc `createTextureFromImage` + texture-node site must declare ownership explicitly
     (repository-cached textures stay `setOwnsTexture(false)` — the repository deletes them).
-- DComp path (**OFF by default**): `src/sources/*Source` → `src/render/compositor` →
-  `src/render/backend_d3d11/PreviewDComp*` + `TimelineRenderView`.
 
 ## 7. Preview audio & SFX scheduling — `src/audio/`
 
 - Facade: `QtPreviewSfxRuntime.{h,cpp}` (+ include-split `.Assets/.Timeline/.Background/.Engine/.Voices.cpp`)
   — backend selection, prepare/commit/pause/resume/seek surface.
-- Backends behind `src/audio/PreviewAudioBackend.h`: `BassPreviewAudioBackend.{h,cpp}` (Windows,
+- Backends behind `src/audio/PreviewAudioBackend.h`: `BassPreviewAudioBackend.{h,cpp}` (Windows/macOS/Linux,
   real BASS, master mixer clock, preloaded SFX channels, BASS_FX tempo) and
-  `MiniaudioPreviewAudioBackend.{h,cpp}` (non-Windows compatibility, SoundTouch stretch).
+  `MiniaudioPreviewAudioBackend.{h,cpp}` (no-BASS compatibility, SoundTouch stretch).
 - Settings/semantics: `src/audio/PreviewAudioSettings.*`, `src/common/PreviewSfxAssets.h`,
   `PreviewSfxSemantics.h`, `PreviewSfxTimeline.h`, `PreviewSfxTiming.h`.
+- **Output-device change → auto-pause** (BASS platforms only): `PreviewAudioDeviceWatcher.{h,cpp}`
+  (owns the `QMediaDevices` observer + snapshot) + `PreviewAudioDeviceChangePolicy.h` (pure decision,
+  CTest `preview_audio_device_change_policy_spec`) → `TimelineSection::pausePreviewForAudioDeviceChange`
+  in `sections/timeline/MainWindow.PreviewPlaybackState.cpp`, wired in `sections/frame/MainWindow.FrameBootstrap.cpp`.
+  A hotplug or default-output switch pauses a playing preview; the user's resume is what re-anchors
+  the transport. See `docs/superpowers/specs/2026-08-06-preview-audio-device-autopause-design.md` —
+  in-place re-anchoring was tried three times and removed.
 - MainWindow hooks: `MainWindow.cpp` (`ensurePreviewSfxRuntimePrepared`,
   `applyPreviewAudioSettingsToRuntime`); playback clock authority:
   `sections/timeline/MainWindow.TimelinePlayback.cpp` (`currentPreviewAuthoritativeAudioClockSecond`).
@@ -459,8 +558,8 @@ Map a user-facing feature to the files / classes / functions that own it. Paths 
   the SFX prepared timeline (the resume hand-off `resetCursor(0,false)` would skip the downbeat).
   Seeded from `installExportPreviewAuditionScene` (`clockCountFromDocument`+`clockBpmForChart`),
   cleared in `teardownExportPreviewAuditionScene`. ⚠ **Both backends must load a `"clock"` sample
-  for `audition("clock")` to make sound** — added to `BassPreviewAudioBackend` (Windows:
-  `clockSample_`, load+reset+`applySampleLevels`); the miniaudio (non-Windows) backend gracefully
+  for `audition("clock")` to make sound** — added to `BassPreviewAudioBackend` (Windows/macOS/Linux:
+  `clockSample_`, load+reset+`applySampleLevels`); the miniaudio compatibility backend gracefully
   no-ops (`sampleForKind` miss → silent count-in there). `clock.wav` ships in `assets/SFX/`.
   ⚠⚠ **The on-screen preview transport (default shell too) is the QML
   `QuickShellPreviewTransport.qml`** — its slider was hardcoded `from: 0` (the real clamp) — NOT the
@@ -576,7 +675,7 @@ Map a user-facing feature to the files / classes / functions that own it. Paths 
     as `CoverComposerView` (bare `QQuickWindow` + `grabWindow()` on the process RHI = D3D11; **no
     `QQuickView`, no forced OpenGL** — it is NOT the export worker), but it hosts a
     **`PreviewQuickSceneRoot`** (the same C++ chart scene the live preview + video export use; no
-    QML/engine needed) with `setDCompFallbackActive(true)` + `kPreviewExportOverlayRenderLayers`
+    QML/engine needed) with `kPreviewExportOverlayRenderLayers`
     (everything except the song-background media) captured over **transparent**, so the playfield
     (outline ring + notes + judge) composites as a layer over the cover's own background.
     `bootstrap(task)` maps the `VideoExportTask` → base `PreviewFrameState` ONCE (mirrors
@@ -606,7 +705,7 @@ Map a user-facing feature to the files / classes / functions that own it. Paths 
       `import` must resolve in both the live engine AND the export engine (even though the export path
       never instantiates the type). C++ `bindLiveChartScene` (called from the QML `Loader.onItemChanged`
       via the `chartSceneBinder` root property, set on the LIVE path only) configures the scene exactly
-      like `SceneFrameRenderer`: `kPreviewExportOverlayRenderLayers` + `setDCompFallbackActive(true)` +
+      like `SceneFrameRenderer`: `kPreviewExportOverlayRenderLayers` +
       the SHARED `PreviewFrameState` borrowed from the dialog's `SceneFrameRenderer`
       (`frameState()`/`setPlayheadSeconds()`), plus `clip:true` on the scene root for square-box parity
       with the export framebuffer. The export render (`editable=false` → `chartSceneBinder` null → the
@@ -790,12 +889,26 @@ Map a user-facing feature to the files / classes / functions that own it. Paths 
   `buildIntroBannerSpec` in `MainWindow.ExportSnapshot.cpp`) drives the card, and
   `task.noteMarkers`/`skinDirectory`/`outlineImagePath`/render-settings/`contentDurationSeconds`
   feed the chart-frame `SceneFrameRenderer`. Output dir = the chart directory. (The former
-  `VideoExportDialog::openExportCoverDialog` + its Font-tab button are REMOVED; the export
-  dialog's Font tab is back to HUD-font-only. The HUD-font settings dialog itself moved to
-  `tools/video_export/HudFontSettings.{h,cpp}` —
-  `miacode::video_export::openHudFontSettingsDialog(parent, onFontChanged)` — shared by the
-  export dialog's Font tab and a new **"字体" tab in the 视频设置 dialog**
-  (`MainWindow.Dialogs.cpp::onPreviewVideoSettings`).) The **default** (no custom font) HUD
+  `VideoExportDialog::openExportCoverDialog` + its Font-tab button are REMOVED.
+  **皮肤 panel reorg (2026-07-04/05):** skin / judge line / 字体 (embedded HUD-font picker) are
+  now ONE shared owner-wired panel — `DialogsSection::buildSkinSettings(parent, skinOut,
+  includeFolderButtons)` (`MainWindow.Dialogs.ExportSettings.cpp`, alongside
+  `buildExportInjectedSettings`) — reused by BOTH a main-window **皮肤设置 popup** (`onSkinSettings`
+  → `openSkinSettingsDialog`; toolbar button `skinSettingsButton_`/`skinSettingsAction_` sits
+  between 预览设置 and 导出 at the SAME width as the 导出 button, wired in
+  `MainWindow.FrameBootstrapFinalize.cpp`) AND the export dialog's **皮肤 tab** (injected via
+  `VideoExportDialog::injectOwnerWiredSettings(videoExtras, gameplayWidget, skinWidget)`). Intro
+  sound + a 当前谱面资源 readout were part of an earlier draft but were DROPPED (2026-07-05) — the
+  panel is skin / judge line / font only. The HUD-font controls are an EMBEDDABLE widget
+  `miacode::video_export::createHudFontSettingsWidget(parent, onFontChanged)`
+  (`tools/video_export/HudFontSettings.{h,cpp}` — the former modal `openHudFontSettingsDialog` +
+  the export dialog's `hudFontSettingsButton_`/`openHudFontSettingsDialog()`/`refreshLivePreviewHudFont()`
+  are REMOVED). The export dialog's standalone **字体 tab is GONE**; the 视频设置 dialog
+  (`onPreviewVideoSettings` → `openPreviewSettingsDialog`) dropped its skin/judge-line rows + the
+  音乐 + 字体 tabs and now reads **视频 / 游戏 / 性能** (性能 = 预览刷新率). `buildExportInjectedSettings`
+  keeps only 判定效果 / slide 层叠 / 中心显示. ⚠ **W1 note:** the preview-settings
+  `createDialogMenuButton` must keep the `ensurePolished()`+`setFixedHeight(qMax(sizeHint,30)+4)`
+  or its dropdowns clip their bottom border (`qt-ui-layout-pitfalls` W1).) The **default** (no custom font) HUD
   family is **"Xiaolai Mono"** — embedded resource `:/fonts/xiaolai_mono.ttf`
   (`resources/fonts.qrc` → `assets/fonts/XiaolaiMono-Regular.subset.ttf`), loaded in
   `PreviewHudState.cpp::previewHudTimestampFont` (replaced the old JetBrains Mono, 2026-06-19).
@@ -805,7 +918,7 @@ Map a user-facing feature to the files / classes / functions that own it. Paths 
   editing it (or `MaimaiBannerCard.qml`) DOES need the AUTORCC repack — delete `build/**/qrc_intro.cpp*`
   / touch `resources/intro.qrc` to force RCC (cf. the over-long-text mirror note above).
 - **Export dialog "片头" tab (2026-06-11):** the 添加片头 checkbox moved from the 视频 tab to a
-  dedicated **片头 tab** (between 游戏 and 字体) carrying the cover-dialog-style controls —
+  dedicated **片头 tab** (tab order: 输出 / 视频 / 游戏 / 皮肤 / 片头 / 导出区间) carrying the cover-dialog-style controls —
   添加片头 as the bold master switch wrapped in a neutral rounded box (`QFrame#AddIntroCapsule` —
   inputBg + border + 8px radius, matching the 游戏 tab dropdown chrome; styled by
   `UiTheme::exportDialogStyleSheet` so it re-themes; 2026-06-19. The old "?" dev-status badge +

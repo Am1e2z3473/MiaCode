@@ -69,16 +69,21 @@ QString MainWindow::DialogsSection::resolveCurrentChartDirectory() const
 void MainWindow::DialogsSection::releasePreviewMediaForFileOperation()
 {
     owner_.onStopPreview();
-    // clearPreviewStageMediaRoute() -> setChartPath("") -> clearMedia(), which
-    // now pushes an empty frame to the QML sink so the retained QVideoFrame ->
-    // QAVStream -> QAVFormatContext reference is dropped and the pv.mp4 avio
-    // handle is actually closed (the real "pv占用" fix lives in clearMedia()).
-    // We deliberately do NOT destroy the host here: deleting it detaches the
-    // QML VideoOutput's sink and it does not reliably re-attach to the
-    // re-created host, which left the post-op preview blank ("压缩后视频不加载").
-    // Keeping the host alive means the post-op reload re-decodes onto the same
-    // still-attached sink. See project_pv_file_lock_release.
+    // clearPreviewStageMediaRoute() -> setChartPath("") -> clearMedia() drops the
+    // retained frames from both QML sinks and unloads the demuxer. But that unload
+    // is ASYNCHRONOUS: the QAVPlayer survives and keeps its own
+    // QSharedPointer<QAVFormatContext> ref until the demuxer thread lands the
+    // close, so the pv.mp4 avio handle could still be open when we rename the file
+    // below -> ERROR_SHARING_VIOLATION ("pv占用"). That async gap — not just a
+    // stray sink frame — was the real cause the earlier empty-frame fix missed.
     owner_.clearPreviewStageMediaRoute();
+    // Deterministic close: destroy the QAVPlayer so ~QAVPlayer joins its decode
+    // threads and releases the format context SYNCHRONOUSLY (avformat_close_input
+    // runs before this returns). The player is rebuilt on the post-op reload. We
+    // keep the HOST alive so the QML VideoOutput's sink stays attached (destroying
+    // the host left the post-op preview blank, "压缩后视频不加载").
+    // See project_pv_file_lock_release.
+    owner_.releasePreviewStageMediaDecoderForFileOperation();
     for (int i = 0; i < 8; ++i) {
         QCoreApplication::processEvents(QEventLoop::AllEvents, 50);
         QThread::msleep(25);
@@ -96,8 +101,19 @@ void MainWindow::DialogsSection::reloadPreviewMediaAfterFileOperation(bool reloa
             state_.waveformCacheService_->clear();
         }
         if (owner_.previewSfxRuntime_ != nullptr) {
-            owner_.previewSfxRuntime_->setChartPath(QString());
-            owner_.previewSfxRuntime_->setChartPath(owner_.currentFilePath_);
+            const QtPreviewSfxRuntime::AssetSubmission reload =
+                owner_.previewSfxRuntime_->reloadAssetsForChartWithWarmupPaths(
+                    owner_.currentFilePath_,
+                    owner_.lastTrackPath_,
+                    miacode::preview_sfx::resolveSfxDirectory(),
+                    owner_.previewAudioSettings_);
+            owner_.previewSfxRuntimePrepared_ = false;
+            owner_.previewSfxRuntimePreparationAssetGeneration_ = reload.post.accepted
+                ? reload.identity.assetGeneration
+                : 0;
+            owner_.previewSfxRuntimePreparationSequence_ = reload.post.accepted
+                ? reload.identity.sequence
+                : 0;
             owner_.previewSfxRuntime_->setBackgroundTrackPlaybackRate(owner_.previewPlaybackRate_);
             owner_.previewSfxRuntime_->resetRetainedPreviewPlaybackTransaction(qMax(0.0, owner_.qtPreviewPauseSecond_));
         }
@@ -122,7 +138,7 @@ void MainWindow::DialogsSection::onPreviewAudioSettings()
     openPreviewSettingsDialog(
         true,
         false,
-        uiText("dialog.audio_settings.title", "Audio Settings")
+        UiText::text(QStringLiteral("dialog.audio_settings.title"))
     );
 }
 
@@ -132,7 +148,7 @@ void MainWindow::DialogsSection::onPreviewVideoSettings()
     openPreviewSettingsDialog(
         false,
         true,
-        uiText("dialog.video_settings.title", "Preview Settings")
+        UiText::text(QStringLiteral("dialog.video_settings.title"))
     );
 }
 
@@ -149,7 +165,7 @@ void MainWindow::DialogsSection::onAbout()
         .arg(QSysInfo::buildAbi());
 
     QDialog dialog(UiDialogs::effectiveParentWidget(&owner_));
-    dialog.setWindowTitle(uiText("action.about", "About"));
+    dialog.setWindowTitle(UiText::text(QStringLiteral("action.about")));
     dialog.setModal(true);
     dialog.setMinimumWidth(500);
     dialog.setStyleSheet(UiTheme::aboutDialogStyleSheet());
@@ -211,8 +227,8 @@ void MainWindow::DialogsSection::onAbout()
         infoGrid->addWidget(k, row, 0);
         infoGrid->addWidget(v, row, 1);
     };
-    addRow(0, uiText("about.platform", "Release Platform"), platform);
-    addRow(1, uiText("about.build_type", "Build Type"), buildType);
+    addRow(0, UiText::text(QStringLiteral("about.platform")), platform);
+    addRow(1, UiText::text(QStringLiteral("about.build_type")), buildType);
     cardLayout->addLayout(infoGrid);
     rootLayout->addWidget(card);
 
@@ -245,10 +261,10 @@ void MainWindow::DialogsSection::showMediaOperationCompleteDialog(
     );
     dialog.setWindowFlag(Qt::WindowContextHelpButtonHint, false);
     QPushButton* openButton = dialog.addButton(
-        UiText::isChineseUi() ? QStringLiteral("打开文件夹") : QStringLiteral("Open Folder"),
+        UiText::text(QStringLiteral("dialogs.open_folder")),
         QMessageBox::AcceptRole
     );
-    dialog.addButton(uiText("action.close", "Close"), QMessageBox::RejectRole);
+    dialog.addButton(UiText::text(QStringLiteral("action.close")), QMessageBox::RejectRole);
     dialog.setDefaultButton(openButton);
     dialog.exec();
     if (dialog.clickedButton() == openButton) {

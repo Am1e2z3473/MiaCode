@@ -10,14 +10,9 @@ Item {
     property var mediaHost: null
     property var logger: null
     property string surfaceRole: "unknown"
-    // Issue #4 fix — true for the fullscreen instance so the legacy QSG
-    // path inside PreviewQuickSceneRoot / PreviewQuickHudLayer renders
-    // chart content + HUD into the fullscreen window. The DComp popup
-    // HWND can't follow the secondary fullscreen Window — it's owned
-    // by the editor and z-orders behind the fullscreen window.
-    property bool dcompFallbackActive: false
     property var attachedMediaHost: null
     property var attachedVideoOutputObject: null
+    property var attachedInnerVideoOutputObject: null
     readonly property string instanceTag: surfaceRole + ":" + Math.round(Math.random() * 1000000000)
     readonly property var hostWindow: root.Window.window ? root.Window.window : null
 
@@ -58,28 +53,42 @@ Item {
 
     function syncVideoOutputBinding() {
         const videoOutput = previewStageMedia.videoOutputObject
+        const innerVideoOutput = previewStageMedia.innerVideoOutputObject
         const nextHost = mediaHost
         const hasStableGeometry = width >= 64 && height >= 64
         const shouldAttach = visible && hasStableGeometry && nextHost && videoOutput && hostWindow && hostWindow.visible
 
         if (attachedMediaHost && (!shouldAttach || attachedMediaHost !== nextHost)) {
-            attachedMediaHost.detachVideoOutputObject(attachedVideoOutputObject)
+            if (attachedInnerVideoOutputObject && attachedMediaHost.detachVideoOutputObjects)
+                attachedMediaHost.detachVideoOutputObjects(attachedVideoOutputObject, attachedInnerVideoOutputObject)
+            else
+                attachedMediaHost.detachVideoOutputObject(attachedVideoOutputObject)
             logSurface(
                 "preview_surface_video_output_detach",
                 "has_video_output=" + (attachedVideoOutputObject ? 1 : 0)
+                    + " has_inner_video_output=" + (attachedInnerVideoOutputObject ? 1 : 0)
                     + " stable_geometry=" + (hasStableGeometry ? 1 : 0)
             )
             attachedMediaHost = null
             attachedVideoOutputObject = null
+            attachedInnerVideoOutputObject = null
         }
 
-        if (shouldAttach && attachedMediaHost !== nextHost) {
-            nextHost.attachVideoOutputObject(videoOutput)
+        if (shouldAttach
+                && (attachedMediaHost !== nextHost
+                    || attachedVideoOutputObject !== videoOutput
+                    || attachedInnerVideoOutputObject !== innerVideoOutput)) {
+            if (innerVideoOutput && nextHost.attachVideoOutputObjects)
+                nextHost.attachVideoOutputObjects(videoOutput, innerVideoOutput)
+            else
+                nextHost.attachVideoOutputObject(videoOutput)
             attachedMediaHost = nextHost
             attachedVideoOutputObject = videoOutput
+            attachedInnerVideoOutputObject = innerVideoOutput
             logSurface(
                 "preview_surface_video_output_attach",
                 "has_video_output=" + (videoOutput ? 1 : 0)
+                    + " has_inner_video_output=" + (innerVideoOutput ? 1 : 0)
                     + " stable_geometry=" + (hasStableGeometry ? 1 : 0)
             )
         }
@@ -110,9 +119,13 @@ Item {
     Component.onDestruction: {
         logSurface("preview_surface_destroyed")
         if (attachedMediaHost && attachedVideoOutputObject) {
-            attachedMediaHost.detachVideoOutputObject(attachedVideoOutputObject)
+            if (attachedInnerVideoOutputObject && attachedMediaHost.detachVideoOutputObjects)
+                attachedMediaHost.detachVideoOutputObjects(attachedVideoOutputObject, attachedInnerVideoOutputObject)
+            else
+                attachedMediaHost.detachVideoOutputObject(attachedVideoOutputObject)
             attachedMediaHost = null
             attachedVideoOutputObject = null
+            attachedInnerVideoOutputObject = null
         }
     }
 
@@ -140,42 +153,31 @@ Item {
         anchors.fill: parent
         z: 0
         mediaHost: root.mediaHost
-        // NOTE — keep visible:true even in DComp-exclusive mode. See
-        // the comment above PreviewQuickSceneRoot for why hiding QML
-        // items in this surface breaks Qt's lazy present cadence.
-        // The internal Image/VideoOutput children render against
-        // mediaHost.mediaVisible already; with DComp painting the
-        // bg image at z=0, the user sees both layers, but DComp
-        // composites on top so the visible result is DComp's.
+        // NOTE — keep visible:true. See the comment above
+        // PreviewQuickSceneRoot for why hiding QML items in this
+        // surface breaks Qt's lazy present cadence. The internal
+        // Image/VideoOutput children render against
+        // mediaHost.mediaVisible already.
     }
 
-    // NOTE — keep these QQuickItems visible:true even in DComp-
-    // exclusive mode. Hiding them sounds like a perf win (skip the
-    // QSG scene graph walk) but it broke Qt's lazy present cadence:
-    // with the canvas's three big visual items all invisible, the
-    // QSG had nothing dirty to push and frameSwapped fired at ~28 Hz
-    // instead of 60 Hz. The runtime's tick is gated by frameSwapped
-    // (present-driven pacing), so the playhead stalled and chart
-    // sprites stopped advancing — the symptom was a "frozen" preview
-    // even with DComp rendering correctly. updatePaintNode and
-    // paint() still short-circuit, so the items don't actually
-    // produce pixels; they just keep the scene graph "alive" enough
-    // for Qt to maintain its 60 Hz present cadence.
+    // NOTE — keep these QQuickItems visible:true. Hiding them sounds
+    // like a perf win (skip the QSG scene graph walk) but it broke
+    // Qt's lazy present cadence: with the canvas's three big visual
+    // items all invisible, the QSG had nothing dirty to push and
+    // frameSwapped fired at ~28 Hz instead of 60 Hz. The runtime's
+    // tick is gated by frameSwapped (present-driven pacing), so the
+    // playhead stalled and chart sprites stopped advancing — the
+    // symptom was a "frozen" preview.
     PreviewQuickSceneRoot {
         anchors.fill: parent
         z: 1
-        objectName: root.surfaceRole === "embedded_inline"
-            ? "preview_dcomp_track_target"
-            : "preview_dcomp_track_target_" + root.surfaceRole
         runtime: root.runtime
-        dcompFallbackActive: root.dcompFallbackActive
     }
 
     PreviewQuickHudLayer {
         anchors.fill: parent
         z: 2
         runtime: root.runtime
-        dcompFallbackActive: root.dcompFallbackActive
     }
 
     Item {

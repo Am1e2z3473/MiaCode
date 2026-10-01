@@ -7,6 +7,7 @@
 #include <functional>
 
 #include "VideoExportController.h"
+#include "tools/video_export/CardFontSettings.h"   // CardFontSelector
 
 class QCheckBox;
 class QCloseEvent;
@@ -15,10 +16,12 @@ class QDialogButtonBox;
 class QDoubleSpinBox;
 class QFrame;
 class QJsonObject;
+class QKeyEvent;
 class QLabel;
 class QLineEdit;
 class QMenu;
 class QPushButton;
+class QShowEvent;
 class QSlider;
 class QTabWidget;
 class QTimer;
@@ -28,6 +31,10 @@ class QWheelEvent;
 class QWidget;
 
 class IntroPreviewWidget;
+
+namespace miacode::ui {
+class EditableValueLabel;
+}
 
 class VideoExportDialog : public QDialog
 {
@@ -42,6 +49,7 @@ public:
     using PreviewTimestampCallback = std::function<void(bool showTimestamp)>;
     using PreviewObjectStatsCallback = std::function<void(bool showObjectStatsHud)>;
     using PreviewChartInfoCallback = std::function<void(bool showChartInfoHud)>;
+    using PreviewHudTextLayoutCallback = std::function<void(bool enabled)>;
     using PreviewAspectRatioCallback = std::function<void(double ratio)>;
     using PreviewBrightnessCallback = std::function<void(double outer, double inner)>;
     using PreviewLayoutScaleCallback = std::function<void(double scale)>;
@@ -49,6 +57,8 @@ public:
     using PreviewScaleModeCallback = std::function<void(PreviewBackgroundScaleMode mode)>;
     using PreviewTapFlowSpeedCallback = std::function<void(double flowSpeed)>;
     using PreviewTouchFlowSpeedCallback = std::function<void(double flowSpeed)>;
+    using SharedSettingsSnapshotCallback = std::function<VideoExportTask()>;
+    using OwnerWiredSettingsRefreshCallback = std::function<void()>;
 
     VideoExportDialog(
         const VideoExportTask& baseTask,
@@ -60,6 +70,7 @@ public:
         PreviewTimestampCallback previewTimestampCallback = {},
         PreviewObjectStatsCallback previewObjectStatsCallback = {},
         PreviewChartInfoCallback previewChartInfoCallback = {},
+        PreviewHudTextLayoutCallback previewHudTextLayoutCallback = {},
         PreviewAspectRatioCallback previewAspectRatioCallback = {},
         PreviewBrightnessCallback previewBrightnessCallback = {},
         PreviewLayoutScaleCallback previewLayoutScaleCallback = {},
@@ -67,6 +78,7 @@ public:
         PreviewScaleModeCallback previewScaleModeCallback = {},
         PreviewTapFlowSpeedCallback previewTapFlowSpeedCallback = {},
         PreviewTouchFlowSpeedCallback previewTouchFlowSpeedCallback = {},
+        SharedSettingsSnapshotCallback sharedSettingsSnapshotCallback = {},
         QWidget* parent = nullptr
     );
     bool exportSucceeded() const { return exportSucceeded_; }
@@ -81,9 +93,14 @@ public:
 
     // Injects MainWindow-built, owner-wired settings widgets: videoExtras is
     // appended to the bottom of the Video tab; gameplayWidget to the Gameplay
-    // tab (below the dialog's own flow-speed rows). Call once after
-    // construction, before exec().
-    void injectOwnerWiredSettings(QWidget* videoExtras, QWidget* gameplayWidget);
+    // tab (below the dialog's own flow-speed rows); skinWidget to the 皮肤 tab
+    // (skin / judge line / HUD font). Call once after construction, before
+    // exec().
+    void injectOwnerWiredSettings(
+        QWidget* videoExtras,
+        QWidget* gameplayWidget,
+        QWidget* skinWidget = nullptr,
+        OwnerWiredSettingsRefreshCallback refreshCallback = {});
 
     // ---- Embedded panel mode (E-C, export-page phase 2) ----
     // The same dialog doubles as the Export hub page's in-page video panel:
@@ -94,7 +111,24 @@ public:
     // and reroutes the Export button: startExport() emits exportConfirmed()
     // instead of accept(), so the host launches the worker while the panel
     // stays open. The Tools-menu modal path is unchanged (flag off).
-    void setEmbeddedPanelMode(bool embedded);
+    // The compact embedded single-export page omits the intro preview; callers
+    // can retain it only when they explicitly host the preview column.
+    void setEmbeddedPanelMode(bool embedded, bool retainIntroPreview = false);
+    // Reuses the dialog's shared settings tabs inside BatchExportPanel. It
+    // removes the single-file output path and export-range surface, leaving the
+    // batch host to own its footer and its first task tab.
+    void setBatchSettingsPanelMode();
+    // Inserts the batch host's range/destination/source controls as the first
+    // vertically scrollable embedded tab. Call after setBatchSettingsPanelMode.
+    void insertBatchTaskTab(QWidget* controls);
+    // Batch panel only: re-seed the difficulty-derived chart payload (片头 banner
+    // fields, parsed markers, content duration, chart metadata) after the export
+    // page's difficulty badge switched. The panel and every user-tuned setting
+    // survive; call it instead of rebuilding the panel the way the single-export
+    // sub-page does.
+    void retargetChartPayload(const VideoExportTask& task);
+    bool buildBatchTaskTemplate(VideoExportTask* task, QString* errorMessage = nullptr) const;
+    bool isClockCountEnabledForPreview() const;
     bool embeddedPanelMode() const { return embeddedPanelMode_; }
     // While an embedded-launched export runs, the Export button doubles as
     // the cancel affordance (导出 → 取消导出); clicking it then emits
@@ -114,6 +148,11 @@ public:
     // rebuilt per open so it never needs it, but calling it there is harmless.
     void applyThemeStyles();
 
+    // Applies an initial interval after the dialog has built its full-chart
+    // timeline, keeping the range scale independent from the selected span.
+    void setInitialExportRange(double startSecond, double endSecond);
+    void showExportRangePage();
+
 signals:
     // Embedded mode only: the user confirmed the export (settings already
     // validated + persisted; requestedExportTask() carries the task).
@@ -124,6 +163,8 @@ signals:
     // Embedded mode only: 添加片头 toggled or a 片头 setting changed — the host
     // refreshes the negative-time intro region (slider range + overlay).
     void introPreviewSettingsChanged();
+    void introSoundFileNameChanged(const QString& fileName);
+    void introSoundVolumeChanged(double volume);
     // Embedded mode only: the "Enable clock_count" checkbox toggled — the host
     // re-seeds the export-page audition's count-in so the preview matches what
     // will be exported (WYSIWYG).
@@ -131,6 +172,8 @@ signals:
 
 private:
     void browseOutputPath();
+    void refreshOutputModeUi(bool rewritePathSuffix);
+    void refreshOutputFilesHint();
     void onExportButtonClicked();
     void startExport();
     bool applyUiToTask(VideoExportTask* task, QString* errorMessage) const;
@@ -138,9 +181,10 @@ private:
     void syncLivePreviewTimestampVisibility();
     void syncLivePreviewObjectStatsVisibility();
     void syncLivePreviewChartInfoVisibility();
+    void syncLivePreviewHudTextLayout();
     void restoreLivePreviewState();
-    void openHudFontSettingsDialog();
-    void refreshLivePreviewHudFont();
+    void refreshSharedSettingsFromCallback();
+    void refreshSharedSettingsFromTask(const VideoExportTask& task);
     void loadPersistedSettings();
     void savePersistedSettings(const VideoExportTask& task) const;
     void persistExportOnlySettings() const;
@@ -158,6 +202,7 @@ private:
     void setRangeStartFromPreview();
     void setRangeEndFromPreview();
     void toggleRangePreview();
+    void toggleExportRangePreview();
     void stopRangePreview(bool seekToCurrent);
     void stopRangePreviewToStart();
     void updatePreviewPlayPauseUi();
@@ -179,11 +224,17 @@ private:
     // Sub-control gating: background path row follows the combo, card
     // sub-options follow the card toggle, everything follows 添加片头.
     void syncIntroControlsEnabled();
+    void importIntroSound();
     void browseIntroBackground();
     // Current intro spec = baseTask_.intro (chart payload) + the tab's styling
-    // controls. Used by BOTH the read-only preview and applyUiToTask, so
-    // preview == export.
+    // controls. The preview receives a resolved DX/Standard mode; the export
+    // request may keep `mode=auto` so the launch snapshot can re-detect from the
+    // live document immediately before crossing the worker boundary.
     IntroBannerSpec currentIntroSpec() const;
+    IntroBannerSpec currentIntroSpecForExportTask() const;
+    QString detectedIntroCardMode() const;
+    QString selectedIntroCardMode(bool resolveAuto) const;
+    void refreshIntroCardModeAutoLabel();
     void refreshIntroPreview();
     // Pin the read-only preview to the selected output aspect ratio.
     void resizeIntroPreviewToAspect();
@@ -200,7 +251,23 @@ private:
 
     void closeEvent(QCloseEvent* event) override;
     void done(int result) override;
+    void showEvent(QShowEvent* event) override;
+    void keyPressEvent(QKeyEvent* event) override;
     bool eventFilter(QObject* watched, QEvent* event) override;
+
+    // Return/Enter is a "commit the field I am typing in" key on this page, never
+    // "start the export" — see keyPressEvent(). These two keep that true:
+    // disableButtonReturnActivation() strips the default/auto-default flags that
+    // would otherwise let Return click a button (QDialogButtonBox re-assigns the
+    // default on every show, so it has to run from showEvent), and
+    // commitFocusedEditorOnReturn() writes the focused editor's value back.
+    void disableButtonReturnActivation();
+    bool commitFocusedEditorOnReturn();
+    // Clamp + snap + apply a flow-speed field. QLineEdit only emits
+    // editingFinished for validator-acceptable text, so out-of-range input
+    // (e.g. "0.5" under a 1.0 floor) reaches the dialog uncommitted and has to
+    // be finished off here.
+    void commitFlowSpeedEditor(QLineEdit* editor);
 
     VideoExportTask baseTask_;
     SeekPreviewCallback seekPreviewCallback_;
@@ -211,6 +278,7 @@ private:
     PreviewTimestampCallback previewTimestampCallback_;
     PreviewObjectStatsCallback previewObjectStatsCallback_;
     PreviewChartInfoCallback previewChartInfoCallback_;
+    PreviewHudTextLayoutCallback previewHudTextLayoutCallback_;
     PreviewAspectRatioCallback previewAspectRatioCallback_;
     PreviewBrightnessCallback previewBrightnessCallback_;
     PreviewLayoutScaleCallback previewLayoutScaleCallback_;
@@ -218,6 +286,8 @@ private:
     PreviewScaleModeCallback previewScaleModeCallback_;
     PreviewTapFlowSpeedCallback previewTapFlowSpeedCallback_;
     PreviewTouchFlowSpeedCallback previewTouchFlowSpeedCallback_;
+    SharedSettingsSnapshotCallback sharedSettingsSnapshotCallback_;
+    OwnerWiredSettingsRefreshCallback ownerWiredSettingsRefreshCallback_;
 
     double totalDurationSeconds_ = 0.0;
     double previewCursorSecond_ = 0.0;
@@ -232,8 +302,11 @@ private:
     // gate actually flips, so a stranded negative-time intro region gets torn down.
     bool introActiveForPreviewLast_ = false;
     bool rangePreviewPlaying_ = false;
+    bool exportRangePreviewActive_ = false;
     bool previewAspectChangedByDialog_ = false;
     bool previewStateRestored_ = false;
+    // Shared gate for all combo/spin controls on this export surface.
+    bool disableSelectionWheelChanges_ = true;
     bool initialShowTimestamp_ = true;
     bool initialShowObjectStats_ = false;
     bool initialShowChartInfo_ = false;
@@ -245,23 +318,34 @@ private:
     VideoExportTask requestedExportTask_;
 
     QLineEdit* outputPathEdit_ = nullptr;
-    QToolButton* resolutionButton_ = nullptr;
-    QMenu* resolutionMenu_ = nullptr;
+    QLabel* outputFilesHintLabel_ = nullptr;
+    QComboBox* outputModeCombo_ = nullptr;
+    VideoExportOutputMode selectedOutputMode_ = VideoExportOutputMode::Mp4;
+    QWidget* resolutionOptionField_ = nullptr;
+    QWidget* fpsOptionField_ = nullptr;
+    QWidget* audioBitrateOptionField_ = nullptr;
+    QWidget* presetOptionField_ = nullptr;
+    QWidget* sizePresetOptionField_ = nullptr;
+    QComboBox* resolutionCombo_ = nullptr;
     QSize selectedResolution_ = QSize();
-    QToolButton* fpsButton_ = nullptr;
-    QMenu* fpsMenu_ = nullptr;
+    QComboBox* fpsCombo_ = nullptr;
     int selectedFps_ = 60;
-    QToolButton* audioBitrateButton_ = nullptr;
-    QMenu* audioBitrateMenu_ = nullptr;
+    QComboBox* audioBitrateCombo_ = nullptr;
     int selectedAudioBitrateKbps_ = 192;
-    QToolButton* presetButton_ = nullptr;
-    QMenu* presetMenu_ = nullptr;
+    QComboBox* presetCombo_ = nullptr;
     VideoExportPreset selectedPreset_ = VideoExportPreset::HighQuality;
+    QComboBox* sizePresetCombo_ = nullptr;
+    VideoExportSizePreset selectedSizePreset_ = VideoExportSizePreset::Standard;
     QCheckBox* showTimestampCheck_ = nullptr;
     QCheckBox* showObjectStatsCheck_ = nullptr;
     QCheckBox* showChartInfoCheck_ = nullptr;
+    QCheckBox* fixHudTextLayoutCheck_ = nullptr;
     QCheckBox* clockCountCheck_ = nullptr;
     QCheckBox* addIntroCheck_ = nullptr;
+    QComboBox* introSoundCombo_ = nullptr;
+    QPushButton* introSoundImportButton_ = nullptr;
+    QSlider* introSoundVolumeSlider_ = nullptr;
+    miacode::ui::EditableValueLabel* introSoundVolumeValueLabel_ = nullptr;
     // ---- "片头" tab controls ----
     QComboBox* introBackgroundCombo_ = nullptr;
     QLineEdit* introBackgroundPathEdit_ = nullptr;
@@ -270,11 +354,11 @@ private:
     QComboBox* introCardModeCombo_ = nullptr;
     QCheckBox* introCardShadowCheck_ = nullptr;
     QCheckBox* introLevelTextCheck_ = nullptr;
+    // Difficulty-card custom fonts for the intro (empty path == bundled default).
+    miacode::video_export::CardFontSelector introCardFontSelector_;
     IntroPreviewWidget* introPreview_ = nullptr;
     QCheckBox* smoothBrightnessCheck_ = nullptr;
-    QPushButton* hudFontSettingsButton_ = nullptr;
-    QToolButton* backgroundScaleModeButton_ = nullptr;
-    QMenu* backgroundScaleModeMenu_ = nullptr;
+    QComboBox* backgroundScaleModeCombo_ = nullptr;
     PreviewBackgroundScaleMode selectedBackgroundScaleMode_ = PreviewBackgroundScaleMode::FillCrop;
     QLineEdit* tapFlowSpeedEdit_ = nullptr;
     QLineEdit* touchFlowSpeedEdit_ = nullptr;
@@ -283,9 +367,11 @@ private:
     QSlider* brightnessOuterSlider_ = nullptr;
     QSlider* brightnessInnerSlider_ = nullptr;
     QSlider* layoutSquareScaleSlider_ = nullptr;
-    QLabel* brightnessOuterValueLabel_ = nullptr;
-    QLabel* brightnessInnerValueLabel_ = nullptr;
-    QLabel* layoutSquareScaleValueLabel_ = nullptr;
+    miacode::ui::EditableValueLabel* brightnessOuterValueLabel_ = nullptr;
+    miacode::ui::EditableValueLabel* brightnessInnerValueLabel_ = nullptr;
+    miacode::ui::EditableValueLabel* layoutSquareScaleValueLabel_ = nullptr;
+    QPushButton* saveVideoPresetButton_ = nullptr;
+    QPushButton* applyVideoPresetButton_ = nullptr;
     QDoubleSpinBox* startSecondSpin_ = nullptr;
     QDoubleSpinBox* endSecondSpin_ = nullptr;
     // Held so applyThemeStyles() can re-apply their baked button stylesheets on
@@ -293,6 +379,7 @@ private:
     QPushButton* outputBrowseButton_ = nullptr;
     QPushButton* setStartButton_ = nullptr;
     QPushButton* setEndButton_ = nullptr;
+    QPushButton* playExportRangeButton_ = nullptr;
     // Stored as QWidget* (the concrete ExportRangeTrack is a file-local type in
     // the .cpp); cast where its API is needed.
     QWidget* rangeTrack_ = nullptr;
@@ -302,9 +389,12 @@ private:
     QLabel* previewTimeLabel_ = nullptr;
     QWidget* optionsContent_ = nullptr;
     QWidget* rangeContent_ = nullptr;
+    QWidget* rangePage_ = nullptr;
     QWidget* gameplayPage_ = nullptr;
+    QWidget* skinPage_ = nullptr;
     QVBoxLayout* visualsPageLayout_ = nullptr;
     QVBoxLayout* gameplayPageLayout_ = nullptr;
+    QVBoxLayout* skinPageLayout_ = nullptr;
     QTabWidget* settingsTabs_ = nullptr;
     QFrame* previewStrip_ = nullptr;
     QDialogButtonBox* buttonBox_ = nullptr;

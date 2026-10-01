@@ -20,7 +20,12 @@ This directory stores prebuilt `ffmpeg` executables used by MiaCode video export
 
 - Linux
   - Binary: `linux/ffmpeg`
-  - SHA256 (`ffmpeg`): `D91FE748D77422A783BBFA1811E33E12C7BDC1667AB746AB0C765F00467F1AC4`
+  - Source package:
+    `https://github.com/BtbN/FFmpeg-Builds/releases/download/autobuild-2026-07-22-13-36/ffmpeg-n7.1.5-9-gb9a218bc1e-linux64-gpl-7.1.tar.xz`
+  - Archive SHA256:
+    `1AA3246A617F1A1D17D2E9027685D19C633C10CD6E3D1E0589DFE1ED1DB5F3FB`
+  - Runtime version pattern: `ffmpeg version n7.1.5`
+  - SHA256 (`ffmpeg`): `A253D9E7A94C9376D67D2DF144F16671C8B3E2875A6311188146BDCE2889E85A`
 
 ## Notes
 
@@ -28,7 +33,7 @@ This directory stores prebuilt `ffmpeg` executables used by MiaCode video export
 - Export runtime resolves binaries from app-local `ffmpeg/` and `third_party/ffmpeg/<platform>/` paths.
 - When upgrading ffmpeg, update this file and the corresponding ensure scripts together.
 
-## FFmpeg dev SDK (QtAVPlayer preview decode backend, Windows)
+## FFmpeg dev SDK (QtAVPlayer preview decode backend)
 
 Separate from the standalone `ffmpeg.exe` above (used by **export**), the **preview** background-video
 decode backend links FFmpeg directly via the vendored QtAVPlayer (`third_party/QtAVPlayer/`). That
@@ -52,6 +57,13 @@ third_party/ffmpeg/windows/dev/
 - License: LGPL v2.1+ (decode-only, **no** `--enable-gpl` / `--enable-nonfree`) — same obligations as
   the FFmpeg already shipped; no new exposure. `avfilter` is a net-new DLL (`avdevice` is dropped,
   see below).
+
+On macOS the same QtAVPlayer source uses VideoToolbox/Metal hardware decode. Run
+`bash scripts/ffmpeg/ensure-macos-ffmpeg-dev.sh` to build the pinned FFmpeg 6.1.2 LGPL shared SDK
+under `macos/dev/` (ignored, never committed). It contains only the six QtAVPlayer runtime dylibs
+and has `@rpath` install names, arm64 architecture, and a macOS 13 deployment target. CMake and
+the package script use this repo-local SDK by default; macOS packaging never falls back to
+Homebrew and rejects build-machine dylib references.
 
 ### Size trimming
 

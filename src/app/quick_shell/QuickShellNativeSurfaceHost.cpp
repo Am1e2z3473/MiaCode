@@ -1,10 +1,18 @@
 #include "QuickShellNativeSurfaceHost.h"
 
+#include "QuickShellMacSurfaceSupport.h"
+#include "common/AdoptedWidgetCoordinates.h"
+#include "app/ui/AppBackgroundPainter.h"
+#include "UiTheme.h"
 #include "common/DebugLog.h"
+#include "common/DebugOptions.h"
+#include "common/OperationLog.h"
+#include "common/UiHangWatchdog.h"
 
 #include <QBoxLayout>
 #include <QDockWidget>
 #include <QEasingCurve>
+#include <QElapsedTimer>
 #include <QLabel>
 #include <QMainWindow>
 #include <QMenuBar>
@@ -20,28 +28,139 @@
 
 namespace {
 
-void activateLayout(QWidget* widget)
+constexpr qint64 kSurfaceStepSlowMs = 50;
+constexpr qint64 kSurfaceTotalSlowMs = 80;
+
+QString widgetSummary(QWidget* widget)
+{
+    if (widget == nullptr) {
+        return QStringLiteral("(null)");
+    }
+    return QStringLiteral("class=%1 name=%2 size=%3x%4 visible=%5")
+        .arg(QString::fromUtf8(widget->metaObject()->className()))
+        .arg(widget->objectName().isEmpty() ? QStringLiteral("(empty)") : widget->objectName())
+        .arg(widget->width())
+        .arg(widget->height())
+        .arg(widget->isVisible() ? 1 : 0);
+}
+
+void appendSurfaceLayoutDiag(
+    const QString& action,
+    const char* role,
+    QWidget* widget,
+    qint64 elapsedMs,
+    const QString& detail = QString(),
+    miacode::debug_log::Level level = miacode::debug_log::Level::Info)
+{
+    if (!miacode::debug_options::runtimeDebugOutputEnabled()) {
+        return;
+    }
+    QString payload = QStringLiteral("action=%1 role=%2 elapsed_ms=%3 widget=\"%4\"")
+        .arg(action)
+        .arg(QString::fromUtf8(role != nullptr ? role : "unknown"))
+        .arg(elapsedMs)
+        .arg(widgetSummary(widget));
+    if (!detail.trimmed().isEmpty()) {
+        payload += QStringLiteral(" %1").arg(detail.trimmed());
+    }
+    miacode::debug_log::appendLine(
+        miacode::debug_log::Channel::Runtime,
+        QStringLiteral("quick_shell/layout"),
+        payload,
+        /*force=*/false,
+        level);
+}
+
+void activateLayout(QWidget* widget, const char* role)
 {
     if (widget == nullptr) {
         return;
     }
     if (QLayout* layout = widget->layout(); layout != nullptr) {
+        QElapsedTimer stepTimer;
+        stepTimer.start();
+        MIACODE_HANG_PHASE(
+            "QuickShellNativeSurfaceHost::activateLayout",
+            QStringLiteral("role=%1 %2")
+                .arg(QString::fromUtf8(role != nullptr ? role : "unknown"), widgetSummary(widget)));
         layout->activate();
+        const qint64 elapsedMs = stepTimer.elapsed();
+        if (elapsedMs >= kSurfaceStepSlowMs) {
+            appendSurfaceLayoutDiag(
+                QStringLiteral("surface_layout_activate_slow"),
+                role,
+                widget,
+                elapsedMs,
+                QString(),
+                miacode::debug_log::Level::Warn);
+        }
     }
 }
 
-void resizeSurface(QWidget* surface, int width, int height)
+void resizeSurface(QWidget* surface, int width, int height, const char* role)
 {
     if (surface == nullptr) {
         return;
     }
+    MC_OP("QuickShellNativeSurfaceHost::resizeSurface");
+    QElapsedTimer totalTimer;
+    totalTimer.start();
     const QSize nextSize(qMax(1, width), qMax(1, height));
     if (surface->size() != nextSize) {
+        QElapsedTimer stepTimer;
+        stepTimer.start();
+        MIACODE_HANG_PHASE(
+            "QuickShellNativeSurfaceHost::resizeSurface.resize",
+            QStringLiteral("role=%1 from=%2x%3 to=%4x%5 %6")
+                .arg(QString::fromUtf8(role != nullptr ? role : "unknown"))
+                .arg(surface->width())
+                .arg(surface->height())
+                .arg(nextSize.width())
+                .arg(nextSize.height())
+                .arg(widgetSummary(surface)));
         surface->resize(nextSize);
         surface->update();
+        const qint64 elapsedMs = stepTimer.elapsed();
+        if (elapsedMs >= kSurfaceStepSlowMs) {
+            appendSurfaceLayoutDiag(
+                QStringLiteral("surface_resize_slow"),
+                role,
+                surface,
+                elapsedMs,
+                QStringLiteral("requested=%1x%2").arg(width).arg(height),
+                miacode::debug_log::Level::Warn);
+        }
     }
-    activateLayout(surface);
-    surface->updateGeometry();
+    activateLayout(surface, role);
+    {
+        QElapsedTimer stepTimer;
+        stepTimer.start();
+        MIACODE_HANG_PHASE(
+            "QuickShellNativeSurfaceHost::resizeSurface.updateGeometry",
+            QStringLiteral("role=%1 %2")
+                .arg(QString::fromUtf8(role != nullptr ? role : "unknown"), widgetSummary(surface)));
+        surface->updateGeometry();
+        const qint64 elapsedMs = stepTimer.elapsed();
+        if (elapsedMs >= kSurfaceStepSlowMs) {
+            appendSurfaceLayoutDiag(
+                QStringLiteral("surface_update_geometry_slow"),
+                role,
+                surface,
+                elapsedMs,
+                QString(),
+                miacode::debug_log::Level::Warn);
+        }
+    }
+    const qint64 totalMs = totalTimer.elapsed();
+    if (totalMs >= kSurfaceTotalSlowMs) {
+        appendSurfaceLayoutDiag(
+            QStringLiteral("surface_resize_total_slow"),
+            role,
+            surface,
+            totalMs,
+            QStringLiteral("requested=%1x%2").arg(width).arg(height),
+            miacode::debug_log::Level::Warn);
+    }
 }
 
 bool shouldUseBottomTabsNativeSurface(QuickShellStateSource* stateSource)
@@ -54,6 +173,21 @@ bool shouldUseBottomTabsNativeSurface(QuickShellStateSource* stateSource)
     }
     return stateSource->shellBottomTabsCurrentTabId().trimmed().compare(QStringLiteral("timeline"), Qt::CaseInsensitive) != 0;
 }
+
+// Whether the bottom-tabs bridge QWidget itself is hidden/re-shown as tabs
+// switch. On macOS this must stay false: after the QML WindowContainer adopts
+// the bridge's content NSView, QWidget::show() on the top-level re-attaches
+// that NSView as its own NSPanel's contentView, ripping the embedded
+// validation/Muri page out of the main window (the "content flies out as a
+// standalone window" bug). There, per-tab visibility is driven solely by the
+// QML WindowContainer toggling the foreign QWindow (BottomTabsQuickHost.qml),
+// and the bridge widget stays permanently shown like the other four surfaces.
+constexpr bool kBridgeSurfaceVisibilityFollowsTabs =
+#ifdef Q_OS_MACOS
+    false;
+#else
+    true;
+#endif
 
 constexpr int kBottomTabsSpeedToastMinWidth = 180;
 constexpr int kBottomTabsSpeedToastMinHeight = 96;
@@ -72,6 +206,23 @@ void setSurfaceVisible(QWidget* surface, bool visible)
     }
     if (surface->isVisible()) {
         surface->hide();
+    }
+}
+
+void applyBridgeSurfaceBaseStyle(QWidget* surface)
+{
+    if (surface == nullptr) {
+        return;
+    }
+    const UiTheme::Colors& colors = UiTheme::colors();
+    const QColor background = colors.windowBg;
+    QPalette palette = surface->palette();
+    if (palette.color(QPalette::Window) != background) {
+        palette.setColor(QPalette::Window, background);
+        surface->setPalette(palette);
+    }
+    if (!surface->autoFillBackground()) {
+        surface->setAutoFillBackground(true);
     }
 }
 
@@ -105,10 +256,22 @@ QuickShellNativeSurfaceHost::QuickShellNativeSurfaceHost(
     surfaceBundle_.bottomTabs = createForeignWindowForSurface(bottomTabsSurfaceWidget_);
     surfaceBundle_.status = createForeignWindowForSurface(statusSurfaceWidget_);
 
+#ifdef Q_OS_MACOS
+    miacode::ui::bindAdoptedSurfaceWindow(sidebarSurfaceWidget_, surfaceBundle_.sidebar);
+    miacode::ui::bindAdoptedSurfaceWindow(workspaceSurfaceWidget_, surfaceBundle_.workspace);
+#endif
+
     ensureSurfaceLayouts();
     attachNativeWidgets();
+#ifdef Q_OS_MACOS
     showAllSurfaces();
+#endif
     refreshBottomTabsSurfaceVisibility();
+
+    // macOS: grab the orphan Qt::Tool panels now, while each bridge's content view
+    // still lives inside its own panel. They are neutralized later (after QML
+    // adoption) from noteQuickShellUiReady(). No-op on other platforms.
+    captureOrphanShellWindows();
 
     bottomTabsSpeedToastWindow_->setObjectName(QStringLiteral("QuickShellBottomTabsSpeedToast"));
     bottomTabsSpeedToastWindow_->setAttribute(Qt::WA_TranslucentBackground, true);
@@ -209,8 +372,8 @@ QuickShellNativeSurfaceHost::~QuickShellNativeSurfaceHost()
             widget->hide();
             widget->setParent(mainWindow);
         };
+        releaseBack(contentProvider_->shellMenuBarWidget());
         if (mainWindow != nullptr) {
-            releaseBack(mainWindow->menuBar());
             if (QToolBar* toolBar = mainWindow->findChild<QToolBar*>()) {
                 releaseBack(toolBar);
             }
@@ -333,18 +496,60 @@ QWidget* QuickShellNativeSurfaceHost::statusSurfaceWidget() const
 
 void QuickShellNativeSurfaceHost::refreshSurfaceStyles()
 {
-    Q_UNUSED(contentProvider_);
+    const QList<QWidget*> bridgeSurfaces{
+        topChromeSurfaceWidget_,
+        sidebarSurfaceWidget_,
+        workspaceSurfaceWidget_,
+        bottomTabsSurfaceWidget_,
+        statusSurfaceWidget_,
+    };
+    for (QWidget* surface : bridgeSurfaces) {
+        applyBridgeSurfaceBaseStyle(surface);
+    }
+
+    if (contentProvider_ == nullptr) {
+        return;
+    }
+    QWidget* shellWindow = contentProvider_->shellWindowWidget();
+    miacode::ui::AppBackgroundPainter* backgroundPainter =
+        miacode::ui::appBackgroundPainterForWidget(shellWindow);
+    if (backgroundPainter == nullptr) {
+        return;
+    }
+
+    QRect canvasGeometry = shellWindow != nullptr
+        ? shellWindow->property("miacode.quick_root_window_content_geometry").toRect()
+        : QRect();
+    if (!canvasGeometry.isValid() && shellWindow != nullptr) {
+        canvasGeometry = QRect(shellWindow->mapToGlobal(QPoint(0, 0)), shellWindow->size());
+    }
+    backgroundPainter->setCanvasGeometryGlobal(canvasGeometry);
+
+    for (QWidget* surface : bridgeSurfaces) {
+        if (surface == nullptr) {
+            continue;
+        }
+        miacode::ui::installAppBackgroundPainter(surface, backgroundPainter);
+        surface->update();
+        const QList<QWidget*> children = surface->findChildren<QWidget*>();
+        for (QWidget* child : children) {
+            if (child != nullptr) {
+                child->update();
+            }
+        }
+    }
 }
 
 void QuickShellNativeSurfaceHost::syncTopChromeSurfaceSize(int width, int height)
 {
-    resizeSurface(topChromeSurfaceWidget_, width, height);
+    resizeSurface(topChromeSurfaceWidget_, width, height, "top_chrome");
+    setSurfaceVisible(topChromeSurfaceWidget_, canShowBridgeSurfaces());
 }
 
 void QuickShellNativeSurfaceHost::syncSidebarSurfaceSize(int width, int height)
 {
-    resizeSurface(sidebarSurfaceWidget_, width, height);
-    setSurfaceVisible(sidebarSurfaceWidget_, true);
+    resizeSurface(sidebarSurfaceWidget_, width, height, "sidebar");
+    setSurfaceVisible(sidebarSurfaceWidget_, canShowBridgeSurfaces());
     if (QDockWidget* outlineDock = contentProvider_ != nullptr ? contentProvider_->shellOutlineDockWidget() : nullptr;
         outlineDock != nullptr) {
         if (QWidget* widget = outlineDock->widget(); widget != nullptr) {
@@ -359,8 +564,8 @@ void QuickShellNativeSurfaceHost::syncSidebarSurfaceSize(int width, int height)
 
 void QuickShellNativeSurfaceHost::syncWorkspaceSurfaceSize(int width, int height)
 {
-    resizeSurface(workspaceSurfaceWidget_, width, height);
-    setSurfaceVisible(workspaceSurfaceWidget_, true);
+    resizeSurface(workspaceSurfaceWidget_, width, height, "workspace");
+    setSurfaceVisible(workspaceSurfaceWidget_, canShowBridgeSurfaces());
     if (QWidget* workspaceWidget = contentProvider_ != nullptr ? contentProvider_->shellWorkspaceWidget() : nullptr;
         workspaceWidget != nullptr) {
         workspaceWidget->updateGeometry();
@@ -373,11 +578,18 @@ void QuickShellNativeSurfaceHost::syncWorkspaceSurfaceSize(int width, int height
 void QuickShellNativeSurfaceHost::syncBottomTabsSurfaceSize(int width, int height)
 {
     if (!shouldUseBottomTabsNativeSurface(stateSource_)) {
-        setSurfaceVisible(bottomTabsSurfaceWidget_, false);
+        if (kBridgeSurfaceVisibilityFollowsTabs) {
+            setSurfaceVisible(bottomTabsSurfaceWidget_, false);
+        }
         return;
     }
-    resizeSurface(bottomTabsSurfaceWidget_, width, height);
-    setSurfaceVisible(bottomTabsSurfaceWidget_, true);
+    resizeSurface(bottomTabsSurfaceWidget_, width, height, "bottom_tabs");
+    if (kBridgeSurfaceVisibilityFollowsTabs) {
+        setSurfaceVisible(bottomTabsSurfaceWidget_, canShowBridgeSurfaces());
+    }
+    // macOS: opportunistic single-shot pass in case the UI-ready retry window
+    // elapsed before the WindowContainer finished adopting this surface.
+    runOrphanShellNeutralizePass(1);
     if (QWidget* bottomTabsWidget =
             contentProvider_ != nullptr ? contentProvider_->shellBottomTabsWidget() : nullptr;
         bottomTabsWidget != nullptr) {
@@ -401,8 +613,8 @@ void QuickShellNativeSurfaceHost::syncBottomTabsToastAnchor(int x, int y, int wi
 
 void QuickShellNativeSurfaceHost::syncStatusSurfaceSize(int width, int height)
 {
-    resizeSurface(statusSurfaceWidget_, width, height);
-    setSurfaceVisible(statusSurfaceWidget_, true);
+    resizeSurface(statusSurfaceWidget_, width, height, "status");
+    setSurfaceVisible(statusSurfaceWidget_, canShowBridgeSurfaces());
     if (QMainWindow* mainWindow =
             qobject_cast<QMainWindow*>(contentProvider_ != nullptr ? contentProvider_->shellWindowWidget() : nullptr);
         mainWindow != nullptr) {
@@ -417,24 +629,132 @@ void QuickShellNativeSurfaceHost::syncStatusSurfaceSize(int width, int height)
 
 void QuickShellNativeSurfaceHost::refreshBottomTabsSurfaceVisibility()
 {
-    setSurfaceVisible(bottomTabsSurfaceWidget_, shouldUseBottomTabsNativeSurface(stateSource_));
+    if (kBridgeSurfaceVisibilityFollowsTabs) {
+        setSurfaceVisible(
+            bottomTabsSurfaceWidget_,
+            canShowBridgeSurfaces() && shouldUseBottomTabsNativeSurface(stateSource_));
+    }
+    syncBottomTabsForeignWindowVisibility();
     if (stateSource_ != nullptr && !stateSource_->shellBottomTabsVisible()) {
         hideBottomTabsSpeedToast();
     }
 }
 
-void QuickShellNativeSurfaceHost::updateRootWindowFrameGeometry(const QRect& geometry)
+void QuickShellNativeSurfaceHost::updateRootWindowFrameGeometry(const QRect& geometry, const QRect& contentGeometry)
 {
     if (contentProvider_ != nullptr) {
         contentProvider_->shellSetRootWindowFrameGeometry(geometry);
+        if (QWidget* shellWindow = contentProvider_->shellWindowWidget()) {
+            shellWindow->setProperty("miacode.quick_root_window_content_geometry", contentGeometry);
+        }
     }
+    refreshSurfaceStyles();
 }
 
 void QuickShellNativeSurfaceHost::noteQuickShellUiReady()
 {
+    quickShellUiReady_ = true;
     if (contentProvider_ != nullptr) {
         contentProvider_->shellNoteQuickUiReady();
     }
+    // By now the QML WindowContainers have adopted the bridge surfaces, so the
+    // orphan panels can be hidden. The pass retries because the native reparent
+    // may lag a frame or two behind this callback. No-op on non-macOS.
+    runOrphanShellNeutralizePass(40);
+}
+
+#ifdef Q_OS_MACOS
+namespace {
+
+// The foreign QWindows (QWindow::fromWinId) whose winId is the stable content
+// NSView handle adopted by the QML WindowContainers. Order matches
+// orphanShellWindows_/orphanShellNeutralized_: {topChrome, sidebar, workspace,
+// bottomTabs, status}.
+void collectBridgeForeignWindows(const QuickShellNativeSurfaceBundle& bundle, QWindow* out[5])
+{
+    out[0] = bundle.topChrome;
+    out[1] = bundle.sidebar;
+    out[2] = bundle.workspace;
+    out[3] = bundle.bottomTabs;
+    out[4] = bundle.status;
+}
+
+void* nativeViewHandleOf(QWindow* window)
+{
+    return window != nullptr ? reinterpret_cast<void*>(window->winId()) : nullptr;
+}
+
+}  // namespace
+#endif
+
+void QuickShellNativeSurfaceHost::captureOrphanShellWindows()
+{
+#ifdef Q_OS_MACOS
+    QWindow* windows[kBridgeSurfaceCount] = {};
+    collectBridgeForeignWindows(surfaceBundle_, windows);
+    for (int i = 0; i < kBridgeSurfaceCount; ++i) {
+        orphanShellWindows_[i] =
+            miacode::quick_shell::mac::captureOrphanShellWindow(nativeViewHandleOf(windows[i]));
+    }
+#endif
+}
+
+void QuickShellNativeSurfaceHost::runOrphanShellNeutralizePass(int attemptsLeft)
+{
+#ifdef Q_OS_MACOS
+    QWindow* windows[kBridgeSurfaceCount] = {};
+    collectBridgeForeignWindows(surfaceBundle_, windows);
+    bool allDone = true;
+    for (int i = 0; i < kBridgeSurfaceCount; ++i) {
+        if (orphanShellNeutralized_[i]) {
+            continue;
+        }
+        if (miacode::quick_shell::mac::neutralizeOrphanShellWindow(
+                nativeViewHandleOf(windows[i]), orphanShellWindows_[i])) {
+            orphanShellNeutralized_[i] = true;
+        } else {
+            allDone = false;
+        }
+    }
+    // Piggyback on the startup retry window: re-assert the bottom-tabs foreign
+    // window's visibility each pass, covering the WindowContainer-vs-adoption
+    // race that could leave the validation page painted over the timeline.
+    syncBottomTabsForeignWindowVisibility();
+    // Keep ticking through the whole startup window even once every panel is
+    // neutralized (allDone): the visibility sync above must keep re-asserting
+    // the bottom-tabs NSView state, because the AppKit-level clobber can land
+    // after adoption completes. Each extra tick is an idempotent no-op check.
+    Q_UNUSED(allDone);
+    if (attemptsLeft > 1) {
+        QTimer::singleShot(100, this, [this, attemptsLeft]() {
+            runOrphanShellNeutralizePass(attemptsLeft - 1);
+        });
+    }
+#else
+    Q_UNUSED(attemptsLeft);
+#endif
+}
+
+void QuickShellNativeSurfaceHost::syncBottomTabsForeignWindowVisibility()
+{
+#ifdef Q_OS_MACOS
+    QWindow* foreignWindow = surfaceBundle_.bottomTabs;
+    if (foreignWindow == nullptr || foreignWindow->parent() == nullptr) {
+        // Not adopted by the QML WindowContainer yet — showing/hiding the
+        // standalone foreign window here would surface it as its own window.
+        return;
+    }
+    const bool shouldShow = shouldUseBottomTabsNativeSurface(stateSource_);
+    if (foreignWindow->isVisible() != shouldShow) {
+        foreignWindow->setVisible(shouldShow);
+    }
+    // Qt's cached visibility can already agree while the NSView itself is
+    // still showing: the adoption-time reparent clobbers the container's
+    // initial setVisible(false) at the AppKit level. Enforce the state on the
+    // NSView directly; idempotent, and later Qt setVisible calls stay in sync.
+    miacode::quick_shell::mac::setContentViewHidden(
+        nativeViewHandleOf(foreignWindow), !shouldShow);
+#endif
 }
 
 QWidget* QuickShellNativeSurfaceHost::createBridgeSurface(const QString& objectName)
@@ -443,10 +763,15 @@ QWidget* QuickShellNativeSurfaceHost::createBridgeSurface(const QString& objectN
     bridgeRoot->setObjectName(objectName);
     bridgeRoot->setAttribute(Qt::WA_NativeWindow);
     bridgeRoot->setAttribute(Qt::WA_StyledBackground, true);
+    // Drag events are delivered only to widgets that explicitly opt in. These
+    // bridge surfaces are the actual native drop targets behind the QML shell;
+    // the QQuickWindow itself has no QWidget::setAcceptDrops() equivalent.
+    bridgeRoot->setAcceptDrops(true);
     bridgeRoot->setFocusPolicy(Qt::StrongFocus);
     bridgeRoot->setContentsMargins(0, 0, 0, 0);
     bridgeRoot->setMinimumSize(QSize(64, 64));
     bridgeRoot->resize(960, 720);
+    applyBridgeSurfaceBaseStyle(bridgeRoot);
     // Phase 3f-3 — hide() BEFORE winId(). Order matters: winId() forces
     // native HWND creation, and Qt creates the HWND in the visible
     // state if hide() hasn't been called first. Calling hide() AFTER
@@ -517,19 +842,23 @@ void QuickShellNativeSurfaceHost::attachNativeWidgets()
         return;
     }
 
+    if (QMenuBar* windowMenuBar = contentProvider_->shellMenuBarWidget(); windowMenuBar != nullptr) {
+        windowMenuBar->setNativeMenuBar(false);
+        if (windowMenuBar->parentWidget() != topChromeSurfaceWidget_) {
+            windowMenuBar->setParent(topChromeSurfaceWidget_);
+        }
+        if (topChromeLayout->indexOf(windowMenuBar) < 0) {
+            topChromeLayout->addWidget(windowMenuBar);
+        }
+#ifdef Q_OS_MACOS
+        miacode::quick_shell::mac::installTopLevelMenuPopupPositioning(
+            windowMenuBar, surfaceBundle_.topChrome);
+#endif
+        windowMenuBar->show();
+    }
+
     if (QMainWindow* mainWindow = qobject_cast<QMainWindow*>(contentProvider_->shellWindowWidget());
         mainWindow != nullptr) {
-        if (QMenuBar* windowMenuBar = mainWindow->menuBar(); windowMenuBar != nullptr) {
-            windowMenuBar->setNativeMenuBar(false);
-            if (windowMenuBar->parentWidget() != topChromeSurfaceWidget_) {
-                windowMenuBar->setParent(topChromeSurfaceWidget_);
-            }
-            if (topChromeLayout->indexOf(windowMenuBar) < 0) {
-                topChromeLayout->addWidget(windowMenuBar);
-            }
-            windowMenuBar->show();
-        }
-
         if (QToolBar* toolBar = mainWindow->findChild<QToolBar*>(); toolBar != nullptr) {
             mainWindow->removeToolBar(toolBar);
             if (toolBar->parentWidget() != topChromeSurfaceWidget_) {
@@ -595,11 +924,11 @@ void QuickShellNativeSurfaceHost::attachNativeWidgets()
         previewPanel->hide();
     }
 
-    activateLayout(topChromeSurfaceWidget_);
-    activateLayout(sidebarSurfaceWidget_);
-    activateLayout(workspaceSurfaceWidget_);
-    activateLayout(bottomTabsSurfaceWidget_);
-    activateLayout(statusSurfaceWidget_);
+    activateLayout(topChromeSurfaceWidget_, "top_chrome");
+    activateLayout(sidebarSurfaceWidget_, "sidebar");
+    activateLayout(workspaceSurfaceWidget_, "workspace");
+    activateLayout(bottomTabsSurfaceWidget_, "bottom_tabs");
+    activateLayout(statusSurfaceWidget_, "status");
 }
 
 void QuickShellNativeSurfaceHost::ensureSurfaceLayouts()
@@ -643,8 +972,20 @@ void QuickShellNativeSurfaceHost::showAllSurfaces()
     setSurfaceVisible(topChromeSurfaceWidget_, true);
     setSurfaceVisible(sidebarSurfaceWidget_, true);
     setSurfaceVisible(workspaceSurfaceWidget_, true);
-    setSurfaceVisible(bottomTabsSurfaceWidget_, shouldUseBottomTabsNativeSurface(stateSource_));
+    setSurfaceVisible(
+        bottomTabsSurfaceWidget_,
+        !kBridgeSurfaceVisibilityFollowsTabs || shouldUseBottomTabsNativeSurface(stateSource_)
+    );
     setSurfaceVisible(statusSurfaceWidget_, true);
+}
+
+bool QuickShellNativeSurfaceHost::canShowBridgeSurfaces() const
+{
+#ifdef Q_OS_MACOS
+    return true;
+#else
+    return quickShellUiReady_;
+#endif
 }
 
 void QuickShellNativeSurfaceHost::updateBottomTabsSpeedToastGeometry()

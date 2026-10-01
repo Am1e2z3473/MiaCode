@@ -55,6 +55,7 @@ void MainWindow::PreviewSection::applyPreviewStageMediaRouteVisualSettings()
         || state_.exportPreviewActive_;
     if (state_.previewStageMediaHost_ != nullptr) {
         state_.previewStageMediaHost_->setBackgroundScaleMode(state_.previewBackgroundScaleMode_);
+        state_.previewStageMediaHost_->setLayoutSquareScale(state_.previewLayoutSquareScale_);
         state_.previewStageMediaHost_->setMediaVisible(mediaVisible);
     }
     if (state_.previewCanvas_ != nullptr) {
@@ -190,6 +191,13 @@ void MainWindow::PreviewSection::clearPreviewStageMediaRoute()
     }
 
     refreshPreviewStageMediaRouteDebugState(false);
+}
+
+void MainWindow::PreviewSection::releasePreviewStageMediaDecoderForFileOperation()
+{
+    if (state_.previewStageMediaHost_ != nullptr) {
+        state_.previewStageMediaHost_->releaseDecoderForFileReplace();
+    }
 }
 
 void MainWindow::PreviewSection::applyPreviewMediaWarmupToStageMediaRoute(
@@ -359,6 +367,7 @@ void MainWindow::PreviewSection::ensurePreviewStageMediaHostInitialized()
 
     state_.previewStageMediaHost_ = new PreviewStageMediaHost(&owner_);
     state_.previewStageMediaHost_->setBackgroundScaleMode(state_.previewBackgroundScaleMode_);
+    state_.previewStageMediaHost_->setLayoutSquareScale(state_.previewLayoutSquareScale_);
     owner_.setPreviewStageMediaFrameRateMode(state_.previewStageMediaFrameRateMode_, false);
     // Push the persisted video decode-mode preference (硬件渲染 / 软件渲染) once,
     // before any PV is resolved, so the user's choice applies on the first load.
@@ -406,17 +415,9 @@ void MainWindow::PreviewSection::ensurePreviewStageMediaHostInitialized()
             owner_.handlePausedPreviewMediaSeekCompleted(second, generation);
         }
     );
-    connect(state_.previewStageMediaHost_, &PreviewStageMediaHost::playbackFinished, &owner_, [this]() {
-        owner_.finishQtPreviewPlaybackAndReturnToEntry("Qt preview reached the end of current media.");
-    });
     connect(state_.previewStageMediaHost_, &PreviewStageMediaHost::diagnosticsChanged, &owner_, [this]() {
         refreshPreviewStageMediaRouteDebugState(!state_.qtPreviewPlaying_);
     });
-    // Phase 4c — let the bootstrap wire this host into the
-    // PreviewDCompSurface so StageBackgroundSource can pull the
-    // current QVideoFrame each snapshot build (the host owns the
-    // QMediaPlayer + QVideoSink that produced it).
-    emit owner_.previewStageMediaHostInitialized(state_.previewStageMediaHost_);
     ensureQuickShellPreviewCompositeSurfaceInitialized();
     state_.previewStageMediaHost_->setWarmupResolvedMediaPath(state_.previewMediaWarmupChartPath_, state_.previewMediaWarmupResolvedPath_);
     state_.deferredQuickShellStartupStageMediaChartPath_ = state_.currentFilePath_;
@@ -579,6 +580,11 @@ void MainWindow::syncPreviewStageMediaRouteChartPath(const QString& chartPath, c
 void MainWindow::clearPreviewStageMediaRoute()
 {
     previewSection_->clearPreviewStageMediaRoute();
+}
+
+void MainWindow::releasePreviewStageMediaDecoderForFileOperation()
+{
+    previewSection_->releasePreviewStageMediaDecoderForFileOperation();
 }
 
 void MainWindow::applyPreviewMediaWarmupToStageMediaRoute(

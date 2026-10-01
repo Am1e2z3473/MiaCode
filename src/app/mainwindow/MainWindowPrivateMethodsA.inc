@@ -14,6 +14,7 @@
         const QString& chartVideoOverridePath = QString()
     );
     void clearPreviewStageMediaRoute();
+    void releasePreviewStageMediaDecoderForFileOperation();
     void applyPreviewMediaWarmupToStageMediaRoute(
         const QString& chartPath,
         const QString& resolvedMediaPath,
@@ -61,7 +62,10 @@
         const QString& sfxDir,
         qint64 workerElapsedMs
     );
-    void finishFrameBootstrap(QToolBar* toolBar, const std::function<void(const QString&)>& logStartupStage);
+    void finishFrameBootstrap(
+        QToolBar* toolBar,
+        const std::function<void(const QString&)>& logStartupStage,
+        bool explicitStartupOpenPending);
     void setupMenusAndActions(QMenu* fileMenu, QMenu* editMenu, QMenu* transformMenu, QMenu* previewMenu, QMenu* helpMenu);
     void setPreviewFixedTimerHighResolutionActive(bool active);
     void hidePreviewPlaybackRateToast();
@@ -131,7 +135,6 @@
     void clearExportAuditionClockSchedule();
     void updateMetadataPageMode();
     bool deleteDifficultyField(int difficultyId);
-    void updateDifficultyDeleteButton(bool visible);
     void populateMetadataPage();
     void populateDifficultyPage(int difficultyId);
     bool switchToMetadataField();
@@ -211,6 +214,8 @@
     void applyQtPreviewPosition(double second, bool centerView);
     void syncPausedPreviewMediaTimestamps(double second);
     void flushQtPreviewTimelinePosition();
+    void onTimelineRenderCadenceTick();
+    void onTimelineCadenceWatchdogTick();
     void onQtPreviewTick();
     void finishQtPreviewPlaybackAndReturnToEntry(const QString& statusMessage);
     bool previewCanvasUsesFrameSwappedPacing() const;
@@ -245,6 +250,7 @@
     void refreshPreviewObjectStatsTotals(const QVector<TimelineNoteMarker>& noteMarkers);
     void updatePreviewObjectStats(double second);
     void clearPreviewObjectStats();
+    void emitChartSwitchResourceGauge();
     int updatePreviewStatsLayoutMode(int hostWidth = -1);
     int previewStatsMinimumHeightForPanelWidth(int panelWidth) const;
     void updatePreviewWorkspaceLayout();

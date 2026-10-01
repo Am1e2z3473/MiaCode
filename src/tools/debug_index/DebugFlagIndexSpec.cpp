@@ -39,11 +39,28 @@ const QSet<QString> kRetiredFlags = {
     QStringLiteral("MIACODE_PREVIEW_SESSION_SCRIPT"),
     QStringLiteral("MIACODE_DISABLE_GL_DEBUG_MESSAGES"),
     QStringLiteral("MIACODE_PREVIEW_DONT_CREATE_NATIVE_WIDGET_SIBLINGS"),
+    QStringLiteral("MIACODE_PREVIEW_VISUAL_SMOOTHING"),
+    QStringLiteral("MIACODE_SKIP_DIAG_D3D11"),
+    QStringLiteral("MIACODE_TIMELINE_USE_DCOMP"),
+    QStringLiteral("MIACODE_PREVIEW_USE_DCOMP"),
+    QStringLiteral("MIACODE_PREVIEW_DCOMP_EXCLUSIVE"),
+    QStringLiteral("MIACODE_PREVIEW_DCOMP_TOPLEVEL_HWND"),
+    QStringLiteral("MIACODE_PREVIEW_DCOMP_PER_PIXEL_ALPHA"),
+    QStringLiteral("MIACODE_PREVIEW_DCOMP_QUIESCE_QSG"),
 };
 
 // This spec embeds flag-name literals (the retired allowlist above), which are
 // not real env reads, so its own source file is skipped during the code scan.
 const QString kSelfFileName = QStringLiteral("DebugFlagIndexSpec.cpp");
+
+// MIACODE_* tokens that are CMake compile definitions (injected via
+// target_compile_definitions), not runtime env flags read with qgetenv. These
+// legitimately do not belong in docs/ops/DEBUG_INDEX.md. Any spec that consumes
+// the source-root compile define (this one, ui_text_locale_spec, …) references
+// the token in source, so filter it out globally rather than per-file.
+const QSet<QString> kCompileDefinitions = {
+    QStringLiteral("MIACODE_SOURCE_ROOT"),
+};
 
 QSet<QString> collectFlags(const QString& text)
 {
@@ -51,7 +68,11 @@ QSet<QString> collectFlags(const QString& text)
     QSet<QString> flags;
     QRegularExpressionMatchIterator it = re.globalMatch(text);
     while (it.hasNext()) {
-        flags.insert(it.next().captured(0));
+        const QString flag = it.next().captured(0);
+        if (kCompileDefinitions.contains(flag)) {
+            continue;
+        }
+        flags.insert(flag);
     }
     return flags;
 }

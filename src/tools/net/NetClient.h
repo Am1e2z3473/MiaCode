@@ -3,10 +3,13 @@
 #include <QByteArray>
 #include <QDate>
 #include <QDateTime>
+#include <QHash>
 #include <QList>
 #include <QNetworkAccessManager>
 #include <QString>
 #include <QStringList>
+
+#include <atomic>
 
 namespace miacode::net {
 
@@ -39,9 +42,20 @@ struct NetResourcePayload {
 
 struct NetDownloadResult {
     bool ok = false;
+    bool canceled = false;
     bool blockingResponse = false;
     int statusCode = 0;
     qint64 bytesWritten = 0;
+    qint64 elapsedMs = 0;
+    QString errorMessage;
+};
+
+struct NetConnectionProbeResult {
+    bool ok = false;
+    bool canceled = false;
+    bool blockingResponse = false;
+    bool timedOut = false;
+    int statusCode = 0;
     qint64 elapsedMs = 0;
     QString errorMessage;
 };
@@ -51,12 +65,25 @@ struct NetQueryOptions {
     QString titleKeyword;
 };
 
+enum class NetDownloadSortOrder {
+    LevelAscending,
+    LevelDescending,
+    UploadedNewest,
+    UploadedOldest,
+    StatusAscending,
+    StatusDescending,
+};
+
+bool netDownloadLengthIsComplete(qint64 expectedBytes, qint64 bytesWritten);
+
 QList<NetChartSummary> parseChartListJson(const QByteArray& payload, QString* errorMessage);
 QList<NetChartSummary> filterChartsByLocalDateRange(
     const QList<NetChartSummary>& charts,
     const QDate& startDate,
     const QDate& endDate);
 QString formatLevels(const QStringList& levels);
+void sortNetDownloadJobs(QList<NetDownloadJob>* jobs, NetDownloadSortOrder order);
+QString netUserSpaceReferer(const QString& username);
 QString chartDirectoryPathForTitle(const QString& outputDirectory, const QString& title, const QString& chartId);
 QString uniqueZipPathForTitle(const QString& outputDirectory, const QString& title);
 bool packNetChartZip(
@@ -91,9 +118,17 @@ public:
     NetDownloadResult downloadResourceToFile(
         const QString& chartId,
         const QString& resourcePath,
-        const QString& outputPath);
+        const QString& outputPath,
+        const std::atomic_bool* cancelRequested = nullptr);
+    NetConnectionProbeResult probeConnection(
+        const std::atomic_bool* cancelRequested = nullptr);
 
 private:
+    struct QueryCandidateCacheEntry {
+        QList<NetChartSummary> charts;
+        qint64 expiresAtMs = 0;
+    };
+
     QList<NetChartSummary> querySearchText(
         const QString& searchText,
         const QString& referer,
@@ -101,6 +136,7 @@ private:
     QByteArray getUrl(const QUrl& url, const QString& referer, QString* errorMessage, bool* blockingResponse);
 
     QNetworkAccessManager manager_;
+    QHash<QString, QueryCandidateCacheEntry> queryCandidateCache_;
 };
 
 }  // namespace miacode::net

@@ -42,6 +42,10 @@ public:
     void ensurePreviewStageMediaRouteInitialized();
     void syncPreviewStageMediaRouteChartPath(const QString& chartPath, const QString& trackPath, double pausedSecond, const QString& chartVideoOverridePath = QString());
     void clearPreviewStageMediaRoute();
+    // Hard-close the stage-media decoder's file handle before an in-app media
+    // tool renames/replaces the pv/bg video (Windows file-lock; see
+    // PreviewStageMediaHost::releaseDecoderForFileReplace).
+    void releasePreviewStageMediaDecoderForFileOperation();
     void applyPreviewMediaWarmupToStageMediaRoute(
         const QString& chartPath,
         const QString& resolvedMediaPath,
@@ -69,9 +73,11 @@ public:
     PreviewOutlineVariant effectivePreviewOutlineVariant() const;
     void applyEffectivePreviewOutlineVariantToCanvas();
     void setPauseDisplayAltHoldActive(bool active);
+    void setTouchPadAuthoringCtrlHoldActive(bool active);
     void applyPreviewOutlineVariant(PreviewOutlineVariant variant, bool useAutoSelection, bool persistState);
     QString resolvePreviewCustomOutlineDir() const;
     QString resolvePreviewCustomOutlinePath() const;
+    QString effectivePreviewCustomOutlinePath() const;
     QStringList availablePreviewCustomOutlineFileNames() const;
     void applyPreviewCustomOutlineFileName(const QString& fileName, bool persistState);
     MainWindow::PreviewSkinVariant previewSkinVariantFromStorageValue(const QString& value) const;
@@ -81,6 +87,11 @@ public:
     QString resolvePreviewSkinDir() const;
     QString resolvePreviewSkinRootDir() const;
     void applyPreviewAudioSettingsToRuntime();
+    // Per-project mixer persistence (<chartDir>/.miacode/preferences.json,
+    // key "preview_audio"). The app-level local preset only seeds a project
+    // that has never stored a mixer of its own.
+    void loadProjectAudioPreferences();
+    void saveProjectAudioPreferences() const;
 
 private:
     MainWindow& owner_;

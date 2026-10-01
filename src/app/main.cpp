@@ -8,8 +8,11 @@
 #include "common/CrashRecovery.h"
 #include "common/DebugLog.h"
 #include "common/OperationLog.h"
+#include "common/ProcessDiagnostics.h"
+#include "common/UiHangWatchdog.h"
 #include "common/DebugOptions.h"
 #include "common/WaveformCache.h"
+#include "audio/PreviewBassDefaultDevice.h"
 #include "SimaiNativeParser.h"
 
 #include <QApplication>
@@ -22,6 +25,8 @@
 #include <QIcon>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QPixmap>
+#include <QSize>
 #include <QTextStream>
 #include <QTimer>
 #include <QStringList>
@@ -54,6 +59,28 @@
 
 namespace {
 
+QIcon applicationWindowIcon()
+{
+#ifdef Q_OS_LINUX
+    const QPixmap source(QStringLiteral(":/icons/app.png"));
+    if (!source.isNull()) {
+        QIcon icon;
+        const int iconSizes[] = {16, 20, 22, 24, 32, 48, 64, 96, 128, 256};
+        for (const int size : iconSizes) {
+            icon.addPixmap(
+                source.scaled(
+                    QSize(size, size),
+                    Qt::KeepAspectRatio,
+                    Qt::SmoothTransformation
+                )
+            );
+        }
+        return icon;
+    }
+#endif
+    return QIcon(QStringLiteral(":/icons/app.png"));
+}
+
 bool wantsCliVideoExport(const QStringList& arguments)
 {
     return arguments.contains(QStringLiteral("--export-video"));
@@ -62,11 +89,6 @@ bool wantsCliVideoExport(const QStringList& arguments)
 bool wantsCliVideoExportWorker(const QStringList& arguments)
 {
     return arguments.contains(QStringLiteral("--export-video-worker"));
-}
-
-bool wantsQuickShellBeta(const QStringList& arguments)
-{
-    return arguments.contains(QStringLiteral("--quick-shell-beta"));
 }
 
 // Force-show the first-run welcome / initial-config dialog even when
@@ -187,6 +209,22 @@ int main(int argc, char* argv[])
     // B=GPU driver, C=Win10 build too old) on a single run, no --debug
     // required. All output goes to the same beacon file via append.
     runStartupDiagnostic();
+
+    // BASS_CONFIG_DEV_DEFAULT only accepts changes before the process's first
+    // BASS device enumeration or BASS_Init, and the preview engine is not always
+    // first: an uncached chart's waveform decode inits the no-sound device before
+    // it, which left preview audio (and with it Play) dead until restart. Settle it
+    // here, before anything can reach BASS; the engine reuses this result.
+    {
+        int bassErrorCode = 0;
+        const bool bassDefaultDeviceDisabled =
+            miacode::preview_audio::disableBassDefaultDeviceEntry(&bassErrorCode);
+        char buf[96];
+        std::snprintf(buf, sizeof(buf),
+            "phase=bass_default_device_entry disabled=%d err=%d",
+            bassDefaultDeviceDisabled ? 1 : 0, bassErrorCode);
+        miacode::oplog::appendStartupBeaconLine(buf);
+    }
     miacode::oplog::appendStartupBeaconLine("phase=pre_mc_op");
 #endif
 
@@ -240,6 +278,50 @@ int main(int argc, char* argv[])
     const bool cliVideoExportRequested = wantsCliVideoExport(rawArgs);
     const bool cliVideoExportWorkerRequested = wantsCliVideoExportWorker(rawArgs);
     const bool forceOpenGlGraphicsApi = cliVideoExportRequested || cliVideoExportWorkerRequested;
+#if defined(Q_OS_LINUX)
+    // QQuickRenderControl adopts the export session's QOpenGLContext. Under
+    // xcb, Qt's default GLX integration produces a context that the Quick RHI
+    // cannot adopt on affected Linux/NVIDIA configurations, while xcb/EGL
+    // works. Keep an explicit user choice, and leave native Wayland export
+    // processes alone.
+    const QString requestedQpaPlatform =
+        qEnvironmentVariable("QT_QPA_PLATFORM").trimmed().toLower();
+    const bool exportUsesXcb =
+        requestedQpaPlatform.startsWith(QStringLiteral("xcb"))
+        || (requestedQpaPlatform.isEmpty()
+            && qEnvironmentVariableIsEmpty("WAYLAND_DISPLAY")
+            && !qEnvironmentVariableIsEmpty("DISPLAY"));
+    const bool guiUsesXcbCompatibility =
+        !forceOpenGlGraphicsApi
+        && requestedQpaPlatform.isEmpty()
+        && !qEnvironmentVariableIsEmpty("WAYLAND_DISPLAY")
+        && !qEnvironmentVariableIsEmpty("DISPLAY");
+    if ((exportUsesXcb || guiUsesXcbCompatibility)
+        && qEnvironmentVariableIsEmpty("QT_XCB_GL_INTEGRATION")) {
+        qputenv("QT_XCB_GL_INTEGRATION", QByteArrayLiteral("xcb_egl"));
+    }
+
+    // QuickShell embeds native QWidget surfaces through QWindow::fromWinId(). Qt's
+    // Wayland plugin cannot import those foreign windows, while XWayland/xcb can.
+    // Keep explicit QPA choices and headless/export process modes untouched.
+    if (!cliVideoExportRequested
+        && !cliVideoExportWorkerRequested
+        && qEnvironmentVariableIsEmpty("QT_QPA_PLATFORM")
+        && !qEnvironmentVariableIsEmpty("WAYLAND_DISPLAY")
+        && !qEnvironmentVariableIsEmpty("DISPLAY")) {
+        qputenv("QT_QPA_PLATFORM", QByteArrayLiteral("xcb"));
+
+        // KDE Wayland normally leaves the Qt IM module unset so native clients
+        // can use text-input. Once this process moves to XWayland, honour the
+        // session's XMODIFIERS choice without changing the global session.
+        const QString xModifiers = qEnvironmentVariable("XMODIFIERS").trimmed();
+        if (qEnvironmentVariableIsEmpty("QT_IM_MODULE")
+            && qEnvironmentVariableIsEmpty("QT_IM_MODULES")
+            && xModifiers.contains(QStringLiteral("@im=fcitx"), Qt::CaseInsensitive)) {
+            qputenv("QT_IM_MODULE", QByteArrayLiteral("fcitx"));
+        }
+    }
+#endif
     const QString startupOpenTarget =
         !cliVideoExportRequested && !cliVideoExportWorkerRequested
             ? startupOpenTargetFromArguments(rawArgs)
@@ -266,6 +348,7 @@ int main(int argc, char* argv[])
 #ifdef Q_OS_WIN
         miacode::oplog::appendStartupBeaconLine("phase=after_trim_debug_logs");
 #endif
+        miacode::debug_log::initializePvMemoryLogSession();
     }
     if (miacode::debug_options::startupTimingEnabled()) {
 #ifdef Q_OS_WIN
@@ -278,9 +361,8 @@ int main(int argc, char* argv[])
     }
 
     // (libmpv probe removed in beta20 — the "Phase 4 video source built on
-    // top of this" never landed; chart-preview video backgrounds use Qt's
-    // QMediaPlayer + QVideoSink stack via PreviewStageMediaHost. Shipping
-    // libmpv-2.dll cost ~113 MB to log a single startup version line.)
+    // top of this" never landed; chart-preview video backgrounds use the
+    // QtAVPlayer + QVideoSink stack via PreviewStageMediaHost.)
 
 #ifdef Q_OS_WIN
     miacode::oplog::appendStartupBeaconLine("phase=before_env_var_parse");
@@ -392,11 +474,9 @@ int main(int argc, char* argv[])
 #endif
 
     // Detect Apple Silicon Windows VM (Windows-on-ARM running x86/x64
-    // emulation). When detected, previewUseDCompEnabled() auto-falls-back
-    // to false — the legacy QSG-only render path (beta19-equivalent),
-    // which doesn't create any popup HWNDs that would otherwise crash
-    // under that emulation.
-    // Logged once at startup so support can confirm the fallback fired.
+    // emulation). Logged once at startup so support can tell from a bug
+    // report which environment the run came from — several graphics
+    // crashes have only ever reproduced under that emulation.
     if (miacode::debug_options::runningOnArm64WindowsEmulation()) {
         miacode::debug_log::appendStartupTimingStage(
             QStringLiteral("arm64_emulation_detected"),
@@ -404,9 +484,7 @@ int main(int argc, char* argv[])
         miacode::debug_log::appendLine(
             miacode::debug_log::Channel::Runtime,
             QStringLiteral("startup/preview_path"),
-            QStringLiteral("reason=arm64_windows_emulation "
-                          "dcomp=false "
-                          "fallback=qsg_only_legacy"));
+            QStringLiteral("reason=arm64_windows_emulation"));
     }
 #ifdef Q_OS_WIN
     miacode::oplog::appendStartupBeaconLine("phase=after_arm64_probe");
@@ -429,19 +507,38 @@ int main(int argc, char* argv[])
     miacode::oplog::appendStartupBeaconLine("phase=before_qapplication_construct");
 #endif
     QApplication app(argc, argv);
+    miacode::hang_watchdog::installGuiHeartbeat(&app);
+    miacode::diag::installPeriodicProcessResourceGauge(&app);
 #ifdef Q_OS_WIN
     miacode::oplog::appendStartupBeaconLine("phase=after_qapplication_construct");
 #endif
 
-    // Backend selection. CLI export always forces OpenGL (legacy export pipeline relies on
-    // it). Otherwise: honour user's --rhi=<name> if present (and persist for next launch),
-    // else fall back to the persisted choice from the prior run, else Qt's platform default.
+    // Backend selection. CLI export / export worker default to Direct3D11 for
+    // the P5 D3D11/QRhi export session; MIACODE_EXPORT_RENDER_BACKEND=opengl
+    // keeps the stable OpenGL FBO/PBO path as an explicit rollback
+    // (Windows only — the session itself falls back to OpenGL if init fails, see
+    // VideoExportPreparedTask). Otherwise: honour user's --rhi=<name> if present (and
+    // persist for next launch), else fall back to the persisted choice from the prior
+    // run, else Qt's platform default.
     QString appliedGraphicsBackend;
     QString graphicsBackendSource;
     if (forceOpenGlGraphicsApi) {
-        QQuickWindow::setGraphicsApi(QSGRendererInterface::OpenGL);
-        appliedGraphicsBackend = QStringLiteral("opengl");
-        graphicsBackendSource = QStringLiteral("cli_video_export_force");
+#ifdef Q_OS_WIN
+        const miacode::debug_options::ExportRenderBackendRequest exportBackendRequest =
+            miacode::debug_options::exportRenderBackendRequest();
+        if (exportBackendRequest != miacode::debug_options::ExportRenderBackendRequest::OpenGl) {
+            QQuickWindow::setGraphicsApi(QSGRendererInterface::Direct3D11);
+            appliedGraphicsBackend = QStringLiteral("d3d11");
+            graphicsBackendSource = miacode::debug_options::envValue("MIACODE_EXPORT_RENDER_BACKEND").isEmpty()
+                ? QStringLiteral("cli_video_export_default_d3d11_qrhi")
+                : QStringLiteral("cli_video_export_env_d3d11_qrhi");
+        } else
+#endif
+        {
+            QQuickWindow::setGraphicsApi(QSGRendererInterface::OpenGL);
+            appliedGraphicsBackend = QStringLiteral("opengl");
+            graphicsBackendSource = QStringLiteral("cli_video_export_force");
+        }
     } else if (qsgFullDisable) {
         // Diagnostic mode: completely exclude Qt Quick's native render
         // path. Force software backend regardless of CLI / persisted
@@ -494,12 +591,20 @@ int main(int argc, char* argv[])
             miacode::debug_log::Channel::Runtime,
             QStringLiteral("startup/qt_config"),
             QString("graphics_api=%1 dont_create_native_widget_siblings=%2 cli_export=%3 cli_export_worker=%4")
-                .arg(forceOpenGlGraphicsApi ? QStringLiteral("OpenGL") : QStringLiteral("PlatformDefault"))
+                .arg(forceOpenGlGraphicsApi ? appliedGraphicsBackend : QStringLiteral("PlatformDefault"))
                 .arg(QApplication::testAttribute(Qt::AA_DontCreateNativeWidgetSiblings) ? 1 : 0)
                 .arg(cliVideoExportRequested ? 1 : 0)
                 .arg(cliVideoExportWorkerRequested ? 1 : 0)
         );
     }
+
+    // P0/P2/P3 — process identity + GPU hint + resolved GPU policy, emitted for
+    // every role (gui / cli_export / export_worker). CLI export + worker return
+    // early just below, so this has to run before that dispatch. Gated on
+    // --debug inside the call; re-emitted after the log dir rebinds to a chart
+    // (see logProcessStartupDiagnostics) so the collected project log has them.
+    logProcessStartupDiagnostics(QStringLiteral("boot"));
+
 #ifdef Q_OS_WIN
     setWindowsAppUserModelId();
 #endif
@@ -526,8 +631,10 @@ int main(int argc, char* argv[])
         !miacodePreferencesExistedAtStartup
         || miacodePreferencesSchemaOutdated
         || wantsWelcomeDialog(rawArgs);
-    const QIcon appIcon(QStringLiteral(":/icons/app.png"));
+    const QIcon appIcon = applicationWindowIcon();
+#ifndef Q_OS_MACOS
     app.setWindowIcon(appIcon);
+#endif
     app.setStyle(QStyleFactory::create("Fusion"));
     UiTheme::applyApplicationTheme(app);
     // Keep the tooltip fade effect, but disable the slide/scroll animation (on
@@ -536,17 +643,26 @@ int main(int argc, char* argv[])
     QApplication::setEffectEnabled(Qt::UI_AnimateTooltip, false);
     logStartupStage("app_style_ready");
 
-    if (UiText::isChineseUi()) {
-        QFont zhUiFont;
-        for (const QString& family : QStringList{"Microsoft YaHei UI", "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC"}) {
-            zhUiFont.setFamily(family);
-            if (zhUiFont.family().compare(family, Qt::CaseInsensitive) == 0) {
-                break;
-            }
+    {
+        QStringList cjkUiFamilies;
+        const QString uiLanguageToken = UiText::resolvedLanguageToken();
+        if (uiLanguageToken.startsWith(QStringLiteral("zh"))) {
+            cjkUiFamilies = QStringList{"Microsoft YaHei UI", "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC"};
+        } else if (uiLanguageToken.startsWith(QStringLiteral("ja"))) {
+            cjkUiFamilies = QStringList{"Yu Gothic UI", "Meiryo UI", "Meiryo", "Noto Sans CJK JP"};
         }
-        zhUiFont.setStyleStrategy(QFont::PreferAntialias);
-        zhUiFont.setHintingPreference(QFont::PreferNoHinting);
-        app.setFont(zhUiFont);
+        if (!cjkUiFamilies.isEmpty()) {
+            QFont cjkUiFont;
+            for (const QString& family : cjkUiFamilies) {
+                cjkUiFont.setFamily(family);
+                if (cjkUiFont.family().compare(family, Qt::CaseInsensitive) == 0) {
+                    break;
+                }
+            }
+            cjkUiFont.setStyleStrategy(QFont::PreferAntialias);
+            cjkUiFont.setHintingPreference(QFont::PreferNoHinting);
+            app.setFont(cjkUiFont);
+        }
     }
     logStartupStage("ui_font_ready");
 
@@ -579,26 +695,6 @@ int main(int argc, char* argv[])
     // QuickShellBootstrap. GUI-only: CLI runs above never show windows.
     UiNativeWindowTheme::installAutoApplyFilter();
 
-    // Phase 3a of the v2-refactor — `--quick-shell-beta` becomes the
-    // canonical opt-in for the new DComp pipeline. Setting the env vars
-    // here (before any code that reads them via envFlagEnabled) makes
-    // the flag self-contained: users running with --quick-shell-beta no
-    // longer need to also set MIACODE_PREVIEW_USE_DCOMP=1 in their
-    // shell, and the same release build covers both legacy QSG and
-    // DComp paths via this single argv check.
-    //
-    // We use qputenv(..., "1") only when the env var is currently
-    // *unset*, so an explicit MIACODE_PREVIEW_DCOMP_TOPLEVEL_HWND=0 in
-    // the launching shell still wins (lets the user A/B without
-    // rebuilding). previewUseDCompEnabled defers to envFlagEnabled
-    // which checks the live env on every call, so setting it here is
-    // sufficient.
-    const bool quickShellBetaRequested = wantsQuickShellBeta(app.arguments());
-    if (quickShellBetaRequested) {
-        if (qEnvironmentVariableIsEmpty("MIACODE_PREVIEW_USE_DCOMP")) {
-            qputenv("MIACODE_PREVIEW_USE_DCOMP", QByteArrayLiteral("1"));
-        }
-    }
     QQuickStyle::setStyle(QStringLiteral("Basic"));
 
     QElapsedTimer appExecElapsed;

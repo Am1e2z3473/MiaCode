@@ -1,4 +1,4 @@
-﻿#include "../../MainWindow.h"
+#include "../../MainWindow.h"
 #include "../../MainWindowShared.h"
 #include "MainWindow.FrameSection.h"
 #include "../editor/MainWindow.EditorSection.h"
@@ -9,24 +9,32 @@
 #include "../preview/MainWindow.PreviewSection.h"
 #include "../timeline/MainWindow.TimelineSection.h"
 #include "../validation/MainWindow.ValidationSection.h"
+#include "../validation/EditorSelectionUtils.h"
 #include "../window/MainWindow.WindowSection.h"
 
 #include "BracketScopeHighlighter.h"
 #include "DialogLocalization.h"
 #include "PlainCodeEditor.h"
+#include "editor/TouchPadAuthoringEdit.h"
+#include "audio/PreviewAudioDeviceWatcher.h"
 #include "QtPreviewSfxRuntime.h"
 #include "SimaiNativeParser.h"
+#include "ShortcutRegistry.h"
 #include "TimelineView.h"
 #include "BusySpinner.h"
 #include "UiText.h"
 #include "UiTheme.h"
 #include "WindowParityMetrics.h"
+#include "app/ui/AppBackgroundPainter.h"
 #include "app/quick_shell/QuickShellPreviewCompositeSurface.h"
 #include "app/quick_shell/QuickShellPreviewSurfacePolicy.h"
 #include "common/ChartAssetPaths.h"
+#include "common/AdoptedSurfaceDragAutoScroll.h"
+#include "common/AdoptedWidgetCoordinates.h"
 #include "common/DebugLog.h"
 #include "common/DebugOptions.h"
 #include "common/PreviewInteractionConfig.h"
+#include "extensions/ExtensionManager.h"
 #include "preview/runtime/PreviewRuntime.h"
 #include "preview/runtime/PreviewStageMediaHost.h"
 #include "core/scene/PreviewProgressStatsCache.h"
@@ -43,6 +51,9 @@
 #include <QtCore>
 #include <QtGui>
 #include <QtWidgets>
+
+#include <algorithm>
+#include <functional>
 
 using namespace miacode::mainwindow::shared;
 
@@ -67,7 +78,10 @@ void appendPreviewFramePacingDiagLog(const QString& action, const QString& paylo
 
 }  // namespace
 
-MainWindow::MainWindow(bool quickShellBootstrapMode, QWidget* parent)
+MainWindow::MainWindow(
+    bool quickShellBootstrapMode,
+    QWidget* parent,
+    bool explicitStartupOpenPending)
     : QMainWindow(parent)
 {
     QElapsedTimer startupStageTimer;
@@ -136,9 +150,9 @@ MainWindow::MainWindow(bool quickShellBootstrapMode, QWidget* parent)
             });
         }
     }
-    if (QMenuBar* topMenuBar = menuBar(); topMenuBar != nullptr) {
-        topMenuBar->setNativeMenuBar(false);
-    }
+    mainMenuBar_ = new miacode::ui::AppBackgroundSurfaceMenuBar(this);
+    mainMenuBar_->setNativeMenuBar(false);
+    setStatusBar(new miacode::ui::AppBackgroundSurfaceStatusBar(this));
 
     // Beta20-fix — unified all top menus to the `Name(&L)` mnemonic
     // suffix style for both English and Chinese (was: English used the
@@ -146,17 +160,17 @@ MainWindow::MainWindow(bool quickShellBootstrapMode, QWidget* parent)
     // `Name(&L)` suffix form, producing visually inconsistent menu
     // labels). The trailing `(L)` parens render in both locales which
     // matches the existing Chinese convention.
-    auto* fileMenu = menuBar()->addMenu(uiText("menu.file", "File(&F)"));
-    auto* editMenu = menuBar()->addMenu(UiText::isChineseUi() ? QStringLiteral("编辑(&E)") : QStringLiteral("Edit(&E)"));
-    auto* toolsMenu = menuBar()->addMenu(uiText("menu.tools", "Tools(&T)"));
+    auto* fileMenu = mainMenuBar_->addMenu(UiText::text(QStringLiteral("menu.file")));
+    auto* editMenu = mainMenuBar_->addMenu(UiText::text(QStringLiteral("metadata.edit_e")));
+    auto* toolsMenu = mainMenuBar_->addMenu(UiText::text(QStringLiteral("menu.tools")));
     // Beta20-fix — Transform menu renamed to "Modify" / "调整" in both
     // languages so the Alt-T mnemonic is unambiguous for the Tools
     // menu. Picked "Modify" (Alt+M) over "Transform(&R)" because the
     // user requested a synonym, not just a different mnemonic letter.
     // The Chinese key in UiText.cpp likewise uses 调整(&M).
-    auto* transformMenu = menuBar()->addMenu(uiText("menu.transform", "Modify(&M)"));
-    auto* previewMenu = menuBar()->addMenu(UiText::isChineseUi() ? QStringLiteral("预览(&P)") : QStringLiteral("Preview(&P)"));
-    auto* helpMenu = menuBar()->addMenu(uiText("menu.help", "Help(&H)"));
+    auto* transformMenu = mainMenuBar_->addMenu(UiText::text(QStringLiteral("menu.transform")));
+    auto* previewMenu = mainMenuBar_->addMenu(UiText::text(QStringLiteral("metadata.preview_p")));
+    auto* helpMenu = mainMenuBar_->addMenu(UiText::text(QStringLiteral("menu.help")));
     styleRoundedMenu(*fileMenu);
     styleRoundedMenu(*editMenu);
     styleRoundedMenu(*toolsMenu);
@@ -164,7 +178,8 @@ MainWindow::MainWindow(bool quickShellBootstrapMode, QWidget* parent)
     styleRoundedMenu(*previewMenu);
     styleRoundedMenu(*helpMenu);
 
-    auto* toolBar = addToolBar("Main");
+    auto* toolBar = new miacode::ui::AppBackgroundSurfaceToolBar(QStringLiteral("Main"), this);
+    addToolBar(toolBar);
     toolBar->setMovable(false);
     toolBar->setFloatable(false);
     // NB: do NOT shrink toolBar->iconSize() to font-match the gear — the gear is
@@ -174,6 +189,12 @@ MainWindow::MainWindow(bool quickShellBootstrapMode, QWidget* parent)
     // artwork into an inset of the icon box so the glyph reads at ~menu-text size
     // while the icon box — and thus the toolbar height — stays at the default.
     setupMenusAndActions(fileMenu, editMenu, transformMenu, previewMenu, helpMenu);
+    QAction* metadataSettingsAction = toolsMenu->addAction(UiText::text(QStringLiteral("sidebar.metadata")));
+    connect(metadataSettingsAction, &QAction::triggered, this, [this]() {
+        if (switchToMetadataField() && titleEdit_ != nullptr) {
+            titleEdit_->setFocus();
+        }
+    });
     if (latencyDetectorAction_ != nullptr) {
         editMenu->removeAction(latencyDetectorAction_);
         toolsMenu->addAction(latencyDetectorAction_);
@@ -186,15 +207,69 @@ MainWindow::MainWindow(bool quickShellBootstrapMode, QWidget* parent)
         previewMenu->removeAction(exportVideoAction_);
         toolsMenu->addSeparator();
         toolsMenu->addAction(exportVideoAction_);
-        QAction* batchExportAction = toolsMenu->addAction(uiText("action.batch_export", "Batch Export"));
+        QAction* batchExportAction = toolsMenu->addAction(UiText::text(QStringLiteral("action.batch_export")));
         connect(batchExportAction, &QAction::triggered, this, &MainWindow::onBatchExportPreviewVideo);
-        QAction* exportCoverAction = toolsMenu->addAction(uiText("action.export_cover", "Export Cover"));
+        QAction* exportCoverAction = toolsMenu->addAction(UiText::text(QStringLiteral("action.export_cover")));
         connect(exportCoverAction, &QAction::triggered, this, &MainWindow::onExportCover);
     }
     if (netBatchDownloadAction_ != nullptr) {
         toolsMenu->addSeparator();
         toolsMenu->addAction(netBatchDownloadAction_);
     }
+    extensionManager_ = std::make_unique<miacode::extensions::ExtensionManager>(this);
+    miacode::extensions::ExtensionHostCallbacks extensionCallbacks;
+    extensionCallbacks.activeDocument = [this]() {
+        miacode::extensions::ExtensionDocumentSnapshot snapshot;
+        snapshot.uri = currentFilePath_.isEmpty()
+            ? QStringLiteral("untitled:active")
+            : QUrl::fromLocalFile(currentFilePath_).toString();
+        snapshot.text = hasActiveDifficulty() ? editorText() : QString();
+        snapshot.activeDifficultyId = activeDifficultyId_;
+        snapshot.dirty = currentFieldDirty_;
+        return snapshot;
+    };
+    extensionCallbacks.replaceActiveDocumentText = [this](const QString& text, QString* error) {
+        if (!hasActiveDifficulty()) {
+            if (error != nullptr) {
+                *error = QStringLiteral("No active chart difficulty is open.");
+            }
+            return false;
+        }
+        setEditorText(text);
+        markCurrentFieldDirty();
+        refreshTimelineMetadata();
+        return true;
+    };
+    extensionCallbacks.validateActiveDocument = [this]() {
+        return runValidateSimaiSilently(false);
+    };
+    extensionCallbacks.mainWindowRequest = [this](const QString& method, const QJsonObject& params) -> QJsonObject {
+        return handleExtensionHostRequest(method, params);
+    };
+    extensionCallbacks.showMessage = [this](const QString& severity, const QString& message) {
+        const QMessageBox::Icon icon = severity == QStringLiteral("error")
+            ? QMessageBox::Critical
+            : (severity == QStringLiteral("warning") ? QMessageBox::Warning : QMessageBox::Information);
+        UiDialogs::showMessageBox(
+            icon,
+            this,
+            UiText::isChineseUi() ? QStringLiteral("扩展") : QStringLiteral("Extension"),
+            message
+        );
+    };
+    extensionCallbacks.logMessage = [this](const QString& message) {
+        miacode::debug_log::appendLine(
+            miacode::debug_log::Channel::Runtime,
+            QStringLiteral("extensions"),
+            message
+        );
+        if (statusBar() != nullptr) {
+            statusBar()->showMessage(message, 5000);
+        }
+    };
+    extensionManager_->setCallbacks(std::move(extensionCallbacks));
+    extensionManager_->initialize(
+        mainMenuBar_, fileMenu, editMenu, toolsMenu, transformMenu, previewMenu, helpMenu);
     const QList<QAction*> editActions = editMenu->actions();
     if (!editActions.isEmpty() && editActions.constLast()->isSeparator()) {
         editMenu->removeAction(editActions.constLast());
@@ -227,6 +302,7 @@ MainWindow::MainWindow(bool quickShellBootstrapMode, QWidget* parent)
         transformLowerSubdivisionHalfStepAction_,
         batchTransformClearSeparator,
         transformClearCompleteElementsAction_,
+        transformResetTapNotesAction_,
     });
     editor->setMoreBatchTransformActions({
         transformToggleBreakAction_,
@@ -256,6 +332,11 @@ MainWindow::MainWindow(bool quickShellBootstrapMode, QWidget* parent)
             redoAction_->trigger();
         }
     });
+    connect(editor, &PlainCodeEditor::selectionReplacementAboutToEdit, this, [this](int anchor, int position) {
+        if (documentSection_ != nullptr) {
+            documentSection_->recordChartSelectionUndoRestoreAfterNextEdit(anchor, position);
+        }
+    });
     connect(editor, &PlainCodeEditor::clearCompleteElementsShortcutRequested, this, [this]() {
         if (transformClearCompleteElementsAction_ != nullptr) {
             transformClearCompleteElementsAction_->trigger();
@@ -274,23 +355,65 @@ MainWindow::MainWindow(bool quickShellBootstrapMode, QWidget* parent)
     connect(editor, &PlainCodeEditor::editorOverwriteModeChanged, this, [this](bool enabled) {
         applyEditorOverwriteModeEnabled(enabled, true);
     });
-    connect(editor, &PlainCodeEditor::lineNumberBookmarkActivated, this, &MainWindow::openBookmarkAtLine);
-    connect(editor, &PlainCodeEditor::lineNumberBookmarkMoveRequested, this, [this](int fromLine, int toLine) {
-        if (editorSection_ != nullptr) {
-            editorSection_->replaceBookmarkLine(fromLine, toLine);
+    connect(editor, &PlainCodeEditor::lineNumberBookmarkActivated, this, &MainWindow::activateBookmarkAtLine);
+    connect(editor, &PlainCodeEditor::lineNumberBookmarkRenameRequested, this, [this](int line) {
+        if (documentSection_ != nullptr) {
+            documentSection_->revealBookmarkInSidebar(activeDifficultyId_, line, true);
         }
+    });
+    connect(editor, &PlainCodeEditor::lineNumberBookmarkDeleteRequested, this, [this](int line) {
+        if (editorSection_ != nullptr) {
+            editorSection_->deleteBookmarkAtLineWithConfirmation(line);
+        }
+    });
+    connect(editor, &PlainCodeEditor::lineNumberBookmarkContextMenuRequested, this,
+            [this, editor](int line, const QPoint& globalPos) {
+        // Line-number-gutter right-click: the same bookmark actions the editor
+        // body menu offers, anchored at the gutter position.
+        QMenu menu(editor);
+        menu.setFont(uiAccentFont(10));
+        styleRoundedMenu(menu);
+        const bool hasBookmark = editor->bookmarkedLines().contains(line);
+        if (!hasBookmark) {
+            QAction* createAction = menu.addAction(UiText::text(QStringLiteral("metadata.insert_bookmark")));
+            connect(createAction, &QAction::triggered, this, [this, line]() {
+                if (editorSection_ != nullptr) {
+                    editorSection_->createBookmarkAtLine(line, true);
+                }
+            });
+        } else {
+            QAction* renameAction = menu.addAction(UiText::text(QStringLiteral("metadata.rename_bookmark")));
+            connect(renameAction, &QAction::triggered, this, [this, line]() {
+                if (documentSection_ != nullptr) {
+                    documentSection_->revealBookmarkInSidebar(activeDifficultyId_, line, true);
+                }
+            });
+            QAction* deleteAction = menu.addAction(UiText::text(QStringLiteral("editor.delete_bookmark")));
+            connect(deleteAction, &QAction::triggered, this, [this, line]() {
+                if (editorSection_ != nullptr) {
+                    editorSection_->deleteBookmarkAtLineWithConfirmation(line);
+                }
+            });
+            QAction* revealAction = menu.addAction(UiText::text(QStringLiteral("metadata.show_in_sidebar")));
+            connect(revealAction, &QAction::triggered, this, [this, line]() {
+                if (documentSection_ != nullptr) {
+                    documentSection_->revealBookmarkInSidebar(activeDifficultyId_, line, false);
+                }
+            });
+        }
+        menu.exec(globalPos);
     });
     chartBracketHighlighter_ = new BracketScopeHighlighter(editor->document());
     editorWidget_ = editor;
     editorWidget_->setFont(codeFont);
-    editorWidget_->setStyleSheet(
-        "border: none;"
-        "background: #FFFFFF;"
-        "color: #1F1F1F;"
-        "selection-background-color: #B8CCE5;"
-        "selection-color: #1F1F1F;"
-    );
+    editorWidget_->setStyleSheet(UiTheme::editorTextEditStyleSheet());
+    editorWidget_->setAutoFillBackground(false);
+    editorWidget_->setAttribute(Qt::WA_TranslucentBackground, true);
     if (auto* scrollArea = qobject_cast<QAbstractScrollArea*>(editorWidget_)) {
+        if (QWidget* editorViewport = scrollArea->viewport(); editorViewport != nullptr) {
+            editorViewport->setAutoFillBackground(false);
+            editorViewport->setAttribute(Qt::WA_TranslucentBackground, true);
+        }
         if (QScrollBar* vbar = scrollArea->verticalScrollBar()) {
             vbar->setStyleSheet(modernScrollBarStyle());
         }
@@ -300,7 +423,7 @@ MainWindow::MainWindow(bool quickShellBootstrapMode, QWidget* parent)
     }
     logStartupStage("editor_widget_ready");
 
-    auto* central = new QWidget(this);
+    auto* central = new miacode::ui::AppBackgroundSurfaceWidget(this);
     central->setObjectName("EditorShell");
     central->setAttribute(Qt::WA_StyledBackground, true);
     central->setStyleSheet(UiTheme::editorShellStyleSheet());
@@ -318,7 +441,7 @@ MainWindow::MainWindow(bool quickShellBootstrapMode, QWidget* parent)
     auto* editorHeaderLayout = new QHBoxLayout(editorHeader);
     editorHeaderLayout->setContentsMargins(12, 8, 12, 8);
     editorHeaderLayout->setSpacing(10);
-    editorContextLabel_ = new QLabel(uiText("editor.welcome", "Welcome to MiaCode!"), editorHeader);
+    editorContextLabel_ = new QLabel(UiText::text(QStringLiteral("editor.welcome")), editorHeader);
     editorContextLabel_->setObjectName("EditorContext");
     editorContextLabel_->setFont(uiAccentFont(15, QFont::DemiBold));
     editorContextLabel_->setMinimumWidth(0);
@@ -351,7 +474,7 @@ MainWindow::MainWindow(bool quickShellBootstrapMode, QWidget* parent)
     // (document_.first) with the latency page; it used to sit on the metadata
     // page but lives here now so charters can tune it against the live
     // timeline/preview.
-    auto* difficultyFirstLabel = new QLabel(uiText("metadata.field.first", "Offset"), editorDifficultyControls_);
+    auto* difficultyFirstLabel = new QLabel(UiText::text(QStringLiteral("metadata.field.first")), editorDifficultyControls_);
     difficultyFirstLabel_ = difficultyFirstLabel;
     difficultyFirstLabel->setFont(uiAccentFont(10));
     auto* difficultyFirstLineEdit = new LeftPlaceholderLineEdit(editorDifficultyControls_);
@@ -364,7 +487,7 @@ MainWindow::MainWindow(bool quickShellBootstrapMode, QWidget* parent)
     // Exactly one of the offset/designer pairs is visible at a time, driven by
     // the 顶部显示 preference (updateEditorHeaderLayoutMode); designer names can
     // always also be managed from the metadata page's designer dialog.
-    auto* difficultyDesignerLabel = new QLabel(uiText("editor.des", "Des"), editorDifficultyControls_);
+    auto* difficultyDesignerLabel = new QLabel(UiText::text(QStringLiteral("editor.des")), editorDifficultyControls_);
     difficultyDesignerLabel_ = difficultyDesignerLabel;
     difficultyDesignerLabel->setFont(uiAccentFont(10));
     auto* difficultyDesignerLineEdit = new LeftPlaceholderLineEdit(editorDifficultyControls_);
@@ -406,12 +529,8 @@ MainWindow::MainWindow(bool quickShellBootstrapMode, QWidget* parent)
     editorValidationErrorIconLabel_->setFixedSize(14, 14);
     editorValidationErrorIconLabel_->setCursor(Qt::PointingHandCursor);
     editorValidationErrorIconLabel_->installEventFilter(this);
-    const QString jumpToValidationToolTip = UiText::isChineseUi()
-        ? QStringLiteral("点击跳转到「语法」选项卡")
-        : QStringLiteral("Click to open the Syntax tab");
-    const QString jumpToMuriToolTip = UiText::isChineseUi()
-        ? QStringLiteral("点击跳转到「无理」选项卡")
-        : QStringLiteral("Click to open the Muri tab");
+    const QString jumpToValidationToolTip = UiText::text(QStringLiteral("metadata.click_to_open_the_syntax"));
+    const QString jumpToMuriToolTip = UiText::text(QStringLiteral("metadata.click_to_open_the_muri"));
     editorValidationErrorIconLabel_->setToolTip(jumpToValidationToolTip);
     editorValidationErrorCountLabel_ = new QLabel(QStringLiteral("0"), editorValidationErrorGroup);
     editorValidationErrorCountLabel_->setFont(uiMonoFont(10, QFont::DemiBold));
@@ -488,13 +607,14 @@ MainWindow::MainWindow(bool quickShellBootstrapMode, QWidget* parent)
     editorHeaderTrailingLayout->setSpacing(16);
 
     editorCursorLabel_ = new QLabel(
-        UiText::isChineseUi() ? QStringLiteral("1行 1列") : QStringLiteral("Ln 1, Col 1"),
+        UiText::text(QStringLiteral("metadata.ln_1_col_1")),
         editorHeaderTrailingWidget);
     editorCursorLabel_->setObjectName("EditorMeta");
+    editorCursorLabel_->setProperty("miacodeAllowTooltip", true);
     editorCursorLabel_->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
     editorCursorLabel_->setFixedWidth(
         QFontMetrics(uiMonoFont(10)).horizontalAdvance(
-            UiText::isChineseUi() ? QStringLiteral("9999行 9999列") : QStringLiteral("Ln 9999, Col 9999")) + 10);
+            UiText::text(QStringLiteral("document.ln_9999_col_9999"))) + 10);
     editorCursorLabel_->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
     editorHeaderTrailingLayout->addWidget(editorCursorLabel_, 0, Qt::AlignRight);
     editorHeaderLayout->addWidget(editorHeaderTrailingWidget, 0, Qt::AlignRight);
@@ -507,50 +627,7 @@ MainWindow::MainWindow(bool quickShellBootstrapMode, QWidget* parent)
 
     auto* findBar = new QFrame(editorStack_);
     findBar->setObjectName("EditorFindBar");
-    findBar->setStyleSheet(
-        "QFrame#EditorFindBar {"
-        " background: rgba(248, 250, 253, 248);"
-        " border: 1px solid #DEE4EC;"
-        " border-radius: 10px;"
-        "}"
-        "QFrame#EditorFindBar QLineEdit {"
-        " background: #FFFFFF;"
-        " border: 1px solid #CCD6E2;"
-        " border-radius: 6px;"
-        " min-height: 22px;"
-        " padding: 1px 6px;"
-        " selection-background-color: #B8CCE5;"
-        " selection-color: #1F1F1F;"
-        "}"
-        "QFrame#EditorFindBar QLineEdit:focus { border-color: #3B82F6; }"
-        "QFrame#EditorFindBar QToolButton, QFrame#EditorFindBar QPushButton {"
-        " color: #223042;"
-        " min-height: 22px;"
-        " padding: 0 6px;"
-        " border: 1px solid #D8E0EA;"
-        " border-radius: 6px;"
-        " background: #FFFFFF;"
-        " font-weight: 400;"
-        "}"
-        "QFrame#EditorFindBar QToolButton:hover, QFrame#EditorFindBar QPushButton:hover {"
-        " background: #F5F8FC;"
-        " border-color: #BCD0E5;"
-        "}"
-        "QFrame#EditorFindBar QToolButton:pressed, QFrame#EditorFindBar QPushButton:pressed {"
-        " background: #E8F1FB;"
-        "}"
-        "QFrame#EditorFindBar QToolButton#EditorFindPrevButton, QFrame#EditorFindBar QToolButton#EditorFindNextButton {"
-        " min-width: 24px;"
-        " padding: 0;"
-        " font-size: 12px;"
-        "}"
-        "QFrame#EditorFindBar QToolButton#EditorFindCloseButton {"
-        " min-width: 28px;"
-        " padding: 0;"
-        " font-size: 15px;"
-        " font-weight: 400;"
-        "}"
-    );
+    findBar->setStyleSheet(UiTheme::editorFindBarStyleSheet());
     auto* findBarLayout = new QVBoxLayout(findBar);
     findBarLayout->setContentsMargins(10, 6, 10, 6);
     findBarLayout->setSpacing(4);
@@ -559,16 +636,16 @@ MainWindow::MainWindow(bool quickShellBootstrapMode, QWidget* parent)
     findRow->setContentsMargins(0, 0, 0, 0);
     findRow->setSpacing(6);
     editorFindEdit_ = new QLineEdit(findBar);
-    editorFindEdit_->setPlaceholderText(UiText::isChineseUi() ? QStringLiteral("查找") : QStringLiteral("Find"));
+    editorFindEdit_->setPlaceholderText(UiText::text(QStringLiteral("metadata.find")));
     editorFindPrevButton_ = new QToolButton(findBar);
     editorFindPrevButton_->setObjectName("EditorFindPrevButton");
     editorFindPrevButton_->setText(QStringLiteral("↑"));
-    editorFindPrevButton_->setToolTip(UiText::isChineseUi() ? QStringLiteral("查找上一个") : QStringLiteral("Find Previous"));
+    editorFindPrevButton_->setToolTip(UiText::text(QStringLiteral("metadata.find_previous")));
     editorFindPrevButton_->setFixedWidth(24);
     editorFindNextButton_ = new QToolButton(findBar);
     editorFindNextButton_->setObjectName("EditorFindNextButton");
     editorFindNextButton_->setText(QStringLiteral("↓"));
-    editorFindNextButton_->setToolTip(UiText::isChineseUi() ? QStringLiteral("查找下一个") : QStringLiteral("Find Next"));
+    editorFindNextButton_->setToolTip(UiText::text(QStringLiteral("metadata.find_next")));
     editorFindNextButton_->setFixedWidth(24);
     editorFindCloseButton_ = new QToolButton(findBar);
     editorFindCloseButton_->setObjectName("EditorFindCloseButton");
@@ -579,7 +656,7 @@ MainWindow::MainWindow(bool quickShellBootstrapMode, QWidget* parent)
     // baked icon is re-tinted on theme change in WindowSection::applyUiTheme.
     editorFindCloseButton_->setIcon(makeOutlineCloseIcon(UiTheme::colors().textPrimary));
     editorFindCloseButton_->setIconSize(QSize(12, 12));
-    editorFindCloseButton_->setToolTip(UiText::isChineseUi() ? QStringLiteral("关闭查找栏") : QStringLiteral("Close"));
+    editorFindCloseButton_->setToolTip(UiText::text(QStringLiteral("metadata.close")));
     editorFindCloseButton_->setFixedWidth(28);
     findRow->addWidget(editorFindEdit_, 1);
     findRow->addWidget(editorFindPrevButton_, 0);
@@ -591,9 +668,9 @@ MainWindow::MainWindow(bool quickShellBootstrapMode, QWidget* parent)
     replaceRow->setContentsMargins(0, 0, 0, 0);
     replaceRow->setSpacing(4);
     editorReplaceEdit_ = new QLineEdit(findBar);
-    editorReplaceEdit_->setPlaceholderText(UiText::isChineseUi() ? QStringLiteral("替换") : QStringLiteral("Replace"));
-    editorReplaceButton_ = new QPushButton(UiText::isChineseUi() ? QStringLiteral("替换") : QStringLiteral("Replace"), findBar);
-    editorReplaceAllButton_ = new QPushButton(UiText::isChineseUi() ? QStringLiteral("全部替换") : QStringLiteral("Replace All"), findBar);
+    editorReplaceEdit_->setPlaceholderText(UiText::text(QStringLiteral("metadata.replace")));
+    editorReplaceButton_ = new QPushButton(UiText::text(QStringLiteral("metadata.replace")), findBar);
+    editorReplaceAllButton_ = new QPushButton(UiText::text(QStringLiteral("metadata.replace_all")), findBar);
     replaceRow->addWidget(editorReplaceEdit_, 1);
     replaceRow->addWidget(editorReplaceButton_, 0);
     replaceRow->addWidget(editorReplaceAllButton_, 0);
@@ -604,38 +681,20 @@ MainWindow::MainWindow(bool quickShellBootstrapMode, QWidget* parent)
 
     welcomePage_ = new QWidget(editorStack_);
     welcomePage_->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Expanding);
-    welcomePage_->setStyleSheet(
-        "QWidget { background: #FFFFFF; color: #2A3440; }"
-    );
+    welcomePage_->setStyleSheet(UiTheme::metadataPageStyleSheet());
     auto* welcomeLayout = new QVBoxLayout(welcomePage_);
     welcomeLayout->setContentsMargins(12, 8, 12, 12);
     welcomeLayout->setSpacing(8);
-    welcomeEmptyHintLabel_ = new QLabel(uiText("metadata.empty_hint", "← Click to add a chart difficulty"), welcomePage_);
+    welcomeEmptyHintLabel_ = new QLabel(UiText::text(QStringLiteral("metadata.empty_hint")), welcomePage_);
     welcomeEmptyHintLabel_->setFont(uiAccentFont(11));
-    welcomeEmptyHintLabel_->setStyleSheet("color: #6A7890; background: transparent; padding-left: 6px;");
+    welcomeEmptyHintLabel_->setStyleSheet(UiTheme::metadataEmptyHintLabelStyleSheet());
     welcomeLayout->addWidget(welcomeEmptyHintLabel_, 0, Qt::AlignLeft | Qt::AlignTop);
     welcomeLayout->addStretch(1);
 
     metadataPage_ = new QWidget(editorStack_);
     metadataPage_->setObjectName("MetadataPage");
     metadataPage_->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Expanding);
-    metadataPage_->setStyleSheet(
-        "QWidget { background: #FFFFFF; color: #2A3440; }"
-        "QWidget#MetadataPage { background: #F8FAFD; }"
-        "QFrame#MetadataCard { background: #FFFFFF; border: 1px solid #DEE4EC; border-radius: 8px; }"
-        "QLabel#SectionTitle { color: #1F2D3D; font-weight: 700; padding-left: 4px; }"
-        "QLabel#MetadataFieldLabel { color: #2A3440; background: transparent; padding-left: 8px; }"
-        "QLineEdit, QTextEdit, QPlainTextEdit {"
-        " background: #FFFFFF;"
-        " color: #1F1F1F;"
-        " border: 1px solid #CCD6E2;"
-        " border-radius: 6px;"
-        " padding: 6px 8px;"
-        " selection-background-color: #B8CCE5;"
-        " selection-color: #1F1F1F;"
-        "}"
-        "QLineEdit:focus, QTextEdit:focus, QPlainTextEdit:focus { border-color: #3B82F6; }"
-    );
+    metadataPage_->setStyleSheet(UiTheme::metadataPageStyleSheet());
     auto* metadataLayout = new QVBoxLayout(metadataPage_);
     metadataLayout->setContentsMargins(12, 8, 12, 12);
     metadataLayout->setSpacing(8);
@@ -647,7 +706,7 @@ MainWindow::MainWindow(bool quickShellBootstrapMode, QWidget* parent)
     metadataCardLayout->setContentsMargins(14, 12, 14, 14);
     metadataCardLayout->setSpacing(12);
 
-    auto* infoTitle = new QLabel(uiText("metadata.information", "Information"), metadataPage_);
+    auto* infoTitle = new QLabel(UiText::text(QStringLiteral("metadata.information")), metadataPage_);
     infoTitle->setObjectName("SectionTitle");
     infoTitle->setFont(uiAccentFont(12));
     metadataCardLayout->addWidget(infoTitle);
@@ -682,12 +741,8 @@ MainWindow::MainWindow(bool quickShellBootstrapMode, QWidget* parent)
     titleWrapLayout->setSpacing(6);
     titleWrapLayout->addWidget(titleEdit_, 1);
     auto* readTitleButton = new QToolButton(metadataPage_);
-    readTitleButton->setText(UiText::isChineseUi()
-        ? QStringLiteral("从 MP3 读取")
-        : QStringLiteral("Read from MP3"));
-    readTitleButton->setToolTip(UiText::isChineseUi()
-        ? QStringLiteral("选择一个 MP3，从它的 ID3 标签里读取标题。")
-        : QStringLiteral("Choose an MP3 and pull the title from its ID3 tag."));
+    readTitleButton->setText(UiText::text(QStringLiteral("metadata.read_from_mp3")));
+    readTitleButton->setToolTip(UiText::text(QStringLiteral("metadata.choose_an_mp3_and_pull")));
     connect(readTitleButton, &QToolButton::clicked, this, &MainWindow::onReadTitleFromTrack);
     titleWrapLayout->addWidget(readTitleButton, 0, Qt::AlignRight);
 
@@ -697,12 +752,8 @@ MainWindow::MainWindow(bool quickShellBootstrapMode, QWidget* parent)
     artistWrapLayout->setSpacing(6);
     artistWrapLayout->addWidget(artistEdit_, 1);
     auto* readArtistButton = new QToolButton(metadataPage_);
-    readArtistButton->setText(UiText::isChineseUi()
-        ? QStringLiteral("从 MP3 读取")
-        : QStringLiteral("Read from MP3"));
-    readArtistButton->setToolTip(UiText::isChineseUi()
-        ? QStringLiteral("选择一个 MP3，从它的 ID3 标签里读取曲师。")
-        : QStringLiteral("Choose an MP3 and pull the artist from its ID3 tag."));
+    readArtistButton->setText(UiText::text(QStringLiteral("metadata.read_from_mp3")));
+    readArtistButton->setToolTip(UiText::text(QStringLiteral("metadata.choose_an_mp3_and_pull_2")));
     connect(readArtistButton, &QToolButton::clicked, this, &MainWindow::onReadArtistFromTrack);
     artistWrapLayout->addWidget(readArtistButton, 0, Qt::AlignRight);
 
@@ -717,41 +768,55 @@ MainWindow::MainWindow(bool quickShellBootstrapMode, QWidget* parent)
     designerWrapLayout->setSpacing(6);
     designerWrapLayout->addWidget(designerEdit_, 1);
     auto* manageDesignersButton = new QToolButton(metadataPage_);
-    manageDesignersButton->setText(UiText::isChineseUi()
-        ? QStringLiteral("管理多个难度名义")
-        : QStringLiteral("Manage per-difficulty designers"));
-    manageDesignersButton->setToolTip(UiText::isChineseUi()
-        ? QStringLiteral("为每个难度（&des_1 … &des_7）分别填写谱师名义，并可勾选「所有难度采用相同名义」。")
-        : QStringLiteral("Set each difficulty's designer (&des_1 … &des_7); includes the "
-                         "\"all difficulties share one designer\" toggle."));
+    manageDesignersButton->setText(UiText::text(QStringLiteral("metadata.manage_per_difficulty_designers")));
+    manageDesignersButton->setToolTip(UiText::text(QStringLiteral("metadata.set_each_difficulty_designer")));
     connect(manageDesignersButton, &QToolButton::clicked, this, &MainWindow::onManagePerDifficultyDesigners);
     designerWrapLayout->addWidget(manageDesignersButton, 0, Qt::AlignRight);
 
-    // Cover-extraction row. The label is intentionally short ("曲绘") so the
-    // form column stays compact; the button text carries the action and the
-    // tooltip spells out the bg.jpg destination.
+    // Jacket import row. Keep the two related actions together: extracting an
+    // embedded MP3 cover remains available, while direct file import avoids
+    // requiring users to rename/copy bg.* by hand.
     auto* coverWrap = new QWidget(metadataPage_);
     auto* coverWrapLayout = new QHBoxLayout(coverWrap);
     coverWrapLayout->setContentsMargins(0, 0, 0, 0);
     coverWrapLayout->setSpacing(6);
     auto* extractCoverButton = new QToolButton(metadataPage_);
-    extractCoverButton->setText(UiText::isChineseUi()
-        ? QStringLiteral("从 MP3 读取")
-        : QStringLiteral("Read from MP3"));
-    extractCoverButton->setToolTip(UiText::isChineseUi()
-        ? QStringLiteral("选择一个 MP3，把它内嵌的封面图写到当前谱面目录的 bg.jpg。")
-        : QStringLiteral("Choose an MP3 and write its embedded cover artwork as bg.jpg next to the chart."));
+    extractCoverButton->setText(UiText::text(QStringLiteral("metadata.read_from_mp3")));
+    extractCoverButton->setToolTip(UiText::text(QStringLiteral("metadata.choose_an_mp3_and_write")));
     connect(extractCoverButton, &QToolButton::clicked, this, &MainWindow::onExtractBackgroundFromTrack);
     coverWrapLayout->addWidget(extractCoverButton, 0, Qt::AlignLeft);
+    auto* importCoverButton = new QToolButton(metadataPage_);
+    importCoverButton->setText(UiText::text(QStringLiteral("metadata.read_from_file")));
+    importCoverButton->setToolTip(UiText::text(QStringLiteral("metadata.choose_image_and_copy")));
+    connect(importCoverButton, &QToolButton::clicked, this, &MainWindow::onImportBackgroundImage);
+    coverWrapLayout->addWidget(importCoverButton, 0, Qt::AlignLeft);
     coverWrapLayout->addStretch(1);
 
-    metadataForm->addRow(makeMetadataFieldLabel(uiText("metadata.field.title", "title")), titleWrap);
-    metadataForm->addRow(makeMetadataFieldLabel(uiText("metadata.field.artist", "artist")), artistWrap);
-    metadataForm->addRow(makeMetadataFieldLabel(uiText("metadata.field.des", "des")), designerWrap);
-    metadataForm->addRow(makeMetadataFieldLabel(uiText("metadata.field.cover", "cover")), coverWrap);
+    auto* videoWrap = new QWidget(metadataPage_);
+    auto* videoWrapLayout = new QHBoxLayout(videoWrap);
+    videoWrapLayout->setContentsMargins(0, 0, 0, 0);
+    videoWrapLayout->setSpacing(6);
+    auto* importVideoButton = new QToolButton(metadataPage_);
+    importVideoButton->setText(UiText::text(QStringLiteral("metadata.read_from_file")));
+    importVideoButton->setToolTip(UiText::text(QStringLiteral("metadata.choose_video_and_copy")));
+    connect(importVideoButton, &QToolButton::clicked, this, &MainWindow::onImportBackgroundVideo);
+    videoWrapLayout->addWidget(importVideoButton, 0, Qt::AlignLeft);
+    auto* deleteVideoButton = new QToolButton(metadataPage_);
+    deleteVideoButton->setText(UiText::text(QStringLiteral("metadata.delete_pv")));
+    deleteVideoButton->setToolTip(UiText::text(QStringLiteral("metadata.delete_pv_tooltip")));
+    connect(deleteVideoButton, &QToolButton::clicked, this, &MainWindow::onDeleteBackgroundVideo);
+    videoWrapLayout->addWidget(deleteVideoButton, 0, Qt::AlignLeft);
+    videoWrapLayout->addStretch(1);
+
+    metadataForm->addRow(makeMetadataFieldLabel(UiText::text(QStringLiteral("metadata.field.title"))), titleWrap);
+    metadataForm->addRow(makeMetadataFieldLabel(UiText::text(QStringLiteral("metadata.field.artist"))), artistWrap);
+    metadataForm->addRow(makeMetadataFieldLabel(UiText::text(QStringLiteral("metadata.field.des"))), designerWrap);
+    metadataForm->addRow(makeMetadataFieldLabel(UiText::text(QStringLiteral("metadata.field.cover"))), coverWrap);
+    metadataForm->addRow(
+        makeMetadataFieldLabel(UiText::text(QStringLiteral("metadata.field.background_video"))), videoWrap);
     metadataCardLayout->addLayout(metadataForm);
 
-    auto* extraMetadataLabel = new QLabel(uiText("metadata.other_fields", "Other &xx Fields"), metadataPage_);
+    auto* extraMetadataLabel = new QLabel(UiText::text(QStringLiteral("metadata.other_fields")), metadataPage_);
     extraMetadataLabel->setObjectName("SectionTitle");
     extraMetadataLabel->setFont(uiAccentFont(11));
     metadataCardLayout->addWidget(extraMetadataLabel);
@@ -783,6 +848,10 @@ MainWindow::MainWindow(bool quickShellBootstrapMode, QWidget* parent)
     metadataExtraEdit_->setLineWrapMode(QTextEdit::WidgetWidth);
     metadataExtraEdit_->setWordWrapMode(QTextOption::WrapAtWordBoundaryOrAnywhere);
     metadataExtraEdit_->setPlaceholderText("&dummy=...");
+    // Plain QTextEdit, so it does not get PlainCodeEditor's ctor install: give
+    // it the same macOS drag-autoscroll takeover, or a drag-select that leaves
+    // the viewport strobes the selection here too.
+    miacode::ui::installAdoptedSurfaceDragAutoScroll(metadataExtraEdit_);
     installCtrlEnterLineBreakShortcut(metadataExtraEdit_);
     if (QScrollBar* vbar = metadataExtraEdit_->verticalScrollBar()) {
         vbar->setStyleSheet(modernScrollBarStyle());
@@ -793,7 +862,7 @@ MainWindow::MainWindow(bool quickShellBootstrapMode, QWidget* parent)
     metadataCardLayout->addWidget(metadataExtraEdit_, 1);
     metadataBracketHighlighter_ = new BracketScopeHighlighter(metadataExtraEdit_->document());
     applyEditorTextFontSize(editorTextFontPointSize_, false);
-    metadataEmptyHintLabel_ = new QLabel(uiText("metadata.empty_hint", "← Click to add a chart difficulty"), metadataPage_);
+    metadataEmptyHintLabel_ = new QLabel(UiText::text(QStringLiteral("metadata.empty_hint")), metadataPage_);
     metadataEmptyHintLabel_->setFont(uiAccentFont(11));
     metadataEmptyHintLabel_->setStyleSheet("color: #6A7890; background: transparent; padding-left: 6px;");
     metadataEmptyHintLabel_->hide();
@@ -811,7 +880,7 @@ MainWindow::MainWindow(bool quickShellBootstrapMode, QWidget* parent)
     latencyEntryLayout->setContentsMargins(14, 12, 14, 14);
     latencyEntryLayout->setSpacing(8);
     auto* latencyEntryTitle = new QLabel(
-        uiText("metadata.latency_card.title", "Latency && Offset Calibration"), metadataPage_);
+        UiText::text(QStringLiteral("metadata.latency_card.title")), metadataPage_);
     latencyEntryTitle->setObjectName("SectionTitle");
     latencyEntryTitle->setFont(uiAccentFont(12));
     latencyEntryLayout->addWidget(latencyEntryTitle);
@@ -822,11 +891,12 @@ MainWindow::MainWindow(bool quickShellBootstrapMode, QWidget* parent)
     latencyEntrySummaryLabel_->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
     latencyEntryRow->addWidget(latencyEntrySummaryLabel_, 1);
     auto* openLatencyPageButton = new QToolButton(metadataPage_);
-    openLatencyPageButton->setText(uiText("metadata.latency_card.open", "Open Latency Settings →"));
-    openLatencyPageButton->setToolTip(UiText::isChineseUi()
-        ? QStringLiteral("打开延迟设置页：调整 BPM/Offset，并通过试听校准。")
-        : QStringLiteral("Open the Latency Settings page: adjust BPM/Offset and audition for calibration."));
+    openLatencyPageButton->setText(UiText::text(QStringLiteral("metadata.latency_card.open")));
+    openLatencyPageButton->setToolTip(UiText::text(QStringLiteral("metadata.open_the_latency_settings_page")));
     connect(openLatencyPageButton, &QToolButton::clicked, this, [this]() {
+        miacode::latency::appendLatencyDiagnosticPhase(
+            QStringLiteral("action_triggered"),
+            QStringLiteral("source=metadata_card"));
         switchToLatencyField();
     });
     latencyEntryRow->addWidget(openLatencyPageButton, 0, Qt::AlignRight);
@@ -852,7 +922,7 @@ MainWindow::MainWindow(bool quickShellBootstrapMode, QWidget* parent)
     copyAreaEditor_ = new PlainCodeEditor(copyAreaPanel_);
     copyAreaEditor_->setLineWrapMode(QTextEdit::WidgetWidth);
     copyAreaEditor_->setWordWrapMode(QTextOption::WrapAtWordBoundaryOrAnywhere);
-    copyAreaEditor_->setPlaceholderText(UiText::isChineseUi() ? QStringLiteral("复制区") : QStringLiteral("Copy area"));
+    copyAreaEditor_->setPlaceholderText(UiText::text(QStringLiteral("metadata.copy_area")));
     copyAreaEditor_->setStyleSheet(UiTheme::editorTextEditStyleSheet());
     connect(copyAreaEditor_, &PlainCodeEditor::editorOverwriteModeChanged, this, [this](bool enabled) {
         applyEditorOverwriteModeEnabled(enabled, true);
@@ -892,29 +962,22 @@ MainWindow::MainWindow(bool quickShellBootstrapMode, QWidget* parent)
     outlineTitle->setFixedHeight(0);
     outlineDock->setTitleBarWidget(outlineTitle);
     outlineList_ = new QListWidget(outlineDock);
-    outlineList_->setUniformItemSizes(true);
+    outlineList_->setUniformItemSizes(false);
     outlineList_->setIconSize(QSize(14, 14));
     outlineList_->setSpacing(2);
     outlineList_->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    outlineList_->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+    if (auto* vbar = outlineList_->verticalScrollBar()) {
+        vbar->setStyleSheet(UiTheme::scrollBarStyleSheet());
+    }
     outlineList_->setTextElideMode(Qt::ElideRight);
     outlineList_->setFont(uiAccentFont(11));
     outlineList_->setItemDelegate(new OutlineItemDelegate(outlineList_));
-    outlineList_->setStyleSheet(
-        "QListWidget {"
-        " background: #FFFFFF;"
-        " color: #243447;"
-        " border: 1px solid #E1E7EF;"
-        " padding: 6px;"
-        " outline: none;"
-        "}"
-        "QListWidget::item {"
-        " min-height: 28px;"
-        " padding: 4px 12px;"
-        " border: 1px solid transparent;"
-        " border-radius: 6px;"
-        "}"
-        "QListWidget::item:selected { color: #243447; }"
-    );
+    // Inline bookmark rename is started programmatically (double-click /
+    // context menu → editItem); automatic edit triggers stay off so plain
+    // clicks never open an editor.
+    outlineList_->setEditTriggers(QAbstractItemView::NoEditTriggers);
+    outlineList_->setStyleSheet(UiTheme::outlineListStyleSheet());
     auto* outlineDockShell = new QWidget(outlineDock);
     auto* outlineDockShellLayout = new QHBoxLayout(outlineDockShell);
     outlineDockShellLayout->setContentsMargins(0, 0, 0, 0);
@@ -931,31 +994,6 @@ MainWindow::MainWindow(bool quickShellBootstrapMode, QWidget* parent)
     outlineDock->setWidget(outlineDockShell);
     outlineList_->setMouseTracking(true);
     outlineList_->viewport()->setMouseTracking(true);
-    outlineList_->viewport()->installEventFilter(this);
-    deleteDifficultyButton_ = new QToolButton(outlineList_->viewport());
-    deleteDifficultyButton_->setAutoRaise(true);
-    deleteDifficultyButton_->setIcon(makeOutlineCloseIcon(QColor("#5D6876")));
-    deleteDifficultyButton_->setIconSize(QSize(12, 12));
-    deleteDifficultyButton_->setToolTip("Delete the current difficulty");
-    deleteDifficultyButton_->setCursor(Qt::PointingHandCursor);
-    deleteDifficultyButton_->setFocusPolicy(Qt::NoFocus);
-    deleteDifficultyButton_->setFixedSize(18, 18);
-    deleteDifficultyButton_->setStyleSheet(
-        "QToolButton {"
-        " border: none;"
-        " border-radius: 5px;"
-        " background: transparent;"
-        "}"
-        "QToolButton:hover {"
-        " background: #E9EEF4;"
-        "}"
-    );
-    deleteDifficultyButton_->hide();
-    connect(deleteDifficultyButton_, &QToolButton::clicked, this, [this]() {
-        if (hasActiveDifficulty()) {
-            deleteDifficultyField(activeDifficultyId_);
-        }
-    });
     // Busy spinner floated over the "Export" sidebar row — shown while the
     // export page (its embedded video panel especially) is being built, which
     // is noticeably slow. Same viewport-overlay pattern as the delete button.
@@ -965,12 +1003,45 @@ MainWindow::MainWindow(bool quickShellBootstrapMode, QWidget* parent)
         windowSection_->setOutlineDockCollapsed(!outlineDockCollapsed_);
     });
     connect(outlineList_, &QListWidget::itemClicked, this, [this](QListWidgetItem* current) {
-        updateDifficultyDeleteButton(false);
         if (current == nullptr) {
             return;
         }
         const QString kind = current->data(Qt::UserRole).toString();
         const int difficultyId = current->data(Qt::UserRole + 1).toInt();
+        const auto clearOutlineSelection = [this]() {
+            if (outlineList_ == nullptr) {
+                return;
+            }
+            QSignalBlocker blocker(outlineList_);
+            outlineList_->setCurrentItem(nullptr);
+            outlineList_->clearSelection();
+            if (outlineList_->selectionModel() != nullptr) {
+                outlineList_->selectionModel()->clearCurrentIndex();
+                outlineList_->selectionModel()->clearSelection();
+            }
+            outlineList_->viewport()->update();
+        };
+        const auto clickedDifficultyFoldChevron = [this, current]() {
+            if (outlineList_ == nullptr || current == nullptr) {
+                return false;
+            }
+            if (current->data(kOutlineItemKindRole).toString() != QLatin1String("difficulty_chart")
+                || current->data(kOutlineItemBookmarkCountRole).toInt() <= 0) {
+                return false;
+            }
+            // Icon-only sidebar paints no chevron — the whole row switches
+            // the difficulty there.
+            const int listWidth = outlineList_->width();
+            if (listWidth > 0 && listWidth < OutlineItemDelegate::kIconOnlyThreshold) {
+                return false;
+            }
+            const QRect rowRect = outlineList_->visualItemRect(current);
+            if (!rowRect.isValid()) {
+                return false;
+            }
+            const QPoint pos = outlineList_->viewport()->mapFromGlobal(QCursor::pos());
+            return pos.x() <= rowRect.left() + OutlineItemDelegate::kDifficultyFoldHitZone;
+        };
         if (kind == "metadata") {
             activeOutlineKey_ = "metadata";
             if (switchToMetadataField() && titleEdit_ != nullptr) {
@@ -983,8 +1054,27 @@ MainWindow::MainWindow(bool quickShellBootstrapMode, QWidget* parent)
             switchToExportField();
             return;
         }
+        if (kind == "bookmark") {
+            const int bookmarkDifficultyId = current->data(kOutlineItemDifficultyRole).toInt();
+            const int bookmarkLine = current->data(kOutlineItemLineRole).toInt();
+            if (SimaiDocument::isDifficultyId(bookmarkDifficultyId) && bookmarkDifficultyId != activeDifficultyId_) {
+                activeOutlineKey_ = "chart";
+                // NOTE: switching rebuilds the sidebar — `current` dangles from
+                // here on; only the role values read above may be used.
+                if (!switchToDifficultyField(bookmarkDifficultyId)) {
+                    return;
+                }
+            }
+            const double bookmarkSecond = timelineSecondForCursor(bookmarkLine, 1);
+            if (bookmarkSecond >= 0.0 && qIsFinite(bookmarkSecond)) {
+                navigateTimelineToSecond(bookmarkSecond, true);
+            }
+            jumpToLocation(bookmarkLine, 1);
+            clearOutlineSelection();
+            return;
+        }
         if (kind == "add") {
-            QMenu menu(this);
+            QMenu menu(outlineList_);
             menu.setFont(uiAccentFont(10));
             styleRoundedMenu(menu);
             for (int id = 1; id <= 7; ++id) {
@@ -1049,7 +1139,8 @@ MainWindow::MainWindow(bool quickShellBootstrapMode, QWidget* parent)
             }
             if (!menu.isEmpty()) {
                 const QRect rowRect = outlineList_->visualItemRect(current);
-                menu.exec(outlineList_->viewport()->mapToGlobal(rowRect.bottomRight()));
+                menu.exec(miacode::ui::mapWidgetPointToGlobal(
+                    outlineList_->viewport(), rowRect.bottomRight()));
             }
             rebuildFieldSidebar();
             return;
@@ -1057,7 +1148,8 @@ MainWindow::MainWindow(bool quickShellBootstrapMode, QWidget* parent)
         if (kind == "toolbox") {
             if (toolboxMenu_ != nullptr) {
                 const QRect rowRect = outlineList_->visualItemRect(current);
-                const QPoint popupPos = outlineList_->viewport()->mapToGlobal(
+                const QPoint popupPos = miacode::ui::mapWidgetPointToGlobal(
+                    outlineList_->viewport(),
                     QPoint(rowRect.right(), rowRect.top() + rowRect.height() / 2)
                 );
                 toolboxMenu_->exec(popupPos);
@@ -1066,36 +1158,133 @@ MainWindow::MainWindow(bool quickShellBootstrapMode, QWidget* parent)
             return;
         }
         if (SimaiDocument::isDifficultyId(difficultyId)) {
+            if (clickedDifficultyFoldChevron()) {
+                if (documentSection_ != nullptr) {
+                    documentSection_->setBookmarkGroupExpanded(
+                        difficultyId,
+                        !documentSection_->isBookmarkGroupExpanded(difficultyId));
+                }
+                return;
+            }
             activeOutlineKey_ = "chart";
-            if (switchToDifficultyField(difficultyId) && editorWidget_ != nullptr) {
+            const bool returningToExportOrigin = state_.exportSelectionContextActive_
+                && state_.exportSelectionContextDifficultyId_ == difficultyId;
+            if (switchToDifficultyField(difficultyId)
+                && editorWidget_ != nullptr
+                && !returningToExportOrigin) {
                 editorWidget_->setFocus();
             }
         }
+    });
+    connect(outlineList_, &QListWidget::itemDoubleClicked, this, [this](QListWidgetItem* current) {
+        if (current == nullptr || outlineList_ == nullptr) {
+            return;
+        }
+        const QString kind = current->data(kOutlineItemKindRole).toString();
+        if (kind != QLatin1String("bookmark")) {
+            return;
+        }
+        // Double-click = inline rename (the old jump-to-timeline action moved
+        // to the context menu's "跳到时间轴位置").
+        outlineList_->editItem(current);
+    });
+    connect(outlineList_, &QListWidget::itemChanged, this, [this](QListWidgetItem* item) {
+        // Inline-rename commit. Rebuilds run under QSignalBlocker and the
+        // accent-marker updates block signals too, so reaching here means the
+        // item editor wrote a new display text.
+        if (item == nullptr || editorSection_ == nullptr) {
+            return;
+        }
+        if (item->data(kOutlineItemKindRole).toString() != QLatin1String("bookmark")) {
+            return;
+        }
+        const int difficultyId = item->data(kOutlineItemDifficultyRole).toInt();
+        const int line = item->data(kOutlineItemLineRole).toInt();
+        editorSection_->renameBookmark(difficultyId, line, item->text());
+        // Rebuild queued (not inline): the view may still hold the closing
+        // editor for this item. Restores canonical text on an empty/refused
+        // rename and refreshes the tooltip on success.
+        QTimer::singleShot(0, this, [this]() {
+            if (documentSection_ != nullptr) {
+                documentSection_->rebuildFieldSidebar();
+            }
+        });
     });
     outlineList_->setContextMenuPolicy(Qt::CustomContextMenu);
     connect(outlineList_, &QListWidget::customContextMenuRequested, this, [this](const QPoint& pos) {
         if (outlineList_ == nullptr) {
             return;
         }
-        QListWidgetItem* item = outlineList_->itemAt(pos);
+        Q_UNUSED(pos);
+        QWidget* viewport = outlineList_->viewport();
+        if (viewport == nullptr) {
+            return;
+        }
+        // On the macOS QuickShell surface, the event's local point can still
+        // be relative to the orphan NSPanel.  Hit-test from the real cursor
+        // position through the adopted surface instead.
+        const QPoint itemPos = miacode::ui::mapGlobalPointToWidget(viewport, QCursor::pos());
+        QListWidgetItem* item = outlineList_->itemAt(itemPos);
         if (item == nullptr) {
             return;
         }
-        const int difficultyId = item->data(Qt::UserRole + 1).toInt();
+        const QString kind = item->data(kOutlineItemKindRole).toString();
+        if (kind == QLatin1String("bookmark")) {
+            QMenu menu(outlineList_);
+            menu.setFont(uiAccentFont(10));
+            styleRoundedMenu(menu);
+            const int bookmarkDifficultyId = item->data(kOutlineItemDifficultyRole).toInt();
+            const int line = item->data(kOutlineItemLineRole).toInt();
+            QAction* renameAction = menu.addAction(UiText::text(QStringLiteral("metadata.rename")));
+            connect(renameAction, &QAction::triggered, this, [this, bookmarkDifficultyId, line]() {
+                if (documentSection_ != nullptr) {
+                    documentSection_->revealBookmarkInSidebar(bookmarkDifficultyId, line, true);
+                }
+            });
+            QAction* deleteAction = menu.addAction(UiText::text(QStringLiteral("metadata.delete")));
+            connect(deleteAction, &QAction::triggered, this, [this, bookmarkDifficultyId, line]() {
+                if (SimaiDocument::isDifficultyId(bookmarkDifficultyId) && bookmarkDifficultyId != activeDifficultyId_) {
+                    activeOutlineKey_ = "chart";
+                    if (!switchToDifficultyField(bookmarkDifficultyId)) {
+                        return;
+                    }
+                }
+                if (editorSection_ != nullptr) {
+                    editorSection_->deleteBookmarkAtLineWithConfirmation(line);
+                }
+            });
+            QAction* timelineAction = menu.addAction(UiText::text(QStringLiteral("metadata.jump_to_timeline_position")));
+            connect(timelineAction, &QAction::triggered, this, [this, bookmarkDifficultyId, line]() {
+                if (SimaiDocument::isDifficultyId(bookmarkDifficultyId) && bookmarkDifficultyId != activeDifficultyId_) {
+                    activeOutlineKey_ = "chart";
+                    if (!switchToDifficultyField(bookmarkDifficultyId)) {
+                        return;
+                    }
+                }
+                const double bookmarkSecond = timelineSecondForCursor(line, 1);
+                if (bookmarkSecond >= 0.0 && qIsFinite(bookmarkSecond)) {
+                    navigateTimelineToSecond(bookmarkSecond, true);
+                } else {
+                    jumpToLocation(line, 1);
+                }
+            });
+            menu.exec(miacode::ui::mapWidgetPointToGlobal(viewport, itemPos));
+            return;
+        }
+        const int difficultyId = item->data(kOutlineItemDifficultyRole).toInt();
         if (!SimaiDocument::isDifficultyId(difficultyId) || document_.difficulty(difficultyId) == nullptr) {
             return;
         }
-        QMenu menu(this);
+        QMenu menu(outlineList_);
         menu.setFont(uiAccentFont(10));
         styleRoundedMenu(menu);
         QAction* deleteAction = menu.addAction(
-            makeOutlineCloseIcon(QColor("#5D6876")),
-            QString("Delete %1").arg(SimaiDocument::difficultyName(difficultyId))
+            UiText::text(QStringLiteral("metadata.delete_1")).arg(SimaiDocument::difficultyName(difficultyId))
         );
         connect(deleteAction, &QAction::triggered, this, [this, difficultyId]() {
             deleteDifficultyField(difficultyId);
         });
-        menu.exec(outlineList_->viewport()->mapToGlobal(pos));
+        menu.exec(miacode::ui::mapWidgetPointToGlobal(viewport, itemPos));
     });
 
     toolboxMenu_ = new QMenu(outlineList_);
@@ -1117,7 +1306,7 @@ MainWindow::MainWindow(bool quickShellBootstrapMode, QWidget* parent)
         // DialogsSection::onMediaProcessingTools(), which calls the same
         // handlers the old submenu actions were wired to.
         QAction* mediaProcessingAction = toolboxMenu_->addAction(
-            UiText::isChineseUi() ? QStringLiteral("音频/视频处理") : QStringLiteral("Audio/Video Processing")
+            UiText::text(QStringLiteral("media_tools.audio_video_processing"))
         );
         connect(mediaProcessingAction, &QAction::triggered, this, &MainWindow::onMediaProcessingTools);
     }
@@ -1126,29 +1315,8 @@ MainWindow::MainWindow(bool quickShellBootstrapMode, QWidget* parent)
         toolboxMenu_->addAction(normalizeWholeChartAction_);
     }
 
-    toolboxMenu_->addSeparator();
-
-    QMenu* bookmarkMenu = toolboxMenu_->addMenu(
-        UiText::isChineseUi() ? QStringLiteral("书签") : QStringLiteral("Bookmarks")
-    );
-    styleRoundedMenu(*bookmarkMenu);
-    createBookmarkAction_ = bookmarkMenu->addAction(
-        UiText::isChineseUi() ? QStringLiteral("创建书签") : QStringLiteral("Create Bookmark")
-    );
-    connect(createBookmarkAction_, &QAction::triggered, this, &MainWindow::showCreateBookmarkDialog);
-    bookmarkManagerAction_ = bookmarkMenu->addAction(
-        UiText::isChineseUi() ? QStringLiteral("书签管理") : QStringLiteral("Bookmark Manager")
-    );
-    connect(bookmarkManagerAction_, &QAction::triggered, this, &MainWindow::showBookmarkManager);
-
-    // "Export as ZIP" lives directly under the Bookmarks submenu here, and
-    // also under File > Save As. The same QAction is reused in both places
-    // (created in setupMenusAndActions) so the wiring and enabled-state stay
-    // in one spot.
-    if (packAsZipAction_ != nullptr) {
-        toolboxMenu_->addAction(packAsZipAction_);
-    }
     if (netBatchDownloadAction_ != nullptr) {
+        toolboxMenu_->addSeparator();
         toolboxMenu_->addAction(netBatchDownloadAction_);
     }
 
@@ -1159,21 +1327,24 @@ MainWindow::MainWindow(bool quickShellBootstrapMode, QWidget* parent)
     constexpr bool kCopyAreaIntegratedIntoToolbox = false;
     if (kCopyAreaIntegratedIntoToolbox) {
         QMenu* copyAreaMenu = toolboxMenu_->addMenu(
-            UiText::isChineseUi() ? QStringLiteral("复制区") : QStringLiteral("Copy Area")
+            UiText::text(QStringLiteral("metadata.copy_area_2"))
         );
         styleRoundedMenu(*copyAreaMenu);
         fullCopyAreaAction_ = copyAreaMenu->addAction(
-            UiText::isChineseUi() ? QStringLiteral("完整复制区") : QStringLiteral("Full Copy Area")
+            UiText::text(QStringLiteral("metadata.full_copy_area"))
         );
         fullCopyAreaAction_->setCheckable(true);
         connect(fullCopyAreaAction_, &QAction::toggled, this, &MainWindow::setFullCopyAreaVisible);
     }
 
-    toolboxMenu_->addSeparator();
+    QAction* toolboxNetGroupEndAction = toolboxMenu_->addSeparator();
 
     QAction* toolboxOfficialChartMirrorAction = toolboxMenu_->addAction(
-        UiText::isChineseUi() ? QStringLiteral("官谱镜像站") : QStringLiteral("Official Chart Mirror")
+        UiText::text(QStringLiteral("menu.official_chart_mirror"))
     );
+    if (extensionManager_ != nullptr) {
+        extensionManager_->setToolboxMenu(toolboxMenu_, toolboxNetGroupEndAction);
+    }
     connect(toolboxOfficialChartMirrorAction, &QAction::triggered, this, [openToolboxUrl]() {
         openToolboxUrl(QStringLiteral("https://www.maiviewer.net/"));
     });
@@ -1182,50 +1353,81 @@ MainWindow::MainWindow(bool quickShellBootstrapMode, QWidget* parent)
     windowSection_->setOutlineDockCollapsed(false);
     logStartupStage("outline_ready");
 
-    previewPanel_ = new QWidget(this);
+    previewPanel_ = new miacode::ui::AppBackgroundSurfaceWidget(this);
     previewPanel_->setObjectName("PreviewPanel");
-    previewPanel_->setStyleSheet(
-        "QWidget#PreviewPanel {"
-        " background: #F5F7FA;"
-        " border-left: 1px solid #DEE4EC;"
-        "}"
-        "QFrame#PreviewCanvasFrame {"
-        " background: #000000;"
-        " border: 1px solid #D8E0EA;"
-        "}"
-        "QFrame#PreviewStatsCard {"
-        " background: #EDF2F8;"
-        " border: 1px solid #D5E0EC;"
-        " border-radius: 10px;"
-        "}"
-        "QFrame#PreviewStats {"
-        " background: transparent;"
-        " border: none;"
-        "}"
-        "QLabel#PreviewStatChip {"
-        " color: #213246;"
-        " background: #F6F9FD;"
-        " border: 1px solid #D3DEEA;"
-        " border-radius: 9px;"
-        " padding: 2px 8px;"
-        " font-weight: 600;"
-        "}"
-        "QLabel#PreviewStatChipTotal {"
-        " color: #213246;"
-        " background: #F0F4FA;"
-        " border: 1px solid #CBD8E6;"
-        " border-radius: 9px;"
-        " padding: 2px 8px;"
-        " font-weight: 700;"
-        "}"
-    );
+    previewPanel_->setStyleSheet(UiTheme::previewPanelStyleSheet());
     previewPanel_->setMinimumWidth(kEmbeddedPreviewPanelMinWidth);
     previewPanel_->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Expanding);
 
     previewCanvas_ = new PreviewRuntime(this);
+    connect(previewCanvas_, &PreviewRuntime::touchPadAuthoringClicked, this, [this](const QString& pad, QChar separator) {
+        auto* editor = qobject_cast<QTextEdit*>(editorWidget_);
+        if (editor == nullptr || editor->document() == nullptr || editor->isReadOnly()
+            || !hasActiveDifficulty() || editorStack_ == nullptr
+            || editorStack_->currentWidget() != chartPage_
+            || exportPreviewActive_ || QApplication::activeModalWidget() != nullptr
+            || QApplication::activePopupWidget() != nullptr || pad.trimmed().isEmpty()) {
+            return;
+        }
+        QTextCursor cursor = editor->textCursor();
+        // Read the pre-edit offsets NOW: QTextCursor is document-attached and is
+        // shifted by the very edit recorded below, so undo would otherwise be
+        // handed an offset moved by the inserted/removed length.
+        const int originalAnchor = cursor.anchor();
+        const int originalPosition = cursor.position();
+        // The click targets the TEXT CARET, always — never the preview-follow
+        // highlight. Resolving a playhead second onto a token is not something a
+        // user can predict, so the authoring point is the one they set by hand in
+        // the editor. Paused caret moves already drag the preview along (the
+        // cursorPositionChanged → timeline-sync path), so the two normally agree;
+        // when a manual preview seek pulls them apart the caret still wins.
+        const auto editPlan = miacode::editor::planTouchPadAuthoringEdit(
+            editor->toPlainText(), originalPosition, pad, separator);
+        if (!editPlan.valid) {
+            return;
+        }
+        QTextCursor tokenCursor(editor->document());
+        tokenCursor.setPosition(editPlan.tokenStart);
+        const QTextBlock tokenBlock = tokenCursor.block();
+        double tokenSecond = 0.0;
+        const bool hasTokenSecond = tokenBlock.isValid()
+            && resolveTimelineSecondForCursor(
+                tokenBlock.blockNumber() + 1,
+                editPlan.tokenStart - tokenBlock.position() + 1,
+                &tokenSecond);
+        if (!miacode::editor::applyTouchPadAuthoringEdit(editor->document(), &cursor, editPlan)) {
+            return;
+        }
+        editor->setTextCursor(cursor);
+        const double seekSecond = hasTokenSecond
+            ? qMax(0.0, tokenSecond - miacode::preview_interaction::kTouchPadAuthoringPreviewLeadSeconds)
+            : -1.0;
+        if (documentSection_ != nullptr) {
+            // Undo restores the caret the click was made from, selection and all.
+            documentSection_->recordChartCursorUndoEntry(
+                originalAnchor,
+                originalPosition,
+                cursor,
+                seekSecond);
+        }
+        editor->setFocus(Qt::OtherFocusReason);
+        if (hasTokenSecond) {
+            // The seek lands BEFORE the token so the touch stays visible, which
+            // would otherwise draw the highlight on the preceding token. Record
+            // what this parked playhead means first, so the seek's own deferred
+            // decoration refresh already sees it.
+            setTouchPadAuthoringAnchor(seekSecond, tokenSecond);
+            seekPreviewDiscreteToSecond(seekSecond, true);
+        }
+    });
+    if (editorStack_ != nullptr) {
+        connect(editorStack_, &QStackedWidget::currentChanged, this, [this](int) {
+            applyEffectivePreviewOutlineVariantToCanvas();
+        });
+    }
     logStartupStage("preview_canvas_created");
     applyEffectivePreviewOutlineVariantToCanvas();
-    previewCanvas_->setSkinDirectory(resolvePreviewSkinDir());
+    applyPreviewSkinDirectoryToSurfaces();
     updatePreviewStageMediaPresentationMode(false);
     if (previewUsesStageMediaHostRoute()) {
         ensurePreviewStageMediaRouteInitialized();
@@ -1250,7 +1452,7 @@ MainWindow::MainWindow(bool quickShellBootstrapMode, QWidget* parent)
     previewSpeedButton_ = nullptr;
     previewFullscreenButton_ = nullptr;
 
-    auto* previewStatsCard = new QFrame(previewPanel_);
+    auto* previewStatsCard = new miacode::ui::AppBackgroundSurfaceFrame(previewPanel_);
     previewStatsCard_ = previewStatsCard;
     previewStatsCard->setObjectName("PreviewStatsCard");
     previewStatsCard->setMinimumWidth(kPreviewControlStatsCardMinWidth);
@@ -1299,7 +1501,71 @@ MainWindow::MainWindow(bool quickShellBootstrapMode, QWidget* parent)
     logStartupStage("preview_controls_and_stats_ready");
 
     previewSfxRuntime_ = new QtPreviewSfxRuntime(this);
+    connect(previewSfxRuntime_,
+            &QtPreviewSfxRuntime::commandCompleted,
+            this,
+            [this](const QtPreviewSfxRuntime::Completion& completion) {
+                using namespace miacode::preview_audio;
+                if (completion.kind != CommandKind::ReloadAssets
+                    || completion.identity.sequence != state_.previewSfxRuntimePreparationSequence_
+                    || !acceptsAssetCompletion(
+                        state_.previewSfxRuntimePreparationAssetGeneration_, completion)) {
+                    return;
+                }
+                state_.previewSfxRuntimePrepared_ = completion.success
+                    && previewSfxRuntime_ != nullptr
+                    && previewSfxRuntime_->audioEngineInitialized();
+                state_.previewSfxRuntimePreparationAssetGeneration_ = 0;
+                state_.previewSfxRuntimePreparationSequence_ = 0;
+            });
+    connect(previewSfxRuntime_,
+            &QtPreviewSfxRuntime::previewPrepared,
+            this,
+            [this](const QtPreviewSfxRuntime::Completion& completion) {
+                if (timelineSection_ != nullptr) {
+                    timelineSection_->handlePreviewAudioPrepared(completion);
+                }
+            });
+    connect(previewSfxRuntime_,
+            &QtPreviewSfxRuntime::retainedPlaybackCompleted,
+            this,
+            [this](const QtPreviewSfxRuntime::Completion& completion) {
+                if (timelineSection_ != nullptr) {
+                    timelineSection_->handlePreviewRetainedPlaybackCompleted(completion);
+                }
+            });
+    connect(previewSfxRuntime_,
+            &QtPreviewSfxRuntime::previewPlaybackPaused,
+            this,
+            [this](const QtPreviewSfxRuntime::Completion& completion) {
+                if (timelineSection_ != nullptr) {
+                    timelineSection_->handlePreviewRetainedPlaybackCompleted(completion);
+                }
+            });
     logStartupStage("preview_sfx_runtime_created");
+#ifdef MIACODE_HAS_BASS_AUDIO
+    // BASS-only on purpose. docs/audit/AUDIO_CLOCK_DESYNC_AUDIT_ZH.md fixes the
+    // device-change desync (问题 3) to the BASS transport's anchor model on Windows and
+    // macOS. Linux runs MiniaudioPreviewAudioBackend, a different seek/clock
+    // implementation with a separate, unproven report (问题 4), so auto-pausing there
+    // would interrupt playback on no evidence.
+    previewAudioDeviceWatcher_ = new PreviewAudioDeviceWatcher(this);
+    previewAudioDeviceWatcher_->setDirectCutoffHandler(
+        [runtime = previewSfxRuntime_](PreviewAudioDeviceWatcher::Change) {
+            return runtime != nullptr
+                ? runtime->requestDeviceChangeCutoff()
+                : miacode::preview_audio::PreviewAudioDeviceCutoff{};
+        });
+    connect(previewAudioDeviceWatcher_,
+            &PreviewAudioDeviceWatcher::deviceCutoffRequested,
+            this,
+            [this](const PreviewAudioDeviceWatcher::DeviceCutoff& cutoff) {
+                if (timelineSection_ != nullptr) {
+                    timelineSection_->applyPreviewAudioDeviceCutoff(cutoff);
+                }
+            });
+    logStartupStage("preview_audio_device_watcher_created");
+#endif
     connect(previewCanvas_, &PreviewRuntime::framePresented, this, [this]() {
         timelineSection_->handlePreviewStartupCanvasPresented();
         if (!qtPreviewPlaying_) {
@@ -1411,7 +1677,7 @@ MainWindow::MainWindow(bool quickShellBootstrapMode, QWidget* parent)
     logStartupStage("preview_runtime_connections_ready");
     logStartupStage("preview_runtime_ready");
 
-    bottomTabs_ = new QTabWidget(central);
+    bottomTabs_ = new miacode::ui::AppBackgroundSurfaceTabWidget(central);
     bottomTabs_->installEventFilter(this);
     if (QTabBar* bottomTabBar = bottomTabs_->tabBar(); bottomTabBar != nullptr) {
         bottomTabBar->installEventFilter(this);
@@ -1423,14 +1689,33 @@ MainWindow::MainWindow(bool quickShellBootstrapMode, QWidget* parent)
     timelineQuickStateBridge_ = new TimelineQuickStateBridge(this);
     timelineQuickStateBridge_->setHeaderLineNumberFont(timelineHeaderLineNumberFont());
     timelineQuickStateBridge_->setShowSlideTracks(true);
+    timelineQuickStateBridge_->setSkinDirectory(resolvePreviewSkinDir());
     timelineQuickStateBridge_->setViewportLockEnabled(previewViewportLockEnabled_);
     timelineQuickStateBridge_->setFollowProgressEnabled(previewProgressFollowEnabled_);
     timelineQuickStateBridge_->setTimelineSyncEnabled(timelineSyncEnabled_);
+    timelineQuickStateBridge_->setZoomWheelShortcuts(
+        ShortcutRegistry::instance().shortcutTexts(
+            QStringLiteral("timeline.zoom_in"),
+            {QStringLiteral("Ctrl+WheelUp")}),
+        ShortcutRegistry::instance().shortcutTexts(
+            QStringLiteral("timeline.zoom_out"),
+            {QStringLiteral("Ctrl+WheelDown")}));
     timelineSection_->refreshTimelineWaveformPhaseCompensation();
+    // Phase-locked playback sampling for the timeline. Fires once per timeline frame from
+    // TimelineQuickItem::bindRenderCadence (QQuickWindow::afterAnimating, GUI thread), so the
+    // second we sample is the one that frame renders. qtPreviewTimelineTimer_ remains armed as
+    // a watchdog behind this; see MainWindow.FrameBootstrapFinalize.cpp.
+    connect(timelineQuickStateBridge_,
+            &TimelineQuickStateBridge::renderCadenceTick,
+            this,
+            &MainWindow::onTimelineRenderCadenceTick);
     connect(timelineQuickStateBridge_, &TimelineQuickStateBridge::zoomScaleChanged, this, [this](double) {
         savePortableState();
     });
     connect(timelineQuickStateBridge_, &TimelineQuickStateBridge::waveformBrightnessChanged, this, [this](double) {
+        savePortableState();
+    });
+    connect(timelineQuickStateBridge_, &TimelineQuickStateBridge::measureLineBrightnessChanged, this, [this](double) {
         savePortableState();
     });
     if (!timelineWidgetlessQuickRoute_) {
@@ -1464,7 +1749,7 @@ MainWindow::MainWindow(bool quickShellBootstrapMode, QWidget* parent)
         connect(timelineView_, &TimelineView::followProgressToggled, this, [this](bool enabled) {
             timelineSection_->onTimelineFollowProgressToggled(enabled);
         });
-        bottomTabs_->addTab(timelineView_, uiText("tab.timeline", "Timeline"));
+        bottomTabs_->addTab(timelineView_, UiText::text(QStringLiteral("tab.timeline")));
     }
 
     if (auto* editor = qobject_cast<PlainCodeEditor*>(editorWidget_); editor != nullptr) {
@@ -1500,8 +1785,21 @@ MainWindow::MainWindow(bool quickShellBootstrapMode, QWidget* parent)
                 }
             });
             ++timelineRevision_;
+            if (extensionManager_ != nullptr) {
+                extensionManager_->publishEvent(QStringLiteral("editor.text.changed"), QJsonObject{
+                    {QStringLiteral("source"), QStringLiteral("editor")},
+                    {QStringLiteral("data"), QJsonObject{
+                        {QStringLiteral("position"), position},
+                        {QStringLiteral("removed"), charsRemoved},
+                        {QStringLiteral("added"), charsAdded},
+                    }},
+                }, true);
+            }
             syncCopyAreaLineCount();
             applyTimelineQuickChange(position, charsRemoved, charsAdded);
+            if (editorSection_ != nullptr) {
+                editorSection_->syncBookmarksFromEditorText(position, charsRemoved, charsAdded);
+            }
             requestTimelineSlowRefresh();
             bool syncPreviewFollow = false;
             double previewFollowSecond = 0.0;
@@ -1524,6 +1822,16 @@ MainWindow::MainWindow(bool quickShellBootstrapMode, QWidget* parent)
         });
     }
     connect(qobject_cast<PlainCodeEditor*>(editorWidget_), &QTextEdit::cursorPositionChanged, this, [this]() {
+        if (extensionManager_ != nullptr) {
+            const QTextCursor cursor = qobject_cast<PlainCodeEditor*>(editorWidget_)->textCursor();
+            extensionManager_->publishEvent(QStringLiteral("editor.selection.changed"), QJsonObject{
+                {QStringLiteral("source"), QStringLiteral("editor")},
+                {QStringLiteral("data"), QJsonObject{
+                    {QStringLiteral("position"), cursor.position()},
+                    {QStringLiteral("anchor"), cursor.anchor()},
+                }},
+            }, true);
+        }
         const bool syncTimelineCursor = !quickShellUiFocusBridgeMode_ || quickTimelineSurfaceReady_;
         scheduleDeferredEditorUiUpdate(
             true,
@@ -1535,12 +1843,23 @@ MainWindow::MainWindow(bool quickShellBootstrapMode, QWidget* parent)
             false
         );
     });
+    connect(editor, &PlainCodeEditor::exportRangeRequested, this, [this](int start, int end) {
+        if (exportSection_ != nullptr) {
+            exportSection_->onExportSelectedRange(start, end);
+        }
+    });
     connect(titleEdit_, &QLineEdit::textChanged, this, [this]() {
         markCurrentFieldDirty();
         updateWindowTitle();
+        rebuildFieldSidebar();
     });
-    connect(artistEdit_, &QLineEdit::textChanged, this, &MainWindow::markCurrentFieldDirty);
-    connect(designerEdit_, &QLineEdit::textChanged, this, &MainWindow::markCurrentFieldDirty);
+    connect(editor, &PlainCodeEditor::resetTapNotesShortcutRequested, this, [this]() {
+        if (transformResetTapNotesAction_ != nullptr) {
+            transformResetTapNotesAction_->trigger();
+        }
+    });
+    connect(artistEdit_, &QLineEdit::textChanged, this, [this]() { markCurrentFieldDirty(); rebuildFieldSidebar(); });
+    connect(designerEdit_, &QLineEdit::textChanged, this, [this]() { markCurrentFieldDirty(); rebuildFieldSidebar(); });
     if (metadataExtraEdit_ != nullptr) {
         connect(metadataExtraEdit_->document(), &QTextDocument::contentsChange, this, [this](int, int charsRemoved, int charsAdded) {
             if (suppressTextDirtyTracking_) {
@@ -1552,11 +1871,15 @@ MainWindow::MainWindow(bool quickShellBootstrapMode, QWidget* parent)
             QTimer::singleShot(0, this, [this]() {
                 if (!suppressTextDirtyTracking_) {
                     markCurrentFieldDirty();
+                    rebuildFieldSidebar();
                 }
             });
         });
     }
-    connect(difficultyLevelEdit_, &QLineEdit::textChanged, this, &MainWindow::markCurrentFieldDirty);
+    connect(difficultyLevelEdit_, &QLineEdit::textChanged, this, [this]() {
+        markCurrentFieldDirty();
+        refreshValidationPanelForActiveField();
+    });
     connect(firstEdit_, &QLineEdit::textChanged, this, &MainWindow::markCurrentFieldDirty);
     connect(difficultyDesignerEdit_, &QLineEdit::textChanged, this, &MainWindow::markCurrentFieldDirty);
     // Offset only repositions notes relative to the audio, so a live reflow on
@@ -1589,7 +1912,7 @@ MainWindow::MainWindow(bool quickShellBootstrapMode, QWidget* parent)
     });
     bottomTabs_->addTab(
         errorList_,
-        UiText::isChineseUi() ? QStringLiteral("语法") : QStringLiteral("Syntax")
+        UiText::text(QStringLiteral("window.syntax"))
     );
 
     muriList_ = new QListWidget(bottomTabs_);
@@ -1610,7 +1933,7 @@ MainWindow::MainWindow(bool quickShellBootstrapMode, QWidget* parent)
     });
     bottomTabs_->addTab(
         muriList_,
-        UiText::isChineseUi() ? QStringLiteral("无理") : QStringLiteral("Muri")
+        UiText::text(QStringLiteral("window.muri"))
     );
     connect(bottomTabs_, &QTabWidget::currentChanged, this, [this](int) {
         if (!quickShellBottomTabsProxyActive() && !timelineWidgetlessQuickRoute_) {
@@ -1647,7 +1970,7 @@ MainWindow::MainWindow(bool quickShellBootstrapMode, QWidget* parent)
     windowSection_->updateBottomTabsDeviceHeight();
     logStartupStage("timeline_and_tabs_ready");
 
-    previewLeftColumn_ = new QWidget(this);
+    previewLeftColumn_ = new miacode::ui::AppBackgroundSurfaceWidget(this);
     // Content-column floor = export-page design-width budget (spec). Mirrors the
     // QuickShell content WindowContainer's Layout.minimumWidth.
     previewLeftColumn_->setMinimumWidth(miacode::window_parity::kWorkspaceContentMinWidth);
@@ -1671,12 +1994,47 @@ MainWindow::MainWindow(bool quickShellBootstrapMode, QWidget* parent)
         handle->hide();
     }
     setCentralWidget(workspaceSplitter_);
+    appBackgroundPainter_ = new miacode::ui::AppBackgroundPainter(this);
+    applyAppBackgroundSettings(appBackgroundSettings_, false);
     syncEditorHeaderMinimumWidth();
     applyWorkspacePanelArrangement();
     updatePreviewWorkspaceLayout();
     logStartupStage("workspace_and_central_widget_ready");
 
-    finishFrameBootstrap(toolBar, logStartupStage);
+    finishFrameBootstrap(toolBar, logStartupStage, explicitStartupOpenPending);
+    QTimer::singleShot(0, this, [this]() {
+        if (extensionManager_ != nullptr) {
+            extensionManager_->refreshExtensions();
+        }
+    });
+}
+
+void MainWindow::applyAppBackgroundSettings(
+    const miacode::ui::AppBackgroundSettings& settings,
+    bool persistPreference,
+    bool refreshTheme)
+{
+    appBackgroundSettings_ = miacode::ui::normalizedAppBackgroundSettings(settings);
+    if (appBackgroundPainter_ != nullptr) {
+        appBackgroundPainter_->setSettings(appBackgroundSettings_);
+    }
+    if (refreshTheme && windowSection_ != nullptr) {
+        windowSection_->applyUiTheme();
+    }
+    update();
+
+    if (persistPreference) {
+        QJsonObject root = UiText::loadPreferencesObject();
+        QJsonObject ui = root.value(QStringLiteral("ui")).toObject();
+        ui.insert(
+            QStringLiteral("app_background"),
+            miacode::ui::appBackgroundSettingsToJson(appBackgroundSettings_));
+        root.insert(QStringLiteral("ui"), ui);
+        UiText::savePreferencesObject(root);
+        if (statusBar() != nullptr) {
+            statusBar()->showMessage(UiText::text(QStringLiteral("status.preferences_updated")), 3000);
+        }
+    }
 }
 
 miacode::latency::LatencySandboxController* MainWindow::latencySandboxController() const

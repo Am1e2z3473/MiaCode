@@ -9,20 +9,105 @@
 #include "core/scene/PreviewHudState.h"
 #include "core/scene/PreviewProgressStatsCache.h"
 #include "core/scene/PreviewPreparedSceneCache.h"
+#include "core/scene/PreviewSceneConstants.h"
+#include "core/scene/PreviewSceneGeometry.h"
+#include "core/scene/PreviewSceneMath.h"
+#include "core/scene/TouchPadAuthoringState.h"
 
 #include <QCoreApplication>
 #include <QElapsedTimer>
 #include <QAtomicInteger>
+#include <QGuiApplication>
+#include <QHoverEvent>
 #include <QMetaObject>
+#include <QMouseEvent>
 #include <QPainter>
 #include <QMutexLocker>
 #include <QQuickWindow>
 #include <QSGSimpleTextureNode>
 #include <QSGNode>
 
+#include <memory>
+#include <utility>
+
 namespace {
 
 constexpr int kPreviewQuickSceneLayerSlotCount = 18;
+
+class PreviewQuickRootNode final : public QSGNode
+{
+public:
+    explicit PreviewQuickRootNode(QQuickWindow* window)
+        : window_(window)
+    {
+        textures_.setWindow(window_);
+        createLayerSlots();
+    }
+
+    ~PreviewQuickRootNode() override
+    {
+        // QSGNode's base destructor runs after members are destroyed. Delete every child
+        // material explicitly first so the repository can never release a texture while a
+        // child node still holds its raw QSGTexture pointer.
+        destroyAllChildren();
+        textures_.clear();
+    }
+
+    QQuickWindow* window() const { return window_; }
+    quint64 generation() const { return generation_; }
+    PreviewTextureRepository* textures() { return &textures_; }
+
+    void ensureLayerSlots()
+    {
+        if (childCount() == kPreviewQuickSceneLayerSlotCount) {
+            return;
+        }
+        destroyAllChildren();
+        createLayerSlots();
+    }
+
+    void clearLayerContentsFrom(int firstSlotIndex)
+    {
+        int slotIndex = 0;
+        for (QSGNode* slot = firstChild(); slot != nullptr; slot = slot->nextSibling(), ++slotIndex) {
+            if (slotIndex < firstSlotIndex) {
+                continue;
+            }
+            while (QSGNode* child = slot->firstChild()) {
+                slot->removeChildNode(child);
+                delete child;
+            }
+        }
+    }
+
+    void resetTextureGeneration()
+    {
+        clearLayerContentsFrom(0);
+        textures_.clear();
+        textures_.setWindow(window_);
+        ++generation_;
+    }
+
+private:
+    void createLayerSlots()
+    {
+        for (int index = 0; index < kPreviewQuickSceneLayerSlotCount; ++index) {
+            appendChildNode(new QSGNode());
+        }
+    }
+
+    void destroyAllChildren()
+    {
+        while (QSGNode* child = firstChild()) {
+            removeChildNode(child);
+            delete child;
+        }
+    }
+
+    QQuickWindow* window_ = nullptr;
+    quint64 generation_ = 1;
+    PreviewTextureRepository textures_;
+};
 
 quint64 nextPreviewQuickSceneRootInstanceId()
 {
@@ -83,13 +168,8 @@ void updateCenterDisplaySlot(
         state.render.centerDisplayMode == miacode::preview_gameplay::CenterDisplayMode::AchievementDxMinus101;
     const bool isBreakOnlyDisplay =
         state.render.centerDisplayMode == miacode::preview_gameplay::CenterDisplayMode::AchievementDxMinus100;
-    const double playheadSeconds = qIsFinite(state.hudPlayheadSecondsOverride)
-        ? state.hudPlayheadSecondsOverride
-        : state.playheadSeconds;
-    miacode::preview::scene::PreviewHudStats stats;
-    if (!isConstantDisplay && state.progressStatsCache != nullptr) {
-        stats = state.progressStatsCache->hudStatsAt(playheadSeconds);
-    }
+    const miacode::preview::scene::PreviewHudStats stats =
+        !isConstantDisplay ? state.hudStatsSnapshot : miacode::preview::scene::PreviewHudStats();
     if (!isConstantDisplay && !isBreakOnlyDisplay) {
         if (cachedMode == state.render.centerDisplayMode
             && qFuzzyCompare(cachedDeluxeRate + 1.0, stats.deluxeRate + 1.0)
@@ -160,26 +240,16 @@ void updateCenterDisplaySlot(
     cachedDpr = dpr;
 }
 
-QSGNode* ensureLayerSlotRoot(QSGNode* oldNode)
+PreviewQuickRootNode* ensureLayerSlotRoot(QSGNode* oldNode, QQuickWindow* window)
 {
-    auto childCountFor = [](QSGNode* node) {
-        int count = 0;
-        for (QSGNode* child = node != nullptr ? node->firstChild() : nullptr; child != nullptr; child = child->nextSibling()) {
-            ++count;
-        }
-        return count;
-    };
-
-    if (oldNode != nullptr && childCountFor(oldNode) == kPreviewQuickSceneLayerSlotCount) {
-        return oldNode;
+    auto* root = dynamic_cast<PreviewQuickRootNode*>(oldNode);
+    if (root != nullptr && root->window() == window) {
+        root->ensureLayerSlots();
+        return root;
     }
 
     delete oldNode;
-    auto* root = new QSGNode();
-    for (int index = 0; index < kPreviewQuickSceneLayerSlotCount; ++index) {
-        root->appendChildNode(new QSGNode());
-    }
-    return root;
+    return new PreviewQuickRootNode(window);
 }
 
 QSGNode* layerSlotAt(QSGNode* root, int index)
@@ -213,11 +283,24 @@ PreviewTextureLayerStats& ensureLayerProfileStat(
     return layerStats->last();
 }
 
+PreviewTextureStats mergedTextureStats(
+    const PreviewTextureRepository& textures,
+    const QVector<PreviewTextureLayerStats>& layerProfileStats)
+{
+    PreviewTextureStats stats = textures.stats();
+    for (const PreviewTextureLayerStats& buildStat : layerProfileStats) {
+        PreviewTextureLayerStats& merged =
+            ensureLayerProfileStat(&stats.layerStats, buildStat.name.toLatin1().constData());
+        merged.buildMs = buildStat.buildMs;
+    }
+    return stats;
+}
+
 template <typename UpdateFn>
-void updateLayerSlot(QSGNode* slot, bool enabled, UpdateFn&& updateFn)
+bool updateLayerSlot(QSGNode* slot, bool enabled, UpdateFn&& updateFn)
 {
     if (slot == nullptr) {
-        return;
+        return false;
     }
 
     QSGNode* oldChild = slot->firstChild();
@@ -236,6 +319,7 @@ void updateLayerSlot(QSGNode* slot, bool enabled, UpdateFn&& updateFn)
     if (newChild != nullptr && newChild->parent() != slot) {
         slot->appendChildNode(newChild);
     }
+    return newChild != nullptr;
 }
 
 template <typename UpdateFn>
@@ -247,10 +331,16 @@ void updateLayerSlotProfiled(
     UpdateFn&& updateFn
 )
 {
+    if (layerStats == nullptr) {
+        updateLayerSlot(slot, enabled, std::forward<UpdateFn>(updateFn));
+        return;
+    }
     QElapsedTimer timer;
     timer.start();
-    updateLayerSlot(slot, enabled, std::forward<UpdateFn>(updateFn));
-    ensureLayerProfileStat(layerStats, layerName).buildMs = static_cast<double>(timer.nsecsElapsed()) / 1000000.0;
+    const bool produced = updateLayerSlot(slot, enabled, std::forward<UpdateFn>(updateFn));
+    PreviewTextureLayerStats& stat = ensureLayerProfileStat(layerStats, layerName);
+    stat.buildMs = static_cast<double>(timer.nsecsElapsed()) / 1000000.0;
+    stat.nodeProduced = produced;
 }
 
 }  // namespace
@@ -260,11 +350,8 @@ PreviewQuickSceneRoot::PreviewQuickSceneRoot(QQuickItem* parent)
     , instanceId_(nextPreviewQuickSceneRootInstanceId())
 {
     setFlag(ItemHasContents, true);
-    // Phase 4a — let PreviewDCompSurface auto-discover this item via
-    // QObject::findChild on the QQuickWindow. Decoupled from the
-    // dcomp/ side: surface looks up by objectName instead of taking a
-    // direct dependency on PreviewQuickSceneRoot's type.
-    setObjectName(QStringLiteral("preview_dcomp_track_target"));
+    setAcceptHoverEvents(true);
+    setAcceptedMouseButtons(Qt::LeftButton | Qt::RightButton);
     appendQuickSceneLog(
         QStringLiteral("scene_root_construct"),
         QString("%1 item_visible=%2")
@@ -313,8 +400,11 @@ PreviewQuickSceneRoot::~PreviewQuickSceneRoot()
             .arg(pointerHex(runtime_))
             .arg(pointerHex(boundWindow_))
     );
-    if (runtime_ != nullptr && boundWindow_ != nullptr) {
-        runtime_->clearVisibleHostWindow(boundWindow_);
+    if (runtime_ != nullptr) {
+        runtime_->setHoveredTouchPad(QString());
+        if (boundWindow_ != nullptr) {
+            runtime_->clearVisibleHostWindow(boundWindow_);
+        }
     }
 }
 
@@ -327,6 +417,7 @@ void PreviewQuickSceneRoot::clearPendingTextureStatsForPresentation()
 {
     QMutexLocker locker(&latestTextureStatsMutex_);
     pendingTextureStats_.clear();
+    latestTextureStats_ = PreviewTextureStats();
 }
 
 void PreviewQuickSceneRoot::setRuntime(PreviewRuntime* runtime)
@@ -334,8 +425,11 @@ void PreviewQuickSceneRoot::setRuntime(PreviewRuntime* runtime)
     if (runtime_ == runtime) {
         return;
     }
-    if (runtime_ != nullptr && boundWindow_ != nullptr) {
-        runtime_->clearVisibleHostWindow(boundWindow_);
+    if (runtime_ != nullptr) {
+        runtime_->setHoveredTouchPad(QString());
+        if (boundWindow_ != nullptr) {
+            runtime_->clearVisibleHostWindow(boundWindow_);
+        }
     }
     if (runtimeUpdateConnection_) {
         QObject::disconnect(runtimeUpdateConnection_);
@@ -344,11 +438,9 @@ void PreviewQuickSceneRoot::setRuntime(PreviewRuntime* runtime)
     runtime_ = runtime;
     if (runtime_ != nullptr) {
         frameState_ = nullptr;
-        if (!miacode::debug_options::previewDCompQuiesceQsgEnabled()) {
-            runtimeUpdateConnection_ = QObject::connect(runtime_, &PreviewRuntime::frameStateChanged, this, [this]() {
-                update();
-            });
-        }
+        runtimeUpdateConnection_ = QObject::connect(runtime_, &PreviewRuntime::frameStateChanged, this, [this]() {
+            update();
+        });
         runtime_->setFrameSize(boundingRect().size().toSize());
     }
     syncVisibleHostWindowBinding("set_runtime");
@@ -368,24 +460,118 @@ QObject* PreviewQuickSceneRoot::runtimeObject() const
     return runtime_;
 }
 
+QString PreviewQuickSceneRoot::touchPadAtItemPoint(const QPointF& itemPoint) const
+{
+    if (runtime_ == nullptr) {
+        return QString();
+    }
+    const auto stateSnapshot = runtime_->frameStateSnapshot();
+    if (stateSnapshot == nullptr || !stateSnapshot->touchPadAuthoringEnabled) {
+        return QString();
+    }
+    const QRectF playfieldRect = miacode::preview::scene::playfieldRectForStage(
+        miacode::preview::scene::stageRectForSize(boundingRect().size().toSize()),
+        stateSnapshot->render.layoutSquareScale
+    );
+    if (!playfieldRect.contains(itemPoint) || playfieldRect.width() <= 0.0) {
+        return QString();
+    }
+
+    const qreal logicalScale = miacode::preview::scene::kLogicalCanvasSize / playfieldRect.width();
+    const QPointF logicalPoint(
+        (itemPoint.x() - playfieldRect.left()) * logicalScale,
+        (itemPoint.y() - playfieldRect.top()) * logicalScale
+    );
+    return miacode::preview::scene::touchPadTokenAtLogicalPoint(logicalPoint);
+}
+
+void PreviewQuickSceneRoot::updateHoveredTouchPadAtItemPoint(const QPointF& itemPoint)
+{
+    if (runtime_ == nullptr) {
+        return;
+    }
+    runtime_->setHoveredTouchPad(touchPadAtItemPoint(itemPoint));
+}
+
+void PreviewQuickSceneRoot::hoverMoveEvent(QHoverEvent* event)
+{
+    if (event != nullptr) {
+        updateHoveredTouchPadAtItemPoint(event->position());
+    }
+    QQuickItem::hoverMoveEvent(event);
+}
+
+void PreviewQuickSceneRoot::hoverLeaveEvent(QHoverEvent* event)
+{
+    if (runtime_ != nullptr) {
+        runtime_->setHoveredTouchPad(QString());
+    }
+    QQuickItem::hoverLeaveEvent(event);
+}
+
+void PreviewQuickSceneRoot::mousePressEvent(QMouseEvent* event)
+{
+    if (event == nullptr
+        || !miacode::preview::scene::touchPadAuthoringMouseButtonSupported(event->button())
+        || runtime_ == nullptr) {
+        QQuickItem::mousePressEvent(event);
+        return;
+    }
+    const QString pad = touchPadAtItemPoint(event->position());
+    if (pad.isEmpty()) {
+        QQuickItem::mousePressEvent(event);
+        return;
+    }
+    runtime_->setHoveredTouchPad(pad);
+    if (runtime_->beginTouchPadAuthoringPress(pad)) {
+        touchPadAuthoringPressedButton_ = event->button();
+        event->accept();
+        return;
+    }
+    QQuickItem::mousePressEvent(event);
+}
+
+void PreviewQuickSceneRoot::mouseMoveEvent(QMouseEvent* event)
+{
+    if (event != nullptr && runtime_ != nullptr && runtime_->touchPadAuthoringEnabled()) {
+        updateHoveredTouchPadAtItemPoint(event->position());
+        event->accept();
+        return;
+    }
+    QQuickItem::mouseMoveEvent(event);
+}
+
+void PreviewQuickSceneRoot::mouseReleaseEvent(QMouseEvent* event)
+{
+    if (event != nullptr
+        && miacode::preview::scene::touchPadAuthoringMouseButtonSupported(event->button())
+        && event->button() == touchPadAuthoringPressedButton_
+        && runtime_ != nullptr
+        && runtime_->touchPadAuthoringPressActive()) {
+        const QString pad = touchPadAtItemPoint(event->position());
+        touchPadAuthoringPressedButton_ = Qt::NoButton;
+        runtime_->finishTouchPadAuthoringPress(
+            pad,
+            miacode::preview::scene::touchPadAuthoringSeparator(
+                event->button(), event->modifiers()));
+        event->accept();
+        return;
+    }
+    QQuickItem::mouseReleaseEvent(event);
+}
+
+void PreviewQuickSceneRoot::mouseUngrabEvent()
+{
+    if (runtime_ != nullptr) {
+        runtime_->cancelTouchPadAuthoringPress();
+    }
+    touchPadAuthoringPressedButton_ = Qt::NoButton;
+    QQuickItem::mouseUngrabEvent();
+}
+
 void PreviewQuickSceneRoot::setRuntimeObject(QObject* runtimeObject)
 {
     setRuntime(qobject_cast<PreviewRuntime*>(runtimeObject));
-}
-
-void PreviewQuickSceneRoot::setDCompFallbackActive(bool active)
-{
-    if (dcompFallbackActive_ == active) {
-        return;
-    }
-    dcompFallbackActive_ = active;
-    // Force a re-paint so the next updatePaintNode honours the new
-    // setting immediately. With fallback on, the legacy QSG path
-    // resumes producing pixels; with it off, the DComp short-circuit
-    // returns nullptr again. Either way the user-visible state needs
-    // to switch within one frame of the QML toggle.
-    update();
-    emit dcompFallbackActiveChanged();
 }
 
 void PreviewQuickSceneRoot::setFrameState(const miacode::preview::scene::PreviewFrameState* frameState)
@@ -425,9 +611,9 @@ void PreviewQuickSceneRoot::setLayerFlags(miacode::preview::scene::PreviewRender
 
 void PreviewQuickSceneRoot::invalidateTextureCache()
 {
-    const PreviewTextureStats statsBeforeClear = textures_.stats();
+    const PreviewTextureStats statsBeforeClear = textureStats();
     appendQuickSceneLog(
-        QStringLiteral("invalidate_texture_cache"),
+        QStringLiteral("texture_generation_reset_requested"),
         QString(
             "cached_hits=%1 cached_creates=%2 transient_hits=%3 transient_creates=%4 sprite_count=%5 sprite_batches=%6"
         )
@@ -438,22 +624,20 @@ void PreviewQuickSceneRoot::invalidateTextureCache()
             .arg(statsBeforeClear.spriteCount)
             .arg(statsBeforeClear.spriteBatchCount)
     );
-    textures_.clear();
+    textureResetRequested_.store(true, std::memory_order_release);
+    update();
 }
 
 PreviewTextureStats PreviewQuickSceneRoot::textureStats() const
 {
-    PreviewTextureStats stats = textures_.stats();
-    for (const PreviewTextureLayerStats& buildStat : layerProfileStats_) {
-        PreviewTextureLayerStats& merged = ensureLayerProfileStat(&stats.layerStats, buildStat.name.toLatin1().constData());
-        merged.buildMs = buildStat.buildMs;
-    }
-    return stats;
+    QMutexLocker locker(&latestTextureStatsMutex_);
+    return latestTextureStats_;
 }
 
 void PreviewQuickSceneRoot::enqueueTextureStatsForPresentation(const PreviewTextureStats& stats)
 {
     QMutexLocker locker(&latestTextureStatsMutex_);
+    latestTextureStats_ = stats;
     pendingTextureStats_.enqueue(stats);
     while (pendingTextureStats_.size() > 8) {
         pendingTextureStats_.dequeue();
@@ -479,6 +663,27 @@ void PreviewQuickSceneRoot::syncVisibleHostWindowBinding(const char* reason)
     if (windowVisibilityConnection_) {
         QObject::disconnect(windowVisibilityConnection_);
         windowVisibilityConnection_ = QMetaObject::Connection();
+    }
+    // Render-thread phase hooks are re-established below for the new window. Drop the
+    // old ones here: they are Qt::DirectConnection lambdas and re-binding the same
+    // window (F11 / re-parent) would otherwise stack a duplicate set on every rebind.
+    for (QMetaObject::Connection* connection : {
+             &fireworkPresentConnection_,
+             &renderBeforeSyncConnection_,
+             &renderAfterSyncConnection_,
+             &renderBeforeRenderConnection_,
+             &renderBeforePassConnection_,
+             &renderAfterPassConnection_,
+             &renderAfterRenderConnection_,
+             &renderFrameSwapProfileConnection_,
+         }) {
+        if (*connection) {
+            QObject::disconnect(*connection);
+            *connection = QMetaObject::Connection();
+        }
+    }
+    if (runtime_ != nullptr) {
+        runtime_->setHoveredTouchPad(QString());
     }
     if (runtime_ != nullptr && boundWindow_ != nullptr) {
         appendQuickSceneLog(
@@ -558,6 +763,22 @@ void PreviewQuickSceneRoot::syncVisibleHostWindowBinding(const char* reason)
         syncVisibleHostWindowBinding("window_visibility_changed");
         update();
     });
+    // Direct (render-thread) hook: promotes "the firework layer emitted a node during
+    // this frame's updatePaintNode" into "a frame containing that node has been
+    // presented", which is the warm-up's completion criterion. Kept separate from the
+    // queued frameSwapped handler below precisely because that one can lag a frame.
+    fireworkPresentConnection_ = QObject::connect(
+        boundWindow_, &QQuickWindow::frameSwapped, this,
+        [this]() {
+            if (!fireworkNodeInPendingFrame_) {
+                return;
+            }
+            fireworkNodeInPendingFrame_ = false;
+            if (runtime_ != nullptr) {
+                runtime_->notifyFireworkLayerPresentedNode();
+            }
+        },
+        Qt::DirectConnection);
     frameSwapConnection_ = QObject::connect(boundWindow_, &QQuickWindow::frameSwapped, this, [this]() {
         if (runtime_ == nullptr || boundWindow_ == nullptr || window() != boundWindow_) {
             return;
@@ -630,7 +851,23 @@ void PreviewQuickSceneRoot::syncVisibleHostWindowBinding(const char* reason)
             Qt::DirectConnection);
         renderBeforeRenderConnection_ = QObject::connect(
             boundWindow_, &QQuickWindow::beforeRendering, this,
-            [this]() { renderPhaseRenderStartNs_ = renderPhaseTimer_.nsecsElapsed(); },
+            [this]() {
+                renderPhaseRenderStartNs_ = renderPhaseTimer_.nsecsElapsed();
+                renderPhasePassStartNs_ = -1;
+                renderPhasePassEndNs_ = -1;
+            },
+            Qt::DirectConnection);
+        // Splits render_submit into resource-prep vs pass-record. Qt emits these
+        // around the scene graph's actual render-pass recording, so a first-use
+        // pipeline (PSO) build lands inside pass_record_ms while texture/buffer
+        // uploads and the swapchain acquire land in resource_prep_ms.
+        renderBeforePassConnection_ = QObject::connect(
+            boundWindow_, &QQuickWindow::beforeRenderPassRecording, this,
+            [this]() { renderPhasePassStartNs_ = renderPhaseTimer_.nsecsElapsed(); },
+            Qt::DirectConnection);
+        renderAfterPassConnection_ = QObject::connect(
+            boundWindow_, &QQuickWindow::afterRenderPassRecording, this,
+            [this]() { renderPhasePassEndNs_ = renderPhaseTimer_.nsecsElapsed(); },
             Qt::DirectConnection);
         renderAfterRenderConnection_ = QObject::connect(
             boundWindow_, &QQuickWindow::afterRendering, this,
@@ -647,41 +884,6 @@ QSGNode* PreviewQuickSceneRoot::updatePaintNode(QSGNode* oldNode, UpdatePaintNod
 {
     Q_UNUSED(updatePaintNodeData);
 
-    // Phase 4b — when DComp-exclusive mode is on, the DComp surface is
-    // the authoritative chart renderer; this QSG path produces nothing.
-    // Discard any existing scene-graph subtree and return null so Qt
-    // skips this layer entirely. The QQuickItem itself stays visible
-    // (so the DComp surface's findChild + mapToScene tracking still
-    // works), but its bounding rect contributes no pixels to the QSG
-    // scene. PreviewQuickHudLayer + PreviewStageMediaItem are sibling
-    // items and continue to render normally.
-    //
-    // Phase 4d-fix — exception: when per-pixel alpha is on (the default
-    // case where exclusive auto-enables), we still want the QSG
-    // stage_background dim shader to run so the user's "Background
-    // brightness" sliders affect QML's PreviewStageMediaItem (which
-    // shows through DComp's transparent areas). The chart-sprite QSG
-    // layers stay skipped — only the dim slot is processed. See the
-    // `keepDimOnly` short-circuit below the dim slot for the second
-    // half of this conditional.
-    // Issue #4 fix — `dcompFallbackActive_` overrides the DComp-exclusive
-    // short-circuit. QML sets this on the fullscreen QuickShellPreviewSurface
-    // instance because the DComp popup HWND can't follow the secondary
-    // fullscreen window (it's owned by the editor and would be z-ordered
-    // behind the fullscreen window). With fallback active, the legacy
-    // QSG path renders chart content into the fullscreen window directly,
-    // matching the embedded preview's appearance.
-    const bool exclusive = !dcompFallbackActive_
-        && miacode::debug_options::previewDCompExclusiveEnabled();
-    const bool keepDimOnly = exclusive
-        && miacode::debug_options::previewDCompPerPixelAlphaEnabled();
-    if (exclusive && !keepDimOnly) {
-        if (oldNode != nullptr) {
-            delete oldNode;
-        }
-        return nullptr;
-    }
-
     const bool renderDiagEnabled = miacode::debug_options::previewFramePacingDiagnosticsEnabled();
     if (renderDiagEnabled) {
         if (!renderPhaseTimer_.isValid()) {
@@ -690,13 +892,41 @@ QSGNode* PreviewQuickSceneRoot::updatePaintNode(QSGNode* oldNode, UpdatePaintNod
         renderPhaseUpdatePaintStartNs_ = renderPhaseTimer_.nsecsElapsed();
     }
 
-    auto* root = ensureLayerSlotRoot(oldNode);
-    textures_.setWindow(window());
-    textures_.beginFrame();
+    auto* root = ensureLayerSlotRoot(oldNode, window());
+    PreviewTextureRepository* textures = root->textures();
+    const bool explicitTextureReset =
+        textureResetRequested_.exchange(false, std::memory_order_acq_rel);
+    if (explicitTextureReset || textures->resetRequiredBeforeFrame()) {
+        const PreviewTextureStats statsBeforeReset = textures->stats();
+        const quint64 previousGeneration = root->generation();
+        root->resetTextureGeneration();
+        textures = root->textures();
+        cachedCenterDisplayMode_ = miacode::preview_gameplay::CenterDisplayMode::Off;
+        cachedCenterDisplayRenderSize_ = QSize();
+        appendQuickSceneLog(
+            QStringLiteral("texture_generation_reset"),
+            QString(
+                "previous_generation=%1 generation=%2 reason=%3 cached=%4 cached_bytes=%5 transient=%6 retained=%7"
+            )
+                .arg(previousGeneration)
+                .arg(root->generation())
+                .arg(explicitTextureReset ? QStringLiteral("explicit") : QStringLiteral("cache_limit"))
+                .arg(statsBeforeReset.cachedTextureCount)
+                .arg(statsBeforeReset.cachedTextureBytes)
+                .arg(statsBeforeReset.transientTextureCount)
+                .arg(statsBeforeReset.retainedTextureCount));
+    }
+    textures->beginFrame();
+    const bool layerProfilingEnabled =
+        miacode::debug_options::previewProfileOutputEnabled() || renderDiagEnabled;
     layerProfileStats_.clear();
+    QVector<PreviewTextureLayerStats>* const layerStatsForFrame =
+        layerProfilingEnabled ? &layerProfileStats_ : nullptr;
     const miacode::preview::scene::PreviewFrameState* state = nullptr;
+    std::shared_ptr<const miacode::preview::scene::PreviewFrameState> runtimeStateSnapshot;
     if (runtime_ != nullptr) {
-        state = &runtime_->frameState();
+        runtimeStateSnapshot = runtime_->frameStateSnapshot();
+        state = runtimeStateSnapshot.get();
     } else {
         state = frameState_;
     }
@@ -732,7 +962,7 @@ QSGNode* PreviewQuickSceneRoot::updatePaintNode(QSGNode* oldNode, UpdatePaintNod
 
     if (!hasState || !hasWindow) {
         if (miacode::debug_options::previewProfileOutputEnabled()) {
-            enqueueTextureStatsForPresentation(textureStats());
+            enqueueTextureStatsForPresentation(mergedTextureStats(*textures, layerProfileStats_));
         }
         return root;
     }
@@ -766,8 +996,11 @@ QSGNode* PreviewQuickSceneRoot::updatePaintNode(QSGNode* oldNode, UpdatePaintNod
     miacode::preview::scene::syncPreviewLayerWindowCursor(preparedCache_.maimuriDxJudgeLayer(), playheadSeconds, &maimuriDxJudgeCursor_);
 
     const auto applyWindowCounts =
-        [this](const char* layerName, qint64 candidateCount, qint64 activeCount) {
-            PreviewTextureLayerStats& layerStat = ensureLayerProfileStat(&layerProfileStats_, layerName);
+        [layerStatsForFrame](const char* layerName, qint64 candidateCount, qint64 activeCount) {
+            if (layerStatsForFrame == nullptr) {
+                return;
+            }
+            PreviewTextureLayerStats& layerStat = ensureLayerProfileStat(layerStatsForFrame, layerName);
             layerStat.candidateCount = candidateCount;
             layerStat.activeCount = activeCount;
         };
@@ -777,27 +1010,10 @@ QSGNode* PreviewQuickSceneRoot::updatePaintNode(QSGNode* oldNode, UpdatePaintNod
         layerSlotAt(root, slotIndex++),
         miacode::preview::scene::previewRenderLayerEnabled(layerFlags_, miacode::preview::scene::StageBackgroundLayer),
         "stage_background",
-        &layerProfileStats_,
+        layerStatsForFrame,
         [&](QSGNode* oldChild) {
-            return stageBackgroundLayer_.updateNode(oldChild, *state, renderSize, window(), &textures_);
+            return stageBackgroundLayer_.updateNode(oldChild, *state, renderSize, window(), textures);
         });
-    // Phase 4d-fix — when per-pixel alpha is on (exclusive auto-on),
-    // stop here. The dim-layer slot above is the only QSG output the
-    // chart preview needs; chart-sprite layers below are owned by
-    // DComp. This preserves the user's Background brightness controls
-    // while keeping DComp the exclusive chart renderer.
-    if (keepDimOnly) {
-        // Trim any stale chart-sprite slots from a prior frame that
-        // ran without exclusive mode — otherwise they'd still be
-        // attached to root from before the toggle.
-        const int currentChildCount = root->childCount();
-        for (int i = currentChildCount - 1; i >= slotIndex; --i) {
-            QSGNode* extra = root->childAtIndex(i);
-            root->removeChildNode(extra);
-            delete extra;
-        }
-        return root;
-    }
     updateCenterDisplaySlot(
         layerSlotAt(root, slotIndex++),
         *state,
@@ -817,32 +1033,32 @@ QSGNode* PreviewQuickSceneRoot::updatePaintNode(QSGNode* oldNode, UpdatePaintNod
         layerSlotAt(root, slotIndex++),
         miacode::preview::scene::previewRenderLayerEnabled(layerFlags_, miacode::preview::scene::BackdropLayer),
         "backdrop",
-        &layerProfileStats_,
+        layerStatsForFrame,
         [&](QSGNode* oldChild) {
-            return backdropLayer_.updateNode(oldChild, *state, renderSize, window(), &textures_);
+            return backdropLayer_.updateNode(oldChild, *state, renderSize, window(), textures);
         });
     updateLayerSlotProfiled(
         layerSlotAt(root, slotIndex++),
         miacode::preview::scene::previewRenderLayerEnabled(layerFlags_, miacode::preview::scene::MuriPadStateLayer),
         "muri_pad",
-        &layerProfileStats_,
+        layerStatsForFrame,
         [&](QSGNode* oldChild) {
-            return muriPadLayer_.updateNode(oldChild, *state, renderSize, window(), &textures_);
+            return muriPadLayer_.updateNode(oldChild, *state, renderSize, window(), textures);
         });
     updateLayerSlotProfiled(
         layerSlotAt(root, slotIndex++),
         miacode::preview::scene::previewRenderLayerEnabled(layerFlags_, miacode::preview::scene::MuriActionLayer),
         "muri_action",
-        &layerProfileStats_,
+        layerStatsForFrame,
         [&](QSGNode* oldChild) {
-            return muriActionLayer_.updateNode(oldChild, *state, renderSize, window(), &textures_);
+            return muriActionLayer_.updateNode(oldChild, *state, renderSize, window(), textures);
         });
     bool judgeFireworkNodeProduced = false;
     updateLayerSlotProfiled(
         layerSlotAt(root, slotIndex++),
         miacode::preview::scene::previewRenderLayerEnabled(layerFlags_, miacode::preview::scene::JudgeFireworkLayer),
         "judge_firework",
-        &layerProfileStats_,
+        layerStatsForFrame,
         [&](QSGNode* oldChild) {
             QSGNode* node = judgeFireworkLayer_.updateNode(
                 oldChild,
@@ -851,15 +1067,16 @@ QSGNode* PreviewQuickSceneRoot::updatePaintNode(QSGNode* oldNode, UpdatePaintNod
                 &judgeFireworkCursor_,
                 renderSize,
                 window(),
-                &textures_);
+                textures);
             judgeFireworkNodeProduced = (node != nullptr);
             return node;
         });
-    if (judgeFireworkNodeProduced && runtime_ != nullptr) {
-        // Confirms to the runtime that the firework material PSO was bound +
-        // colour-ball texture uploaded this frame — drives warm-up completion
-        // (PreviewRuntime::handlePresentedFrame). Render-thread safe (atomic).
-        runtime_->notifyFireworkLayerProducedNode();
+    if (judgeFireworkNodeProduced) {
+        // Latch it for the direct frameSwapped hook below, which is what confirms the
+        // warm-up: binding the material here only records the work, while the swap is
+        // what proves the pipeline build and texture upload actually completed
+        // (audit §6D-2). Render-thread only, same thread as the hook.
+        fireworkNodeInPendingFrame_ = true;
     }
     applyWindowCounts(
         "judge_firework",
@@ -870,7 +1087,7 @@ QSGNode* PreviewQuickSceneRoot::updatePaintNode(QSGNode* oldNode, UpdatePaintNod
         layerSlotAt(root, slotIndex++),
         miacode::preview::scene::previewRenderLayerEnabled(layerFlags_, miacode::preview::scene::GuideLayer),
         "guide",
-        &layerProfileStats_,
+        layerStatsForFrame,
         [&](QSGNode* oldChild) {
             return guideLayer_.updateNode(
                 oldChild,
@@ -879,14 +1096,27 @@ QSGNode* PreviewQuickSceneRoot::updatePaintNode(QSGNode* oldNode, UpdatePaintNod
                 &guideCursor_,
                 renderSize,
                 window(),
-                &textures_);
+                textures);
         });
     applyWindowCounts("guide", preparedCache_.guideLayer().entries.size(), guideCursor_.activePreparedIndices.size());
     updateLayerSlotProfiled(
         layerSlotAt(root, slotIndex++),
+        miacode::preview::scene::previewRenderLayerEnabled(layerFlags_, miacode::preview::scene::GuideLayer),
+        "touch_hover",
+        layerStatsForFrame,
+        [&](QSGNode* oldChild) {
+            return touchHoverLayer_.updateNode(
+                oldChild,
+                *state,
+                renderSize,
+                window(),
+                textures);
+        });
+    updateLayerSlotProfiled(
+        layerSlotAt(root, slotIndex++),
         miacode::preview::scene::previewRenderLayerEnabled(layerFlags_, miacode::preview::scene::TrackLayer),
         "track",
-        &layerProfileStats_,
+        layerStatsForFrame,
         [&](QSGNode* oldChild) {
             return trackLayer_.updateNode(
                 oldChild,
@@ -895,7 +1125,7 @@ QSGNode* PreviewQuickSceneRoot::updatePaintNode(QSGNode* oldNode, UpdatePaintNod
                 &trackCursor_,
                 renderSize,
                 window(),
-                &textures_);
+                textures);
         });
     applyWindowCounts(
         "track",
@@ -906,7 +1136,7 @@ QSGNode* PreviewQuickSceneRoot::updatePaintNode(QSGNode* oldNode, UpdatePaintNod
         layerSlotAt(root, slotIndex++),
         miacode::preview::scene::previewRenderLayerEnabled(layerFlags_, miacode::preview::scene::SlideMotionLayer),
         "slide_motion",
-        &layerProfileStats_,
+        layerStatsForFrame,
         [&](QSGNode* oldChild) {
             return slideMotionLayer_.updateNode(
                 oldChild,
@@ -915,7 +1145,7 @@ QSGNode* PreviewQuickSceneRoot::updatePaintNode(QSGNode* oldNode, UpdatePaintNod
                 &slideMotionCursor_,
                 renderSize,
                 window(),
-                &textures_);
+                textures);
         });
     applyWindowCounts(
         "slide_motion",
@@ -930,7 +1160,7 @@ QSGNode* PreviewQuickSceneRoot::updatePaintNode(QSGNode* oldNode, UpdatePaintNod
         layerSlotAt(root, slotIndex++),
         miacode::preview::scene::previewRenderLayerEnabled(layerFlags_, miacode::preview::scene::ChartReviewLayer),
         "slide_shape_native",
-        &layerProfileStats_,
+        layerStatsForFrame,
         [&](QSGNode* oldChild) {
             return chartReviewShapeLayer_.updateNode(
                 oldChild,
@@ -939,14 +1169,14 @@ QSGNode* PreviewQuickSceneRoot::updatePaintNode(QSGNode* oldNode, UpdatePaintNod
                 &chartReviewCursor_,
                 renderSize,
                 window(),
-                &textures_,
+                textures,
                 miacode::preview::scene::SlideJudgeRenderGroup::SlideShapeOnly);
         });
     updateLayerSlotProfiled(
         layerSlotAt(root, slotIndex++),
         miacode::preview::scene::previewRenderLayerEnabled(layerFlags_, miacode::preview::scene::MaimuriDxJudgeLayer),
         "slide_shape_dx",
-        &layerProfileStats_,
+        layerStatsForFrame,
         [&](QSGNode* oldChild) {
             return maimuriDxJudgeShapeLayer_.updateNode(
                 oldChild,
@@ -955,34 +1185,14 @@ QSGNode* PreviewQuickSceneRoot::updatePaintNode(QSGNode* oldNode, UpdatePaintNod
                 &maimuriDxJudgeCursor_,
                 renderSize,
                 window(),
-                &textures_,
+                textures,
                 miacode::preview::scene::SlideJudgeRenderGroup::SlideShapeOnly);
         });
     updateLayerSlotProfiled(
         layerSlotAt(root, slotIndex++),
-        miacode::preview::scene::previewRenderLayerEnabled(layerFlags_, miacode::preview::scene::JudgeLayer),
-        "judge_effect",
-        &layerProfileStats_,
-        [&](QSGNode* oldChild) {
-            return judgeEffectLayer_.updateNode(
-                oldChild,
-                *state,
-                &preparedCache_,
-                &judgeEffectCursor_,
-                renderSize,
-                window(),
-                &textures_);
-        });
-    applyWindowCounts(
-        "judge_effect",
-        preparedCache_.judgeEffectLayer().entries.size(),
-        judgeEffectCursor_.activePreparedIndices.size()
-    );
-    updateLayerSlotProfiled(
-        layerSlotAt(root, slotIndex++),
         miacode::preview::scene::previewRenderLayerEnabled(layerFlags_, miacode::preview::scene::JudgeTouchLayer),
         "touch_judge",
-        &layerProfileStats_,
+        layerStatsForFrame,
         [&](QSGNode* oldChild) {
             return touchJudgeLayer_.updateNode(
                 oldChild,
@@ -991,7 +1201,7 @@ QSGNode* PreviewQuickSceneRoot::updatePaintNode(QSGNode* oldNode, UpdatePaintNod
                 &touchJudgeCursor_,
                 renderSize,
                 window(),
-                &textures_);
+                textures);
         });
     applyWindowCounts(
         "touch_judge",
@@ -1002,7 +1212,7 @@ QSGNode* PreviewQuickSceneRoot::updatePaintNode(QSGNode* oldNode, UpdatePaintNod
         layerSlotAt(root, slotIndex++),
         miacode::preview::scene::previewRenderLayerEnabled(layerFlags_, miacode::preview::scene::HeadLayer),
         "head",
-        &layerProfileStats_,
+        layerStatsForFrame,
         [&](QSGNode* oldChild) {
             return headLayer_.updateNode(
                 oldChild,
@@ -1011,14 +1221,14 @@ QSGNode* PreviewQuickSceneRoot::updatePaintNode(QSGNode* oldNode, UpdatePaintNod
                 &headCursor_,
                 renderSize,
                 window(),
-                &textures_);
+                textures);
         });
     applyWindowCounts("head", preparedCache_.headLayer().entries.size(), headCursor_.activePreparedIndices.size());
     updateLayerSlotProfiled(
         layerSlotAt(root, slotIndex++),
         miacode::preview::scene::previewRenderLayerEnabled(layerFlags_, miacode::preview::scene::TouchLayer),
         "touch",
-        &layerProfileStats_,
+        layerStatsForFrame,
         [&](QSGNode* oldChild) {
             return touchLayer_.updateNode(
                 oldChild,
@@ -1027,14 +1237,14 @@ QSGNode* PreviewQuickSceneRoot::updatePaintNode(QSGNode* oldNode, UpdatePaintNod
                 &touchCursor_,
                 renderSize,
                 window(),
-                &textures_);
+                textures);
         });
     applyWindowCounts("touch", preparedCache_.touchLayer().entries.size(), touchCursor_.activePreparedIndices.size());
     updateLayerSlotProfiled(
         layerSlotAt(root, slotIndex++),
         miacode::preview::scene::previewRenderLayerEnabled(layerFlags_, miacode::preview::scene::TouchHoldLayer),
         "touch_hold",
-        &layerProfileStats_,
+        layerStatsForFrame,
         [&](QSGNode* oldChild) {
             return touchHoldLayer_.updateNode(
                 oldChild,
@@ -1043,7 +1253,7 @@ QSGNode* PreviewQuickSceneRoot::updatePaintNode(QSGNode* oldNode, UpdatePaintNod
                 &touchHoldCursor_,
                 renderSize,
                 window(),
-                &textures_);
+                textures);
         });
     applyWindowCounts(
         "touch_hold",
@@ -1052,9 +1262,29 @@ QSGNode* PreviewQuickSceneRoot::updatePaintNode(QSGNode* oldNode, UpdatePaintNod
     );
     updateLayerSlotProfiled(
         layerSlotAt(root, slotIndex++),
+        miacode::preview::scene::previewRenderLayerEnabled(layerFlags_, miacode::preview::scene::JudgeLayer),
+        "judge_effect",
+        layerStatsForFrame,
+        [&](QSGNode* oldChild) {
+            return judgeEffectLayer_.updateNode(
+                oldChild,
+                *state,
+                &preparedCache_,
+                &judgeEffectCursor_,
+                renderSize,
+                window(),
+                textures);
+        });
+    applyWindowCounts(
+        "judge_effect",
+        preparedCache_.judgeEffectLayer().entries.size(),
+        judgeEffectCursor_.activePreparedIndices.size()
+    );
+    updateLayerSlotProfiled(
+        layerSlotAt(root, slotIndex++),
         miacode::preview::scene::previewRenderLayerEnabled(layerFlags_, miacode::preview::scene::ChartReviewLayer),
         "chart_review",
-        &layerProfileStats_,
+        layerStatsForFrame,
         [&](QSGNode* oldChild) {
             return chartReviewLayer_.updateNode(
                 oldChild,
@@ -1063,7 +1293,7 @@ QSGNode* PreviewQuickSceneRoot::updatePaintNode(QSGNode* oldNode, UpdatePaintNod
                 &chartReviewCursor_,
                 renderSize,
                 window(),
-                &textures_,
+                textures,
                 miacode::preview::scene::SlideJudgeRenderGroup::JudgeTextOnly);
         });
     applyWindowCounts(
@@ -1075,7 +1305,7 @@ QSGNode* PreviewQuickSceneRoot::updatePaintNode(QSGNode* oldNode, UpdatePaintNod
         layerSlotAt(root, slotIndex++),
         miacode::preview::scene::previewRenderLayerEnabled(layerFlags_, miacode::preview::scene::MaimuriDxJudgeLayer),
         "maimuri_dx_judge",
-        &layerProfileStats_,
+        layerStatsForFrame,
         [&](QSGNode* oldChild) {
             return maimuriDxJudgeLayer_.updateNode(
                 oldChild,
@@ -1084,7 +1314,7 @@ QSGNode* PreviewQuickSceneRoot::updatePaintNode(QSGNode* oldNode, UpdatePaintNod
                 &maimuriDxJudgeCursor_,
                 renderSize,
                 window(),
-                &textures_,
+                textures,
                 miacode::preview::scene::SlideJudgeRenderGroup::JudgeTextOnly);
         });
     applyWindowCounts(
@@ -1093,12 +1323,40 @@ QSGNode* PreviewQuickSceneRoot::updatePaintNode(QSGNode* oldNode, UpdatePaintNod
         maimuriDxJudgeCursor_.activePreparedIndices.size()
     );
     if (miacode::debug_options::previewProfileOutputEnabled()) {
-        enqueueTextureStatsForPresentation(textureStats());
+        enqueueTextureStatsForPresentation(mergedTextureStats(*textures, layerProfileStats_));
     }
     if (renderDiagEnabled) {
         renderPhaseUpdatePaintEndNs_ = renderPhaseTimer_.nsecsElapsed();
+        noteFirstLayerDraws();
     }
     return root;
+}
+
+void PreviewQuickSceneRoot::noteFirstLayerDraws()
+{
+    // Audit §5.4. The existing warm-up only proves the judge-firework material was
+    // built; every other layer still compiles its pipeline and uploads its textures
+    // on the first frame that actually draws it — and on a cold first play that frame
+    // is the one the user is waiting for. There is no log today that says WHICH layer
+    // debuted on the slow frame, so "the warm-up does not cover the real first-use
+    // state" could be argued but not shown. One line per layer, once per scene-graph
+    // lifetime, emitted from updatePaintNode so it lands immediately before that same
+    // frame's render_frame_profile in the log.
+    for (const PreviewTextureLayerStats& stat : layerProfileStats_) {
+        if (!stat.nodeProduced || layersFirstDrawn_.contains(stat.name)) {
+            continue;
+        }
+        layersFirstDrawn_.insert(stat.name);
+        appendQuickSceneLog(
+            QStringLiteral("layer_first_draw"),
+            QString("layer=%1 update_paint_count=%2 build_ms=%3 candidates=%4 active=%5")
+                .arg(stat.name)
+                .arg(updatePaintNodeCount_)
+                .arg(QString::number(stat.buildMs, 'f', 3))
+                .arg(stat.candidateCount)
+                .arg(stat.activeCount)
+        );
+    }
 }
 
 void PreviewQuickSceneRoot::recordRenderPhaseProfile()
@@ -1128,11 +1386,26 @@ void PreviewQuickSceneRoot::recordRenderPhaseProfile()
         return static_cast<double>(endNs - startNs) / 1000000.0;
     };
 
+    const qint64 passStart = renderPhasePassStartNs_;
+    const qint64 passEnd = renderPhasePassEndNs_;
+
     const double paintMs = deltaMs(paintEnd, paintStart);
     const double syncMs = deltaMs(syncEnd, syncStart);
     const double renderSubmitMs = deltaMs(renderEnd, renderStart);
     const double swapGpuMs = deltaMs(swapNs, renderEnd);
     const double totalMs = deltaMs(swapNs, paintStart);
+    // render_submit_ms decomposition (audit §5.1). Without this the one-second
+    // first-play block is a single opaque number; with it the log says whether the
+    // wait is QRhi resource work, first-use pipeline creation inside the render
+    // pass, or the endFrame tail.
+    //   resource_prep_ms : beforeRendering -> beforeRenderPassRecording
+    //                      (texture/buffer uploads, RHI resource creation, swapchain acquire)
+    //   pass_record_ms   : beforeRenderPassRecording -> afterRenderPassRecording
+    //                      (draw-call recording; a first-use PSO/shader variant is built here)
+    //   submit_tail_ms   : afterRenderPassRecording -> afterRendering
+    const double resourcePrepMs = deltaMs(passStart, renderStart);
+    const double passRecordMs = deltaMs(passEnd, passStart);
+    const double submitTailMs = deltaMs(renderEnd, passEnd);
     // pre_render_wait_ms = gap between afterSynchronizing and beforeRendering. In Qt's
     // threaded RHI render loop the swap-chain image acquire happens here, so a fat value
     // is the smoking gun for vsync / DXGI flip-queue back-pressure (we'll see this spike
@@ -1165,22 +1438,63 @@ void PreviewQuickSceneRoot::recordRenderPhaseProfile()
     }
     renderPhaseLastLogMs_ = nowMs;
 
+    const auto msOrNa = [](double value) {
+        return value < 0 ? QStringLiteral("na") : QString::number(value, 'f', 3);
+    };
     appendQuickSceneLog(
         QStringLiteral("render_frame_profile"),
         QString("total_ms=%1 paint_ms=%2 sync_ms=%3 pre_render_wait_ms=%4 render_submit_ms=%5 "
-                "swap_gpu_ms=%6 layer_sum_ms=%7 top_layer=%8 top_layer_ms=%9 layer_count=%10 slow=%11")
-            .arg(totalMs < 0 ? QStringLiteral("na") : QString::number(totalMs, 'f', 3))
-            .arg(paintMs < 0 ? QStringLiteral("na") : QString::number(paintMs, 'f', 3))
-            .arg(syncMs < 0 ? QStringLiteral("na") : QString::number(syncMs, 'f', 3))
-            .arg(preRenderWaitMs < 0 ? QStringLiteral("na") : QString::number(preRenderWaitMs, 'f', 3))
-            .arg(renderSubmitMs < 0 ? QStringLiteral("na") : QString::number(renderSubmitMs, 'f', 3))
-            .arg(swapGpuMs < 0 ? QStringLiteral("na") : QString::number(swapGpuMs, 'f', 3))
+                "resource_prep_ms=%6 pass_record_ms=%7 submit_tail_ms=%8 "
+                "swap_gpu_ms=%9 layer_sum_ms=%10 top_layer=%11 top_layer_ms=%12 layer_count=%13 slow=%14")
+            .arg(msOrNa(totalMs))
+            .arg(msOrNa(paintMs))
+            .arg(msOrNa(syncMs))
+            .arg(msOrNa(preRenderWaitMs))
+            .arg(msOrNa(renderSubmitMs))
+            .arg(msOrNa(resourcePrepMs))
+            .arg(msOrNa(passRecordMs))
+            .arg(msOrNa(submitTailMs))
+            .arg(msOrNa(swapGpuMs))
             .arg(QString::number(totalLayerBuildMs, 'f', 3))
             .arg(topLayerName.isEmpty() ? QStringLiteral("none") : topLayerName)
             .arg(QString::number(topLayerBuildMs, 'f', 3))
             .arg(layerProfileStats_.size())
             .arg(slowFrame ? 1 : 0)
     );
+
+    // First frame in the process whose submit crosses the "this is the reported stall,
+    // not ordinary jitter" bar gets one extra line naming the phase that owned it, so a
+    // capture that lost its sampled profile lines still carries the verdict. No DXGI /
+    // COM work here: this runs on the QSG render thread. The adapter + VRAM context for
+    // the same moment is emitted from the GUI-thread first-play trace instead
+    // (PreviewStageMediaHost::emitFirstPlaybackRenderTrace).
+    constexpr double kRenderStallContextMs = 250.0;
+    if (!renderStallContextEmitted_ && renderSubmitMs >= kRenderStallContextMs) {
+        renderStallContextEmitted_ = true;
+        QString dominant = QStringLiteral("unknown");
+        if (resourcePrepMs >= 0 && passRecordMs >= 0 && submitTailMs >= 0) {
+            if (resourcePrepMs >= passRecordMs && resourcePrepMs >= submitTailMs) {
+                dominant = QStringLiteral("resource_prep");
+            } else if (passRecordMs >= submitTailMs) {
+                dominant = QStringLiteral("pass_record");
+            } else {
+                dominant = QStringLiteral("submit_tail");
+            }
+        }
+        appendQuickSceneLog(
+            QStringLiteral("render_stall_context"),
+            QString("render_submit_ms=%1 resource_prep_ms=%2 pass_record_ms=%3 submit_tail_ms=%4 "
+                    "pre_render_wait_ms=%5 swap_gpu_ms=%6 dominant=%7 layer_count=%8")
+                .arg(msOrNa(renderSubmitMs))
+                .arg(msOrNa(resourcePrepMs))
+                .arg(msOrNa(passRecordMs))
+                .arg(msOrNa(submitTailMs))
+                .arg(msOrNa(preRenderWaitMs))
+                .arg(msOrNa(swapGpuMs))
+                .arg(dominant)
+                .arg(layerProfileStats_.size())
+        );
+    }
 }
 
 void PreviewQuickSceneRoot::geometryChange(const QRectF& newGeometry, const QRectF& oldGeometry)

@@ -7,18 +7,24 @@
 #include "mainwindow/MainWindowShared.h"
 #include "EditableValueLabel.h"
 #include "UiText.h"
+#include "UiComponents.h"
 #include "UiTheme.h"
 
 #include "common/ChartClockCount.h"
+#include "common/OperationLog.h"
 
 #include <QApplication>
 #include <QButtonGroup>
 #include <QCursor>
+#include <QComboBox>
 #include <QDoubleSpinBox>
+#include <QFileInfo>
 #include <QFrame>
 #include <QGridLayout>
 #include <QHBoxLayout>
 #include <QLabel>
+#include <QPaintEvent>
+#include <QPainter>
 #include <QPushButton>
 #include <QRadioButton>
 #include <QScrollArea>
@@ -30,7 +36,9 @@
 #include <QSize>
 #include <QSlider>
 #include <QSpinBox>
+#include <QStyleOptionToolButton>
 #include <QTimer>
+#include <QToolButton>
 #include <QVBoxLayout>
 #include <QWheelEvent>
 
@@ -44,10 +52,17 @@ constexpr int kEditDebounceMs = 300;
 constexpr int kDefaultSfxVolumePercent = 50;
 constexpr int kDecimalsBpm = 3;
 constexpr int kDecimalsOffset = 3;
+constexpr double kBpmFineTuneStep = 0.01;
+constexpr double kOffsetFineTuneStepSeconds = 0.001;
 
 QString latencySfxVolumeSettingsKey()
 {
     return QStringLiteral("latency/sfxVolumePercent");
+}
+
+QString latencyAudioDecoderSettingsKey()
+{
+    return QStringLiteral("latency/audioDecoder");
 }
 
 // The BPM/offset spin boxes and the SFX slider live in a scroll area, so a
@@ -80,6 +95,84 @@ public:
 protected:
     void wheelEvent(QWheelEvent* event) override { event->ignore(); }
 };
+
+class FineTuneButton final : public QToolButton
+{
+public:
+    FineTuneButton(bool pointsUp, QWidget* parent)
+        : QToolButton(parent)
+        , pointsUp_(pointsUp)
+    {
+    }
+
+protected:
+    void paintEvent(QPaintEvent* event) override
+    {
+        QToolButton::paintEvent(event);
+
+        QStyleOptionToolButton option;
+        initStyleOption(&option);
+        const QPointF center = QRectF(rect()).center();
+        const qreal direction = pointsUp_ ? -1.0 : 1.0;
+        QPolygonF arrow;
+        arrow << QPointF(center.x(), center.y() + direction * 2.5)
+              << QPointF(center.x() - 3.5, center.y() - direction * 1.5)
+              << QPointF(center.x() + 3.5, center.y() - direction * 1.5);
+
+        QPainter painter(this);
+        painter.setRenderHint(QPainter::Antialiasing, true);
+        painter.setPen(Qt::NoPen);
+        painter.setBrush(option.palette.color(QPalette::ButtonText));
+        painter.drawPolygon(arrow);
+    }
+
+private:
+    bool pointsUp_ = true;
+};
+
+QWidget* createFineTuneField(
+    QDoubleSpinBox* editor,
+    double fineStep,
+    const QString& stepLabel,
+    QWidget* parent)
+{
+    auto* field = new QWidget(parent);
+    auto* fieldLayout = new QHBoxLayout(field);
+    fieldLayout->setContentsMargins(0, 0, 0, 0);
+    fieldLayout->setSpacing(6);
+    fieldLayout->addWidget(editor);
+
+    auto* buttonGroup = new QFrame(field);
+    buttonGroup->setObjectName(QStringLiteral("LatencyFineTuneGroup"));
+    buttonGroup->setFixedSize(26, 34);
+    auto* buttonLayout = new QVBoxLayout(buttonGroup);
+    buttonLayout->setContentsMargins(1, 1, 1, 1);
+    buttonLayout->setSpacing(0);
+
+    const auto addButton = [&](bool pointsUp, double delta, const char* edge,
+                               const QString& textKey) {
+        auto* button = new FineTuneButton(pointsUp, buttonGroup);
+        button->setObjectName(QStringLiteral("LatencyFineTuneButton"));
+        button->setProperty("fineEdge", QString::fromLatin1(edge));
+        button->setCursor(Qt::PointingHandCursor);
+        button->setAutoRepeat(true);
+        button->setAutoRepeatDelay(350);
+        button->setAutoRepeatInterval(75);
+        button->setFixedSize(24, 16);
+        const QString description = UiText::text(textKey).arg(stepLabel);
+        button->setToolTip(description);
+        button->setAccessibleName(description);
+        QObject::connect(button, &QToolButton::clicked, editor, [editor, delta]() {
+            editor->setValue(editor->value() + delta);
+        });
+        buttonLayout->addWidget(button);
+    };
+
+    addButton(true, fineStep, "top", QStringLiteral("latency.fine_increase_1"));
+    addButton(false, -fineStep, "bottom", QStringLiteral("latency.fine_decrease_1"));
+    fieldLayout->addWidget(buttonGroup, 0, Qt::AlignVCenter);
+    return field;
+}
 
 }  // namespace
 
@@ -167,11 +260,23 @@ void LatencyDetectionPage::applyThemeStyles()
 void LatencyDetectionPage::refreshFromDocument()
 {
     if (owner_.isNull() || suppressDocumentRefresh_) {
+        appendLatencyDiagnosticPhase(
+            QStringLiteral("page_refresh_document_skip"),
+            QStringLiteral("owner=%1 suppressed=%2")
+                .arg(owner_.isNull() ? 0 : 1)
+                .arg(suppressDocumentRefresh_ ? 1 : 0));
         return;
     }
     const double bpm = documentWholeBpm();
     const double offset = documentOffsetSeconds();
     const int clockCount = documentClockCount();
+    appendLatencyDiagnosticPhase(
+        QStringLiteral("page_refresh_document_values"),
+        QStringLiteral("bpm=%1 offset=%2 clock_count=%3 sandbox=%4")
+            .arg(bpm, 0, 'f', 6)
+            .arg(offset, 0, 'f', 6)
+            .arg(clockCount)
+            .arg(sandbox_.isNull() ? 0 : 1));
     if (bpmEdit_ != nullptr) {
         QSignalBlocker blocker(bpmEdit_);
         bpmEdit_->setValue(bpm > 0.0 ? bpm : 120.0);
@@ -191,19 +296,33 @@ void LatencyDetectionPage::refreshFromDocument()
         sandbox_->setOffsetSeconds(offset);
     }
     updateAutoDetectAvailability();
+    appendLatencyDiagnosticPhase(QStringLiteral("page_refresh_document_complete"));
 }
 
 void LatencyDetectionPage::onPageEntered()
 {
+    MC_OP("LatencyDetectionPage::onPageEntered");
+    appendLatencyDiagnosticPhase(
+        QStringLiteral("page_enter_begin"),
+        QStringLiteral("owner=%1 sandbox=%2 track_present=%3")
+            .arg(owner_.isNull() ? 0 : 1)
+            .arg(sandbox_.isNull() ? 0 : 1)
+            .arg(currentTrackPath().isEmpty() ? 0 : 1));
     // Sync BPM/Offset into the sandbox first so the test chart it installs on
     // entry is built from the document's values rather than stale defaults.
+    appendLatencyDiagnosticPhase(QStringLiteral("page_enter_refresh_document_begin"));
     refreshFromDocument();
+    appendLatencyDiagnosticPhase(QStringLiteral("page_enter_refresh_document_complete"));
     if (!sandbox_.isNull()) {
+        appendLatencyDiagnosticPhase(QStringLiteral("page_enter_sandbox_begin"));
         sandbox_->setOnPage(true);
+        appendLatencyDiagnosticPhase(QStringLiteral("page_enter_sandbox_complete"));
     }
     // Take focus so the page-local Save/Undo/Redo shortcuts are live
     // immediately (otherwise the sidebar list keeps focus on entry).
+    appendLatencyDiagnosticPhase(QStringLiteral("page_enter_focus_begin"));
     setFocus(Qt::OtherFocusReason);
+    appendLatencyDiagnosticPhase(QStringLiteral("page_enter_complete"));
 }
 
 void LatencyDetectionPage::onPageLeft()
@@ -227,11 +346,12 @@ void LatencyDetectionPage::buildUi()
     // Tools menu), so it carries its own way back. switchToMetadataField()
     // runs the full leave semantics (onPageLeft teardown, bottom-tab OFF).
     auto* backBar = new QWidget(this);
+    backBar->setObjectName(QStringLiteral("LatencyBackBar"));
     auto* backBarLayout = new QHBoxLayout(backBar);
     backBarLayout->setContentsMargins(22, 12, 28, 0);
     backBarLayout->setSpacing(0);
     auto* backButton = new QPushButton(
-        localizedText(QStringLiteral("← 返回谱面信息"), QStringLiteral("← Back to Chart Info")), backBar);
+        UiText::text(QStringLiteral("latency.back_to_chart_info")), backBar);
     backButton->setObjectName(QStringLiteral("LatencyBackButton"));
     backButton->setCursor(Qt::PointingHandCursor);
     backButton->setFlat(true);
@@ -248,16 +368,15 @@ void LatencyDetectionPage::buildUi()
     // row lets every parameter row stay the same shape: label / spin / detect /
     // result.
     auto* mediaToolsButton = new QPushButton(
-        localizedText(QStringLiteral("音频/视频处理"), QStringLiteral("Audio/Video Processing")), backBar);
+        UiText::text(QStringLiteral("media_tools.audio_video_processing")), backBar);
     mediaToolsButton_ = mediaToolsButton;
     mediaToolsButton->setObjectName(QStringLiteral("LatencyMediaToolsButton"));
     mediaToolsButton->setIcon(
         miacode::mainwindow::shared::makeMusicNoteIcon(UiTheme::colors().accent));
     mediaToolsButton->setIconSize(QSize(16, 16));
     mediaToolsButton->setCursor(Qt::PointingHandCursor);
-    mediaToolsButton->setToolTip(localizedText(
-        QStringLiteral("打开音频/视频处理工具：采样率转换 / 视频压缩 / 开头静音 / 开头黑幕。"),
-        QStringLiteral("Open audio/video tools: sample-rate convert / compress video / prepend silence / prepend black.")));
+    mediaToolsButton->setToolTip(
+        UiText::text(QStringLiteral("latency.open_audio_video_tools_sample")));
     connect(mediaToolsButton, &QPushButton::clicked, this, [this]() {
         if (!owner_.isNull()) {
             owner_->onMediaProcessingTools();
@@ -267,32 +386,23 @@ void LatencyDetectionPage::buildUi()
     outer->addWidget(backBar, 0);
 
     auto* scroll = new QScrollArea(this);
+    scroll->setObjectName(QStringLiteral("LatencyScrollArea"));
     scroll->setWidgetResizable(true);
     scroll->setFrameShape(QFrame::NoFrame);
     scroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    scroll->viewport()->setObjectName(QStringLiteral("LatencyScrollViewport"));
+    scroll->viewport()->setAutoFillBackground(false);
+    miacode::ui::applyScrollBarStyle(scroll);
     outer->addWidget(scroll, 1);
 
     auto* content = new QWidget(scroll);
+    content->setObjectName(QStringLiteral("LatencyContent"));
     auto* contentLayout = new QVBoxLayout(content);
     contentLayout->setContentsMargins(28, 24, 28, 24);
     contentLayout->setSpacing(16);
     scroll->setWidget(content);
 
-    const QFont titleFont = miacode::mainwindow::shared::uiAccentFont(13, QFont::DemiBold);
     const QFont hintFont = miacode::mainwindow::shared::uiOutputFont();
-
-    auto makeCard = [&](const QString& titleText) -> QPair<QFrame*, QVBoxLayout*> {
-        auto* card = new QFrame(content);
-        card->setObjectName(QStringLiteral("LatencyCard"));
-        auto* layout = new QVBoxLayout(card);
-        layout->setContentsMargins(20, 16, 20, 16);
-        layout->setSpacing(10);
-        auto* title = new QLabel(titleText, card);
-        title->setProperty("role", "cardTitle");
-        title->setFont(titleFont);
-        layout->addWidget(title);
-        return {card, layout};
-    };
 
     // -------- Chart parameters card (BPM / Offset / clock_count) --------
     // One card, three symmetric rows laid out in a 4-column grid
@@ -301,21 +411,13 @@ void LatencyDetectionPage::buildUi()
     // single card keeps the new clock_count control on the same page without
     // scrolling; the media-tools launcher moved to the back bar so each row has
     // the identical shape.
-    auto paramPair = makeCard(
-        localizedText(QStringLiteral("谱面参数"), QStringLiteral("Chart Parameters")));
-    auto* paramCard = paramPair.first;
-    auto* paramLayout = paramPair.second;
+    QVBoxLayout* paramLayout = nullptr;
+    auto* paramCard = miacode::ui::createCard(
+        UiText::text(QStringLiteral("latency.chart_parameters")), content, &paramLayout);
     auto* paramGrid = new QGridLayout();
     paramGrid->setHorizontalSpacing(10);
     paramGrid->setVerticalSpacing(10);
     paramGrid->setColumnStretch(3, 1);  // result column soaks up the slack
-
-    auto makeRowLabel = [&](const QString& text) -> QLabel* {
-        auto* label = new QLabel(text, paramCard);
-        label->setProperty("role", "cardHint");
-        label->setFont(hintFont);
-        return label;
-    };
 
     // Detection-result labels are secondary; render them a touch smaller so the
     // "检测结果: …" text fits the narrowed result column without clipping.
@@ -323,23 +425,28 @@ void LatencyDetectionPage::buildUi()
     resultFont.setPointSize(qMax(8, hintFont.pointSize() - 2));
 
     // Row 0: BPM
-    paramGrid->addWidget(makeRowLabel(QStringLiteral("BPM")), 0, 0, Qt::AlignLeft | Qt::AlignVCenter);
+    paramGrid->addWidget(miacode::ui::createFormLabel(QStringLiteral("BPM"), paramCard),
+                         0, 0, Qt::AlignLeft | Qt::AlignVCenter);
     bpmEdit_ = new NoWheelDoubleSpinBox(paramCard);
     bpmEdit_->setRange(1.0, 999.0);
     bpmEdit_->setDecimals(kDecimalsBpm);
     bpmEdit_->setSingleStep(0.5);
     bpmEdit_->setValue(120.0);
     bpmEdit_->setMinimumWidth(110);
+    bpmEdit_->setButtonSymbols(QAbstractSpinBox::NoButtons);
     // keyboardTracking off: valueChanged fires only on a settled value (Enter /
-    // focus-out / step button), so a half-typed value (e.g. "8" while typing
+    // focus-out / arrow key), so a half-typed value (e.g. "8" while typing
     // "0.893") is never applied to the document or preview.
     bpmEdit_->setKeyboardTracking(false);
     bpmEdit_->setAccelerated(true);
     connect(bpmEdit_, qOverload<double>(&QDoubleSpinBox::valueChanged),
             this, &LatencyDetectionPage::onBpmEditValueChanged);
-    paramGrid->addWidget(bpmEdit_, 0, 1, Qt::AlignVCenter);
+    paramGrid->addWidget(
+        createFineTuneField(
+            bpmEdit_, kBpmFineTuneStep, QStringLiteral("0.01 BPM"), paramCard),
+        0, 1, Qt::AlignVCenter);
     detectBpmButton_ = new QPushButton(
-        localizedText(QStringLiteral("自动检测"), QStringLiteral("Auto-detect")), paramCard);
+        UiText::text(QStringLiteral("latency.auto_detect")), paramCard);
     detectBpmButton_->setCursor(Qt::PointingHandCursor);
     connect(detectBpmButton_, &QPushButton::clicked, this, &LatencyDetectionPage::onDetectBpmClicked);
     paramGrid->addWidget(detectBpmButton_, 0, 2, Qt::AlignVCenter);
@@ -351,7 +458,7 @@ void LatencyDetectionPage::buildUi()
     // Row 1: Offset (&first). The auto-detect Offset entry point is shown here
     // again (it had been hidden); its wiring was always intact.
     paramGrid->addWidget(
-        makeRowLabel(localizedText(QStringLiteral("偏移"), QStringLiteral("Offset"))),
+        miacode::ui::createFormLabel(UiText::text(QStringLiteral("latency.offset")), paramCard),
         1, 0, Qt::AlignLeft | Qt::AlignVCenter);
     offsetEdit_ = new NoWheelDoubleSpinBox(paramCard);
     offsetEdit_->setRange(-999.0, 999.0);
@@ -359,16 +466,23 @@ void LatencyDetectionPage::buildUi()
     offsetEdit_->setSingleStep(0.010);
     offsetEdit_->setValue(0.0);
     offsetEdit_->setMinimumWidth(110);
+    offsetEdit_->setButtonSymbols(QAbstractSpinBox::NoButtons);
     // keyboardTracking off: see the BPM field above — avoids applying an
     // intermediate value such as "893" while the user is typing "0.893".
     offsetEdit_->setKeyboardTracking(false);
     offsetEdit_->setAccelerated(true);
-    offsetEdit_->setSuffix(localizedText(QStringLiteral(" 秒"), QStringLiteral(" s")));
+    offsetEdit_->setSuffix(UiText::text(QStringLiteral("latency.s")));
     connect(offsetEdit_, qOverload<double>(&QDoubleSpinBox::valueChanged),
             this, &LatencyDetectionPage::onOffsetEditValueChanged);
-    paramGrid->addWidget(offsetEdit_, 1, 1, Qt::AlignVCenter);
+    paramGrid->addWidget(
+        createFineTuneField(
+            offsetEdit_,
+            kOffsetFineTuneStepSeconds,
+            QStringLiteral("0.001 s"),
+            paramCard),
+        1, 1, Qt::AlignVCenter);
     detectOffsetButton_ = new QPushButton(
-        localizedText(QStringLiteral("自动检测"), QStringLiteral("Auto-detect")), paramCard);
+        UiText::text(QStringLiteral("latency.auto_detect")), paramCard);
     detectOffsetButton_->setCursor(Qt::PointingHandCursor);
     connect(detectOffsetButton_, &QPushButton::clicked, this, &LatencyDetectionPage::onDetectOffsetClicked);
     paramGrid->addWidget(detectOffsetButton_, 1, 2, Qt::AlignVCenter);
@@ -379,7 +493,7 @@ void LatencyDetectionPage::buildUi()
 
     // Row 2: clock_count (export count-in beats; a plain manual field)
     paramGrid->addWidget(
-        makeRowLabel(QStringLiteral("clock_count")),
+        miacode::ui::createFormLabel(QStringLiteral("clock_count"), paramCard),
         2, 0, Qt::AlignLeft | Qt::AlignVCenter);
     clockCountEdit_ = new NoWheelSpinBox(paramCard);
     clockCountEdit_->setRange(1, 64);
@@ -397,21 +511,50 @@ void LatencyDetectionPage::buildUi()
     // clock_count is a plain manual field: no auto-detect button, no hint, and
     // BPM detection no longer writes it.
 
+    paramGrid->addWidget(
+        miacode::ui::createFormLabel(
+            UiText::text(QStringLiteral("latency.audio_decoder")), paramCard),
+        3, 0, Qt::AlignLeft | Qt::AlignVCenter);
+    audioDecoderCombo_ = new QComboBox(paramCard);
+    audioDecoderCombo_->addItem(QStringLiteral("BASS"), QStringLiteral("bass"));
+    audioDecoderCombo_->addItem(QStringLiteral("miniaudio"), QStringLiteral("miniaudio"));
+    audioDecoderCombo_->setMinimumWidth(110);
+    const QString storedDecoder = QSettings().value(
+        latencyAudioDecoderSettingsKey(), QStringLiteral("bass")).toString();
+    int decoderIndex = audioDecoderCombo_->findData(storedDecoder);
+    if (decoderIndex < 0) {
+        decoderIndex = 0;
+    }
+    audioDecoderCombo_->setCurrentIndex(decoderIndex);
+    if (!miacode::audio_decode::bassBackendAvailable()) {
+        audioDecoderCombo_->setItemData(0, 0, Qt::UserRole - 1);
+        if (decoderIndex == 0) {
+            audioDecoderCombo_->setCurrentIndex(1);
+        }
+    }
+    connect(audioDecoderCombo_, qOverload<int>(&QComboBox::currentIndexChanged), this, [this](int index) {
+        if (audioDecoderCombo_ == nullptr || index < 0) {
+            return;
+        }
+        QSettings().setValue(latencyAudioDecoderSettingsKey(), audioDecoderCombo_->itemData(index));
+        clearAudioEnvelopeCache();
+    });
+    paramGrid->addWidget(audioDecoderCombo_, 3, 1, Qt::AlignVCenter);
+
     paramLayout->addLayout(paramGrid);
     contentLayout->addWidget(paramCard);
 
     // -------- Audition (sandbox) card --------
-    auto auditionPair = makeCard(
-        localizedText(QStringLiteral("节奏校准试听"), QStringLiteral("Rhythm Calibration Audition")));
-    auto* auditionCard = auditionPair.first;
-    auto* auditionLayout = auditionPair.second;
+    QVBoxLayout* auditionLayout = nullptr;
+    auto* auditionCard = miacode::ui::createCard(
+        UiText::text(QStringLiteral("latency.rhythm_calibration_audition")),
+        content,
+        &auditionLayout);
 
     auto* subdivRow = new QHBoxLayout();
     subdivRow->setSpacing(16);
-    auto* subdivLabel = new QLabel(
-        localizedText(QStringLiteral("分音:"), QStringLiteral("Subdivision:")), auditionCard);
-    subdivLabel->setProperty("role", "cardHint");
-    subdivLabel->setFont(hintFont);
+    auto* subdivLabel = miacode::ui::createFormLabel(
+        UiText::text(QStringLiteral("latency.subdivision")), auditionCard);
     subdivRow->addWidget(subdivLabel);
     subdivision4Radio_ = new QRadioButton(QStringLiteral("4"), auditionCard);
     subdivision8Radio_ = new QRadioButton(QStringLiteral("8"), auditionCard);
@@ -431,7 +574,7 @@ void LatencyDetectionPage::buildUi()
     auto* transportRow = new QHBoxLayout();
     transportRow->setSpacing(12);
     auditionButton_ = new QPushButton(
-        localizedText(QStringLiteral("▶ 开始试听"), QStringLiteral("▶ Start Audition")), auditionCard);
+        UiText::text(QStringLiteral("latency.start_audition")), auditionCard);
     auditionButton_->setCursor(Qt::PointingHandCursor);
     auditionButton_->setMinimumWidth(160);
     connect(auditionButton_, &QPushButton::clicked, this, &LatencyDetectionPage::onAuditionButtonClicked);
@@ -443,10 +586,8 @@ void LatencyDetectionPage::buildUi()
 
     auto* volumeRow = new QHBoxLayout();
     volumeRow->setSpacing(10);
-    auto* volumeLabel = new QLabel(
-        localizedText(QStringLiteral("SFX 音量"), QStringLiteral("SFX Volume")), auditionCard);
-    volumeLabel->setProperty("role", "cardHint");
-    volumeLabel->setFont(hintFont);
+    auto* volumeLabel = miacode::ui::createFormLabel(
+        UiText::text(QStringLiteral("latency.sfx_volume")), auditionCard);
     volumeRow->addWidget(volumeLabel);
     sfxVolumeSlider_ = new NoWheelSlider(Qt::Horizontal, auditionCard);
     sfxVolumeSlider_->setRange(0, 100);
@@ -470,7 +611,7 @@ void LatencyDetectionPage::buildUi()
     volumeResetRow->setSpacing(10);
     volumeResetRow->addStretch(1);
     auto* volumeResetButton = new QPushButton(
-        localizedText(QStringLiteral("重置音量"), QStringLiteral("Reset volume")), auditionCard);
+        UiText::text(QStringLiteral("latency.reset_volume")), auditionCard);
     volumeResetButton->setCursor(Qt::PointingHandCursor);
     connect(volumeResetButton, &QPushButton::clicked, this, [this]() {
         if (sfxVolumeSlider_ != nullptr) {
@@ -619,25 +760,59 @@ void LatencyDetectionPage::onAuditionButtonClicked()
 
 void LatencyDetectionPage::onDetectBpmClicked()
 {
+    MC_OP("LatencyDetectionPage::onDetectBpmClicked");
+    appendLatencyDiagnosticPhase(QStringLiteral("bpm_detect_click"));
     if (owner_.isNull()) {
+        _mc_op_.fail(QStringLiteral("owner_null"));
+        appendLatencyDiagnosticPhase(QStringLiteral("bpm_detect_abort_owner_null"));
         return;
     }
     const QString trackPath = currentTrackPath();
     if (trackPath.isEmpty()) {
+        appendLatencyDiagnosticPhase(QStringLiteral("bpm_detect_abort_track_missing"));
         if (bpmDetectResultLabel_ != nullptr) {
-            bpmDetectResultLabel_->setText(localizedText(
-                QStringLiteral("缺少歌曲音频"), QStringLiteral("Track audio missing")));
+            bpmDetectResultLabel_->setText(
+                UiText::text(QStringLiteral("latency.track_audio_missing")));
         }
         return;
     }
     QApplication::setOverrideCursor(Qt::WaitCursor);
-    ensureAudioEnvelopeReady();
-    const auto result = latency_analysis::detectBpm(cachedOnsetEnvelope_);
+    appendLatencyDiagnosticPhase(QStringLiteral("bpm_detect_envelope_begin"));
+    if (!ensureAudioEnvelopeReady()) {
+        QApplication::restoreOverrideCursor();
+        appendLatencyDiagnosticPhase(QStringLiteral("bpm_detect_abort_envelope_failed"));
+        if (bpmDetectResultLabel_ != nullptr) {
+            bpmDetectResultLabel_->setText(
+                UiText::text(QStringLiteral("latency.audio_decode_failed")));
+        }
+        return;
+    }
+    appendLatencyDiagnosticPhase(
+        QStringLiteral("bpm_detect_envelope_complete"),
+        QStringLiteral("duration=%1 onset_values=%2 transient_values=%3")
+            .arg(cachedAudioDurationSeconds_, 0, 'f', 6)
+            .arg(cachedOnsetEnvelope_.values.size())
+            .arg(cachedTransientEnvelope_.values.size()));
+    latency_analysis::BpmDetectionResult result;
+    {
+        miacode::oplog::Scope phaseOp("LatencyDetectionPage::detectBpm.algorithm");
+        appendLatencyDiagnosticPhase(QStringLiteral("bpm_detect_algorithm_begin"));
+        result = latency_analysis::detectBpm(cachedOnsetEnvelope_);
+        appendLatencyDiagnosticPhase(
+            QStringLiteral("bpm_detect_algorithm_complete"),
+            QStringLiteral("bpm=%1 meter=%2 phase=%3 phase_valid=%4 candidates=%5")
+                .arg(result.bpm, 0, 'f', 6)
+                .arg(result.meterId)
+                .arg(result.meterPhaseSeconds, 0, 'f', 6)
+                .arg(result.meterPhaseValid ? 1 : 0)
+                .arg(result.candidates.size()));
+    }
     QApplication::restoreOverrideCursor();
     if (!(result.bpm > 0.0)) {
+        appendLatencyDiagnosticPhase(QStringLiteral("bpm_detect_not_found"));
         if (bpmDetectResultLabel_ != nullptr) {
-            bpmDetectResultLabel_->setText(localizedText(
-                QStringLiteral("未检测到 BPM"), QStringLiteral("BPM not detected")));
+            bpmDetectResultLabel_->setText(
+                UiText::text(QStringLiteral("latency.bpm_not_detected")));
         }
         return;
     }
@@ -650,35 +825,50 @@ void LatencyDetectionPage::onDetectBpmClicked()
     }
     commitBpmEdit();
     if (bpmDetectResultLabel_ != nullptr) {
-        bpmDetectResultLabel_->setText(localizedText(
-            QStringLiteral("检测结果: %1"),
-            QStringLiteral("Detected: %1")).arg(result.bpm, 0, 'f', kDecimalsBpm));
+        bpmDetectResultLabel_->setText(
+            UiText::text(QStringLiteral("latency.detected_1")).arg(result.bpm, 0, 'f', kDecimalsBpm));
     }
+    appendLatencyDiagnosticPhase(QStringLiteral("bpm_detect_complete"));
 }
 
 void LatencyDetectionPage::onDetectOffsetClicked()
 {
+    MC_OP("LatencyDetectionPage::onDetectOffsetClicked");
+    appendLatencyDiagnosticPhase(QStringLiteral("offset_detect_click"));
     if (owner_.isNull()) {
+        _mc_op_.fail(QStringLiteral("owner_null"));
+        appendLatencyDiagnosticPhase(QStringLiteral("offset_detect_abort_owner_null"));
         return;
     }
     const QString trackPath = currentTrackPath();
     if (trackPath.isEmpty()) {
+        appendLatencyDiagnosticPhase(QStringLiteral("offset_detect_abort_track_missing"));
         if (offsetDetectResultLabel_ != nullptr) {
-            offsetDetectResultLabel_->setText(localizedText(
-                QStringLiteral("缺少歌曲音频"), QStringLiteral("Track audio missing")));
+            offsetDetectResultLabel_->setText(
+                UiText::text(QStringLiteral("latency.track_audio_missing")));
         }
         return;
     }
     const double bpm = bpmEdit_ != nullptr ? bpmEdit_->value() : 0.0;
     if (!(bpm > 0.0)) {
+        appendLatencyDiagnosticPhase(QStringLiteral("offset_detect_abort_bpm_missing"));
         if (offsetDetectResultLabel_ != nullptr) {
-            offsetDetectResultLabel_->setText(localizedText(
-                QStringLiteral("先设置/检测 BPM"), QStringLiteral("Set or detect BPM first")));
+            offsetDetectResultLabel_->setText(
+                UiText::text(QStringLiteral("latency.set_or_detect_bpm_first")));
         }
         return;
     }
     QApplication::setOverrideCursor(Qt::WaitCursor);
-    ensureAudioEnvelopeReady();
+    appendLatencyDiagnosticPhase(QStringLiteral("offset_detect_envelope_begin"));
+    if (!ensureAudioEnvelopeReady()) {
+        QApplication::restoreOverrideCursor();
+        appendLatencyDiagnosticPhase(QStringLiteral("offset_detect_abort_envelope_failed"));
+        if (offsetDetectResultLabel_ != nullptr) {
+            offsetDetectResultLabel_->setText(
+                UiText::text(QStringLiteral("latency.audio_decode_failed")));
+        }
+        return;
+    }
     latency_analysis::OffsetDetectionInputs inputs;
     inputs.bpm = bpm;
     inputs.offsetAnchorSeconds = offsetEdit_ != nullptr ? offsetEdit_->value() : 0.0;
@@ -688,8 +878,22 @@ void LatencyDetectionPage::onDetectOffsetClicked()
     inputs.lastDetectedMeterPhase = lastDetectedMeterPhase_;
     inputs.hasLastDetectedMeterPhase = hasLastDetectedMeterPhase_;
     inputs.lastDetectedMeterId = lastDetectedMeterId_;
-    const double offset = latency_analysis::detectOffset(
-        cachedOnsetEnvelope_, cachedTransientEnvelope_, inputs);
+    double offset = 0.0;
+    {
+        miacode::oplog::Scope phaseOp("LatencyDetectionPage::detectOffset.algorithm");
+        appendLatencyDiagnosticPhase(
+            QStringLiteral("offset_detect_algorithm_begin"),
+            QStringLiteral("bpm=%1 duration=%2 onset_values=%3 transient_values=%4")
+                .arg(bpm, 0, 'f', 6)
+                .arg(cachedAudioDurationSeconds_, 0, 'f', 6)
+                .arg(cachedOnsetEnvelope_.values.size())
+                .arg(cachedTransientEnvelope_.values.size()));
+        offset = latency_analysis::detectOffset(
+            cachedOnsetEnvelope_, cachedTransientEnvelope_, inputs);
+        appendLatencyDiagnosticPhase(
+            QStringLiteral("offset_detect_algorithm_complete"),
+            QStringLiteral("offset=%1").arg(offset, 0, 'f', 6));
+    }
     QApplication::restoreOverrideCursor();
     if (offsetEdit_ != nullptr) {
         QSignalBlocker blocker(offsetEdit_);
@@ -697,10 +901,10 @@ void LatencyDetectionPage::onDetectOffsetClicked()
     }
     commitOffsetEdit();
     if (offsetDetectResultLabel_ != nullptr) {
-        offsetDetectResultLabel_->setText(localizedText(
-            QStringLiteral("检测结果: %1 秒"),
-            QStringLiteral("Detected: %1 s")).arg(offset, 0, 'f', kDecimalsOffset));
+        offsetDetectResultLabel_->setText(
+            UiText::text(QStringLiteral("latency.detected_1_s")).arg(offset, 0, 'f', kDecimalsOffset));
     }
+    appendLatencyDiagnosticPhase(QStringLiteral("offset_detect_complete"));
 }
 
 void LatencyDetectionPage::onAuditionStateChanged(bool running)
@@ -722,8 +926,8 @@ void LatencyDetectionPage::updateAuditionUi(bool running)
         // Behaves like the main Play/Pause button: shows Pause while running,
         // reverts to the play label when paused or stopped.
         auditionButton_->setText(running
-            ? localizedText(QStringLiteral("⏸ 暂停"), QStringLiteral("⏸ Pause"))
-            : localizedText(QStringLiteral("▶ 开始试听"), QStringLiteral("▶ Start Audition")));
+            ? UiText::text(QStringLiteral("latency.pause"))
+            : UiText::text(QStringLiteral("latency.start_audition")));
     }
 }
 
@@ -747,41 +951,91 @@ void LatencyDetectionPage::updateAutoDetectAvailability()
         detectBpmButton_->setEnabled(hasAudio);
         detectBpmButton_->setToolTip(hasAudio
             ? QString()
-            : localizedText(
-                QStringLiteral("需要先加载歌曲音频"),
-                QStringLiteral("Requires a loaded track audio file")));
+            : UiText::text(QStringLiteral("latency.requires_a_loaded_track_audio")));
     }
     if (detectOffsetButton_ != nullptr) {
         detectOffsetButton_->setEnabled(hasAudio);
         detectOffsetButton_->setToolTip(hasAudio
             ? QString()
-            : localizedText(
-                QStringLiteral("需要先加载歌曲音频"),
-                QStringLiteral("Requires a loaded track audio file")));
+            : UiText::text(QStringLiteral("latency.requires_a_loaded_track_audio")));
     }
 }
 
-void LatencyDetectionPage::ensureAudioEnvelopeReady()
+bool LatencyDetectionPage::ensureAudioEnvelopeReady()
 {
     const QString trackPath = currentTrackPath();
     if (trackPath.isEmpty()) {
+        appendLatencyDiagnosticPhase(QStringLiteral("audio_envelope_track_missing"));
         clearAudioEnvelopeCache();
-        return;
+        return false;
     }
     if (trackPath == cachedAudioPath_
         && !cachedOnsetEnvelope_.isEmpty()
         && !cachedTransientEnvelope_.isEmpty()) {
-        return;
+        appendLatencyDiagnosticPhase(
+            QStringLiteral("audio_envelope_cache_hit"),
+            QStringLiteral("duration=%1 onset_values=%2 transient_values=%3")
+                .arg(cachedAudioDurationSeconds_, 0, 'f', 6)
+                .arg(cachedOnsetEnvelope_.values.size())
+                .arg(cachedTransientEnvelope_.values.size()));
+        return true;
     }
-    const auto decoded = latency_analysis::decodeMonoTrack(trackPath);
+    const auto backend = selectedAudioDecodeBackend();
+    latency_analysis::DecodedAudio decoded;
+    {
+        miacode::oplog::Scope phaseOp("LatencyDetectionPage::ensureAudioEnvelopeReady.decodeMonoTrack");
+        appendLatencyDiagnosticPhase(
+            QStringLiteral("audio_decode_begin"),
+            QStringLiteral("backend=%1 target_rate=%2 suffix=%3")
+                .arg(static_cast<int>(backend))
+                .arg(latency_analysis::kAnalysisSampleRate)
+                .arg(QFileInfo(trackPath).suffix().toLower()));
+        decoded = latency_analysis::decodeMonoTrack(
+            trackPath, latency_analysis::kAnalysisSampleRate, backend);
+        appendLatencyDiagnosticPhase(
+            QStringLiteral("audio_decode_complete"),
+            QStringLiteral("samples=%1 sample_rate=%2 duration=%3")
+                .arg(decoded.samples.size())
+                .arg(decoded.sampleRate)
+                .arg(decoded.durationSeconds, 0, 'f', 6));
+    }
     if (decoded.samples.isEmpty() || decoded.sampleRate <= 0) {
+        appendLatencyDiagnosticPhase(QStringLiteral("audio_decode_invalid_result"));
         clearAudioEnvelopeCache();
-        return;
+        return false;
     }
     cachedAudioPath_ = trackPath;
     cachedAudioDurationSeconds_ = decoded.durationSeconds;
-    cachedOnsetEnvelope_ = latency_analysis::buildOnsetEnvelope(decoded.samples, decoded.sampleRate);
-    cachedTransientEnvelope_ = latency_analysis::buildTransientEnvelope(decoded.samples, decoded.sampleRate);
+    {
+        miacode::oplog::Scope phaseOp("LatencyDetectionPage::ensureAudioEnvelopeReady.buildEnvelopes");
+        appendLatencyDiagnosticPhase(QStringLiteral("audio_envelope_build_begin"));
+        cachedOnsetEnvelope_ = latency_analysis::buildOnsetEnvelope(decoded.samples, decoded.sampleRate);
+        appendLatencyDiagnosticPhase(
+            QStringLiteral("audio_onset_envelope_complete"),
+            QStringLiteral("values=%1 step=%2")
+                .arg(cachedOnsetEnvelope_.values.size())
+                .arg(cachedOnsetEnvelope_.stepSeconds, 0, 'f', 9));
+        cachedTransientEnvelope_ = latency_analysis::buildTransientEnvelope(decoded.samples, decoded.sampleRate);
+        appendLatencyDiagnosticPhase(
+            QStringLiteral("audio_transient_envelope_complete"),
+            QStringLiteral("values=%1 step=%2")
+                .arg(cachedTransientEnvelope_.values.size())
+                .arg(cachedTransientEnvelope_.stepSeconds, 0, 'f', 9));
+    }
+    const bool ready = !cachedOnsetEnvelope_.isEmpty() && !cachedTransientEnvelope_.isEmpty();
+    appendLatencyDiagnosticPhase(
+        QStringLiteral("audio_envelope_ready"),
+        QStringLiteral("ready=%1").arg(ready ? 1 : 0));
+    return ready;
+}
+
+miacode::audio_decode::BackendPreference LatencyDetectionPage::selectedAudioDecodeBackend() const
+{
+    if (audioDecoderCombo_ != nullptr
+        && audioDecoderCombo_->currentData().toString() == QStringLiteral("bass")) {
+        return miacode::audio_decode::BackendPreference::Bass;
+    }
+    return miacode::audio_decode::BackendPreference::Miniaudio;
 }
 
 void LatencyDetectionPage::clearAudioEnvelopeCache()
@@ -802,11 +1056,6 @@ QString LatencyDetectionPage::formatPosition(double seconds) const
         .arg(minutes, 2, 10, QLatin1Char('0'))
         .arg(secs, 2, 10, QLatin1Char('0'))
         .arg(millis, 3, 10, QLatin1Char('0'));
-}
-
-QString LatencyDetectionPage::localizedText(const QString& zh, const QString& en) const
-{
-    return UiText::isChineseUi() ? zh : en;
 }
 
 QString LatencyDetectionPage::currentTrackPath() const

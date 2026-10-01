@@ -94,6 +94,9 @@ struct VideoEncoderConfig {
     QStringList extraArgs;
     bool isHardware = false;
     int explicitBframes = -1;
+    // Linux VAAPI
+    bool needsVaapiHwUpload = false;
+    QString vaapiDevicePath;
 };
 
 struct SystemMemoryInfo {
@@ -191,6 +194,7 @@ struct ExportRuntimeConfig {
     QString x264PresetOverride;
     int x264CrfOverride = -1;
     int x264BframesOverride = -1;
+    std::optional<bool> premultipliedPipeOverride;
     ExportRenderBackendOptions renderBackend;
     ExportDiagOptions diag;
 };
@@ -218,6 +222,10 @@ struct FrameTimingStats {
     qint64 offscreenReadbackMaxNs = 0;
     int offscreenDrawMaxFrame = -1;
     int offscreenReadbackMaxFrame = -1;
+    qint64 stateUpdateTotalNs = 0;
+    qint64 polishTotalNs = 0;
+    qint64 syncTotalNs = 0;
+    qint64 renderSubmitTotalNs = 0;
 };
 
 struct ExportPipeBackpressurePlan {
@@ -315,6 +323,10 @@ struct ReadyFramePayload {
     qint64 renderNs = 0;
     qint64 offscreenDrawNs = 0;
     qint64 offscreenReadbackNs = 0;
+    qint64 stateUpdateNs = 0;
+    qint64 polishNs = 0;
+    qint64 syncNs = 0;
+    qint64 renderSubmitNs = 0;
     bool usedOffscreenPath = false;
     int fallbackCount = 0;
     bool usedGpuRenderer = false;
@@ -371,6 +383,7 @@ EncoderAutoMode resolveEncoderAutoMode();
 ExportRuntimeConfig loadExportRuntimeConfig();
 bool shouldPreferHardwareEncoderInAutoMode(
     EncoderAutoMode mode,
+    VideoExportPreset preset,
     int outputWidth,
     int outputHeight,
     int fps,
@@ -380,12 +393,14 @@ bool shouldPreferHardwareEncoderInAutoMode(
 );
 VideoBitratePlan chooseVideoBitratePlan(
     VideoExportPreset preset,
+    VideoExportSizePreset sizePreset,
     int outputWidth,
     int outputHeight,
     int fps
 );
 X264TuningPlan chooseX264TuningPlan(
     VideoExportPreset preset,
+    VideoExportSizePreset sizePreset,
     const ExportRuntimeConfig& exportConfig,
     const SystemMemoryInfo& memoryInfo,
     int outputWidth,
@@ -411,6 +426,7 @@ VideoEncoderConfig chooseVideoEncoder(
     int outputHeight,
     int fps,
     VideoExportPreset preset,
+    VideoExportSizePreset sizePreset,
     const SystemMemoryInfo& memoryInfo,
     const ExportRuntimeConfig& exportConfig,
     QString* probeLog
@@ -461,6 +477,11 @@ QImage buildCircularDimMaskImage(
     double layoutSquareScale,
     bool smoothBrightness
 );
+QImage buildCircularMediaMaskImage(
+    int frameWidth,
+    int frameHeight,
+    double layoutSquareScale
+);
 QRectF staticMediaTargetRect(
     const QSize& mediaSize,
     const QSize& outputSize,
@@ -469,10 +490,12 @@ bool stageStaticBackgroundImageForExport(
     const QString& sourcePath,
     const QSize& outputSize,
     PreviewBackgroundScaleMode scaleMode,
+    double layoutSquareScale,
     const QString& stagedPath,
     QString* detail);
 bool preparePackedRgbaFrame(
     const QImage& frame,
+    bool preservePremultiplied,
     QImage* convertedFrame,
     QByteArray* packedScratch,
     const char** data,

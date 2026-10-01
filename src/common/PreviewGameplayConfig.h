@@ -77,14 +77,25 @@ inline constexpr double kLogicalDistanceTap = kLogicalCanvasSize * 122.5 / 1080.
 inline constexpr double kLogicalDistanceEdge = kLogicalCanvasSize * 480.0 / 1080.0;
 
 // Unified preview timing scale:
-// T = 5 + 215 / v, where T is measured in 120 FPS frames.
+// T = 1 + 240 / v, where T is measured in 120 FPS frames.
+// Previous calibration: T = 5 + 215 / v. Keep this here for quick comparison
+// and rollback if the new 7.5 -> 66 / 8.0 -> 62 lifecycle calibration regresses.
 inline constexpr double kPreviewTimingFramesPerSecond = 120.0;
 inline constexpr double kPreviewTimingDefaultFlowSpeed = 7.5;
-inline constexpr double kPreviewTimingFlowSpeedMin = 4.5;
+// Lowered 4.5 -> 1.0 so charts can be authored/exported at very slow
+// approach speeds (T = 1 + 240/1 = 241 frames @120fps ≈ 2.0 s of travel).
+// Every UI that offers a flow-speed field derives its validator/spin range
+// from this constant, so the whole app widens together.
+inline constexpr double kPreviewTimingFlowSpeedMin = 1.0;
 inline constexpr double kPreviewTimingFlowSpeedMax = 10.0;
 inline constexpr double kPreviewTimingFlowSpeedStep = 0.25;
-inline constexpr double kPreviewTimingBaseFrames = 5.0;
-inline constexpr double kPreviewTimingFlowFramesNumerator = 215.0;
+inline constexpr double kPreviewTimingBaseFrames = 1.0;
+inline constexpr double kPreviewTimingFlowFramesNumerator = 240.0;
+inline constexpr double kSlideHeadRotationBaseFramesAt120Fps = 5.20;
+inline constexpr double kSlideHeadRotationPathFramesNumerator = 194.36;
+inline constexpr double kSlideHeadRotationReferenceDurationSeconds = 0.5;
+inline constexpr double kSlideHeadRotationReferenceDegrees = 72.0;
+inline constexpr double kSlideHeadRotationMaxDegreesPerSecond = 1080.0;
 inline constexpr double normalizePreviewTimingFlowSpeed(double flowSpeed)
 {
     if (flowSpeed < kPreviewTimingFlowSpeedMin) {
@@ -103,6 +114,33 @@ inline constexpr double previewTimingScaleFramesAt120Fps(double flowSpeed)
 inline constexpr double previewTimingSecondsFromFramesAt120Fps(double frames)
 {
     return frames / kPreviewTimingFramesPerSecond;
+}
+inline constexpr double previewSlideHeadRotationFramesAt120Fps(double nativeTrackLength)
+{
+    const double slideImageCount = nativeTrackLength - 1.0;
+    if (slideImageCount <= 0.0) {
+        return 0.0;
+    }
+    return kSlideHeadRotationBaseFramesAt120Fps
+        + kSlideHeadRotationPathFramesNumerator / slideImageCount;
+}
+inline constexpr double previewSlideHeadRotationSpeedDegreesPerSecond(
+    double nativeTrackLength,
+    double durationSeconds)
+{
+    const double framesAtReferenceDuration =
+        previewSlideHeadRotationFramesAt120Fps(nativeTrackLength);
+    if (framesAtReferenceDuration <= 0.0 || durationSeconds <= 0.0) {
+        return 0.0;
+    }
+    const double speed =
+        kSlideHeadRotationReferenceDegrees
+        * kPreviewTimingFramesPerSecond
+        * kSlideHeadRotationReferenceDurationSeconds
+        / (framesAtReferenceDuration * durationSeconds);
+    return speed < kSlideHeadRotationMaxDegreesPerSecond
+        ? speed
+        : kSlideHeadRotationMaxDegreesPerSecond;
 }
 inline constexpr double kPreviewTimingScaleFramesAt120Fps =
     previewTimingScaleFramesAt120Fps(kPreviewTimingDefaultFlowSpeed);
@@ -147,8 +185,10 @@ inline constexpr double kSlideTrackFadeInSeconds = kSlideTrackAppearLeadInSecond
 inline constexpr double kTouchDurationSeconds = 0.5;
 
 inline constexpr double kJudgeEffectDurationSeconds = 0.71666664;
-inline constexpr double kJudgeEffectTouchDurationSeconds = 0.33333334;
+inline constexpr double kJudgeEffectTouchDurationSeconds = 0.25;
 inline constexpr double kJudgeEffectFireworkTouchTriggerDelaySeconds = 0.05;
-inline constexpr double kJudgeEffectFireworkDurationSeconds = 1.3333334;
+// Tuned firework clip: 30 frames at 30 fps from colour-ball onset
+// through the final visible spoke fade.
+inline constexpr double kJudgeEffectFireworkDurationSeconds = 1.0;
 
 }  // namespace miacode::preview_gameplay

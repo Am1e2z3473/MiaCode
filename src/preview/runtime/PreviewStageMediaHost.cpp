@@ -63,6 +63,7 @@ PreviewStageMediaHost::PreviewStageMediaHost(QObject* parent)
 {
     videoFrameIntervalsMs_.resize(kVideoFrameIntervalWindowSize);
     videoFrameIntervalsMs_.fill(0.0);
+    pvMemoryElapsed_.start();
 }
 
 PreviewStageMediaHost::~PreviewStageMediaHost()
@@ -72,6 +73,7 @@ PreviewStageMediaHost::~PreviewStageMediaHost()
     const QString mediaType = debugMediaTypeName();
     const bool hadPlayer = player_ != nullptr;
     shutdownForAppExit();
+    destroyPvMemorySource();
     miacode::debug_log::appendTimingLine(
         miacode::debug_log::Channel::Runtime,
         QStringLiteral("app_shutdown/stage_media_host"),
@@ -87,6 +89,7 @@ void PreviewStageMediaHost::shutdownForAppExit()
 {
     shuttingDown_ = true;
     clearMedia();
+    destroyPvMemorySource();
 }
 
 void PreviewStageMediaHost::setWarmupResolvedMediaPath(const QString& chartPath, const QString& mediaPath)
@@ -100,14 +103,26 @@ void PreviewStageMediaHost::setWarmupResolvedMediaPath(const QString& chartPath,
 
 void PreviewStageMediaHost::attachVideoOutputObject(QObject* videoOutputObject)
 {
-    if (videoOutputObject_ == videoOutputObject) {
+    attachVideoOutputObjects(videoOutputObject, nullptr);
+}
+
+void PreviewStageMediaHost::attachVideoOutputObjects(QObject* videoOutputObject, QObject* innerVideoOutputObject)
+{
+    if (videoOutputObject_ == videoOutputObject && innerVideoOutputObject_ == innerVideoOutputObject) {
         return;
     }
     videoOutputObject_ = videoOutputObject;
+    innerVideoOutputObject_ = innerVideoOutputObject;
     bindVideoOutput();
+    recordPvMemoryBoundary(PvMemoryBoundary::OutputAttach);
 }
 
 void PreviewStageMediaHost::detachVideoOutputObject(QObject* videoOutputObject)
+{
+    detachVideoOutputObjects(videoOutputObject, nullptr);
+}
+
+void PreviewStageMediaHost::detachVideoOutputObjects(QObject* videoOutputObject, QObject* innerVideoOutputObject)
 {
     if (videoOutputObject_ == nullptr || videoOutputObject == nullptr) {
         return;
@@ -115,8 +130,13 @@ void PreviewStageMediaHost::detachVideoOutputObject(QObject* videoOutputObject)
     if (videoOutputObject_ != videoOutputObject) {
         return;
     }
+    if (innerVideoOutputObject != nullptr && innerVideoOutputObject_ != innerVideoOutputObject) {
+        return;
+    }
     videoOutputObject_.clear();
+    innerVideoOutputObject_.clear();
     bindVideoOutput();
+    recordPvMemoryBoundary(PvMemoryBoundary::OutputDetach);
 }
 
 bool PreviewStageMediaHost::mediaVisible() const

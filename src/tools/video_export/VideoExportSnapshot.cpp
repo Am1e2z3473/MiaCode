@@ -1,9 +1,11 @@
 #include "VideoExportSnapshot.h"
+#include "VideoExportRuntimePolicy.h"
 
 #include "SimaiDocument.h"
 #include "SimaiNativeParser.h"
 #include "common/ChartClockCount.h"
 #include "common/ChartAssetPaths.h"
+#include "timeline/TimelineMarkerOffset.h"
 #include "tools/muri/MuriAnalyzer.h"
 
 #include <QDir>
@@ -12,18 +14,13 @@
 
 namespace {
 
-QString backgroundScaleModeToken(PreviewBackgroundScaleMode mode)
-{
-    switch (mode) {
-    case PreviewBackgroundScaleMode::FitContain:
-        return QStringLiteral("fit");
-    case PreviewBackgroundScaleMode::SquareFitContain:
-        return QStringLiteral("square_fit");
-    case PreviewBackgroundScaleMode::FillCrop:
-    default:
-        return QStringLiteral("fill");
-    }
-}
+using miacode::timeline::offset::NonFiniteHandling;
+using miacode::timeline::offset::parsedFirstSeconds;
+using miacode::timeline::offset::shiftedNoteMarkers;
+
+// backgroundScaleModeToken moved to core/video/PreviewRenderSettings.h (same tokens,
+// unchanged) so the preview runtime's scale-mode diagnostics name the modes the same
+// way this snapshot serialises them.
 
 QString outlineVariantToken(PreviewOutlineVariant variant)
 {
@@ -88,6 +85,20 @@ VideoExportPreset videoExportPresetFromToken(const QString& token)
     return VideoExportPreset::HighQuality;
 }
 
+VideoExportSizePreset videoExportSizePresetFromToken(const QString& token)
+{
+    if (token.compare(QStringLiteral("compact"), Qt::CaseInsensitive) == 0) {
+        return VideoExportSizePreset::Compact;
+    }
+    if (token.compare(QStringLiteral("ultra_compact"), Qt::CaseInsensitive) == 0) {
+        return VideoExportSizePreset::UltraCompact;
+    }
+    if (token.compare(QStringLiteral("ultra_compact_with_pv"), Qt::CaseInsensitive) == 0) {
+        return VideoExportSizePreset::UltraCompactWithPv;
+    }
+    return VideoExportSizePreset::Standard;
+}
+
 PreviewBackgroundScaleMode backgroundScaleModeFromToken(const QString& token)
 {
     const QString normalized = token.trimmed().toLower();
@@ -101,58 +112,27 @@ PreviewBackgroundScaleMode backgroundScaleModeFromToken(const QString& token)
         || normalized == QLatin1String("square")) {
         return PreviewBackgroundScaleMode::SquareFitContain;
     }
+    if (normalized == QLatin1String("inner_circle_fit_outer_fill")
+        || normalized == QLatin1String("inner-circle-fit-outer-fill")
+        || normalized == QLatin1String("inner_fit_outer_fill")
+        || normalized == QLatin1String("inner-fit-outer-fill")
+        || normalized == QLatin1String("circle_fit_outer_fill")
+        || normalized == QLatin1String("circle-fit-outer-fill")
+        || normalized == QLatin1String("inner_circle_fit")
+        || normalized == QLatin1String("inner-circle-fit")) {
+        return PreviewBackgroundScaleMode::InnerCircleFitOuterFill;
+    }
     return PreviewBackgroundScaleMode::FillCrop;
 }
 
 QString renderModeToken(RenderMode mode)
 {
-    return mode == RenderMode::MaimuriDxStyle
-        ? QStringLiteral("maimuri_dx_style")
-        : QStringLiteral("native");
+    return ::muriRenderModeToken(mode);
 }
 
 RenderMode renderModeFromToken(const QString& token)
 {
-    return token.trimmed().compare(QStringLiteral("maimuri_dx_style"), Qt::CaseInsensitive) == 0
-        ? RenderMode::MaimuriDxStyle
-        : RenderMode::Native;
-}
-
-double parsedFirstSeconds(const QString& rawValue)
-{
-    bool ok = false;
-    const QString trimmed = rawValue.trimmed();
-    const double value = trimmed.isEmpty() ? 0.0 : trimmed.toDouble(&ok);
-    return (trimmed.isEmpty() || ok) ? value : 0.0;
-}
-
-double shiftedTimelineSecond(double second, double offsetSeconds)
-{
-    return second + offsetSeconds;
-}
-
-QVector<TimelineNoteMarker> shiftedNoteMarkers(
-    const QVector<TimelineNoteMarker>& noteMarkers,
-    double offsetSeconds
-)
-{
-    QVector<TimelineNoteMarker> shifted = noteMarkers;
-    for (TimelineNoteMarker& marker : shifted) {
-        marker.second = shiftedTimelineSecond(marker.second, offsetSeconds);
-        if (marker.endSecond >= 0.0) {
-            marker.endSecond = shiftedTimelineSecond(marker.endSecond, offsetSeconds);
-        }
-        if (marker.slideTraceSecond >= 0.0) {
-            marker.slideTraceSecond = shiftedTimelineSecond(marker.slideTraceSecond, offsetSeconds);
-        }
-        if (marker.availableSecond >= 0.0) {
-            marker.availableSecond = shiftedTimelineSecond(marker.availableSecond, offsetSeconds);
-        }
-        for (double& shootSecond : marker.slideSegmentShootSeconds) {
-            shootSecond = shiftedTimelineSecond(shootSecond, offsetSeconds);
-        }
-    }
-    return shifted;
+    return ::muriRenderModeFromToken(token);
 }
 
 QString jsonString(const QJsonObject& object, const char* key)
@@ -190,10 +170,12 @@ QJsonObject VideoExportSnapshot::toJson() const
     render.insert(QStringLiteral("layout_square_scale"), layoutSquareScale);
     render.insert(QStringLiteral("smooth_brightness"), smoothBrightness);
     render.insert(QStringLiteral("outline_variant"), outlineVariantToken(outlineVariant));
-    render.insert(QStringLiteral("background_scale_mode"), backgroundScaleModeToken(backgroundScaleMode));
+    render.insert(QStringLiteral("background_scale_mode"), QString::fromLatin1(backgroundScaleModeToken(backgroundScaleMode)));
     render.insert(QStringLiteral("tap_flow_speed"), tapFlowSpeed);
     render.insert(QStringLiteral("touch_flow_speed"), touchFlowSpeed);
     render.insert(QStringLiteral("slide_earlier_second_and_text_on_top"), slideEarlierSecondAndTextOnTop);
+    render.insert(QStringLiteral("tap_judge_text_distance"), QString::fromLatin1(tapJudgeTextDistanceToken(tapJudgeTextDistance)));
+    render.insert(QStringLiteral("judge_effect_style"), QString::fromLatin1(judgeEffectStyleToken(judgeEffectStyle)));
     render.insert(QStringLiteral("render_mode"), renderModeToken(muriRenderOptions.renderMode));
     render.insert(QStringLiteral("show_slide_tracks"), muriRenderOptions.showSlideTracks);
     render.insert(QStringLiteral("show_judge_markers"), muriRenderOptions.showJudgeMarkers);
@@ -207,6 +189,10 @@ QJsonObject VideoExportSnapshot::toJson() const
         muriRenderOptions.showChartReviewTapJudgeOverlay
     );
     render.insert(
+        QStringLiteral("show_chart_review_break_judge_overlay"),
+        muriRenderOptions.showChartReviewBreakJudgeOverlay
+    );
+    render.insert(
         QStringLiteral("show_chart_review_touch_judge_overlay"),
         muriRenderOptions.showChartReviewTouchJudgeOverlay
     );
@@ -215,6 +201,7 @@ QJsonObject VideoExportSnapshot::toJson() const
     render.insert(QStringLiteral("show_timestamp"), showTimestamp);
     render.insert(QStringLiteral("show_object_stats_hud"), showObjectStatsHud);
     render.insert(QStringLiteral("show_chart_info_hud"), showChartInfoHud);
+    render.insert(QStringLiteral("fix_hud_text_layout"), fixHudTextLayout);
     render.insert(QStringLiteral("clock_count_enabled"), clockCountEnabled);
     render.insert(
         QStringLiteral("center_display_mode"),
@@ -232,9 +219,14 @@ QJsonObject VideoExportSnapshot::toJson() const
     exportObject.insert(QStringLiteral("output_width"), outputWidth);
     exportObject.insert(QStringLiteral("output_height"), outputHeight);
     exportObject.insert(QStringLiteral("fps"), fps);
+    exportObject.insert(QStringLiteral("audio_bitrate_kbps"), audioBitrateKbps);
     exportObject.insert(QStringLiteral("preset"), videoExportPresetToken(preset));
+    exportObject.insert(
+        QStringLiteral("size_preset"),
+        miacode::video_export::videoExportSizePresetToken(sizePreset));
     exportObject.insert(QStringLiteral("full_range_export"), fullRangeExport);
     exportObject.insert(QStringLiteral("output_path"), outputPath);
+    exportObject.insert(QStringLiteral("output_mode"), videoExportOutputModeToken(outputMode));
     root.insert(QStringLiteral("export"), exportObject);
 
     QJsonObject introObject;
@@ -252,6 +244,12 @@ QJsonObject VideoExportSnapshot::toJson() const
     introObject.insert(QStringLiteral("background_custom_path"), intro.customBackgroundPath);
     introObject.insert(QStringLiteral("background_blur"), intro.blurBackground);
     introObject.insert(QStringLiteral("card_shadow"), intro.cardShadow);
+    introObject.insert(QStringLiteral("font_display_path"), intro.fontDisplayPath);
+    introObject.insert(QStringLiteral("font_body_path"), intro.fontBodyPath);
+    if (!introSoundFileName.trimmed().isEmpty()) {
+        introObject.insert(QStringLiteral("sound_file"), QFileInfo(introSoundFileName).fileName());
+    }
+    introObject.insert(QStringLiteral("sound_volume"), qBound(0.0, introSoundVolume, 2.0));
     root.insert(QStringLiteral("intro"), introObject);
     return root;
 }
@@ -319,6 +317,12 @@ bool VideoExportSnapshot::fromJson(
     parsed.slideEarlierSecondAndTextOnTop =
         render.value(QStringLiteral("slide_earlier_second_and_text_on_top"))
             .toBool(parsed.slideEarlierSecondAndTextOnTop);
+    parsed.tapJudgeTextDistance = tapJudgeTextDistanceFromToken(
+        render.value(QStringLiteral("tap_judge_text_distance")).toString(
+            QString::fromLatin1(tapJudgeTextDistanceToken(parsed.tapJudgeTextDistance))));
+    parsed.judgeEffectStyle = judgeEffectStyleFromToken(
+        render.value(QStringLiteral("judge_effect_style")).toString(
+            QString::fromLatin1(judgeEffectStyleToken(parsed.judgeEffectStyle))));
     parsed.muriRenderOptions.renderMode =
         renderModeFromToken(render.value(QStringLiteral("render_mode")).toString());
     parsed.muriRenderOptions.showSlideTracks =
@@ -333,6 +337,9 @@ bool VideoExportSnapshot::fromJson(
     parsed.muriRenderOptions.showChartReviewTapJudgeOverlay =
         render.value(QStringLiteral("show_chart_review_tap_judge_overlay"))
             .toBool(parsed.muriRenderOptions.showChartReviewTapJudgeOverlay);
+    parsed.muriRenderOptions.showChartReviewBreakJudgeOverlay =
+        render.value(QStringLiteral("show_chart_review_break_judge_overlay"))
+            .toBool(parsed.muriRenderOptions.showChartReviewBreakJudgeOverlay);
     parsed.muriRenderOptions.showChartReviewTouchJudgeOverlay =
         render.value(QStringLiteral("show_chart_review_touch_judge_overlay"))
             .toBool(parsed.muriRenderOptions.showChartReviewTouchJudgeOverlay);
@@ -348,6 +355,8 @@ bool VideoExportSnapshot::fromJson(
         render.value(QStringLiteral("show_object_stats_hud")).toBool(parsed.showObjectStatsHud);
     parsed.showChartInfoHud =
         render.value(QStringLiteral("show_chart_info_hud")).toBool(parsed.showChartInfoHud);
+    parsed.fixHudTextLayout =
+        render.value(QStringLiteral("fix_hud_text_layout")).toBool(parsed.fixHudTextLayout);
     parsed.clockCountEnabled =
         render.value(QStringLiteral("clock_count_enabled")).toBool(parsed.clockCountEnabled);
     parsed.centerDisplayMode = miacode::preview_gameplay::centerDisplayModeFromToken(
@@ -367,9 +376,16 @@ bool VideoExportSnapshot::fromJson(
     parsed.outputWidth = exportObject.value(QStringLiteral("output_width")).toInt(parsed.outputWidth);
     parsed.outputHeight = exportObject.value(QStringLiteral("output_height")).toInt(parsed.outputHeight);
     parsed.fps = exportObject.value(QStringLiteral("fps")).toInt(parsed.fps);
+    parsed.audioBitrateKbps = exportObject.value(QStringLiteral("audio_bitrate_kbps"))
+                                  .toInt(parsed.audioBitrateKbps);
     parsed.preset = videoExportPresetFromToken(exportObject.value(QStringLiteral("preset")).toString());
+    parsed.sizePreset = videoExportSizePresetFromToken(
+        exportObject.value(QStringLiteral("size_preset")).toString());
     parsed.fullRangeExport = exportObject.value(QStringLiteral("full_range_export")).toBool(parsed.fullRangeExport);
     parsed.outputPath = exportObject.value(QStringLiteral("output_path")).toString();
+    parsed.outputMode = videoExportOutputModeFromToken(
+        exportObject.value(QStringLiteral("output_mode")).toString(),
+        VideoExportOutputMode::Mp4);
 
     const QJsonObject introObject = object.value(QStringLiteral("intro")).toObject();
     parsed.intro.enabled = introObject.value(QStringLiteral("enabled")).toBool(parsed.intro.enabled);
@@ -390,6 +406,13 @@ bool VideoExportSnapshot::fromJson(
         introObject.value(QStringLiteral("background_blur")).toBool(parsed.intro.blurBackground);
     parsed.intro.cardShadow =
         introObject.value(QStringLiteral("card_shadow")).toBool(parsed.intro.cardShadow);
+    parsed.intro.fontDisplayPath =
+        introObject.value(QStringLiteral("font_display_path")).toString();
+    parsed.intro.fontBodyPath =
+        introObject.value(QStringLiteral("font_body_path")).toString();
+    parsed.introSoundFileName = QFileInfo(introObject.value(QStringLiteral("sound_file")).toString()).fileName();
+    parsed.introSoundVolume = qBound(
+        0.0, introObject.value(QStringLiteral("sound_volume")).toDouble(parsed.introSoundVolume), 2.0);
 
     if (parsed.chartTextUtf8.isEmpty()) {
         if (errorMessage != nullptr) {
@@ -444,6 +467,7 @@ bool buildVideoExportTaskFromSnapshot(
 
     VideoExportTask built;
     built.outputPath = snapshot.outputPath;
+    built.outputMode = snapshot.outputMode;
     built.chartPath = snapshot.originalChartPath;
     built.backgroundMediaPath = miacode::chart_assets::resolvePreferredBackgroundMediaPath(
         snapshot.originalChartPath,
@@ -451,7 +475,8 @@ bool buildVideoExportTaskFromSnapshot(
     );
     built.trackPath = snapshot.trackPath;
     built.skinDirectory = snapshot.skinDirectory;
-    built.noteMarkers = shiftedNoteMarkers(nativeResult.noteMarkers, firstSeconds);
+    built.noteMarkers =
+        shiftedNoteMarkers(nativeResult.noteMarkers, firstSeconds, NonFiniteHandling::Propagate);
     built.audioSettings = snapshot.audioSettings;
     built.audioSettings.normalize();
     built.timingSettings = snapshot.timingSettings;
@@ -466,6 +491,8 @@ bool buildVideoExportTaskFromSnapshot(
     built.tapFlowSpeed = snapshot.tapFlowSpeed;
     built.touchFlowSpeed = snapshot.touchFlowSpeed;
     built.slideEarlierSecondAndTextOnTop = snapshot.slideEarlierSecondAndTextOnTop;
+    built.tapJudgeTextDistance = snapshot.tapJudgeTextDistance;
+    built.judgeEffectStyle = snapshot.judgeEffectStyle;
     built.muriRenderOptions = snapshot.muriRenderOptions;
     built.staticTapOnSlideThresholdSeconds = snapshot.staticTapOnSlideThresholdSeconds;
     built.exportStartSeconds = qMax(0.0, snapshot.exportStartSeconds);
@@ -473,11 +500,14 @@ bool buildVideoExportTaskFromSnapshot(
     built.outputWidth = snapshot.outputWidth;
     built.outputHeight = snapshot.outputHeight;
     built.fps = snapshot.fps;
+    built.audioBitrateKbps = qBound(96, snapshot.audioBitrateKbps, 320);
     built.preset = snapshot.preset;
+    built.sizePreset = snapshot.sizePreset;
     built.fullRangeExport = snapshot.fullRangeExport;
     built.showTimestamp = snapshot.showTimestamp;
     built.showObjectStatsHud = snapshot.showObjectStatsHud;
     built.showChartInfoHud = snapshot.showChartInfoHud;
+    built.fixHudTextLayout = snapshot.fixHudTextLayout;
     // Reconstruct chart metadata from the parsed SimaiDocument so the
     // out-of-process worker can populate the chart info HUD without
     // shipping the strings separately. Per-difficulty designer takes
@@ -496,6 +526,8 @@ bool buildVideoExportTaskFromSnapshot(
             .trimmed();
     }
     built.intro = snapshot.intro;
+    built.introSoundFileName = snapshot.introSoundFileName;
+    built.introSoundVolume = snapshot.introSoundVolume;
     built.centerDisplayMode = snapshot.centerDisplayMode;
     built.skinLoadWaitMs = qBound(0, snapshot.skinLoadWaitMs, 20000);
     // The clock_count VALUE is always derived from the chart; the count-in on/off

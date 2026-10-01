@@ -12,6 +12,7 @@
 #include "UiText.h"
 #include "UiTheme.h"
 #include "VideoExportController.h"
+#include "common/PreviewGameplayConfig.h"
 
 #include <QColor>
 #include <QDir>
@@ -22,6 +23,7 @@
 namespace miacode::video_export::dialog_detail {
 
 inline constexpr int kAudioBitrateOptionsKbps[] = {128, 160, 192, 256, 320};
+inline constexpr int kFpsOptions[] = {30, 60, 120};
 
 inline int normaliseAudioBitrateKbps(int requested)
 {
@@ -37,26 +39,52 @@ inline int normaliseAudioBitrateKbps(int requested)
     return closest;
 }
 
-inline QString uiText(const char* key, const QString& fallback)
+inline int normaliseExportFps(int requested)
 {
-    const QString translated = UiText::text(QString::fromLatin1(key));
-    return translated.isEmpty() ? fallback : translated;
-}
-
-inline QString l10n(const QString& en, const QString& zh)
-{
-    return UiText::isChineseUi() ? zh : en;
+    int closest = kFpsOptions[0];
+    int closestDelta = qAbs(requested - closest);
+    for (int candidate : kFpsOptions) {
+        const int delta = qAbs(requested - candidate);
+        if (delta < closestDelta || (delta == closestDelta && candidate > closest)) {
+            closest = candidate;
+            closestDelta = delta;
+        }
+    }
+    return closest;
 }
 
 inline QString exportDialogPresetLabel(VideoExportPreset preset)
 {
     switch (preset) {
     case VideoExportPreset::HighQuality:
-        return uiText("dialog.video_export.preset.high_quality", QStringLiteral("High Quality"));
+        return UiText::text(QStringLiteral("dialog.video_export.preset.high_quality"));
     case VideoExportPreset::Fast:
     default:
-        return uiText("dialog.video_export.preset.fast", QStringLiteral("Fast"));
+        return UiText::text(QStringLiteral("dialog.video_export.preset.fast"));
     }
+}
+
+// Flow-speed field formatting/snapping. Shared by the dialog's field builder
+// (VideoExportDialog.cpp) and the Return-key commit path
+// (VideoExportDialog.ExportFlow.cpp), so both round identically.
+inline double snappedFlowSpeed(double flowSpeed)
+{
+    const double flowSpeedMin = miacode::preview_gameplay::kPreviewTimingFlowSpeedMin;
+    const double flowSpeedMax = miacode::preview_gameplay::kPreviewTimingFlowSpeedMax;
+    const double flowSpeedStep = miacode::preview_gameplay::kPreviewTimingFlowSpeedStep;
+    return qBound(
+        flowSpeedMin,
+        flowSpeedMin + qRound((flowSpeed - flowSpeedMin) / flowSpeedStep) * flowSpeedStep,
+        flowSpeedMax
+    );
+}
+
+inline QString flowSpeedValueLabel(double flowSpeed)
+{
+    const double snapped = snappedFlowSpeed(flowSpeed);
+    const double roundedOneDecimal = qRound(snapped * 10.0) / 10.0;
+    const bool useSingleDecimal = qAbs(snapped - roundedOneDecimal) < 0.001;
+    return QString::number(snapped, 'f', useSingleDecimal ? 1 : 2);
 }
 
 inline QString exportBaseDirectory(const VideoExportTask& task)

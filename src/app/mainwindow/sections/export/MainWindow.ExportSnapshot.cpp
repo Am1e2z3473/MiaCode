@@ -16,7 +16,7 @@
 #include "common/DebugLog.h"
 #include "common/DebugOptions.h"
 #include "preview/runtime/PreviewRuntime.h"
-#include "tools/video_export/BatchVideoExportDialog.h"
+#include "timeline/TimelineMarkerOffset.h"
 #include "tools/video_export/VideoExportController.h"
 #include "tools/video_export/VideoExportDialog.h"
 #include "tools/video_export/VideoExportSnapshot.h"
@@ -28,6 +28,19 @@
 using namespace miacode::mainwindow::shared;
 
 namespace {
+
+using miacode::timeline::offset::NonFiniteHandling;
+using miacode::timeline::offset::shiftedNoteMarkers;
+
+// Deliberately NOT named parsedFirstSeconds: the sections in this file are nested types of
+// MainWindow, so an unqualified `parsedFirstSeconds` resolves to the MainWindow member —
+// which reads the live &first widget when a difficulty is active. Export must read the
+// committed document instead, and class scope silently outranks a using-declaration here,
+// so the distinct name is what keeps the two apart.
+double parsedDocumentFirstSeconds(const QString& rawValue, bool* ok = nullptr)
+{
+    return miacode::timeline::offset::parsedFirstSeconds(rawValue, ok);
+}
 
 // Map a SimaiDocument difficulty id (1=Easy .. 6=Re:Master, 7=Utage) to the
 // trackstart banner atlas key. The five standard colours ship with the prefab;
@@ -66,6 +79,19 @@ QString introBpmString(double bpm)
     return text;
 }
 
+QString detectIntroBannerModeForChart(const SimaiDocument& document, const QString& chartBody)
+{
+    if (chartBody.trimmed().isEmpty()) {
+        return QStringLiteral("Standard");
+    }
+    const miacode::simai::SimaiTimingMetadata timingMetadata =
+        miacode::simai::buildTimingMetadata(document);
+    const SimaiNativeParseResult parsedTimeline = SimaiNativeParser::parseForTimeline(
+        chartBody,
+        timingMetadata);
+    return detectedIntroBannerMode(parsedTimeline.noteMarkers);
+}
+
 // Resolve the pre-roll intro banner payload from a chart. BPM uses the shared
 // clockBpmForChart fallback (&wholebpm -> first (BPM) -> 120), matching the
 // prepend-silence tool. The jacket is the still background image only (never
@@ -82,56 +108,17 @@ IntroBannerSpec buildIntroBannerSpec(
     intro.title = document.title;
     intro.artist = document.artist;
     intro.difficulty = introDifficultyAtlasKey(difficultyId);
-    intro.mode = QStringLiteral("DX");
     const SimaiDifficultyData* difficulty = document.difficulty(difficultyId);
+    const QString chartBody = (difficulty != nullptr) ? difficulty->chart : QString();
+    intro.mode = detectIntroBannerModeForChart(document, chartBody);
     intro.level = (difficulty != nullptr) ? difficulty->level : QString();
     const QString perDifficultyDesigner = (difficulty != nullptr) ? difficulty->designer : QString();
     intro.designer = perDifficultyDesigner.trimmed().isEmpty() ? document.designer : perDifficultyDesigner;
-    const QString chartBody = (difficulty != nullptr) ? difficulty->chart : QString();
     intro.bpm = introBpmString(miacode::chart_clock::clockBpmForChart(document, chartBody));
     intro.jacketPath = chartPath.isEmpty()
         ? QString()
         : miacode::chart_assets::resolveBackgroundMediaPath(chartPath, /*includeVideoCandidates=*/false);
     return intro;
-}
-
-double parsedDocumentFirstSeconds(const QString& rawValue, bool* ok = nullptr)
-{
-    const QString trimmed = rawValue.trimmed();
-    bool localOk = false;
-    const double value = trimmed.isEmpty() ? 0.0 : trimmed.toDouble(&localOk);
-    if (ok != nullptr) {
-        *ok = trimmed.isEmpty() ? true : localOk;
-    }
-    return (trimmed.isEmpty() || localOk) ? value : 0.0;
-}
-
-double shiftedTimelineSecond(double second, double offsetSeconds)
-{
-    return second + offsetSeconds;
-}
-
-QVector<TimelineNoteMarker> shiftedNoteMarkers(
-    const QVector<TimelineNoteMarker>& noteMarkers,
-    double offsetSeconds)
-{
-    QVector<TimelineNoteMarker> shifted = noteMarkers;
-    for (TimelineNoteMarker& marker : shifted) {
-        marker.second = shiftedTimelineSecond(marker.second, offsetSeconds);
-        if (marker.endSecond >= 0.0) {
-            marker.endSecond = shiftedTimelineSecond(marker.endSecond, offsetSeconds);
-        }
-        if (marker.slideTraceSecond >= 0.0) {
-            marker.slideTraceSecond = shiftedTimelineSecond(marker.slideTraceSecond, offsetSeconds);
-        }
-        if (marker.availableSecond >= 0.0) {
-            marker.availableSecond = shiftedTimelineSecond(marker.availableSecond, offsetSeconds);
-        }
-        for (double& shootSecond : marker.slideSegmentShootSeconds) {
-            shootSecond = shiftedTimelineSecond(shootSecond, offsetSeconds);
-        }
-    }
-    return shifted;
 }
 
 QString sanitizeExportFileStem(QString text, const QString& fallback = QStringLiteral("out"))
@@ -374,30 +361,33 @@ QString localizeExportWorkerMessageForUiLanguage(const QString& rawMessage)
     );
     const QRegularExpressionMatch renderMatch = renderProgressPattern.match(trimmed);
     if (renderMatch.hasMatch()) {
-        return uiText("dialog.video_export.progress.rendering_count", "Rendering frames... %1/%2")
+        return UiText::text(QStringLiteral("dialog.video_export.progress.rendering_count"))
             .arg(renderMatch.captured(1), renderMatch.captured(2));
     }
 
     if (trimmed == QLatin1String("Preparing SFX track...")) {
-        return uiText("dialog.video_export.progress.preparing_audio", "Preparing audio...");
+        return UiText::text(QStringLiteral("dialog.video_export.progress.preparing_audio"));
     }
     if (trimmed == QLatin1String("Starting ffmpeg...")) {
-        return uiText("dialog.video_export.progress.starting_ffmpeg", "Starting ffmpeg...");
+        return UiText::text(QStringLiteral("dialog.video_export.progress.starting_ffmpeg"));
     }
     if (trimmed == QLatin1String("Rendering frames and encoding...")) {
-        return uiText("dialog.video_export.progress.rendering", "Rendering frames...");
+        return UiText::text(QStringLiteral("dialog.video_export.progress.rendering"));
     }
     if (trimmed == QLatin1String("Finalizing encoded video stream...")) {
-        return uiText("dialog.video_export.progress.finalizing_encode", "Finalizing video...");
+        return UiText::text(QStringLiteral("dialog.video_export.progress.finalizing_encode"));
     }
     if (trimmed == QLatin1String("Repacking MP4 for fast start...")) {
-        return uiText("dialog.video_export.progress.repacking", "Finalizing video...");
+        return UiText::text(QStringLiteral("dialog.video_export.progress.repacking"));
+    }
+    if (trimmed == QLatin1String("Finalizing WAV audio...")) {
+        return UiText::text(QStringLiteral("dialog.video_export.progress.finalizing_wav"));
     }
     if (trimmed == QLatin1String("Collecting export summary...")) {
-        return uiText("dialog.video_export.progress.finishing", "Finishing up...");
+        return UiText::text(QStringLiteral("dialog.video_export.progress.finishing"));
     }
     if (trimmed == QLatin1String("Export completed.")) {
-        return uiText("dialog.video_export.progress.done", "Done.");
+        return UiText::text(QStringLiteral("dialog.video_export.progress.done"));
     }
     return rawMessage;
 }
@@ -438,7 +428,8 @@ QVector<TimelineNoteMarker> MainWindow::ExportSection::buildParsedMarkersForDiff
     }
     bool firstOk = false;
     const double firstSeconds = parsedDocumentFirstSeconds(owner_.document_.first, &firstOk);
-    return shiftedNoteMarkers(parsedTimeline.noteMarkers, firstOk ? firstSeconds : 0.0);
+    return shiftedNoteMarkers(
+        parsedTimeline.noteMarkers, firstOk ? firstSeconds : 0.0, NonFiniteHandling::Propagate);
 }
 
 void MainWindow::ExportSection::installExportPreviewAuditionScene(int difficultyId)
@@ -490,14 +481,36 @@ void MainWindow::ExportSection::installExportPreviewAuditionScene(int difficulty
     }
     owner_.tickOutlineBusySpinner();
 
-    // Reset the playhead to the start for the freshly-installed difficulty.
-    owner_.qtPreviewPauseSecond_ = 0.0;
-    if (owner_.timelineQuickStateBridge_ != nullptr) {
-        owner_.timelineQuickStateBridge_->setPlayheadSeconds(0.0, false);
+    // Decide the playhead for the freshly-installed audition.
+    const double durationSeconds = owner_.previewDurationSeconds();
+    const auto clampToDuration = [durationSeconds](double second) {
+        return durationSeconds > 0.0 ? qBound(0.0, second, durationSeconds) : qMax(0.0, second);
+    };
+    double startSecond = 0.0;
+    if (owner_.exportPreviewEntrySeedSecond_ >= 0.0) {
+        // Page entry always seeds chart time 0. If 片头 is enabled,
+        // refreshExportIntroState below moves from there to the intro head.
+        startSecond = clampToDuration(owner_.exportPreviewEntrySeedSecond_);
+    } else if (owner_.lastExportAuditionDifficultyId_ == difficultyId) {
+        // Re-installing the SAME difficulty WITHOUT a page switch — the 视频导出 →
+        // 封面 → 视频导出 sub-tab dance destroys and recreates the panel. The old
+        // teardown stopped playback with keepPosition, so qtPreviewPauseSecond_ still
+        // holds the position; preserve it instead of snapping to 0 (which would let
+        // refreshExportIntroState default the playhead to the 片头 head, -kDuration).
+        startSecond = clampToDuration(qMax(0.0, owner_.qtPreviewPauseSecond_));
     }
-    owner_.previewCanvas_->setPlayheadSeconds(0.0, true);
+    // else: genuine first install for this difficulty (or a badge switch to a
+    // different one) → start at 0; 片头-on then shows the intro head as intended.
+    owner_.exportPreviewEntrySeedSecond_ = -1.0;
+    owner_.lastExportAuditionDifficultyId_ = difficultyId;
+    miacode::mainwindow::shared::writePreviewPauseSecond(
+        owner_.qtPreviewPauseSecond_, startSecond, owner_.qtPreviewPlaying_, "install_export_preview_audition_scene");
+    if (owner_.timelineQuickStateBridge_ != nullptr) {
+        owner_.timelineQuickStateBridge_->setPlayheadSeconds(startSecond, false);
+    }
+    owner_.previewCanvas_->setPlayheadSeconds(startSecond, true);
     owner_.updatePreviewSliderRange();
-    owner_.updatePreviewSliderPosition(0.0);
+    owner_.updatePreviewSliderPosition(startSecond);
 
     // SFX timeline for this difficulty's notes.
     if (owner_.previewSfxRuntime_ != nullptr) {
@@ -557,13 +570,13 @@ bool MainWindow::ExportSection::buildVideoExportSnapshot(
     if (!SimaiDocument::isDifficultyId(resolvedDifficultyId)
         || owner_.document_.difficulty(resolvedDifficultyId) == nullptr) {
         if (errorMessage != nullptr) {
-            *errorMessage = uiText("dialog.video_export.error.no_difficulty", "No active difficulty is selected.");
+            *errorMessage = UiText::text(QStringLiteral("dialog.video_export.error.no_difficulty"));
         }
         return false;
     }
     if (!owner_.applyCurrentFieldToDocument()) {
         if (errorMessage != nullptr) {
-            *errorMessage = uiText("dialog.video_export.error.sync_failed", "Failed to sync current editor state.");
+            *errorMessage = UiText::text(QStringLiteral("dialog.video_export.error.sync_failed"));
         }
         return false;
     }
@@ -579,7 +592,7 @@ bool MainWindow::ExportSection::buildVideoExportSnapshot(
         : !buildParsedMarkersForDifficulty(resolvedDifficultyId).isEmpty();
     if (!hasMarkers) {
         if (errorMessage != nullptr) {
-            *errorMessage = uiText("dialog.video_export.error.no_markers", "No parsed note markers are available for export.");
+            *errorMessage = UiText::text(QStringLiteral("dialog.video_export.error.no_markers"));
         }
         return false;
     }
@@ -620,6 +633,8 @@ bool MainWindow::ExportSection::buildVideoExportSnapshot(
     built.tapFlowSpeed = requestedTask.tapFlowSpeed;
     built.touchFlowSpeed = requestedTask.touchFlowSpeed;
     built.slideEarlierSecondAndTextOnTop = requestedTask.slideEarlierSecondAndTextOnTop;
+    built.tapJudgeTextDistance = requestedTask.tapJudgeTextDistance;
+    built.judgeEffectStyle = requestedTask.judgeEffectStyle;
     built.muriRenderOptions = requestedTask.muriRenderOptions;
     built.staticTapOnSlideThresholdSeconds = requestedTask.staticTapOnSlideThresholdSeconds;
     built.exportStartSeconds = requestedTask.exportStartSeconds;
@@ -627,7 +642,10 @@ bool MainWindow::ExportSection::buildVideoExportSnapshot(
     built.outputWidth = requestedTask.outputWidth;
     built.outputHeight = requestedTask.outputHeight;
     built.fps = requestedTask.fps;
+    built.audioBitrateKbps = requestedTask.audioBitrateKbps;
+    built.outputMode = requestedTask.outputMode;
     built.preset = requestedTask.preset;
+    built.sizePreset = requestedTask.sizePreset;
     built.fullRangeExport = requestedTask.fullRangeExport;
     const QString exportStem = sanitizeExportFileStem(owner_.document_.title, QStringLiteral("out"));
     const QString difficultyName = SimaiDocument::difficultyShortName(resolvedDifficultyId).replace(':', '_');
@@ -635,16 +653,20 @@ bool MainWindow::ExportSection::buildVideoExportSnapshot(
     built.outputPath = resolveVideoExportOutputPath(
         requestedTask.outputPath,
         built.projectDir,
-        defaultOutputName
+        defaultOutputName,
+        built.outputMode
     );
     built.showTimestamp = requestedTask.showTimestamp;
     built.showObjectStatsHud = requestedTask.showObjectStatsHud;
     built.showChartInfoHud = requestedTask.showChartInfoHud;
+    built.fixHudTextLayout = requestedTask.fixHudTextLayout;
     built.centerDisplayMode = requestedTask.centerDisplayMode;
     built.skinLoadWaitMs = requestedTask.skinLoadWaitMs;
     // Bake the dialog's count-in on/off into the snapshot (default-true elsewhere
     // keeps CLI / batch emitting it). The clock_count VALUE is re-derived worker-side.
     built.clockCountEnabled = requestedTask.clockCountEnabled;
+    built.introSoundFileName = requestedTask.introSoundFileName;
+    built.introSoundVolume = requestedTask.introSoundVolume;
     built.intro = buildIntroBannerSpec(
         owner_.document_,
         resolvedDifficultyId,
@@ -658,7 +680,7 @@ bool MainWindow::ExportSection::buildVideoExportSnapshot(
 
     if (built.skinDirectory.trimmed().isEmpty()) {
         if (errorMessage != nullptr) {
-            *errorMessage = uiText("dialog.video_export.error.skin_missing", "Preview skin assets were not found.");
+            *errorMessage = UiText::text(QStringLiteral("dialog.video_export.error.skin_missing"));
         }
         return false;
     }
@@ -687,7 +709,7 @@ bool MainWindow::ExportSection::buildVideoExportSnapshotForChartDirectory(
     const QFileInfo directoryInfo(chartDirectory);
     if (!directoryInfo.exists() || !directoryInfo.isDir()) {
         if (errorMessage != nullptr) {
-            *errorMessage = uiText("dialog.batch_export.error.invalid_folder", "The selected path is not a valid folder.");
+            *errorMessage = UiText::text(QStringLiteral("dialog.batch_export.error.invalid_folder"));
         }
         return false;
     }
@@ -695,7 +717,7 @@ bool MainWindow::ExportSection::buildVideoExportSnapshotForChartDirectory(
     const QString chartPath = resolveChartPathFromCliInput(directoryInfo.absoluteFilePath());
     if (chartPath.isEmpty()) {
         if (errorMessage != nullptr) {
-            *errorMessage = uiText("dialog.batch_export.error.missing_chart_file", "Missing majdata.txt (or maidata.txt).");
+            *errorMessage = UiText::text(QStringLiteral("dialog.batch_export.error.missing_chart_file"));
         }
         return false;
     }
@@ -703,7 +725,7 @@ bool MainWindow::ExportSection::buildVideoExportSnapshotForChartDirectory(
     const QString trackPath = miacode::chart_assets::resolveTrackPathForDirectory(directoryInfo.absoluteFilePath());
     if (trackPath.isEmpty()) {
         if (errorMessage != nullptr) {
-            *errorMessage = uiText("dialog.batch_export.error.missing_track_file", "Missing track.mp3.");
+            *errorMessage = UiText::text(QStringLiteral("dialog.batch_export.error.missing_track_file"));
         }
         return false;
     }
@@ -712,10 +734,7 @@ bool MainWindow::ExportSection::buildVideoExportSnapshotForChartDirectory(
     const QString chartText = readTextFileWithFallbackEncoding(chartPath, &usedSystemEncoding);
     if (chartText.isNull()) {
         if (errorMessage != nullptr) {
-            *errorMessage = uiText(
-                "dialog.batch_export.error.read_chart_failed",
-                "Failed to read %1."
-            ).arg(QFileInfo(chartPath).fileName());
+            *errorMessage = UiText::text(QStringLiteral("dialog.batch_export.error.read_chart_failed")).arg(QFileInfo(chartPath).fileName());
         }
         return false;
     }
@@ -724,17 +743,12 @@ bool MainWindow::ExportSection::buildVideoExportSnapshotForChartDirectory(
     const SimaiDifficultyData* difficulty = document.difficulty(difficultyId);
     if (difficulty == nullptr) {
         if (errorMessage != nullptr) {
-            *errorMessage = uiText(
-                "dialog.batch_export.error.missing_requested_difficulty",
-                "Requested difficulty is missing."
-            );
+            *errorMessage = UiText::text(QStringLiteral("dialog.batch_export.error.missing_requested_difficulty"));
         }
         return false;
     }
 
-    const auto validationLocale = UiText::isChineseUi()
-        ? SimaiNativeValidationLocale::Chinese
-        : SimaiNativeValidationLocale::English;
+    const SimaiNativeValidationLocale validationLocale = uiValidationLocale();
     const miacode::simai::SimaiTimingMetadata timingMetadata = miacode::simai::buildTimingMetadata(document);
     const SimaiNativeValidationReport report =
         SimaiNativeParser::buildValidationReport(difficulty->chart, validationLocale, nullptr, timingMetadata);
@@ -745,14 +759,8 @@ bool MainWindow::ExportSection::buildVideoExportSnapshotForChartDirectory(
         }
         if (errorMessage != nullptr) {
             *errorMessage = issueSummary.isEmpty()
-                ? uiText(
-                      "dialog.batch_export.error.validation_failed_count",
-                      "Syntax check failed with %1 error(s)."
-                  ).arg(report.errorCount)
-                : uiText(
-                      "dialog.batch_export.error.validation_failed_detail",
-                      "Syntax check failed: %1"
-                  ).arg(issueSummary);
+                ? UiText::text(QStringLiteral("dialog.batch_export.error.validation_failed_count")).arg(report.errorCount)
+                : UiText::text(QStringLiteral("dialog.batch_export.error.validation_failed_detail")).arg(issueSummary);
         }
         return false;
     }
@@ -762,10 +770,7 @@ bool MainWindow::ExportSection::buildVideoExportSnapshotForChartDirectory(
         timingMetadata);
     if (parsedTimeline.noteMarkers.isEmpty()) {
         if (errorMessage != nullptr) {
-            *errorMessage = uiText(
-                "dialog.batch_export.error.no_markers",
-                "No parsed note markers are available for this difficulty."
-            );
+            *errorMessage = UiText::text(QStringLiteral("dialog.batch_export.error.no_markers"));
         }
         return false;
     }
@@ -783,14 +788,12 @@ bool MainWindow::ExportSection::buildVideoExportSnapshotForChartDirectory(
     const double firstSeconds = parsedDocumentFirstSeconds(document.first, &firstOk);
     if (!firstOk) {
         if (errorMessage != nullptr) {
-            *errorMessage = uiText(
-                "dialog.batch_export.error.invalid_first",
-                "Invalid &first value in chart metadata."
-            );
+            *errorMessage = UiText::text(QStringLiteral("dialog.batch_export.error.invalid_first"));
         }
         return false;
     }
-    const QVector<TimelineNoteMarker> shiftedMarkers = shiftedNoteMarkers(parsedTimeline.noteMarkers, firstSeconds);
+    const QVector<TimelineNoteMarker> shiftedMarkers =
+        shiftedNoteMarkers(parsedTimeline.noteMarkers, firstSeconds, NonFiniteHandling::Propagate);
     double lastMarkerEndSecond = 0.0;
     for (const TimelineNoteMarker& marker : shiftedMarkers) {
         lastMarkerEndSecond = qMax(lastMarkerEndSecond, markerEndSecond(marker));
@@ -801,10 +804,7 @@ bool MainWindow::ExportSection::buildVideoExportSnapshotForChartDirectory(
         lastMarkerEndSecond, trackDurationSeconds);
     if (contentDurationSeconds <= 0.0) {
         if (errorMessage != nullptr) {
-            *errorMessage = uiText(
-                "dialog.batch_export.error.invalid_duration",
-                "Failed to determine export duration for this chart."
-            );
+            *errorMessage = UiText::text(QStringLiteral("dialog.batch_export.error.invalid_duration"));
         }
         return false;
     }
@@ -851,6 +851,8 @@ bool MainWindow::ExportSection::buildVideoExportSnapshotForChartDirectory(
     built.tapFlowSpeed = requestedTask.tapFlowSpeed;
     built.touchFlowSpeed = requestedTask.touchFlowSpeed;
     built.slideEarlierSecondAndTextOnTop = requestedTask.slideEarlierSecondAndTextOnTop;
+    built.tapJudgeTextDistance = requestedTask.tapJudgeTextDistance;
+    built.judgeEffectStyle = requestedTask.judgeEffectStyle;
     built.muriRenderOptions = requestedTask.muriRenderOptions;
     built.staticTapOnSlideThresholdSeconds = requestedTask.staticTapOnSlideThresholdSeconds;
     built.exportStartSeconds = 0.0;
@@ -858,31 +860,41 @@ bool MainWindow::ExportSection::buildVideoExportSnapshotForChartDirectory(
     built.outputWidth = requestedTask.outputWidth;
     built.outputHeight = requestedTask.outputHeight;
     built.fps = requestedTask.fps;
+    built.audioBitrateKbps = requestedTask.audioBitrateKbps;
+    built.outputMode = requestedTask.outputMode;
     built.preset = requestedTask.preset;
+    built.sizePreset = requestedTask.sizePreset;
     built.fullRangeExport = true;
     built.outputPath = resolveVideoExportOutputPath(
         QString(),
-       outputDirectory,
-       defaultOutputName
+        outputDirectory,
+        defaultOutputName,
+        built.outputMode
     );
     built.showTimestamp = requestedTask.showTimestamp;
     built.showObjectStatsHud = requestedTask.showObjectStatsHud;
     built.showChartInfoHud = requestedTask.showChartInfoHud;
+    built.fixHudTextLayout = requestedTask.fixHudTextLayout;
     built.centerDisplayMode = requestedTask.centerDisplayMode;
     built.skinLoadWaitMs = requestedTask.skinLoadWaitMs;
+    // Batch uses the same opt-in count-in setting as single export. The
+    // clock_count value itself is rebuilt from each chart in the worker.
+    built.clockCountEnabled = requestedTask.clockCountEnabled;
+    built.introSoundFileName = requestedTask.introSoundFileName;
+    built.introSoundVolume = requestedTask.introSoundVolume;
     built.intro = buildIntroBannerSpec(
         document,
         difficultyId,
         chartPath,
         requestedTask.intro.enabled,
         built.fullRangeExport);  // batch is always full-range
+    // The chart contributes title/artist/designer metadata, while the shared
+    // 片头 tab owns its visual style. Preserve that style per queue item.
+    copyIntroStyling(requestedTask.intro, &built.intro);
 
     if (built.skinDirectory.trimmed().isEmpty()) {
         if (errorMessage != nullptr) {
-            *errorMessage = uiText(
-                "dialog.batch_export.error.skin_missing",
-                "Preview skin assets were not found."
-            );
+            *errorMessage = UiText::text(QStringLiteral("dialog.batch_export.error.skin_missing"));
         }
         return false;
     }
@@ -1069,6 +1081,8 @@ bool MainWindow::ExportSection::exportPreviewVideoFromCli(
     task.tapFlowSpeed = request.noteFlowSpeed;
     task.touchFlowSpeed = request.touchFlowSpeed;
     task.slideEarlierSecondAndTextOnTop = miacode::preview_gameplay::kPreviewSlideEarlierSecondAndTextOnTop;
+    task.tapJudgeTextDistance = request.tapJudgeTextDistance;
+    task.judgeEffectStyle = request.judgeEffectStyle;
     task.exportStartSeconds = exportStartSeconds;
     task.contentDurationSeconds = contentDurationSeconds;
     task.fullRangeExport = fullRangeExport;

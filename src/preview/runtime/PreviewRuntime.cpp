@@ -1,4 +1,6 @@
 #include "preview/runtime/PreviewRuntime.h"
+#include "core/scene/PreviewFireworkWarmupPolicy.h"
+#include "core/scene/TouchPadAuthoringState.h"
 
 #include "common/DebugLog.h"
 #include "common/DebugOptions.h"
@@ -30,6 +32,41 @@ double averageOrZero(double total, qint64 count)
 double fpsFromAverageMs(double averageMs)
 {
     return averageMs > 1e-6 ? 1000.0 / averageMs : 0.0;
+}
+
+QString pointerHex(const void* pointer)
+{
+    return QStringLiteral("0x%1").arg(reinterpret_cast<quintptr>(pointer), 0, 16);
+}
+
+QString logTextPreview(QString text)
+{
+    text.replace(QLatin1Char('\r'), QLatin1Char(' '));
+    text.replace(QLatin1Char('\n'), QLatin1Char(' '));
+    text.replace(QLatin1Char('\t'), QLatin1Char(' '));
+    text.replace(QLatin1Char('"'), QLatin1Char('\''));
+    constexpr int kMaxPreviewChars = 96;
+    if (text.size() > kMaxPreviewChars) {
+        text = text.left(kMaxPreviewChars) + QStringLiteral("...");
+    }
+    return text;
+}
+
+void appendHudStateDiagLine(const QString& action, const QString& detail = QString())
+{
+    if (!miacode::debug_options::previewHudPaintDiagnosticsEnabled()) {
+        return;
+    }
+    QString payload = QStringLiteral("action=%1").arg(action);
+    if (!detail.trimmed().isEmpty()) {
+        payload += QStringLiteral(" ") + detail.trimmed();
+    }
+    miacode::debug_log::appendLine(
+        miacode::debug_log::Channel::Runtime,
+        QStringLiteral("preview/hud_state"),
+        payload,
+        /*force=*/true);
+    miacode::debug_log::flushAsyncLogWriter(100);
 }
 
 double rollingAverageMs(const QVector<double>& samples, int count)
@@ -162,6 +199,7 @@ PreviewRuntime::PreviewRuntime(QObject* parent)
     tickIntervalsMs_.fill(0.0);
     updateRequestIntervalsMs_.resize(kPreviewIntervalWindowSize);
     updateRequestIntervalsMs_.fill(0.0);
+    publishFrameStateSnapshot();
     connect(assets_, &miacode::preview::runtime::PreviewSceneAssetRepository::assetsChanged, this, [this]() {
         refreshAssetStateFromRepository();
         // Assets (incl. the firework colour ball) just became available —
@@ -195,6 +233,24 @@ PreviewRuntime::~PreviewRuntime()
     );
 }
 
+std::shared_ptr<const miacode::preview::scene::PreviewFrameState> PreviewRuntime::frameStateSnapshot() const
+{
+    return std::atomic_load_explicit(&publishedFrameState_, std::memory_order_acquire);
+}
+
+void PreviewRuntime::publishFrameStateSnapshot()
+{
+    auto snapshot =
+        std::make_shared<miacode::preview::scene::PreviewFrameState>(frameState_);
+    miacode::preview::scene::refreshPreviewFrameStateHudStatsSnapshot(*snapshot);
+    std::shared_ptr<const miacode::preview::scene::PreviewFrameState> publishedSnapshot =
+        std::move(snapshot);
+    std::atomic_store_explicit(
+        &publishedFrameState_,
+        std::move(publishedSnapshot),
+        std::memory_order_release);
+}
+
 void PreviewRuntime::setVisibleHostWindow(QQuickWindow* window)
 {
     if (visibleHostWindow_ == window) {
@@ -209,6 +265,7 @@ void PreviewRuntime::setVisibleHostWindow(QQuickWindow* window)
         fireworkWarmupArmed_ = false;
         fireworkWarmupDone_ = false;
         fireworkWarmupArmPresentCount_ = -1;
+        fireworkWarmupElapsed_.invalidate();
         armFireworkPsoWarmupIfReady();
         update();
     }
@@ -269,6 +326,7 @@ void PreviewRuntime::update()
             updateRequestIntervalsMs_, updateRequestIntervalCount_, thresholdMs);
     }
     pendingPresentedStatsRefresh_ = true;
+    publishFrameStateSnapshot();
     emit frameStateChanged();
     if (visibleHostWindow_ != nullptr) {
         visibleHostWindow_->requestUpdate();
@@ -294,6 +352,8 @@ void PreviewRuntime::setStageMediaPresentationMode(
     frameState_.media.presentationMode = mode;
     if (requestUpdate) {
         update();
+    } else {
+        publishFrameStateSnapshot();
     }
 }
 
@@ -314,6 +374,8 @@ void PreviewRuntime::setExternalStageMediaDebugState(
     frameState_.media.externalVideoFrameStalled = videoFrameStalled;
     if (requestUpdate) {
         update();
+    } else {
+        publishFrameStateSnapshot();
     }
 }
 
@@ -339,6 +401,7 @@ void PreviewRuntime::setExternalStageMediaProfileSummary(
     frameState_.media.externalVideoFrameIntervalAvgMs = qMax(0.0, videoFrameIntervalAvgMs);
     frameState_.media.externalVideoFrameIntervalMaxMs = qMax(0.0, videoFrameIntervalMaxMs);
     frameState_.media.externalVideoFrameStallCount = qMax<qint64>(0, videoFrameStallCount);
+    publishFrameStateSnapshot();
 }
 
 void PreviewRuntime::setFramePacingDebugState(
@@ -367,6 +430,8 @@ void PreviewRuntime::setPlayheadSeconds(double seconds, bool requestUpdate)
     refreshFireworkWarmupForPlayheadChange();
     if (requestUpdate) {
         update();
+    } else {
+        publishFrameStateSnapshot();
     }
 }
 
@@ -375,6 +440,8 @@ void PreviewRuntime::setHudPlayheadSecondsOverride(double seconds, bool requestU
     frameState_.hudPlayheadSecondsOverride = seconds;
     if (requestUpdate) {
         update();
+    } else {
+        publishFrameStateSnapshot();
     }
 }
 
@@ -383,6 +450,8 @@ void PreviewRuntime::clearHudPlayheadSecondsOverride(bool requestUpdate)
     frameState_.hudPlayheadSecondsOverride = std::numeric_limits<double>::quiet_NaN();
     if (requestUpdate) {
         update();
+    } else {
+        publishFrameStateSnapshot();
     }
 }
 
@@ -454,6 +523,7 @@ void PreviewRuntime::setVideoFrame(const QVideoFrame& frame)
 #else
     Q_UNUSED(frame);
 #endif
+    publishFrameStateSnapshot();
 }
 
 void PreviewRuntime::setResolvedStageVideoFrame(
@@ -500,7 +570,16 @@ void PreviewRuntime::setProgressStatsCache(
     std::shared_ptr<const miacode::preview::scene::PreviewProgressStatsCache> cache
 )
 {
+    const void* oldCache = frameState_.progressStatsCache.get();
+    const void* newCache = cache.get();
     frameState_.progressStatsCache = std::move(cache);
+    appendHudStateDiagLine(
+        QStringLiteral("set_progress_stats_cache"),
+        QStringLiteral("runtime=%1 state=%2 old_cache=%3 new_cache=%4")
+            .arg(pointerHex(this))
+            .arg(pointerHex(&frameState_))
+            .arg(pointerHex(oldCache))
+            .arg(pointerHex(newCache)));
     update();
 }
 
@@ -556,6 +635,16 @@ void PreviewRuntime::setOutlineImagePath(const QString& path)
 {
     if (assets_ != nullptr) {
         assets_->setOutlineImagePath(path);
+    }
+}
+
+void PreviewRuntime::setOutlineSelection(
+    PreviewOutlineVariant variant,
+    const QString& path,
+    miacode::preview::runtime::PreviewOutlineImageMode imageMode)
+{
+    if (assets_ != nullptr) {
+        assets_->setOutlineSelection(variant, path, imageMode);
     }
 }
 
@@ -622,6 +711,81 @@ void PreviewRuntime::setSlideEarlierSecondAndTextOnTop(bool enabled)
     update();
 }
 
+void PreviewRuntime::setTapJudgeTextDistance(PreviewTapJudgeTextDistance distance)
+{
+    frameState_.render.tapJudgeTextDistance = distance;
+    update();
+}
+
+void PreviewRuntime::setJudgeEffectStyle(PreviewJudgeEffectStyle style)
+{
+    frameState_.render.judgeEffectStyle = style;
+    update();
+}
+
+void PreviewRuntime::setHoveredTouchPad(const QString& pad)
+{
+    QString hovered = frameState_.hoveredTouchPad;
+    QString pressed = frameState_.pressedTouchPad;
+    miacode::preview::scene::moveTouchPadAuthoringGesture(&hovered, &pressed, pad);
+    if (frameState_.hoveredTouchPad == hovered && frameState_.pressedTouchPad == pressed) {
+        return;
+    }
+    frameState_.hoveredTouchPad = hovered;
+    frameState_.pressedTouchPad = pressed;
+    update();
+}
+
+bool PreviewRuntime::beginTouchPadAuthoringPress(const QString& pad)
+{
+    if (!frameState_.touchPadAuthoringEnabled
+        || !miacode::preview::scene::beginTouchPadAuthoringGesture(
+            &frameState_.hoveredTouchPad, &frameState_.pressedTouchPad, pad)) {
+        return false;
+    }
+    update();
+    return true;
+}
+
+bool PreviewRuntime::finishTouchPadAuthoringPress(const QString& pad, QChar separator)
+{
+    const QString completed = miacode::preview::scene::finishTouchPadAuthoringGesture(
+        &frameState_.hoveredTouchPad, &frameState_.pressedTouchPad, pad);
+    update();
+    if (completed.isEmpty()) {
+        return false;
+    }
+    emit touchPadAuthoringClicked(completed, separator);
+    return true;
+}
+
+void PreviewRuntime::cancelTouchPadAuthoringPress()
+{
+    if (frameState_.pressedTouchPad.isEmpty()) {
+        return;
+    }
+    frameState_.pressedTouchPad.clear();
+    update();
+}
+
+void PreviewRuntime::setTouchPadAuthoringEnabled(bool enabled)
+{
+    if (frameState_.touchPadAuthoringEnabled == enabled) {
+        if (!enabled && (!frameState_.hoveredTouchPad.isEmpty() || !frameState_.pressedTouchPad.isEmpty())) {
+            frameState_.hoveredTouchPad.clear();
+            frameState_.pressedTouchPad.clear();
+            update();
+        }
+        return;
+    }
+    frameState_.touchPadAuthoringEnabled = enabled;
+    if (!enabled) {
+        frameState_.hoveredTouchPad.clear();
+        frameState_.pressedTouchPad.clear();
+    }
+    update();
+}
+
 void PreviewRuntime::setShowDebugInfo(bool show)
 {
     requestedShowDebugInfo_ = show;
@@ -634,27 +798,74 @@ void PreviewRuntime::setSuppressDebugInfo(bool suppress)
     if (suppressDebugInfo_ == suppress) {
         return;
     }
+    const bool oldEffective = frameState_.render.showDebugInfo;
     suppressDebugInfo_ = suppress;
     frameState_.render.showDebugInfo = requestedShowDebugInfo_ && !suppressDebugInfo_;
+    appendHudStateDiagLine(
+        QStringLiteral("set_suppress_debug_info"),
+        QStringLiteral("runtime=%1 state=%2 suppress=%3 requested=%4 old_effective=%5 new_effective=%6")
+            .arg(pointerHex(this))
+            .arg(pointerHex(&frameState_))
+            .arg(suppressDebugInfo_ ? 1 : 0)
+            .arg(requestedShowDebugInfo_ ? 1 : 0)
+            .arg(oldEffective ? 1 : 0)
+            .arg(frameState_.render.showDebugInfo ? 1 : 0));
     update();
 }
 
 void PreviewRuntime::setShowTimestamp(bool show)
 {
+    const bool oldShow = frameState_.render.showTimestamp;
     frameState_.render.showTimestamp = show;
+    appendHudStateDiagLine(
+        QStringLiteral("set_show_timestamp"),
+        QStringLiteral("runtime=%1 state=%2 old=%3 new=%4")
+            .arg(pointerHex(this))
+            .arg(pointerHex(&frameState_))
+            .arg(oldShow ? 1 : 0)
+            .arg(frameState_.render.showTimestamp ? 1 : 0));
     update();
 }
 
 void PreviewRuntime::setShowObjectStatsHud(bool show)
 {
+    const bool oldRequested = requestedShowObjectStatsHud_;
+    const bool oldEffective = frameState_.render.showObjectStatsHud;
     requestedShowObjectStatsHud_ = show;
     frameState_.render.showObjectStatsHud = requestedShowObjectStatsHud_ && !suppressObjectStatsHud_;
+    appendHudStateDiagLine(
+        QStringLiteral("set_show_object_stats_hud"),
+        QStringLiteral("runtime=%1 state=%2 old_requested=%3 new_requested=%4 suppress=%5 old_effective=%6 new_effective=%7")
+            .arg(pointerHex(this))
+            .arg(pointerHex(&frameState_))
+            .arg(oldRequested ? 1 : 0)
+            .arg(requestedShowObjectStatsHud_ ? 1 : 0)
+            .arg(suppressObjectStatsHud_ ? 1 : 0)
+            .arg(oldEffective ? 1 : 0)
+            .arg(frameState_.render.showObjectStatsHud ? 1 : 0));
+    update();
+}
+
+void PreviewRuntime::setFixHudTextLayout(bool enabled)
+{
+    if (frameState_.render.fixHudTextLayout == enabled) {
+        return;
+    }
+    frameState_.render.fixHudTextLayout = enabled;
     update();
 }
 
 void PreviewRuntime::setCenterDisplayMode(miacode::preview_gameplay::CenterDisplayMode mode)
 {
+    const auto oldMode = frameState_.render.centerDisplayMode;
     frameState_.render.centerDisplayMode = mode;
+    appendHudStateDiagLine(
+        QStringLiteral("set_center_display_mode"),
+        QStringLiteral("runtime=%1 state=%2 old=%3 new=%4")
+            .arg(pointerHex(this))
+            .arg(pointerHex(&frameState_))
+            .arg(static_cast<int>(oldMode))
+            .arg(static_cast<int>(frameState_.render.centerDisplayMode)));
     update();
 }
 
@@ -663,8 +874,18 @@ void PreviewRuntime::setSuppressObjectStatsHud(bool suppress)
     if (suppressObjectStatsHud_ == suppress) {
         return;
     }
+    const bool oldEffective = frameState_.render.showObjectStatsHud;
     suppressObjectStatsHud_ = suppress;
     frameState_.render.showObjectStatsHud = requestedShowObjectStatsHud_ && !suppressObjectStatsHud_;
+    appendHudStateDiagLine(
+        QStringLiteral("set_suppress_object_stats_hud"),
+        QStringLiteral("runtime=%1 state=%2 suppress=%3 requested=%4 old_effective=%5 new_effective=%6")
+            .arg(pointerHex(this))
+            .arg(pointerHex(&frameState_))
+            .arg(suppressObjectStatsHud_ ? 1 : 0)
+            .arg(requestedShowObjectStatsHud_ ? 1 : 0)
+            .arg(oldEffective ? 1 : 0)
+            .arg(frameState_.render.showObjectStatsHud ? 1 : 0));
     update();
 }
 
@@ -683,7 +904,19 @@ void PreviewRuntime::setShowChartInfoHud(bool show)
     if (frameState_.render.showChartInfoHud == show) {
         return;
     }
+    const bool oldShow = frameState_.render.showChartInfoHud;
     frameState_.render.showChartInfoHud = show;
+    appendHudStateDiagLine(
+        QStringLiteral("set_show_chart_info_hud"),
+        QStringLiteral("runtime=%1 state=%2 old=%3 new=%4 title_len=%5 artist_len=%6 diff_len=%7 designer_len=%8")
+            .arg(pointerHex(this))
+            .arg(pointerHex(&frameState_))
+            .arg(oldShow ? 1 : 0)
+            .arg(frameState_.render.showChartInfoHud ? 1 : 0)
+            .arg(frameState_.chartTitle.size())
+            .arg(frameState_.chartArtist.size())
+            .arg(frameState_.chartDifficultyLabel.size())
+            .arg(frameState_.chartDesigner.size()));
     update();
 }
 
@@ -702,12 +935,54 @@ void PreviewRuntime::setChartInfo(const QString& title,
     frameState_.chartArtist = artist;
     frameState_.chartDifficultyLabel = difficultyLabel;
     frameState_.chartDesigner = designer;
+    appendHudStateDiagLine(
+        QStringLiteral("set_chart_info"),
+        QStringLiteral(
+            "runtime=%1 state=%2 title_len=%3 artist_len=%4 diff_len=%5 designer_len=%6 title_preview=\"%7\" artist_preview=\"%8\" diff_preview=\"%9\" designer_preview=\"%10\"")
+            .arg(pointerHex(this))
+            .arg(pointerHex(&frameState_))
+            .arg(frameState_.chartTitle.size())
+            .arg(frameState_.chartArtist.size())
+            .arg(frameState_.chartDifficultyLabel.size())
+            .arg(frameState_.chartDesigner.size())
+            .arg(logTextPreview(frameState_.chartTitle))
+            .arg(logTextPreview(frameState_.chartArtist))
+            .arg(logTextPreview(frameState_.chartDifficultyLabel))
+            .arg(logTextPreview(frameState_.chartDesigner)));
     update();
 }
 
 bool PreviewRuntime::showChartInfoHud() const
 {
     return frameState_.render.showChartInfoHud;
+}
+
+void PreviewRuntime::setShowJudgeEffects(bool enabled)
+{
+    if (frameState_.render.showJudgeEffects == enabled) {
+        return;
+    }
+    frameState_.render.showJudgeEffects = enabled;
+    update();
+}
+
+bool PreviewRuntime::showJudgeEffects() const
+{
+    return frameState_.render.showJudgeEffects;
+}
+
+void PreviewRuntime::setUseMineSkin(bool enabled)
+{
+    if (frameState_.render.useMineSkin == enabled) {
+        return;
+    }
+    frameState_.render.useMineSkin = enabled;
+    update();
+}
+
+bool PreviewRuntime::useMineSkin() const
+{
+    return frameState_.render.useMineSkin;
 }
 
 miacode::preview_gameplay::CenterDisplayMode PreviewRuntime::centerDisplayMode() const
@@ -717,6 +992,14 @@ miacode::preview_gameplay::CenterDisplayMode PreviewRuntime::centerDisplayMode()
 
 void PreviewRuntime::reset()
 {
+    appendHudStateDiagLine(
+        QStringLiteral("reset"),
+        QStringLiteral("runtime=%1 state=%2 old_progress_stats=%3 old_chart_title_len=%4 old_show_chart_info=%5")
+            .arg(pointerHex(this))
+            .arg(pointerHex(&frameState_))
+            .arg(pointerHex(frameState_.progressStatsCache.get()))
+            .arg(frameState_.chartTitle.size())
+            .arg(frameState_.render.showChartInfoHud ? 1 : 0));
     const auto presentationMode = frameState_.media.presentationMode;
     frameState_.noteMarkers.clear();
     frameState_.progressStatsCache.reset();
@@ -724,6 +1007,16 @@ void PreviewRuntime::reset()
     frameState_.playheadSeconds = 0.0;
     frameState_.hudPlayheadSecondsOverride = std::numeric_limits<double>::quiet_NaN();
     frameState_.sceneContentRevision = 0;
+    // Restore the invariant "armed-but-not-done ⇒ exactly one synthetic in
+    // noteMarkers, centred on fireworkWarmupCenterSecond_". The clear above drops
+    // it, and refreshFireworkWarmupForPlayheadChange() no longer re-adds it on
+    // every playhead change — it only fires once the playhead has consumed its
+    // slack, so without this the warm-up could sit un-drawable (and therefore
+    // never confirm) until the playhead happened to travel far enough. Mirrors
+    // the same guard in setNoteMarkers().
+    if (fireworkWarmupArmed_ && !fireworkWarmupDone_) {
+        appendFireworkWarmupMarker();
+    }
     clearIntroOverlay(false);
     frameState_.media = miacode::preview::scene::PreviewMediaFrameState();
     frameState_.media.presentationMode = presentationMode;
@@ -779,14 +1072,30 @@ void PreviewRuntime::noteTickForProfiling()
         frameState_.tickStutterCountDisplay = rollingStutterCount(
             tickIntervalsMs_, tickIntervalCount_, thresholdMs);
     }
+    publishFrameStateSnapshot();
 }
 
 QString PreviewRuntime::resourceGaugePayload() const
 {
+    // `tex_fresh` guards every cached_tex* / creates field on this line.
+    //
+    // Those come from notePresentedTextureStats(), which only ever runs on a present
+    // and only when preview-profile output is on. A caller on the GUI thread can
+    // therefore read them at a moment when they describe nothing: reset() (and
+    // setFrameSize) arm pendingPresentedStatsRefresh_ and zero
+    // cachedTextureCreateTotal_, and handlePresentedFrame() is what disarms it. A
+    // chart switch runs reset() and samples immediately, so before this flag existed
+    // it printed a confident `cached_tex=0 cached_tex_creates=0` that a reader could
+    // not distinguish from a genuinely empty repository — the exact misread called
+    // out in docs/audit/CHART_SWITCH_RESOURCE_RELEASE_AUDIT_ZH.md section 7.4.
+    //
+    // tex_fresh=0 means "no present has refreshed these since the last reset/resize;
+    // ignore them". It does NOT mean the repository is empty.
     return QStringLiteral(
-               "scene_revision=%1 cached_tex=%2 cached_tex_kb=%3 transient_tex=%4 "
-               "cached_tex_creates=%5 transient_tex_creates=%6 sprite_max=%7 present_total=%8")
+               "scene_revision=%1 tex_fresh=%2 cached_tex=%3 cached_tex_kb=%4 transient_tex=%5 "
+               "cached_tex_creates=%6 transient_tex_creates=%7 sprite_max=%8 present_total=%9")
         .arg(static_cast<qulonglong>(frameState_.sceneContentRevision))
+        .arg(pendingPresentedStatsRefresh_ ? 0 : 1)
         .arg(latestCachedTextureCount_)
         .arg(latestCachedTextureBytes_ / 1024)
         .arg(latestTransientTextureCount_)
@@ -1150,6 +1459,7 @@ void PreviewRuntime::resetProfilingSession()
     frameState_.tickCount = 0;
     frameState_.updateRequestCount = 0;
     frameState_.presentedFrameCount = 0;
+    publishFrameStateSnapshot();
     profilingSummaryDirty_ = false;
     profiledTextureFrameCount_ = 0;
     profiledActiveSpriteFrameCount_ = 0;
@@ -1575,7 +1885,17 @@ void PreviewRuntime::setFrameSize(const QSize& size)
     if (frameSize_ == safeSize) {
         return;
     }
+    const QSize oldSize = frameSize_;
     frameSize_ = safeSize;
+    appendHudStateDiagLine(
+        QStringLiteral("set_frame_size"),
+        QStringLiteral("runtime=%1 state=%2 old=%3x%4 new=%5x%6")
+            .arg(pointerHex(this))
+            .arg(pointerHex(&frameState_))
+            .arg(oldSize.width())
+            .arg(oldSize.height())
+            .arg(frameSize_.width())
+            .arg(frameSize_.height()));
     pendingPresentedStatsRefresh_ = true;
     update();
 }
@@ -1586,12 +1906,13 @@ void PreviewRuntime::handlePresentedFrame()
     frameState_.presentedFrameCount = presentedFrameCountTotal_;
     updatePresentedFrameStats();
     pendingPresentedStatsRefresh_ = false;
-    // Firework warm-up completion. PRIMARY criterion: the firework layer has
-    // actually emitted a node since the warm-up was armed (its draw signal
+    // Firework warm-up completion. PRIMARY criterion: a PRESENTED frame has
+    // contained a firework node since the warm-up was armed (its draw signal
     // advanced past the arm-time snapshot). That draw is what binds the
     // material pipeline (PSO compiled on first use) and samples the colour-ball
-    // texture (uploaded on first use), so it is the only reliable proof the
-    // warm-up did its job — counting bare presents was the historical bug
+    // texture (uploaded on first use), and the swap is what proves the work
+    // completed rather than merely being recorded (audit §6D-2) — counting bare
+    // presents was the historical bug
     // (presents accrue even on frames where the synthetic was outside its
     // lifecycle window and never drawn). The present-count delta is a BACKSTOP
     // only: if the firework never renders (layer disabled / non-rendering
@@ -1605,6 +1926,10 @@ void PreviewRuntime::handlePresentedFrame()
         const bool warmupTimedOut =
             (presentedFrameCountTotal_ - fireworkWarmupArmPresentCount_) >= kFireworkWarmupMaxPresents;
         if (fireworkDrawn || warmupTimedOut) {
+            const qint64 warmupElapsedMs = fireworkWarmupElapsed_.isValid()
+                ? fireworkWarmupElapsed_.elapsed() : -1;
+            const qint64 warmupPresents =
+                presentedFrameCountTotal_ - fireworkWarmupArmPresentCount_;
             fireworkWarmupDone_ = true;
             removeFireworkWarmupMarkers();
             frameState_.sceneContentRevision += 1;
@@ -1612,11 +1937,15 @@ void PreviewRuntime::handlePresentedFrame()
             miacode::debug_log::appendLine(
                 miacode::debug_log::Channel::Runtime,
                 QStringLiteral("preview/runtime"),
-                QStringLiteral("action=firework_pso_warmup_done reason=%1 present_count=%2")
+                QStringLiteral("action=firework_pso_warmup_done reason=%1 present_count=%2 "
+                               "elapsed_ms=%3 presents_since_arm=%4")
                     .arg(fireworkDrawn ? QStringLiteral("drawn") : QStringLiteral("timeout"))
-                    .arg(presentedFrameCountTotal_));
+                    .arg(presentedFrameCountTotal_)
+                    .arg(warmupElapsedMs)
+                    .arg(warmupPresents));
         }
     }
+    publishFrameStateSnapshot();
     emit framePresented();
 }
 
@@ -1648,6 +1977,7 @@ void PreviewRuntime::armFireworkPsoWarmupIfReady()
     }
     fireworkWarmupArmed_ = true;
     fireworkWarmupArmPresentCount_ = presentedFrameCountTotal_;
+    fireworkWarmupElapsed_.restart();
     // Snapshot the layer draw signal: completion needs it to advance past this,
     // i.e. a firework node emitted AFTER this arm (see handlePresentedFrame).
     fireworkWarmupArmDrawSignal_ = fireworkLayerDrawSignal_.load(std::memory_order_acquire);
@@ -1676,13 +2006,15 @@ void PreviewRuntime::appendFireworkWarmupMarker()
     TimelineNoteMarker synth;
     synth.type = QStringLiteral("touch");
     synth.isFirework = true;
-    synth.second = frameState_.playheadSeconds
-        - miacode::preview_gameplay::kJudgeEffectFireworkTouchTriggerDelaySeconds
-        - 0.15;
+    synth.second = miacode::preview::scene::fireworkWarmupMarkerSecond(frameState_.playheadSeconds);
     synth.endSecond = -1.0;
-    synth.touchPoint = QPointF(-1.0e6, -1.0e6);  // off-screen, non-zero
+    synth.touchPoint = QPointF(
+        miacode::preview::scene::kFireworkWarmupOffscreenCoordinate,
+        miacode::preview::scene::kFireworkWarmupOffscreenCoordinate);  // off-screen, non-zero
     synth.lane = 1;
     frameState_.noteMarkers.append(synth);
+    // Anchor for refreshFireworkWarmupForPlayheadChange()'s slack test.
+    fireworkWarmupCenterSecond_ = frameState_.playheadSeconds;
 }
 
 void PreviewRuntime::removeFireworkWarmupMarkers()
@@ -1693,22 +2025,19 @@ void PreviewRuntime::removeFireworkWarmupMarkers()
             markers.begin(),
             markers.end(),
             [](const TimelineNoteMarker& marker) {
-                return marker.isFirework
-                    && marker.type == QLatin1String("touch")
-                    && qFuzzyCompare(marker.touchPoint.x(), -1.0e6)
-                    && qFuzzyCompare(marker.touchPoint.y(), -1.0e6);
+                return miacode::preview::scene::isFireworkWarmupMarker(marker);
             }),
         markers.end());
 }
 
-void PreviewRuntime::notifyFireworkLayerProducedNode()
+void PreviewRuntime::notifyFireworkLayerPresentedNode()
 {
-    // Called on the QSG render thread (from PreviewQuickSceneRoot, after the
-    // firework layer returns a non-null node). A non-null node means the
-    // material pipeline was bound (PSO compiled on first use) and the
-    // colour-ball texture sampled (uploaded on first use) — exactly the work
-    // the warm-up exists to front-load. Bump the signal the GUI-thread
-    // completion check reads. Atomic-only: touch no other member from here.
+    // Called on the QSG render thread (from PreviewQuickSceneRoot's direct
+    // frameSwapped hook) once a SWAPPED frame contained a firework node. The node
+    // means the material pipeline was bound (PSO compiled on first use) and the
+    // colour-ball texture sampled (uploaded on first use); the swap means that work
+    // has actually completed rather than merely been recorded. Bump the signal the
+    // GUI-thread completion check reads. Atomic-only: touch no other member here.
     fireworkLayerDrawSignal_.fetch_add(1, std::memory_order_release);
 }
 
@@ -1723,6 +2052,26 @@ void PreviewRuntime::refreshFireworkWarmupForPlayheadChange()
     // cache rebuilds the window. No-op once warm-up is done, so this is free on
     // the playback hot path.
     if (!fireworkWarmupArmed_ || fireworkWarmupDone_) {
+        return;
+    }
+    // ...but only once the playhead has actually consumed its slack. This used to
+    // re-centre on EVERY playhead change, i.e. once per preview frame (60-180 Hz)
+    // for as long as the warm-up stayed armed — and it stays armed until a frame
+    // that actually draws the synthetic is presented, which on an idle paused
+    // preview does not happen until the user's first playback. Each re-centre
+    // rewrites the whole marker vector and bumps sceneContentRevision, which
+    // invalidates PreviewPreparedSceneCache and forces a full ten-layer rebuild
+    // (two stable_sorts per layer plus a cursor reset). That per-frame rebuild was
+    // the bulk of the "first playback after startup stutters" report, and it came
+    // back mid-session on every visible-window rebind (F11) because that re-arms.
+    //
+    // The slack test lives in core/scene/PreviewFireworkWarmupPolicy.h and is
+    // calibrated against the layer's real lifecycle window by
+    // preview_firework_warmup_policy_spec. Seeks / pre-roll jumps are orders of
+    // magnitude larger than the slack, so they still force a re-centre and the
+    // cross-chain-linkage contract holds.
+    if (!miacode::preview::scene::fireworkWarmupNeedsRecenter(
+            frameState_.playheadSeconds, fireworkWarmupCenterSecond_)) {
         return;
     }
     removeFireworkWarmupMarkers();

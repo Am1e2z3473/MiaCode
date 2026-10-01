@@ -157,9 +157,8 @@ void applyComposerInputs(QQuickItem* root,
 }
 
 // card.<ext>, then card(1).<ext>, card(2).<ext> … on collision.
-QString uniqueCoverPath(const QDir& dir, const QString& extension)
+QString uniqueCoverPath(const QDir& dir, const QString& extension, const QString& stem)
 {
-    const QString stem = QStringLiteral("card");
     QString candidate = dir.filePath(stem + QLatin1Char('.') + extension);
     int copyIndex = 1;
     while (QFileInfo::exists(candidate)) {
@@ -350,10 +349,7 @@ void CoverComposerView::bindLiveChartScene(QObject* sceneRoot)
     liveChartScene_ = root;
     // Same configuration the offscreen SceneFrameRenderer uses, so the live edit
     // scene is pixel-equivalent to the exported grab: overlay layers only (no song
-    // background) over transparent, and force the QSG path even when DComp is on
-    // globally (--quick-shell-beta) — otherwise updatePaintNode short-circuits to
-    // nullptr and the layer renders blank.
-    root->setDCompFallbackActive(true);
+    // background) over transparent.
     root->setLayerFlags(miacode::preview::scene::kPreviewExportOverlayRenderLayers);
     root->setFrameState(chartFrameState_);
     // Force an initial paint so a freshly-bound active frame shows immediately even
@@ -463,7 +459,8 @@ QImage renderCoverComposite(CoverLayoutModel* model,
 CoverExportResult exportCoverComposite(CoverLayoutModel* model,
                                        const CoverComposerInputs& inputs,
                                        const QSize& fullSize,
-                                       const QString& outputDirectory)
+                                       const QString& outputDirectory,
+                                       const QString& fileStem)
 {
     CoverExportResult result;
 
@@ -483,7 +480,7 @@ CoverExportResult exportCoverComposite(CoverLayoutModel* model,
 
     const bool transparent = (inputs.backgroundMode == CoverBackgroundMode::Transparent);
     const QString extension = transparent ? QStringLiteral("png") : QStringLiteral("jpg");
-    const QString outputPath = uniqueCoverPath(outDir, extension);
+    const QString outputPath = uniqueCoverPath(outDir, extension, fileStem);
     const int quality = transparent ? -1 : 95;
     if (!image.save(outputPath, transparent ? "PNG" : "JPG", quality)) {
         result.errorMessage = QStringLiteral("failed to write image: %1").arg(outputPath);

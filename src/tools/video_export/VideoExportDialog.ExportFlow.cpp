@@ -2,11 +2,14 @@
 
 #include "BusySpinner.h"
 #include "DialogLocalization.h"
-#include "EditableValueLabel.h"
+#include "UiComponents.h"
 #include "UiText.h"
 #include "UiTheme.h"
 #include "common/DebugLog.h"
+#include "common/DebugOptions.h"
+#include "common/OperationLog.h"
 #include "common/PreviewInteractionConfig.h"
+#include "common/UiHangWatchdog.h"
 #include "core/scene/PreviewHudState.h"
 #include "tools/video_export/HudFontSettings.h"
 #include "tools/video_export/IntroPreviewWidget.h"
@@ -24,6 +27,7 @@
 #include <QDoubleValidator>
 #include <QDir>
 #include <QDoubleSpinBox>
+#include <QElapsedTimer>
 #include <QFile>
 #include <QFileDialog>
 #include <QFileInfo>
@@ -45,6 +49,7 @@
 #include <QPaintEvent>
 #include <QPainterPath>
 #include <QPushButton>
+#include <QPlainTextEdit>
 #include <QRegularExpression>
 #include <QScrollArea>
 #include <QScrollBar>
@@ -53,6 +58,7 @@
 #include <QSplitter>
 #include <QStackedWidget>
 #include <QTabWidget>
+#include <QTextEdit>
 #include <QTimer>
 #include <QToolButton>
 #include <QVBoxLayout>
@@ -93,6 +99,40 @@ VideoExportShortcutAction matchVideoExportShortcut(const QKeyEvent* event)
     return VideoExportShortcutAction::None;
 }
 
+bool editableTextInputOwnsSpace(const VideoExportDialog* dialog)
+{
+    if (dialog == nullptr) {
+        return false;
+    }
+    QWidget* focus = QApplication::focusWidget();
+    if (focus == nullptr || !(focus == dialog || dialog->isAncestorOf(focus))) {
+        return false;
+    }
+    for (QWidget* widget = focus; widget != nullptr; widget = widget->parentWidget()) {
+        if (const auto* edit = qobject_cast<const QLineEdit*>(widget)) {
+            return !edit->isReadOnly();
+        }
+        if (const auto* edit = qobject_cast<const QTextEdit*>(widget)) {
+            return !edit->isReadOnly();
+        }
+        if (const auto* edit = qobject_cast<const QPlainTextEdit*>(widget)) {
+            return !edit->isReadOnly();
+        }
+        if (const auto* spin = qobject_cast<const QAbstractSpinBox*>(widget)) {
+            return !spin->isReadOnly();
+        }
+        if (const auto* combo = qobject_cast<const QComboBox*>(widget)) {
+            return combo->isEditable()
+                && combo->lineEdit() != nullptr
+                && !combo->lineEdit()->isReadOnly();
+        }
+        if (widget == dialog) {
+            break;
+        }
+    }
+    return false;
+}
+
 QString resolveOutputPathForExport(const QString& outputPath, const QString& baseDirectory)
 {
     const QString trimmed = QDir::fromNativeSeparators(outputPath.trimmed());
@@ -106,10 +146,95 @@ QString resolveOutputPathForExport(const QString& outputPath, const QString& bas
     return QDir::cleanPath(absolutePath);
 }
 
+QString mp4OutputFilter()
+{
+    return UiText::text(QStringLiteral("dialog.video_export.save_filter.mp4"));
+}
+
+QString wavOutputFilter()
+{
+    return UiText::text(QStringLiteral("dialog.video_export.save_filter.wav"));
+}
+
+QString bothOutputFilter()
+{
+    return UiText::text(QStringLiteral("dialog.video_export.save_filter.both"));
+}
+
+QString outputFilterForMode(VideoExportOutputMode mode)
+{
+    switch (mode) {
+    case VideoExportOutputMode::Wav:
+        return wavOutputFilter();
+    case VideoExportOutputMode::Mp4AndWav:
+        return bothOutputFilter();
+    case VideoExportOutputMode::Mp4:
+    default:
+        return mp4OutputFilter();
+    }
+}
+
+VideoExportOutputMode outputModeForFilter(const QString& filter)
+{
+    if (filter == wavOutputFilter()) {
+        return VideoExportOutputMode::Wav;
+    }
+    if (filter == bothOutputFilter()) {
+        return VideoExportOutputMode::Mp4AndWav;
+    }
+    return VideoExportOutputMode::Mp4;
+}
+
+QString videoExportWidgetSummary(QWidget* widget)
+{
+    if (widget == nullptr) {
+        return QStringLiteral("(null)");
+    }
+    return QStringLiteral("class=%1 name=%2 size=%3x%4 min=%5x%6 max=%7x%8 visible=%9")
+        .arg(QString::fromUtf8(widget->metaObject()->className()))
+        .arg(widget->objectName().isEmpty() ? QStringLiteral("(empty)") : widget->objectName())
+        .arg(widget->width())
+        .arg(widget->height())
+        .arg(widget->minimumWidth())
+        .arg(widget->minimumHeight())
+        .arg(widget->maximumWidth())
+        .arg(widget->maximumHeight())
+        .arg(widget->isVisible() ? 1 : 0);
+}
+
+void appendEmbeddedDialogLayoutDiag(
+    const QString& action,
+    qint64 elapsedMs,
+    const QString& detail = QString(),
+    miacode::debug_log::Level level = miacode::debug_log::Level::Info)
+{
+    if (!miacode::debug_options::runtimeDebugOutputEnabled()) {
+        return;
+    }
+    QString payload = QStringLiteral("action=%1 elapsed_ms=%2").arg(action).arg(elapsedMs);
+    if (!detail.trimmed().isEmpty()) {
+        payload += QStringLiteral(" %1").arg(detail.trimmed());
+    }
+    miacode::debug_log::appendLine(
+        miacode::debug_log::Channel::Runtime,
+        QStringLiteral("video_export/embedded_layout"),
+        payload,
+        /*force=*/false,
+        level);
+}
+
 }  // namespace
 
-void VideoExportDialog::setEmbeddedPanelMode(bool embedded)
+void VideoExportDialog::setEmbeddedPanelMode(bool embedded, bool retainIntroPreview)
 {
+    MC_OP("VideoExportDialog::setEmbeddedPanelMode");
+    QElapsedTimer totalTimer;
+    totalTimer.start();
+    MIACODE_HANG_PHASE(
+        "VideoExportDialog::setEmbeddedPanelMode",
+        QStringLiteral("embedded=%1 dialog=%2")
+            .arg(embedded ? 1 : 0)
+            .arg(videoExportWidgetSummary(this)));
     if (embeddedPanelMode_ == embedded) {
         return;
     }
@@ -153,9 +278,7 @@ void VideoExportDialog::setEmbeddedPanelMode(bool embedded)
         cancelButton_->hide();
     }
     if (exportButton_ != nullptr) {
-        exportButton_->setText(uiText(
-            "dialog.video_export.button.start_export",
-            l10n(QStringLiteral("Start Export"), QStringLiteral("开始导出"))));
+        exportButton_->setText(UiText::text(QStringLiteral("video_export.start_export")));
     }
 
     // ---- Fixed-frame page layout (2026-06-12 redesign) ----
@@ -164,16 +287,17 @@ void VideoExportDialog::setEmbeddedPanelMode(bool embedded)
     // viewport is genuinely too short. Horizontal scrolling is forbidden —
     // content must compress into the available width.
 
-    // The in-panel transport strip is gone: the preview-area transport on the
-    // right is the single seek/play surface; the range tab mirrors its clock.
+    // The general in-panel transport strip is gone: the preview-area transport
+    // on the right remains the shared seek/play surface. The range tab mirrors
+    // its clock and offers one scoped action that previews exactly [start, end].
     if (previewStrip_ != nullptr) {
         previewStrip_->hide();
     }
 
-    // The 片头 live preview is sacrificed in the embedded page (product
-    // decision 2026-06-12): it was the tallest tab content by far, and the
-    // page must fit the viewport without scrolling at default window sizes.
-    if (introPreview_ != nullptr) {
+    // Embedded pages do not need an in-panel 片头 live preview: the export
+    // workspace already owns the preview surface. The controls remain in the
+    // tab, but the extra rendering column must not become a black rectangle.
+    if (!retainIntroPreview && introPreview_ != nullptr) {
         QWidget* previewColumn = introPreview_->parentWidget();
         introPreview_ = nullptr;
         delete previewColumn;
@@ -184,6 +308,13 @@ void VideoExportDialog::setEmbeddedPanelMode(bool embedded)
     // tallest page — undo that first; pages now keep natural height and the
     // scroll area is only a too-short-window fallback.
     if (settingsTabs_ != nullptr) {
+        QElapsedTimer rehostTimer;
+        rehostTimer.start();
+        MIACODE_HANG_PHASE(
+            "VideoExportDialog::setEmbeddedPanelMode.rehostTabs",
+            QStringLiteral("tab_count=%1 tabs=%2")
+                .arg(settingsTabs_->count())
+                .arg(videoExportWidgetSummary(settingsTabs_)));
         const int currentIndex = settingsTabs_->currentIndex();
         QStringList tabLabels;
         QList<QWidget*> tabPages;
@@ -205,9 +336,29 @@ void VideoExportDialog::setEmbeddedPanelMode(bool embedded)
             pageScroll->viewport()->setAutoFillBackground(false);
             pageScroll->setWidget(page);
             settingsTabs_->addTab(pageScroll, tabLabels.at(i));
+            appendEmbeddedDialogLayoutDiag(
+                QStringLiteral("embedded_tab_wrapped"),
+                rehostTimer.elapsed(),
+                QStringLiteral("index=%1 label=\"%2\" page=\"%3\" scroll=\"%4\"")
+                    .arg(i)
+                    .arg(tabLabels.at(i))
+                    .arg(videoExportWidgetSummary(page))
+                    .arg(videoExportWidgetSummary(pageScroll)));
         }
         settingsTabs_->setCurrentIndex(qMax(0, currentIndex));
         settingsTabs_->setStyleSheet(UiTheme::embeddedExportTabStyleSheet());
+        appendEmbeddedDialogLayoutDiag(
+            rehostTimer.elapsed() >= 80
+                ? QStringLiteral("embedded_tabs_rehost_slow")
+                : QStringLiteral("embedded_tabs_rehost_complete"),
+            rehostTimer.elapsed(),
+            QStringLiteral("tab_count=%1 current_index=%2 tabs=\"%3\"")
+                .arg(settingsTabs_->count())
+                .arg(settingsTabs_->currentIndex())
+                .arg(videoExportWidgetSummary(settingsTabs_)),
+            rehostTimer.elapsed() >= 80
+                ? miacode::debug_log::Level::Warn
+                : miacode::debug_log::Level::Info);
     }
 
     if (auto* root = qobject_cast<QVBoxLayout*>(layout()); root != nullptr) {
@@ -234,7 +385,32 @@ void VideoExportDialog::setEmbeddedPanelMode(bool embedded)
         previewTimer_->start();
     }
 
-    refreshDialogGeometry();
+    {
+        QElapsedTimer refreshTimer;
+        refreshTimer.start();
+        MIACODE_HANG_PHASE(
+            "VideoExportDialog::setEmbeddedPanelMode.refreshDialogGeometry",
+            videoExportWidgetSummary(this));
+        refreshDialogGeometry();
+        if (refreshTimer.elapsed() >= 50) {
+            appendEmbeddedDialogLayoutDiag(
+                QStringLiteral("embedded_refresh_geometry_slow"),
+                refreshTimer.elapsed(),
+                QStringLiteral("dialog=\"%1\"").arg(videoExportWidgetSummary(this)),
+                miacode::debug_log::Level::Warn);
+        }
+    }
+    appendEmbeddedDialogLayoutDiag(
+        totalTimer.elapsed() >= 120
+            ? QStringLiteral("embedded_panel_mode_slow")
+            : QStringLiteral("embedded_panel_mode_complete"),
+        totalTimer.elapsed(),
+        QStringLiteral("dialog=\"%1\" tabs=\"%2\"")
+            .arg(videoExportWidgetSummary(this))
+            .arg(videoExportWidgetSummary(settingsTabs_)),
+        totalTimer.elapsed() >= 120
+            ? miacode::debug_log::Level::Warn
+            : miacode::debug_log::Level::Info);
 }
 
 void VideoExportDialog::setEmbeddedExportRunning(bool running)
@@ -244,10 +420,182 @@ void VideoExportDialog::setEmbeddedExportRunning(bool running)
         return;
     }
     exportButton_->setText(running
-        ? uiText("dialog.video_export.button.cancel_export",
-                 l10n(QStringLiteral("Cancel Export"), QStringLiteral("取消导出")))
-        : uiText("dialog.video_export.button.start_export",
-                 l10n(QStringLiteral("Start Export"), QStringLiteral("开始导出"))));
+        ? UiText::text(QStringLiteral("video_export.cancel_export"))
+        : UiText::text(QStringLiteral("video_export.start_export")));
+}
+
+void VideoExportDialog::setBatchSettingsPanelMode()
+{
+    setEmbeddedPanelMode(true, false);
+
+    // BatchExportPanel supplies the only footer/action. Hiding the existing
+    // dialog footer avoids competing start actions in the fixed page frame.
+    if (buttonBox_ != nullptr) {
+        buttonBox_->hide();
+    }
+    if (QWidget* footerRule = findChild<QWidget*>(QStringLiteral("EmbeddedExportFooterRule"));
+        footerRule != nullptr) {
+        footerRule->hide();
+    }
+
+    // Batch output targets a directory, not the single-file path used by the
+    // normal export route. Hide its whole row to avoid a stranded label gap.
+    if (outputPathEdit_ != nullptr && outputPathEdit_->parentWidget() != nullptr) {
+        if (QWidget* outputRow = outputPathEdit_->parentWidget()->parentWidget(); outputRow != nullptr) {
+            outputRow->hide();
+        }
+    }
+
+    // Keep the removed range page alive but hidden. Intro helpers retain their
+    // full-range values until the dialog is torn down, while the user sees no
+    // range tab in batch mode.
+    if (settingsTabs_ != nullptr) {
+        const QString rangeLabel = UiText::text(QStringLiteral("video_export.export_range"));
+        for (int index = 0; index < settingsTabs_->count(); ++index) {
+            if (settingsTabs_->tabText(index) == rangeLabel) {
+                if (QWidget* rangeScroll = settingsTabs_->widget(index); rangeScroll != nullptr) {
+                    settingsTabs_->removeTab(index);
+                    rangeScroll->hide();
+                }
+                break;
+            }
+        }
+    }
+    updateGeometry();
+}
+
+void VideoExportDialog::insertBatchTaskTab(QWidget* controls)
+{
+    if (!embeddedPanelMode_ || controls == nullptr || settingsTabs_ == nullptr) {
+        return;
+    }
+    controls->setMinimumHeight(0);
+    controls->setAutoFillBackground(false);
+    auto* taskScroll = new QScrollArea(settingsTabs_);
+    taskScroll->setObjectName(QStringLiteral("EmbeddedExportTabScroll"));
+    taskScroll->setWidgetResizable(true);
+    taskScroll->setFrameShape(QFrame::NoFrame);
+    taskScroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    taskScroll->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+    taskScroll->viewport()->setAutoFillBackground(false);
+    taskScroll->setWidget(controls);
+    settingsTabs_->insertTab(
+        0,
+        taskScroll,
+        UiText::text(QStringLiteral("dialog.batch_export.task"))
+    );
+    settingsTabs_->setCurrentIndex(0);
+    settingsTabs_->updateGeometry();
+}
+
+void VideoExportDialog::retargetChartPayload(const VideoExportTask& task)
+{
+    // Batch page only: the difficulty badge switched while this panel stays
+    // alive, so refresh ONLY the difficulty-derived chart payload. Every styling
+    // choice in currentIntroSpecForExportTask() is re-read from the widgets, so
+    // overwriting baseTask_.intro cannot lose a user setting — but 添加片头's
+    // on/off flag and the 片头 sound (file + volume) live on baseTask_ and ARE
+    // user-owned, so they are carried across explicitly.
+    const bool introEnabled = baseTask_.intro.enabled;
+    const QString introSoundFileName = baseTask_.introSoundFileName;
+    const double introSoundVolume = baseTask_.introSoundVolume;
+
+    baseTask_.chartPath = task.chartPath;
+    baseTask_.trackPath = task.trackPath;
+    baseTask_.noteMarkers = task.noteMarkers;
+    baseTask_.muriAnalysisReport = task.muriAnalysisReport;
+    baseTask_.contentDurationSeconds = task.contentDurationSeconds;
+    baseTask_.chartTitle = task.chartTitle;
+    baseTask_.chartArtist = task.chartArtist;
+    baseTask_.chartDifficultyLabel = task.chartDifficultyLabel;
+    baseTask_.chartDesigner = task.chartDesigner;
+    baseTask_.outputPath = task.outputPath;
+    baseTask_.clockCount = task.clockCount;
+    baseTask_.intro = task.intro;
+
+    baseTask_.intro.enabled = introEnabled;
+    baseTask_.introSoundFileName = introSoundFileName;
+    baseTask_.introSoundVolume = introSoundVolume;
+
+    // "自动" resolves SD/DX from the payload, and the 片头 tab's card preview is
+    // baked from the spec — both are stale until re-derived. The export-page
+    // audition's own intro region is refreshed by the host.
+    refreshIntroCardModeAutoLabel();
+    refreshIntroPreview();
+}
+
+bool VideoExportDialog::buildBatchTaskTemplate(VideoExportTask* task, QString* errorMessage) const
+{
+    if (task == nullptr) {
+        if (errorMessage != nullptr) {
+            *errorMessage = QStringLiteral("task is null");
+        }
+        return false;
+    }
+
+    VideoExportTask updated = baseTask_;
+    const QSize selectedSize = selectedResolution();
+    updated.outputWidth = selectedSize.width() > 0 ? selectedSize.width() : updated.outputWidth;
+    updated.outputHeight = selectedSize.height() > 0 ? selectedSize.height() : updated.outputHeight;
+    updated.fps = qMax(1, selectedFps_);
+    updated.outputMode = selectedOutputMode_;
+    updated.audioBitrateKbps = normaliseAudioBitrateKbps(selectedAudioBitrateKbps_);
+    updated.preset = selectedPreset_;
+    updated.sizePreset = selectedSizePreset_;
+    updated.showTimestamp = showTimestampCheck_ != nullptr && showTimestampCheck_->isChecked();
+    updated.showObjectStatsHud = showObjectStatsCheck_ != nullptr && showObjectStatsCheck_->isChecked();
+    updated.showChartInfoHud = showChartInfoCheck_ != nullptr && showChartInfoCheck_->isChecked();
+    updated.fixHudTextLayout = fixHudTextLayoutCheck_ != nullptr && fixHudTextLayoutCheck_->isChecked();
+    updated.clockCountEnabled = clockCountCheck_ != nullptr && clockCountCheck_->isChecked();
+    updated.backgroundBrightnessOuter = brightnessOuterSlider_ != nullptr
+        ? qBound(0.0, static_cast<double>(brightnessOuterSlider_->value()) / 100.0, 1.0)
+        : updated.backgroundBrightnessOuter;
+    updated.backgroundBrightnessInner = brightnessInnerSlider_ != nullptr
+        ? qBound(0.0, static_cast<double>(brightnessInnerSlider_->value()) / 100.0, 1.0)
+        : updated.backgroundBrightnessInner;
+    updated.layoutSquareScale = layoutSquareScaleSlider_ != nullptr
+        ? miacode::preview_video::normalizedLayoutSquareScale(
+              static_cast<double>(layoutSquareScaleSlider_->value()) / 100.0)
+        : updated.layoutSquareScale;
+    updated.smoothBrightness = smoothBrightnessCheck_ != nullptr
+        ? smoothBrightnessCheck_->isChecked()
+        : updated.smoothBrightness;
+    updated.backgroundScaleMode = selectedBackgroundScaleMode_;
+
+    const auto readFlowSpeed = [](QLineEdit* edit, double fallback) {
+        bool ok = false;
+        const double value = edit != nullptr ? edit->text().trimmed().toDouble(&ok) : fallback;
+        return miacode::preview_gameplay::normalizePreviewTimingFlowSpeed(ok ? value : fallback);
+    };
+    updated.tapFlowSpeed = readFlowSpeed(tapFlowSpeedEdit_, selectedTapFlowSpeed_);
+    updated.touchFlowSpeed = readFlowSpeed(touchFlowSpeedEdit_, selectedTouchFlowSpeed_);
+    updated.exportStartSeconds = 0.0;
+    updated.contentDurationSeconds = qMax(0.0, baseTask_.contentDurationSeconds);
+    updated.fullRangeExport = true;
+    // Batch must keep the intro mode UNRESOLVED (currentIntroSpecForExportTask,
+    // not currentIntroSpec): when the 片头 tab is set to "Auto" this preserves
+    // the "auto" token so each queued chart's snapshot detects its own SD/DX in
+    // copyIntroStyling(). currentIntroSpec() would bake in the currently-open
+    // chart's mode and force every batch item to it.
+    updated.intro = currentIntroSpecForExportTask();
+    updated.introSoundVolume = introSoundVolumeSlider_ != nullptr
+        ? qBound(0.0, static_cast<double>(introSoundVolumeSlider_->value()) / 100.0, 2.0)
+        : updated.introSoundVolume;
+    updated.intro.enabled = addIntroCheck_ != nullptr && addIntroCheck_->isChecked();
+
+    if (updated.outputWidth <= 0 || updated.outputHeight <= 0) {
+        if (errorMessage != nullptr) {
+            *errorMessage = UiText::text(QStringLiteral("video_export.resolution_is_invalid"));
+        }
+        return false;
+    }
+    *task = updated;
+    return true;
+}
+
+bool VideoExportDialog::isClockCountEnabledForPreview() const
+{
+    return clockCountCheck_ != nullptr && clockCountCheck_->isChecked();
 }
 
 void VideoExportDialog::finalizeEmbeddedSession()
@@ -274,23 +622,41 @@ void VideoExportDialog::applyThemeStyles()
     }
     setStyleSheet(sheet);
 
-    // Dropdown menu buttons (createDialogMenuButton).
-    for (QToolButton* button : {resolutionButton_, fpsButton_, audioBitrateButton_,
-                                presetButton_, backgroundScaleModeButton_}) {
-        if (button != nullptr) {
-            button->setStyleSheet(UiTheme::dialogMenuButtonStyleSheet());
-        }
+    // Dialog dropdowns (miacode::ui::createDialogComboBox).
+    for (QComboBox* combo : {outputModeCombo_, resolutionCombo_, fpsCombo_, audioBitrateCombo_,
+                             presetCombo_, sizePresetCombo_, backgroundScaleModeCombo_,
+                             introSoundCombo_}) {
+        miacode::ui::applyDialogComboBoxStyle(combo, 12);
     }
 
     // Plain push buttons.
-    for (QPushButton* button : {outputBrowseButton_, setStartButton_, setEndButton_,
-                                hudFontSettingsButton_, introBackgroundBrowse_, cancelButton_}) {
+    for (QPushButton* button : {cancelButton_, saveVideoPresetButton_, applyVideoPresetButton_,
+                                playExportRangeButton_}) {
         if (button != nullptr) {
-            button->setStyleSheet(UiTheme::dialogPushButtonStyleSheet());
+            miacode::ui::applyDialogPushButtonStyle(button);
         }
     }
+    for (QPushButton* button : {outputBrowseButton_, introSoundImportButton_, introBackgroundBrowse_,
+                                setStartButton_, setEndButton_}) {
+        if (button != nullptr) {
+            miacode::ui::applyDialogAuxiliaryButtonStyle(button);
+        }
+    }
+    if (outputPathEdit_ != nullptr) {
+        outputPathEdit_->setStyleSheet(UiTheme::dialogMenuLineEditStyleSheet(UiTheme::colors().windowAltBg));
+    }
+    if (outputFilesHintLabel_ != nullptr) {
+        outputFilesHintLabel_->setStyleSheet(
+            QStringLiteral("color: %1;").arg(UiTheme::colors().textMuted.name(QColor::HexRgb)));
+    }
+    if (introBackgroundPathEdit_ != nullptr) {
+        introBackgroundPathEdit_->setStyleSheet(UiTheme::dialogMenuLineEditStyleSheet(UiTheme::colors().windowAltBg));
+    }
+    miacode::ui::applyDialogComboBoxStyle(introBackgroundCombo_, 12);
+    refreshIntroCardModeAutoLabel();
+    miacode::ui::applyDialogComboBoxStyle(introCardModeCombo_, 12);
     if (exportButton_ != nullptr) {
-        exportButton_->setStyleSheet(UiTheme::dialogPushButtonStyleSheet(true));
+        miacode::ui::applyDialogPushButtonStyle(exportButton_, true);
     }
 
     if (rangeTrack_ != nullptr) {
@@ -306,9 +672,10 @@ void VideoExportDialog::applyThemeStyles()
     if (previewSlider_ != nullptr) {
         previewSlider_->setStyleSheet(UiTheme::formSliderStyleSheet());
     }
-    for (QSlider* slider : {brightnessOuterSlider_, brightnessInnerSlider_, layoutSquareScaleSlider_}) {
+    for (QSlider* slider : {brightnessOuterSlider_, brightnessInnerSlider_, layoutSquareScaleSlider_,
+                            introSoundVolumeSlider_}) {
         if (slider != nullptr) {
-            slider->setStyleSheet(UiTheme::dialogSliderStyleSheet());
+            miacode::ui::applyDialogSliderStyle(slider);
         }
     }
 
@@ -335,7 +702,11 @@ void VideoExportDialog::applyThemeStyles()
     }
 }
 
-void VideoExportDialog::injectOwnerWiredSettings(QWidget* videoExtras, QWidget* gameplayWidget)
+void VideoExportDialog::injectOwnerWiredSettings(
+    QWidget* videoExtras,
+    QWidget* gameplayWidget,
+    QWidget* skinWidget,
+    OwnerWiredSettingsRefreshCallback refreshCallback)
 {
     // The injected widgets are built by MainWindow (they need owner-side data
     // + wiring the decoupled dialog can't reach). Drop them in just before each
@@ -348,6 +719,12 @@ void VideoExportDialog::injectOwnerWiredSettings(QWidget* videoExtras, QWidget* 
         const int insertIndex = qMax(0, gameplayPageLayout_->count() - 1);
         gameplayPageLayout_->insertWidget(insertIndex, gameplayWidget, 0, Qt::AlignTop);
     }
+    if (skinWidget != nullptr && skinPageLayout_ != nullptr) {
+        const int insertIndex = qMax(0, skinPageLayout_->count() - 1);
+        skinPageLayout_->insertWidget(insertIndex, skinWidget, 0, Qt::AlignTop);
+    }
+    ownerWiredSettingsRefreshCallback_ = std::move(refreshCallback);
+    refreshSharedSettingsFromCallback();
     refreshDialogGeometry();
 }
 
@@ -548,16 +925,79 @@ void VideoExportDialog::browseOutputPath()
     const QString initial = outputPathEdit_ != nullptr
         ? resolveOutputPathForExport(outputPathEdit_->text(), baseDirectory)
         : QString();
+    QString selectedFilter = outputFilterForMode(selectedOutputMode_);
     const QString selected = QFileDialog::getSaveFileName(
         this,
-        l10n(QStringLiteral("Export Video"), QStringLiteral("瀵煎嚭瑙嗛")),
-        initial,
-        QStringLiteral("MP4 Video (*.mp4)")
+        UiText::text(QStringLiteral("video_export.export_video")),
+        videoExportPrimaryOutputPath(initial, selectedOutputMode_),
+        QStringList{mp4OutputFilter(), wavOutputFilter(), bothOutputFilter()}.join(QStringLiteral(";;")),
+        &selectedFilter
     );
     if (selected.isEmpty() || outputPathEdit_ == nullptr) {
         return;
     }
-    outputPathEdit_->setText(displayOutputPathForDialog(selected, baseDirectory));
+    selectedOutputMode_ = outputModeForFilter(selectedFilter);
+    if (outputModeCombo_ != nullptr) {
+        const QSignalBlocker blocker(outputModeCombo_);
+        outputModeCombo_->setCurrentIndex(qMax(
+            0, outputModeCombo_->findData(static_cast<int>(selectedOutputMode_))));
+    }
+    refreshOutputModeUi(false);
+    outputPathEdit_->setText(displayOutputPathForDialog(
+        videoExportPrimaryOutputPath(selected, selectedOutputMode_), baseDirectory));
+    persistExportOnlySettings();
+}
+
+void VideoExportDialog::refreshOutputModeUi(bool rewritePathSuffix)
+{
+    if (rewritePathSuffix && outputPathEdit_ != nullptr && !outputPathEdit_->text().trimmed().isEmpty()) {
+        outputPathEdit_->setText(QDir::toNativeSeparators(
+            videoExportPrimaryOutputPath(outputPathEdit_->text(), selectedOutputMode_)));
+    }
+    const bool showVideoOptions = selectedOutputMode_ != VideoExportOutputMode::Wav;
+    for (QWidget* field : {resolutionOptionField_, fpsOptionField_, audioBitrateOptionField_,
+                           presetOptionField_, sizePresetOptionField_}) {
+        if (field != nullptr) {
+            field->setVisible(showVideoOptions);
+        }
+    }
+    refreshOutputFilesHint();
+    if (isVisible()) {
+        QTimer::singleShot(0, this, [this]() { refreshDialogGeometry(); });
+    }
+}
+
+void VideoExportDialog::refreshOutputFilesHint()
+{
+    if (outputFilesHintLabel_ == nullptr || outputPathEdit_ == nullptr) {
+        return;
+    }
+
+    const QStringList outputPaths = videoExportOutputPaths(
+        outputPathEdit_->text(), selectedOutputMode_);
+    QStringList outputNames;
+    for (const QString& path : outputPaths) {
+        outputNames.append(QFileInfo(path).fileName());
+    }
+    outputNames.removeAll(QString());
+
+    if (outputNames.isEmpty()) {
+        outputFilesHintLabel_->clear();
+        outputFilesHintLabel_->setToolTip(QString());
+        outputFilesHintLabel_->hide();
+        return;
+    }
+    if (outputNames.size() >= 2) {
+        outputFilesHintLabel_->setText(UiText::text(
+            QStringLiteral("dialog.video_export.output_files_hint.two"))
+                .arg(outputNames.at(0), outputNames.at(1)));
+    } else {
+        outputFilesHintLabel_->setText(UiText::text(
+            QStringLiteral("dialog.video_export.output_files_hint.one"))
+                .arg(outputNames.constFirst()));
+    }
+    outputFilesHintLabel_->setToolTip(outputPaths.join(QLatin1Char('\n')));
+    outputFilesHintLabel_->show();
 }
 
 bool VideoExportDialog::applyUiToTask(VideoExportTask* task, QString* errorMessage) const
@@ -570,20 +1010,23 @@ bool VideoExportDialog::applyUiToTask(VideoExportTask* task, QString* errorMessa
     const QString outputPath = outputPathEdit_ != nullptr ? outputPathEdit_->text().trimmed() : QString();
     if (outputPath.isEmpty()) {
         if (errorMessage != nullptr) {
-            *errorMessage = l10n(QStringLiteral("Please choose an output path."), QStringLiteral("请先选择输出路径。"));
+            *errorMessage = UiText::text(QStringLiteral("video_export.please_choose_an_output_path"));
         }
         return false;
     }
     updated.outputPath = resolveOutputPathForExport(outputPath, baseDirectory);
+    updated.outputMode = selectedOutputMode_;
     const QSize selectedSize = selectedResolution();
     updated.outputWidth = selectedSize.width() > 0 ? selectedSize.width() : updated.outputWidth;
     updated.outputHeight = selectedSize.height() > 0 ? selectedSize.height() : updated.outputHeight;
     updated.fps = qMax(1, selectedFps_);
     updated.audioBitrateKbps = normaliseAudioBitrateKbps(selectedAudioBitrateKbps_);
     updated.preset = selectedPreset_;
+    updated.sizePreset = selectedSizePreset_;
     updated.showTimestamp = showTimestampCheck_ != nullptr ? showTimestampCheck_->isChecked() : true;
     updated.showObjectStatsHud = showObjectStatsCheck_ != nullptr ? showObjectStatsCheck_->isChecked() : false;
     updated.showChartInfoHud = showChartInfoCheck_ != nullptr ? showChartInfoCheck_->isChecked() : false;
+    updated.fixHudTextLayout = fixHudTextLayoutCheck_ != nullptr && fixHudTextLayoutCheck_->isChecked();
     // clock_count count-in is opt-in. The VALUE stays = the chart's (already copied
     // via `updated = baseTask_`); only the on/off flag changes — so the label and
     // the document's &clock_count= are never affected.
@@ -646,10 +1089,14 @@ bool VideoExportDialog::applyUiToTask(VideoExportTask* task, QString* errorMessa
     // The maimai intro is a full-range-only pre-roll; clips starting
     // mid-chart never get it regardless of the checkbox. (A clip starting
     // at chart 0 counts as full-range, so it may carry the intro.)
-    // "片头" tab styling (background + difficulty card) — shared with the
-    // read-only preview via currentIntroSpec, so preview == export. `enabled`
-    // is recomputed below from the checkbox + range.
-    updated.intro = currentIntroSpec();
+    // "片头" tab styling (background + difficulty card). The read-only preview
+    // resolves Auto immediately, while export keeps `mode=auto` here so the
+    // launch snapshot can detect from the live chart just before worker handoff.
+    // `enabled` is recomputed below from the checkbox + range.
+    updated.intro = currentIntroSpecForExportTask();
+    updated.introSoundVolume = introSoundVolumeSlider_ != nullptr
+        ? qBound(0.0, static_cast<double>(introSoundVolumeSlider_->value()) / 100.0, 2.0)
+        : updated.introSoundVolume;
     updated.intro.enabled =
         (addIntroCheck_ != nullptr && addIntroCheck_->isChecked())
         && updated.fullRangeExport;
@@ -667,25 +1114,25 @@ bool VideoExportDialog::applyUiToTask(VideoExportTask* task, QString* errorMessa
     const QDir outputDir = outputInfo.absoluteDir();
     if (!outputDir.exists()) {
         if (errorMessage != nullptr) {
-            *errorMessage = l10n(QStringLiteral("Output directory does not exist."), QStringLiteral("输出目录不存在。"));
+            *errorMessage = UiText::text(QStringLiteral("video_export.output_directory_does_not_exist"));
         }
         return false;
     }
     if (updated.outputWidth <= 0 || updated.outputHeight <= 0) {
         if (errorMessage != nullptr) {
-            *errorMessage = l10n(QStringLiteral("Resolution is invalid."), QStringLiteral("分辨率无效。"));
+            *errorMessage = UiText::text(QStringLiteral("video_export.resolution_is_invalid"));
         }
         return false;
     }
     if (updated.contentDurationSeconds <= 0.0) {
         if (errorMessage != nullptr) {
-            *errorMessage = l10n(QStringLiteral("Export range is empty."), QStringLiteral("导出区间为空。"));
+            *errorMessage = UiText::text(QStringLiteral("video_export.export_range_is_empty"));
         }
         return false;
     }
     if (updated.exportStartSeconds < 0.0 || updated.exportStartSeconds > totalDurationSeconds_ + 1e-6) {
         if (errorMessage != nullptr) {
-            *errorMessage = l10n(QStringLiteral("Export start is out of range."), QStringLiteral("导出起始时间超出范围。"));
+            *errorMessage = UiText::text(QStringLiteral("video_export.export_start_is_out_of"));
         }
         return false;
     }
@@ -724,6 +1171,7 @@ void VideoExportDialog::onExportButtonClicked()
 void VideoExportDialog::startExport()
 {
     stopRangePreview(false);
+    refreshSharedSettingsFromCallback();
 
     VideoExportTask task;
     QString errorMessage;
@@ -731,7 +1179,7 @@ void VideoExportDialog::startExport()
         UiDialogs::showMessageBox(
             QMessageBox::Warning,
             this,
-            uiText("dialog.video_export.title", QStringLiteral("Export Video")),
+            UiText::text(QStringLiteral("dialog.video_export.title")),
             errorMessage
         );
         return;
@@ -769,25 +1217,190 @@ void VideoExportDialog::done(int result)
     QDialog::done(result);
 }
 
+void VideoExportDialog::showEvent(QShowEvent* event)
+{
+    QDialog::showEvent(event);
+    // QDialogButtonBox promotes its first AcceptRole button to the dialog
+    // default on every QEvent::Show, and children are shown before their
+    // parent — so this runs after that promotion and undoes it.
+    disableButtonReturnActivation();
+}
+
+void VideoExportDialog::disableButtonReturnActivation()
+{
+    // Clearing autoDefault as well as default matters: an autoDefault button
+    // makes itself the dialog default while focused AND becomes QDialog's
+    // remembered "main default" the first time it is focused, which would hand
+    // Return back to it from every field on the page.
+    const QList<QPushButton*> buttons = findChildren<QPushButton*>();
+    for (QPushButton* button : buttons) {
+        if (button == nullptr) {
+            continue;
+        }
+        button->setAutoDefault(false);
+        button->setDefault(false);
+    }
+}
+
+void VideoExportDialog::commitFlowSpeedEditor(QLineEdit* editor)
+{
+    double* selectedFlowSpeed = nullptr;
+    std::function<void(double)> applyFlowSpeed;
+    if (editor == tapFlowSpeedEdit_) {
+        selectedFlowSpeed = &selectedTapFlowSpeed_;
+        applyFlowSpeed = previewTapFlowSpeedCallback_;
+    } else if (editor == touchFlowSpeedEdit_) {
+        selectedFlowSpeed = &selectedTouchFlowSpeed_;
+        applyFlowSpeed = previewTouchFlowSpeedCallback_;
+    }
+    if (editor == nullptr || selectedFlowSpeed == nullptr) {
+        return;
+    }
+    bool ok = false;
+    const double typedSpeed = editor->text().trimmed().toDouble(&ok);
+    if (!ok) {
+        editor->setText(flowSpeedValueLabel(*selectedFlowSpeed));
+        return;
+    }
+    *selectedFlowSpeed = snappedFlowSpeed(typedSpeed);
+    editor->setText(flowSpeedValueLabel(*selectedFlowSpeed));
+    if (applyFlowSpeed) {
+        applyFlowSpeed(*selectedFlowSpeed);
+    }
+}
+
+bool VideoExportDialog::commitFocusedEditorOnReturn()
+{
+    QWidget* focus = QApplication::focusWidget();
+    if (focus == nullptr || !(focus == this || isAncestorOf(focus))) {
+        return false;
+    }
+    // Spin boxes and editable combos expose their internal QLineEdit as the
+    // focus widget; commit through the owning control instead.
+    if (QWidget* owner = focus->parentWidget(); owner != nullptr) {
+        if (qobject_cast<QAbstractSpinBox*>(owner) != nullptr
+            || qobject_cast<QComboBox*>(owner) != nullptr) {
+            focus = owner;
+        }
+    }
+    if (auto* spin = qobject_cast<QAbstractSpinBox*>(focus); spin != nullptr) {
+        // QAbstractSpinBox already interpreted the typed text before letting
+        // the key through; re-select so the committed value reads as applied.
+        spin->interpretText();
+        spin->selectAll();
+        return true;
+    }
+    if (auto* editor = qobject_cast<QLineEdit*>(focus); editor != nullptr) {
+        if (editor == tapFlowSpeedEdit_ || editor == touchFlowSpeedEdit_) {
+            commitFlowSpeedEditor(editor);
+        } else if (editor == outputPathEdit_) {
+            editor->setText(displayOutputPathForDialog(
+                videoExportPrimaryOutputPath(
+                    resolveOutputPathForExport(editor->text().trimmed(), exportBaseDirectory(baseTask_)),
+                    selectedOutputMode_),
+                exportBaseDirectory(baseTask_)
+            ));
+        }
+        // Everything else on this page (path fields, injected owner-wired
+        // settings) commits through QLineEdit's own editingFinished, which it
+        // emits before handing the key up to us.
+        editor->selectAll();
+        return true;
+    }
+    return false;
+}
+
+void VideoExportDialog::keyPressEvent(QKeyEvent* event)
+{
+    // Return/Enter must never start an export from this page (a stray Enter
+    // after typing in a field used to fire the default button). It commits the
+    // focused field instead, and is swallowed here so QDialog's default-button
+    // handling is never reached. Ctrl/Alt/Meta chords fall through untouched.
+    if (event != nullptr
+        && (event->key() == Qt::Key_Return || event->key() == Qt::Key_Enter)
+        && !event->modifiers().testFlag(Qt::ControlModifier)
+        && !event->modifiers().testFlag(Qt::AltModifier)
+        && !event->modifiers().testFlag(Qt::MetaModifier)) {
+        commitFocusedEditorOnReturn();
+        event->accept();
+        return;
+    }
+    QDialog::keyPressEvent(event);
+}
+
 bool VideoExportDialog::eventFilter(QObject* watched, QEvent* event)
 {
+    if (disableSelectionWheelChanges_ && event != nullptr && event->type() == QEvent::Wheel) {
+        auto* widget = qobject_cast<QWidget*>(watched);
+        if (widget != nullptr && (widget == this || isAncestorOf(widget))) {
+            auto* combo = qobject_cast<QComboBox*>(widget);
+            auto* spin = qobject_cast<QAbstractSpinBox*>(widget);
+            const bool closedCombo = combo != nullptr
+                && (combo->view() == nullptr || !combo->view()->isVisible());
+            const bool inactiveSpin = spin != nullptr && !spin->hasFocus();
+            if (closedCombo || inactiveSpin) {
+                auto* wheelEvent = static_cast<QWheelEvent*>(event);
+                for (QWidget* ancestor = widget->parentWidget(); ancestor != nullptr;
+                     ancestor = ancestor->parentWidget()) {
+                    auto* scrollArea = qobject_cast<QAbstractScrollArea*>(ancestor);
+                    if (scrollArea == nullptr || scrollArea->viewport() == nullptr) {
+                        continue;
+                    }
+                    const QPointF viewportPosition = scrollArea->viewport()->mapFromGlobal(
+                        wheelEvent->globalPosition().toPoint());
+                    QWheelEvent forwarded(
+                        viewportPosition,
+                        wheelEvent->globalPosition(),
+                        wheelEvent->pixelDelta(),
+                        wheelEvent->angleDelta(),
+                        wheelEvent->buttons(),
+                        wheelEvent->modifiers(),
+                        wheelEvent->phase(),
+                        wheelEvent->inverted(),
+                        wheelEvent->source());
+                    QCoreApplication::sendEvent(scrollArea->viewport(), &forwarded);
+                    break;
+                }
+                event->accept();
+                return true;
+            }
+        }
+    }
     if (event != nullptr && UiDialogs::dialogOwnsPreviewShortcutScope(this)) {
+        auto* keyEvent = event->type() == QEvent::ShortcutOverride
+                || event->type() == QEvent::KeyPress
+                || event->type() == QEvent::KeyRelease
+            ? static_cast<QKeyEvent*>(event)
+            : nullptr;
+        const VideoExportShortcutAction shortcutAction = matchVideoExportShortcut(keyEvent);
+        const bool textInputOwnsSpace = shortcutAction == VideoExportShortcutAction::TogglePlayPause
+            && keyEvent != nullptr
+            && keyEvent->modifiers() == Qt::NoModifier
+            && keyEvent->key() == Qt::Key_Space
+            && editableTextInputOwnsSpace(this);
         if (event->type() == QEvent::ShortcutOverride) {
-            auto* keyEvent = static_cast<QKeyEvent*>(event);
-            if (matchVideoExportShortcut(keyEvent) != VideoExportShortcutAction::None) {
+            if (textInputOwnsSpace) {
+                // Claim the override so QuickShell's application-wide Space
+                // shortcut cannot run, then let the focused editor receive
+                // the actual key press/release and insert the character.
+                event->accept();
+                return false;
+            }
+            if (shortcutAction != VideoExportShortcutAction::None) {
                 event->accept();
                 return true;
             }
         }
         if (event->type() == QEvent::KeyPress) {
-            auto* keyEvent = static_cast<QKeyEvent*>(event);
-            const VideoExportShortcutAction action = matchVideoExportShortcut(keyEvent);
-            if (action != VideoExportShortcutAction::None) {
+            if (textInputOwnsSpace) {
+                return false;
+            }
+            if (shortcutAction != VideoExportShortcutAction::None) {
                 if (keyEvent->isAutoRepeat()) {
                     event->accept();
                     return true;
                 }
-                switch (action) {
+                switch (shortcutAction) {
                 case VideoExportShortcutAction::TogglePlayPause:
                     handlePreviewPlayPauseShortcut();
                     break;
@@ -802,8 +1415,10 @@ bool VideoExportDialog::eventFilter(QObject* watched, QEvent* event)
             }
         }
         if (event->type() == QEvent::KeyRelease) {
-            auto* keyEvent = static_cast<QKeyEvent*>(event);
-            if (matchVideoExportShortcut(keyEvent) != VideoExportShortcutAction::None) {
+            if (textInputOwnsSpace) {
+                return false;
+            }
+            if (shortcutAction != VideoExportShortcutAction::None) {
                 event->accept();
                 return true;
             }

@@ -6,6 +6,7 @@
 #include <QStringList>
 
 class QDockWidget;
+class QMenuBar;
 class QObject;
 class QWidget;
 class QWindow;
@@ -32,6 +33,7 @@ public:
     virtual void updateShellPreviewScrub(double second, bool centerView) = 0;
     virtual void endShellPreviewScrub(double second, bool centerView) = 0;
     virtual void setShellPreviewRate(double rate) = 0;
+    virtual void toggleShellMuriRenderMode() = 0;
     // Step the preview rate one stop (direction = -1 slower / +1 faster) using
     // the same ladder as the Ctrl+O/Ctrl+P menu actions. Lets the QML fullscreen
     // window drive speed without duplicating the rate table.
@@ -40,6 +42,8 @@ public:
     virtual void beginShellPreviewHeldSeek(int direction, int key) = 0;
     virtual void stopShellPreviewHeldSeek(int key = 0) = 0;
     virtual void setShellPreviewFullscreen(bool fullscreen) = 0;
+    // Preview share of the resizable content+preview area; excludes sidebar
+    // and splitter widths so window/sidebar changes preserve the split.
     virtual void setShellPreviewPaneWidthRatio(double ratio) = 0;
     virtual void setShellBottomTabsHeight(int height) = 0;
     virtual void setShellBottomTabsCurrentTab(const QString& tabId) = 0;
@@ -66,6 +70,7 @@ public:
     virtual QString shellWindowTitle() const = 0;
     virtual bool shellWorkspacePanelsSwapped() const = 0;
     virtual QString shellPreviewSpeedLabel() const = 0;
+    virtual bool shellMuriCheckRenderMode() const = 0;
     virtual bool shellPreviewPlaying() const = 0;
     virtual double shellPreviewPositionSeconds() const = 0;
     virtual double shellPreviewDurationSeconds() const = 0;
@@ -112,6 +117,7 @@ public:
     virtual ~QuickShellNativeContentProvider() = default;
 
     virtual QWidget* shellWindowWidget() const = 0;
+    virtual QMenuBar* shellMenuBarWidget() const = 0;
     virtual QDockWidget* shellOutlineDockWidget() const = 0;
     virtual bool shellOutlineDockCollapsed() const = 0;
     virtual int shellOutlineDockExpandedWidth() const = 0;

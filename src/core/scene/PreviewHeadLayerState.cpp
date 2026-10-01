@@ -1,5 +1,6 @@
 #include "core/scene/PreviewHeadLayerState.h"
 
+#include "common/PreviewGameplayConfig.h"
 #include "core/scene/PreviewAnimatedSpriteHelpers.h"
 #include "core/scene/PreviewJudgeOverlayShared.h"
 #include "core/scene/PreviewMarkerDrawOrder.h"
@@ -59,12 +60,11 @@ qreal slideHeadRotateSpeedDegreesPerSecond(const TimelineNoteMarker& marker)
     if (marker.type != QLatin1String("slide") && marker.type != QLatin1String("wifi")) {
         return 0.0;
     }
-    const qreal totalLen = static_cast<qreal>(marker.slideNativeTrackLength);
     const qreal totalDuration = totalSlideTraceDurationSeconds(marker);
-    if (totalLen <= 0.0 || totalDuration <= 0.0) {
-        return 0.0;
-    }
-    return qMax<qreal>(-4.500 * totalLen / totalDuration, -1080.0);
+    return -static_cast<qreal>(
+        miacode::preview_gameplay::previewSlideHeadRotationSpeedDegreesPerSecond(
+            marker.slideNativeTrackLength,
+            totalDuration));
 }
 
 qreal slideHeadFallRotationDegrees(
@@ -378,7 +378,7 @@ PreviewHeadLayerState buildPreviewHeadLayerState(
             const QPointF unit = laneUnitVector(marker.lane);
             const bool holdActive = deltaSeconds >= 0.0;
             const QImage* holdImage = nullptr;
-            if (marker.isMine && !state.skin.holdMineImage.isNull()) {
+            if (state.render.useMineSkin && marker.isMine && !state.skin.holdMineImage.isNull()) {
                 // Mine overrides break/each (one mine sprite, no _on variant).
                 holdImage = &state.skin.holdMineImage;
             } else if (marker.isBreak) {
@@ -389,7 +389,7 @@ PreviewHeadLayerState buildPreviewHeadLayerState(
                 holdImage = (holdActive && !state.skin.holdOnImage.isNull()) ? &state.skin.holdOnImage : &state.skin.holdImage;
             }
             if (holdImage == nullptr || holdImage->isNull()) {
-                holdImage = selectHoldImage(state.skin, marker);
+                holdImage = selectHoldImage(state.skin, marker, state.render.useMineSkin);
             }
             if (holdImage == nullptr || holdImage->isNull()) {
                 continue;
@@ -544,13 +544,16 @@ PreviewHeadLayerState buildPreviewHeadLayerState(
             kLogicalCanvasCenter + unit.y() * approach.distance
         );
         const QPointF point = mapLogicalPointToRect(logicalPoint, playfieldRect);
-        const QImage* baseImage = starMaterialHead ? selectSlideStarImage(state.skin, marker) : selectTapImage(state.skin, marker);
+        const QImage* baseImage = starMaterialHead
+            ? selectSlideStarImage(state.skin, marker, state.render.useMineSkin)
+            : selectTapImage(state.skin, marker, state.render.useMineSkin);
         if (baseImage == nullptr || baseImage->isNull()) {
             continue;
         }
         const QImage* headImage = baseImage;
         bool headImageCacheable = true;
-        if (starMaterialHead && headEx && !headIsMine) {
+        const bool showExOverlay = headEx && (!headIsMine || !state.render.useMineSkin);
+        if (starMaterialHead && showExOverlay) {
             const QImage& overlay = (doubleStarHead && !state.skin.starExDoubleImage.isNull())
                 ? state.skin.starExDoubleImage
                 : state.skin.starExImage;
@@ -570,7 +573,7 @@ PreviewHeadLayerState buildPreviewHeadLayerState(
                     headImageCacheable = false;
                 }
             }
-        } else if (!starMaterialHead && headEx && !headIsMine && !state.skin.tapExImage.isNull()) {
+        } else if (!starMaterialHead && showExOverlay && !state.skin.tapExImage.isNull()) {
             const QColor tint = exTintColor(headBreak, headEach);
             if (renderAssetCache != nullptr) {
                 headImage = renderAssetCache->composedImage(

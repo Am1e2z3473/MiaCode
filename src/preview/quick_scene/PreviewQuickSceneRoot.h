@@ -6,6 +6,7 @@
 #include <QPointer>
 #include <QQueue>
 #include <QQuickItem>
+#include <QSet>
 #include "common/PreviewGameplayConfig.h"
 #include <QSize>
 #include <QString>
@@ -25,6 +26,7 @@
 #include "preview/quick_scene/PreviewQuickTrackLayer.h"
 #include "preview/quick_scene/PreviewQuickTouchJudgeLayer.h"
 #include "preview/quick_scene/PreviewQuickTouchHoldLayer.h"
+#include "preview/quick_scene/PreviewQuickTouchHoverLayer.h"
 #include "preview/quick_scene/PreviewQuickTouchLayer.h"
 #include "preview/quick_scene/PreviewTextureRepository.h"
 #include "core/scene/PreviewPreparedSceneCache.h"
@@ -39,14 +41,6 @@ class PreviewQuickSceneRoot : public QQuickItem
 {
     Q_OBJECT
     Q_PROPERTY(QObject* runtime READ runtimeObject WRITE setRuntimeObject NOTIFY runtimeChanged)
-    // Issue #4 fix — when true, skip the DComp-exclusive short-circuit
-    // and render via the legacy QSG path even if DComp is enabled
-    // globally. Set by QML for the fullscreen QuickShellPreviewSurface
-    // instance, where DComp can't reach (popup HWND is owned by the
-    // editor, not the fullscreen window — z-ordering hides the popup
-    // behind the fullscreen window). Defaults to false (DComp wins).
-    Q_PROPERTY(bool dcompFallbackActive READ dcompFallbackActive
-               WRITE setDCompFallbackActive NOTIFY dcompFallbackActiveChanged)
 
 public:
     explicit PreviewQuickSceneRoot(QQuickItem* parent = nullptr);
@@ -58,34 +52,44 @@ public:
     void setFrameState(const miacode::preview::scene::PreviewFrameState* frameState);
     void setLayerFlags(miacode::preview::scene::PreviewRenderLayerFlags layerFlags);
 
-    bool dcompFallbackActive() const { return dcompFallbackActive_; }
-    void setDCompFallbackActive(bool active);
     void invalidateTextureCache();
     PreviewTextureStats textureStats() const;
 
 signals:
     void runtimeChanged();
-    void dcompFallbackActiveChanged();
 
 protected:
     QSGNode* updatePaintNode(QSGNode* oldNode, UpdatePaintNodeData* updatePaintNodeData) override;
     void geometryChange(const QRectF& newGeometry, const QRectF& oldGeometry) override;
+    void hoverMoveEvent(QHoverEvent* event) override;
+    void hoverLeaveEvent(QHoverEvent* event) override;
+    void mousePressEvent(QMouseEvent* event) override;
+    void mouseMoveEvent(QMouseEvent* event) override;
+    void mouseReleaseEvent(QMouseEvent* event) override;
+    void mouseUngrabEvent() override;
 
 private:
     QString instanceTag() const;
+    QString touchPadAtItemPoint(const QPointF& itemPoint) const;
+    void updateHoveredTouchPadAtItemPoint(const QPointF& itemPoint);
     void clearPendingTextureStatsForPresentation();
     void enqueueTextureStatsForPresentation(const PreviewTextureStats& stats);
     PreviewTextureStats takePendingTextureStatsForPresentation() const;
     void syncVisibleHostWindowBinding(const char* reason = "unspecified");
     void recordRenderPhaseProfile();
+    void noteFirstLayerDraws();
 
     QPointer<PreviewRuntime> runtime_;
+    Qt::MouseButton touchPadAuthoringPressedButton_ = Qt::NoButton;
     QMetaObject::Connection runtimeUpdateConnection_;
     QMetaObject::Connection frameSwapConnection_;
+    QMetaObject::Connection fireworkPresentConnection_;
     QMetaObject::Connection windowVisibilityConnection_;
     QMetaObject::Connection renderBeforeSyncConnection_;
     QMetaObject::Connection renderAfterSyncConnection_;
     QMetaObject::Connection renderBeforeRenderConnection_;
+    QMetaObject::Connection renderBeforePassConnection_;
+    QMetaObject::Connection renderAfterPassConnection_;
     QMetaObject::Connection renderAfterRenderConnection_;
     QMetaObject::Connection renderFrameSwapProfileConnection_;
     QMetaObject::Connection sceneGraphInvalidatedConnection_;
@@ -95,16 +99,22 @@ private:
     const miacode::preview::scene::PreviewFrameState* frameState_ = nullptr;
     miacode::preview::scene::PreviewRenderLayerFlags layerFlags_ =
         miacode::preview::scene::kPreviewAllRenderLayers;
-    // Issue #4 fix — when set, render via legacy QSG even with DComp on.
-    bool dcompFallbackActive_ = false;
     QVector<PreviewTextureLayerStats> layerProfileStats_;
-    PreviewTextureRepository textures_;
+    // Layers already reported by noteFirstLayerDraws(). Render-thread only (written
+    // and read from updatePaintNode), never cleared: "first draw in this scene-graph
+    // lifetime" is exactly the event of interest.
+    QSet<QString> layersFirstDrawn_;
+    // Set in updatePaintNode when the firework layer emitted a node, consumed by the
+    // direct frameSwapped hook. Render-thread only in both directions, so no atomic.
+    bool fireworkNodeInPendingFrame_ = false;
+    std::atomic<bool> textureResetRequested_{false};
     PreviewQuickStageBackgroundLayer stageBackgroundLayer_;
     PreviewQuickBackdropLayer backdropLayer_;
     PreviewQuickMuriPadLayer muriPadLayer_;
     PreviewQuickMuriActionLayer muriActionLayer_;
     PreviewQuickJudgeFireworkLayer judgeFireworkLayer_;
     PreviewQuickGuideLayer guideLayer_;
+    PreviewQuickTouchHoverLayer touchHoverLayer_;
     PreviewQuickTrackLayer trackLayer_;
     PreviewQuickSlideMotionLayer slideMotionLayer_;
     PreviewQuickJudgeEffectLayer judgeEffectLayer_;
@@ -136,6 +146,7 @@ private:
     quint64 instanceId_ = 0;
     mutable QMutex latestTextureStatsMutex_;
     mutable QQueue<PreviewTextureStats> pendingTextureStats_;
+    PreviewTextureStats latestTextureStats_;
     bool lastLoggedHasWindow_ = false;
     bool lastLoggedHasState_ = false;
     QSize lastLoggedRenderSize_;
@@ -149,8 +160,22 @@ private:
     qint64 renderPhaseSyncStartNs_ = -1;
     qint64 renderPhaseSyncEndNs_ = -1;
     qint64 renderPhaseRenderStartNs_ = -1;
+    // beforeRenderPassRecording / afterRenderPassRecording split render_submit into
+    // the two halves that behave completely differently under a first-play stall:
+    // everything before the pass is QRhi resource work (texture/buffer uploads,
+    // resource creation, swapchain image acquire), everything inside the pass is
+    // draw-call recording, which is where a first-use graphics pipeline (PSO /
+    // shader variant) gets created by the driver. §5.1 of
+    // docs/audit/PREVIEW_FIRST_PLAY_RENDER_STALL_HANDOFF_AUDIT_ZH.md could not tell
+    // those apart because render_submit_ms was one opaque bracket.
+    qint64 renderPhasePassStartNs_ = -1;
+    qint64 renderPhasePassEndNs_ = -1;
     qint64 renderPhaseRenderEndNs_ = -1;
     qint64 renderPhaseLastLogMs_ = -1;
+    // One-shot: the first frame whose render_submit crosses the stall threshold emits a
+    // GPU/driver context line (adapter, UMD version, VRAM budget) next to the profile so
+    // the field report carries the variables §5.6 asks for. Render-thread only.
+    bool renderStallContextEmitted_ = false;
     // Center display cache — avoid per-frame QImage+texture regeneration.
     miacode::preview_gameplay::CenterDisplayMode cachedCenterDisplayMode_ =
         miacode::preview_gameplay::CenterDisplayMode::Off;

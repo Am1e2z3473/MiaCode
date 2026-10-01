@@ -3,6 +3,7 @@
 #include "../window/MainWindow.WindowSection.h"
 
 #include "DialogLocalization.h"
+#include "UiComponents.h"
 #include "UiText.h"
 #include "UiTheme.h"
 #include "common/OperationLog.h"
@@ -67,11 +68,11 @@ protected:
         }
 
         drawPane(painter, editorRect, colors.cardBg, colors.border, colors.textSecondary,
-                 uiText("dialog.welcome.preview.editor", "Editor"), false);
+                 UiText::text(QStringLiteral("dialog.welcome.preview.editor")), false);
         // textSecondary (not accentText) so the label stays readable — the
         // pane fill is panelBg, on which a white accentText would vanish.
         drawPane(painter, previewRect, colors.panelBg, colors.accent, colors.textSecondary,
-                 uiText("dialog.welcome.preview.preview", "Preview"), true);
+                 UiText::text(QStringLiteral("dialog.welcome.preview.preview")), true);
     }
 
 private:
@@ -114,7 +115,7 @@ void MainWindow::PreferencesSection::showWelcomeDialog()
     MC_OP("MainWindow::PreferencesSection::showWelcomeDialog");
 
     QDialog dialog(UiDialogs::effectiveParentWidget(&owner_));
-    dialog.setWindowTitle(uiText("dialog.welcome.title", "Welcome to MiaCode"));
+    dialog.setWindowTitle(UiText::text(QStringLiteral("dialog.welcome.title")));
     dialog.setModal(true);
     dialog.setMinimumWidth(460);
     dialog.setStyleSheet(UiTheme::preferencesDialogStyleSheet());
@@ -126,14 +127,12 @@ void MainWindow::PreferencesSection::showWelcomeDialog()
     root->setSpacing(14);
     root->setSizeConstraint(QLayout::SetFixedSize);
 
-    auto* heading = new QLabel(uiText("dialog.welcome.heading", "Welcome to MiaCode!"), &dialog);
+    auto* heading = new QLabel(UiText::text(QStringLiteral("dialog.welcome.heading")), &dialog);
     heading->setFont(uiAccentFont(15, QFont::DemiBold));
     root->addWidget(heading);
 
     auto* subtitle = new QLabel(
-        uiText("dialog.welcome.subtitle",
-               "Choose how your workspace looks. You can change these anytime later in "
-               "Preferences (the gear icon in the top menu)."),
+        UiText::text(QStringLiteral("dialog.welcome.subtitle")),
         &dialog);
     subtitle->setWordWrap(true);
     root->addWidget(subtitle);
@@ -143,7 +142,7 @@ void MainWindow::PreferencesSection::showWelcomeDialog()
     root->addWidget(schematic, 0, Qt::AlignHCenter);
 
     // --- Preview-side group -------------------------------------------------
-    auto* sideLabel = new QLabel(uiText("dialog.welcome.preview_side", "Preview pane"), &dialog);
+    auto* sideLabel = new QLabel(UiText::text(QStringLiteral("dialog.welcome.preview_side")), &dialog);
     sideLabel->setFont(uiAccentFont(10, QFont::DemiBold));
     root->addWidget(sideLabel);
 
@@ -152,9 +151,9 @@ void MainWindow::PreferencesSection::showWelcomeDialog()
     sideRowLayout->setContentsMargins(0, 0, 0, 0);
     sideRowLayout->setSpacing(18);
     auto* previewRightRadio = new QRadioButton(
-        uiText("dialog.welcome.preview_side.right", "On the right"), sideRow);
+        UiText::text(QStringLiteral("dialog.welcome.preview_side.right")), sideRow);
     auto* previewLeftRadio = new QRadioButton(
-        uiText("dialog.welcome.preview_side.left", "On the left"), sideRow);
+        UiText::text(QStringLiteral("dialog.welcome.preview_side.left")), sideRow);
     auto* sideGroup = new QButtonGroup(&dialog);
     sideGroup->addButton(previewRightRadio);
     sideGroup->addButton(previewLeftRadio);
@@ -180,7 +179,7 @@ void MainWindow::PreferencesSection::showWelcomeDialog()
     });
 
     // --- Theme group --------------------------------------------------------
-    auto* themeHeading = new QLabel(uiText("dialog.welcome.theme", "Color theme"), &dialog);
+    auto* themeHeading = new QLabel(UiText::text(QStringLiteral("dialog.welcome.theme")), &dialog);
     themeHeading->setFont(uiAccentFont(10, QFont::DemiBold));
     root->addWidget(themeHeading);
 
@@ -188,8 +187,8 @@ void MainWindow::PreferencesSection::showWelcomeDialog()
     auto* themeRowLayout = new QHBoxLayout(themeRow);
     themeRowLayout->setContentsMargins(0, 0, 0, 0);
     themeRowLayout->setSpacing(18);
-    auto* lightRadio = new QRadioButton(uiText("dialog.welcome.theme.light", "Light"), themeRow);
-    auto* darkRadio = new QRadioButton(uiText("dialog.welcome.theme.dark", "Dark"), themeRow);
+    auto* lightRadio = new QRadioButton(UiText::text(QStringLiteral("dialog.welcome.theme.light")), themeRow);
+    auto* darkRadio = new QRadioButton(UiText::text(QStringLiteral("dialog.welcome.theme.dark")), themeRow);
     auto* themeGroup = new QButtonGroup(&dialog);
     themeGroup->addButton(lightRadio);
     themeGroup->addButton(darkRadio);
@@ -227,19 +226,128 @@ void MainWindow::PreferencesSection::showWelcomeDialog()
         }
     });
 
-    // --- Chinese-input group ------------------------------------------------
-    // The same three graduated levels as Preferences' 中文输入 combo, surfaced on
-    // first run (default 关闭输入法). The two underlying editor preferences are:
-    //   关闭输入法   imeDisabled=ON  halfWidth=ON  (block the IME entirely)
-    //   开启输入法   imeDisabled=OFF halfWidth=OFF (plain IME, no filtering)
-    //   转换全角字符 imeDisabled=OFF halfWidth=ON  (IME on, normalize full-width)
+    // --- App background group ---------------------------------------------
+    auto* backgroundHeading = new QLabel(
+        UiText::text(QStringLiteral("dialog.preferences.background_group")), &dialog);
+    backgroundHeading->setFont(uiAccentFont(10, QFont::DemiBold));
+    root->addWidget(backgroundHeading);
+
+    miacode::ui::AppBackgroundSettings selectedBackgroundSettings = owner_.appBackgroundSettings_;
+    auto* backgroundImageRow = new QWidget(&dialog);
+    auto* backgroundImageRowLayout = new QHBoxLayout(backgroundImageRow);
+    backgroundImageRowLayout->setContentsMargins(0, 0, 0, 0);
+    backgroundImageRowLayout->setSpacing(8);
+    auto* backgroundEnabledCheck = new QCheckBox(
+        UiText::text(QStringLiteral("dialog.preferences.background.enabled")), backgroundImageRow);
+    backgroundEnabledCheck->setChecked(selectedBackgroundSettings.enabled);
+    auto* backgroundImageEdit = new QLineEdit(backgroundImageRow);
+    backgroundImageEdit->setReadOnly(true);
+    backgroundImageEdit->setText(selectedBackgroundSettings.imagePath);
+    backgroundImageEdit->setMinimumWidth(0);
+    backgroundImageEdit->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Fixed);
+    auto* backgroundButtonRow = new QWidget(&dialog);
+    auto* chooseBackgroundButton = new QPushButton(
+        UiText::text(QStringLiteral("dialog.preferences.background.choose")), backgroundButtonRow);
+    auto* clearBackgroundButton = new QPushButton(
+        UiText::text(QStringLiteral("dialog.preferences.background.clear")), backgroundButtonRow);
+    clearBackgroundButton->setEnabled(!selectedBackgroundSettings.imagePath.isEmpty());
+    backgroundImageRowLayout->addWidget(backgroundEnabledCheck, 0);
+    backgroundImageRowLayout->addWidget(backgroundImageEdit, 1);
+    root->addWidget(backgroundImageRow);
+
+    auto* backgroundButtonRowLayout = new QHBoxLayout(backgroundButtonRow);
+    backgroundButtonRowLayout->setContentsMargins(0, 0, 0, 0);
+    backgroundButtonRowLayout->setSpacing(8);
+    backgroundButtonRowLayout->addStretch(1);
+    backgroundButtonRowLayout->addWidget(chooseBackgroundButton, 0);
+    backgroundButtonRowLayout->addWidget(clearBackgroundButton, 0);
+    root->addWidget(backgroundButtonRow);
+
+    const auto applyBackgroundControlStyles = [
+        backgroundImageEdit,
+        chooseBackgroundButton,
+        clearBackgroundButton]() {
+        backgroundImageEdit->setStyleSheet(UiTheme::dialogMenuLineEditStyleSheet());
+        backgroundImageEdit->ensurePolished();
+        backgroundImageEdit->setFixedHeight(qMax(backgroundImageEdit->sizeHint().height(), 30) + 4);
+        for (QPushButton* button : {chooseBackgroundButton, clearBackgroundButton}) {
+            miacode::ui::applyDialogAuxiliaryButtonStyle(button);
+            button->ensurePolished();
+            button->setFixedHeight(qMax(button->sizeHint().height(), 30) + 4);
+        }
+    };
+    applyBackgroundControlStyles();
+    QObject::connect(darkRadio, &QRadioButton::toggled, &dialog, [applyBackgroundControlStyles](bool checked) {
+        if (checked) {
+            applyBackgroundControlStyles();
+        }
+    });
+    QObject::connect(lightRadio, &QRadioButton::toggled, &dialog, [applyBackgroundControlStyles](bool checked) {
+        if (checked) {
+            applyBackgroundControlStyles();
+        }
+    });
+
+    const auto persistBackgroundSettings = [this, &selectedBackgroundSettings]() {
+        selectedBackgroundSettings =
+            miacode::ui::normalizedAppBackgroundSettings(selectedBackgroundSettings);
+        owner_.applyAppBackgroundSettings(selectedBackgroundSettings, true);
+    };
+    QObject::connect(
+        backgroundEnabledCheck,
+        &QCheckBox::toggled,
+        &dialog,
+        [&, persistBackgroundSettings](bool enabled) {
+            selectedBackgroundSettings.enabled = enabled;
+            persistBackgroundSettings();
+        });
+    QObject::connect(chooseBackgroundButton, &QPushButton::clicked, &dialog, [&]() {
+        const QString initialDir = selectedBackgroundSettings.imagePath.isEmpty()
+            ? QString()
+            : QFileInfo(selectedBackgroundSettings.imagePath).absolutePath();
+        const QString filePath = QFileDialog::getOpenFileName(
+            &dialog,
+            UiText::text(QStringLiteral("dialog.preferences.background.choose")),
+            initialDir,
+            UiText::text(QStringLiteral("dialog.preferences.background.image_filter")));
+        if (filePath.isEmpty()) {
+            return;
+        }
+        selectedBackgroundSettings.imagePath = QDir::cleanPath(filePath);
+        selectedBackgroundSettings.enabled = true;
+        backgroundImageEdit->setText(selectedBackgroundSettings.imagePath);
+        clearBackgroundButton->setEnabled(true);
+        {
+            QSignalBlocker blocker(backgroundEnabledCheck);
+            backgroundEnabledCheck->setChecked(true);
+        }
+        persistBackgroundSettings();
+    });
+    QObject::connect(clearBackgroundButton, &QPushButton::clicked, &dialog, [&]() {
+        selectedBackgroundSettings.imagePath.clear();
+        selectedBackgroundSettings.enabled = false;
+        backgroundImageEdit->clear();
+        clearBackgroundButton->setEnabled(false);
+        {
+            QSignalBlocker blocker(backgroundEnabledCheck);
+            backgroundEnabledCheck->setChecked(false);
+        }
+        persistBackgroundSettings();
+    });
+
+    // --- IME-block group ----------------------------------------------------
+    // The same three graduated levels as Preferences' IME block combo, surfaced
+    // on first run (default: block IME). The two underlying editor preferences are:
+    //   block IME              imeDisabled=ON  halfWidth=ON  (block the IME entirely)
+    //   allow IME              imeDisabled=OFF halfWidth=OFF (plain IME, no filtering)
+    //   normalize full-width   imeDisabled=OFF halfWidth=ON  (IME on, normalize full-width)
     // The "?" badge next to the group title explains the choice.
     auto* chineseInputHeaderRow = new QWidget(&dialog);
     auto* chineseInputHeaderLayout = new QHBoxLayout(chineseInputHeaderRow);
     chineseInputHeaderLayout->setContentsMargins(0, 0, 0, 0);
     chineseInputHeaderLayout->setSpacing(6);
     auto* chineseInputLabel = new QLabel(
-        uiText("dialog.welcome.chinese_input", "Chinese input"), chineseInputHeaderRow);
+        UiText::text(QStringLiteral("dialog.welcome.chinese_input")), chineseInputHeaderRow);
     chineseInputLabel->setFont(uiAccentFont(10, QFont::DemiBold));
     // Round "?" help badge. Styled via QLabel#WelcomeHelpBadge in
     // preferencesDialogStyleSheet (theme-safe). Opt past the app-wide tooltip
@@ -251,10 +359,7 @@ void MainWindow::PreferencesSection::showWelcomeDialog()
     chineseInputHelp->setFixedSize(16, 16);
     chineseInputHelp->setProperty("miacodeAllowTooltip", true);
     chineseInputHelp->setCursor(Qt::WhatsThisCursor);
-    chineseInputHelp->setToolTip(uiText("dialog.welcome.chinese_input.hint",
-        "If you don't use comments, choose \"Disable IME\".\n"
-        "If you do use comments and want to avoid mistyped input such as 1h【8:1】, "
-        "choose \"Convert full-width\"."));
+    chineseInputHelp->setToolTip(UiText::text(QStringLiteral("dialog.welcome.chinese_input.hint")));
     chineseInputHeaderLayout->addWidget(chineseInputLabel, 0);
     chineseInputHeaderLayout->addWidget(chineseInputHelp, 0, Qt::AlignVCenter);
     chineseInputHeaderLayout->addStretch(1);
@@ -265,16 +370,16 @@ void MainWindow::PreferencesSection::showWelcomeDialog()
     imeRowLayout->setContentsMargins(0, 0, 0, 0);
     imeRowLayout->setSpacing(18);
     auto* imeDisableRadio = new QRadioButton(
-        uiText("dialog.welcome.chinese_input.disable", "Disable IME"), imeRow);
+        UiText::text(QStringLiteral("dialog.welcome.chinese_input.disable")), imeRow);
     auto* imeEnableRadio = new QRadioButton(
-        uiText("dialog.welcome.chinese_input.enable", "Enable IME"), imeRow);
+        UiText::text(QStringLiteral("dialog.welcome.chinese_input.enable")), imeRow);
     auto* imeFullWidthRadio = new QRadioButton(
-        uiText("dialog.welcome.chinese_input.fullwidth", "Convert full-width"), imeRow);
+        UiText::text(QStringLiteral("dialog.welcome.chinese_input.fullwidth")), imeRow);
     auto* imeGroup = new QButtonGroup(&dialog);
     imeGroup->addButton(imeDisableRadio);
     imeGroup->addButton(imeEnableRadio);
     imeGroup->addButton(imeFullWidthRadio);
-    // Reflect the current stored state (default imeDisabled=ON => 关闭输入法).
+    // Reflect the current stored state (default imeDisabled=ON => block IME).
     if (!state_.editorImeInputDisabled_ && state_.editorHalfWidthInputEnabled_) {
         imeFullWidthRadio->setChecked(true);
     } else if (!state_.editorImeInputDisabled_) {
@@ -310,7 +415,7 @@ void MainWindow::PreferencesSection::showWelcomeDialog()
     });
 
     // --- Confirm ------------------------------------------------------------
-    auto* getStarted = new QPushButton(uiText("dialog.welcome.get_started", "Get Started"), &dialog);
+    auto* getStarted = new QPushButton(UiText::text(QStringLiteral("dialog.welcome.get_started")), &dialog);
     getStarted->setStyleSheet(UiTheme::dialogPushButtonStyleSheet(true));
     getStarted->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
     getStarted->setDefault(true);
@@ -340,11 +445,27 @@ void MainWindow::PreferencesSection::showWelcomeDialog()
     } else if (imeFullWidthRadio->isChecked()) {
         applyChineseInput(false, true);
     } else {
-        applyChineseInput(true, true);   // 关闭输入法 (default)
+        applyChineseInput(true, true);   // block IME (default)
     }
 }
 
 void MainWindow::showWelcomeDialog()
 {
+    if (welcomeDialogOpen_) {
+        return;
+    }
+    QScopedValueRollback<bool> welcomeDialogGuard(welcomeDialogOpen_, true);
     preferencesSection_->showWelcomeDialog();
+}
+
+void MainWindow::showExtensionRequestedWelcomeDialogWhenReady()
+{
+    if (welcomeDialogOpen_) {
+        return;
+    }
+    if (QApplication::activeModalWidget() != nullptr) {
+        QTimer::singleShot(250, this, &MainWindow::showExtensionRequestedWelcomeDialogWhenReady);
+        return;
+    }
+    showWelcomeDialog();
 }

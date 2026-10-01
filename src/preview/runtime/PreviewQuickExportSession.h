@@ -32,6 +32,10 @@ class PreviewQuickSceneRoot;
 struct PreviewQuickExportRenderStats {
     qint64 renderNs = 0;
     qint64 readbackNs = 0;
+    qint64 stateUpdateNs = 0;
+    qint64 polishNs = 0;
+    qint64 syncNs = 0;
+    qint64 renderSubmitNs = 0;
 };
 
 class PreviewQuickExportSession : public QObject
@@ -96,6 +100,9 @@ public:
     );
     const PreviewQuickExportRenderStats& lastRenderStats() const { return lastRenderStats_; }
     qint64 lastRenderNs() const { return lastRenderStats_.renderNs; }
+    // P1 — actual GL renderer string captured at initialize() (OpenGL export
+    // path). Empty until the session is initialized.
+    const QString& lastGlRenderer() const { return lastGlRenderer_; }
 
 private:
     bool ensureFramebuffer(QString* errorMessage);
@@ -187,6 +194,7 @@ private:
     miacode::preview::scene::PreviewRenderLayerFlags appliedLayerFlags_ =
         miacode::preview::scene::kPreviewAllRenderLayers;
     PreviewQuickExportRenderStats lastRenderStats_;
+    QString lastGlRenderer_;
 
     // Convert worker — see the implementation comment in
     // renderFramePboStep for the 2-frame defer it introduces. The

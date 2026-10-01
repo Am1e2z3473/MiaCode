@@ -1,5 +1,7 @@
 #include "BassPreviewAudioBackend.h"
 
+#include "PreviewBassEmergencyPause.h"
+
 #include "BassPreviewDebugLogRouting.h"
 #include "BassPreviewRetainedState.h"
 #include "common/ChartAssetPaths.h"
@@ -21,9 +23,7 @@
 
 #include <cstdio>   // G1 Commit 8 followup: std::snprintf for startup-beacon lines
 
-#ifdef Q_OS_WIN
-#include <windows.h>
-
+#ifdef MIACODE_HAS_BASS_AUDIO
 #include "bass.h"
 #include "bassmix.h"
 #endif
@@ -43,7 +43,9 @@ BassPreviewAudioBackend::~BassPreviewAudioBackend()
 {
     appendAudioDebugLog("BassPreviewAudioBackend destroying");
     shuttingDown_.store(true, std::memory_order_release);
-#ifdef Q_OS_WIN
+#ifdef MIACODE_HAS_BASS_AUDIO
+    miacode::preview_audio::PreviewBassEmergencyPause::disarm();
+    // PreviewAudioWorker serializes health sampling with shutdown on this backend thread.
     stopPlaybackSession();
     resetAssets();
     unloadOptionalPlugins();
@@ -53,25 +55,24 @@ BassPreviewAudioBackend::~BassPreviewAudioBackend()
         masterMixer_ = 0;
     }
     unloadBassFx();
-    if (registeredBassDeviceRef_ && gBassDeviceRefCount > 0) {
-        --gBassDeviceRefCount;
-        registeredBassDeviceRef_ = false;
-    }
-    if (engineInitialized_ && gBassDeviceRefCount == 0) {
-        BASS_Stop();
-        noteBassErr("dtor/bass_stop");
-        BASS_Free();
-        noteBassErr("dtor/bass_free");
-        engineInitialized_ = false;
-    } else if (engineInitialized_) {
-        engineInitialized_ = false;
-    }
+    bassDeviceLease_.release();
+    engineInitialized_ = false;
 #endif
 }
 
 QString BassPreviewAudioBackend::backendId() const
 {
     return QStringLiteral("bass");
+}
+
+int BassPreviewAudioBackend::nativeErrorCode() const noexcept
+{
+    return lastNativeErrorCode_;
+}
+
+void BassPreviewAudioBackend::clearNativeErrorCode() noexcept
+{
+    lastNativeErrorCode_ = 0;
 }
 
 QString BassPreviewAudioBackend::resolveTrackPath(const QString& chartPath) const
@@ -92,10 +93,19 @@ QString BassPreviewAudioBackend::resolveSfxDir() const
 
 bool BassPreviewAudioBackend::runtimeLibrariesPresent() const
 {
-#ifdef Q_OS_WIN
+#if defined(Q_OS_WIN)
     return runtimeLibraryExists(QStringLiteral("bass.dll"))
         && runtimeLibraryExists(QStringLiteral("bassmix.dll"))
         && runtimeLibraryExists(QStringLiteral("bass_fx.dll"));
+#elif defined(Q_OS_MACOS) && defined(MIACODE_HAS_BASS_AUDIO)
+    return runtimeLibraryExists(QStringLiteral("libbass.dylib"))
+        && runtimeLibraryExists(QStringLiteral("libbassmix.dylib"))
+        && runtimeLibraryExists(QStringLiteral("libbass_fx.dylib"))
+        && runtimeLibraryExists(QStringLiteral("libbassopus.dylib"));
+#elif defined(Q_OS_LINUX) && defined(MIACODE_HAS_BASS_AUDIO)
+    return runtimeLibraryExists(QStringLiteral("libbass.so"))
+        && runtimeLibraryExists(QStringLiteral("libbassmix.so"))
+        && runtimeLibraryExists(QStringLiteral("libbass_fx.so"));
 #else
     return false;
 #endif
@@ -103,20 +113,20 @@ bool BassPreviewAudioBackend::runtimeLibrariesPresent() const
 
 bool BassPreviewAudioBackend::canBePrimary(QString* reason) const
 {
-#ifdef Q_OS_WIN
+#ifdef MIACODE_HAS_BASS_AUDIO
     if (!runtimeLibrariesPresent()) {
         if (reason != nullptr) {
-            *reason = QStringLiteral("missing repo-local BASS runtime libraries");
+            *reason = QStringLiteral("missing bundled BASS runtime libraries");
         }
         return false;
     }
     if (reason != nullptr) {
-        *reason = QStringLiteral("repo-local BASS runtime libraries are available");
+        *reason = QStringLiteral("bundled BASS runtime libraries are available");
     }
     return true;
 #else
     if (reason != nullptr) {
-        *reason = QStringLiteral("Bass preview backend is Windows-first");
+        *reason = QStringLiteral("BASS preview backend is unavailable in this build");
     }
     return false;
 #endif

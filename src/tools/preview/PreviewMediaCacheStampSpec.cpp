@@ -11,11 +11,14 @@
 //      (reload unless BOTH the resolved path AND its content stamp are
 //      unchanged) makes the correct reload/skip decision as we simulate the
 //      in-app audio/video tools rewriting track.mp3 / bg.png in place.
+//   4. Track resolution recognizes the supported `track.*` audio candidates
+//      used by the timeline waveform and preview/export audio paths.
 //
 // This is the regression net for the 2026-06-03 fix that removed the path-only
 // resolved-path cache and switched the skip decision to a content stamp.
 
 #include "common/ChartAssetPaths.h"
+#include "common/ChartMediaImport.h"
 #include "common/FileContentStamp.h"
 
 #include <QByteArray>
@@ -136,6 +139,57 @@ void testLiveResolution(const QString& dir)
           "sibling bg present -> resolved live");
 }
 
+QByteArray readFile(const QString& path)
+{
+    QFile file(path);
+    if (!file.open(QIODevice::ReadOnly)) {
+        return {};
+    }
+    return file.readAll();
+}
+
+void testSupportedTrackAudioCandidates(const QString& dir)
+{
+    const QString chart = QDir(dir).filePath(QStringLiteral("maidata.txt"));
+    check(writeFile(chart, QByteArray("&title=z\n")), "write candidate maidata.txt");
+
+    const QStringList candidates = miacode::chart_assets::trackCandidateFileNames();
+    check(candidates.contains(QStringLiteral("track.mp3")), "track candidates include mp3");
+    check(candidates.contains(QStringLiteral("track.wav")), "track candidates include wav");
+    check(candidates.contains(QStringLiteral("track.flac")), "track candidates include flac");
+    check(candidates.contains(QStringLiteral("track.ogg")), "track candidates include ogg");
+
+    for (const QString& name : candidates) {
+        QFile::remove(QDir(dir).filePath(name));
+    }
+
+    const QString wav = QDir(dir).filePath(QStringLiteral("track.wav"));
+    check(writeFile(wav, QByteArray("WAV-fake")), "add track.wav");
+    check(miacode::chart_assets::resolveTrackPath(chart) == QDir::cleanPath(wav),
+          "track.wav resolves when no track.mp3 exists");
+
+    const QString flac = QDir(dir).filePath(QStringLiteral("track.flac"));
+    QFile::remove(wav);
+    check(writeFile(flac, QByteArray("FLAC-fake")), "add track.flac");
+    check(miacode::chart_assets::resolveTrackPath(chart) == QDir::cleanPath(flac),
+          "track.flac resolves when earlier candidates are absent");
+
+    const QString ogg = QDir(dir).filePath(QStringLiteral("track.ogg"));
+    QFile::remove(flac);
+    check(writeFile(ogg, QByteArray("OGG-fake")), "add track.ogg");
+    check(miacode::chart_assets::resolveTrackPath(chart) == QDir::cleanPath(ogg),
+          "track.ogg resolves when earlier candidates are absent");
+
+    const QString mp3 = QDir(dir).filePath(QStringLiteral("track.mp3"));
+    check(writeFile(mp3, QByteArray("MP3-fake")), "add track.mp3");
+    check(miacode::chart_assets::resolveTrackPath(chart) == QDir::cleanPath(mp3),
+          "track.mp3 keeps priority when multiple track files exist");
+
+    for (const QString& name : candidates) {
+        QFile::remove(QDir(dir).filePath(name));
+    }
+}
+
 // Simulate the audio/video processing tools rewriting track.mp3 in place and
 // confirm the reload gate flips correctly across the whole lifecycle.
 void testInPlaceRewriteDecision(const QString& dir)
@@ -180,6 +234,89 @@ void testInPlaceRewriteDecision(const QString& dir)
     check(gate.consider(resolved(), stamp()), "track re-added -> reload");
 }
 
+void removeBackgroundCandidates(const QString& dir)
+{
+    for (const auto kind : {miacode::chart_media_import::Kind::Image,
+                            miacode::chart_media_import::Kind::Video}) {
+        for (const QString& name : miacode::chart_media_import::candidateFileNames(kind)) {
+            QFile::remove(QDir(dir).filePath(name));
+        }
+    }
+}
+
+void testChartMediaImport(const QString& dir)
+{
+    using miacode::chart_media_import::Kind;
+    removeBackgroundCandidates(dir);
+
+    const QString chart = QDir(dir).filePath(QStringLiteral("maidata.txt"));
+    const QString externalDirPath = QDir(dir).filePath(QStringLiteral("import_sources"));
+    check(QDir().mkpath(externalDirPath), "create media import source directory");
+
+    const QString sourcePng = QDir(externalDirPath).filePath(QStringLiteral("jacket.PNG"));
+    const QString oldJpg = QDir(dir).filePath(QStringLiteral("bg.jpg"));
+    check(writeFile(sourcePng, QByteArray("new-png")), "write external PNG import source");
+    check(writeFile(oldJpg, QByteArray("old-jpg")), "write old bg.jpg candidate");
+    const auto imageResult = miacode::chart_media_import::importToChartDirectory(
+        sourcePng, dir, Kind::Image);
+    const QString importedPng = QDir(dir).filePath(QStringLiteral("bg.png"));
+    check(imageResult.ok, "image import succeeds");
+    check(QFileInfo::exists(importedPng), "image import normalizes basename to bg");
+    check(readFile(importedPng) == QByteArray("new-png"), "image import preserves source bytes");
+    check(!QFileInfo::exists(oldJpg), "image import moves shadowing old image candidate");
+    check(imageResult.backupPaths.size() == 1, "image replacement creates one backup copy");
+    check(imageResult.backupPaths.size() == 1
+              && QFileInfo(imageResult.backupPaths.constFirst()).fileName() == QStringLiteral("bg_bak.jpg"),
+          "image backup uses the bg_bak filename convention");
+    check(imageResult.backupPaths.size() == 1
+              && readFile(imageResult.backupPaths.constFirst()) == QByteArray("old-jpg"),
+          "image backup preserves the replaced bytes");
+    check(miacode::chart_media_import::nextBackupPath(oldJpg)
+              == QDir(dir).filePath(QStringLiteral("bg_bak_2.jpg")),
+          "existing backup copy is preserved by incrementing the next name");
+    check(miacode::chart_assets::resolveBackgroundMediaPath(chart, false)
+              == QDir::cleanPath(importedPng),
+          "image resolver selects the newly imported jacket");
+
+    const QString sourceVideo = QDir(externalDirPath).filePath(QStringLiteral("movie.MP4"));
+    const QString oldBgVideo = QDir(dir).filePath(QStringLiteral("bg.mp4"));
+    check(writeFile(sourceVideo, QByteArray("new-video")), "write external MP4 import source");
+    check(writeFile(oldBgVideo, QByteArray("old-video")), "write old bg.mp4 candidate");
+    const auto videoResult = miacode::chart_media_import::importToChartDirectory(
+        sourceVideo, dir, Kind::Video);
+    const QString importedVideo = QDir(dir).filePath(QStringLiteral("pv.mp4"));
+    check(videoResult.ok, "video import succeeds");
+    check(readFile(importedVideo) == QByteArray("new-video"), "video import writes pv.mp4 bytes");
+    check(!QFileInfo::exists(oldBgVideo), "video import moves shadowing bg.mp4 candidate");
+    check(videoResult.backupPaths.size() == 1, "video replacement creates one backup copy");
+    check(videoResult.backupPaths.size() == 1
+              && QFileInfo(videoResult.backupPaths.constFirst()).fileName() == QStringLiteral("bg_bak.mp4"),
+          "video backup keeps the replaced candidate basename");
+    check(videoResult.backupPaths.size() == 1
+              && readFile(videoResult.backupPaths.constFirst()) == QByteArray("old-video"),
+          "video backup preserves the replaced bytes");
+    check(miacode::chart_assets::resolveChartVideoPath(chart, QStringLiteral("pv.mp4"))
+              == QDir::cleanPath(importedVideo),
+          "explicit pv.mp4 path resolves to the imported video");
+
+    removeBackgroundCandidates(dir);
+    const QString siblingBgVideo = QDir(dir).filePath(QStringLiteral("bg.mp4"));
+    check(writeFile(siblingBgVideo, QByteArray("sibling-video")), "write sibling video import source");
+    const auto siblingResult = miacode::chart_media_import::importToChartDirectory(
+        siblingBgVideo, dir, Kind::Video);
+    check(siblingResult.ok, "sibling bg.mp4 can be imported as pv.mp4");
+    check(!QFileInfo::exists(siblingBgVideo), "renamed sibling source no longer shadows pv.mp4");
+    check(siblingResult.backupPaths.size() == 1,
+          "sibling source is retained as a backup after canonical rename");
+    check(readFile(importedVideo) == QByteArray("sibling-video"), "sibling video bytes reach pv.mp4");
+
+    const QString unsupported = QDir(externalDirPath).filePath(QStringLiteral("jacket.webp"));
+    check(writeFile(unsupported, QByteArray("webp")), "write unsupported import source");
+    const auto unsupportedResult = miacode::chart_media_import::importToChartDirectory(
+        unsupported, dir, Kind::Image);
+    check(!unsupportedResult.ok, "unsupported image extension is rejected");
+}
+
 }  // namespace
 
 int main(int argc, char** argv)
@@ -194,7 +331,9 @@ int main(int argc, char** argv)
 
     testStampSemantics(tmp.path());
     testLiveResolution(tmp.path());
+    testSupportedTrackAudioCandidates(tmp.path());
     testInPlaceRewriteDecision(tmp.path());
+    testChartMediaImport(tmp.path());
 
     QTextStream(stdout) << (g_failures == 0 ? "ALL PASS\n"
                                             : QStringLiteral("%1 FAILURE(S)\n").arg(g_failures));

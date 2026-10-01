@@ -1,6 +1,7 @@
 #include "../../MainWindow.h"
 #include "MainWindow.WindowSection.h"
 #include "../timeline/MainWindow.TimelineSection.h"
+#include "../validation/MainWindow.ValidationSection.h"
 
 #include "common/DebugLog.h"
 #include "TimelineView.h"
@@ -61,11 +62,11 @@ QString MainWindow::bottomTabsFallbackLabel(BottomTabsTabId tabId) const
 {
     switch (tabId) {
     case BottomTabsTabId::Timeline:
-        return UiText::isChineseUi() ? QStringLiteral("时间轴") : QStringLiteral("Timeline");
+        return UiText::text(QStringLiteral("window.timeline"));
     case BottomTabsTabId::Validation:
-        return UiText::isChineseUi() ? QStringLiteral("语法") : QStringLiteral("Syntax");
+        return UiText::text(QStringLiteral("window.syntax"));
     case BottomTabsTabId::Muri:
-        return UiText::isChineseUi() ? QStringLiteral("无理") : QStringLiteral("Muri");
+        return UiText::text(QStringLiteral("window.muri"));
     case BottomTabsTabId::Unknown:
         break;
     }
@@ -291,8 +292,21 @@ void MainWindow::setCurrentBottomTabsTabId(BottomTabsTabId tabId)
     if (!quickShellBackendActive_ && !bottomTabsTabVisible(tabId)) {
         return;
     }
+    const BottomTabsTabId previousTabId = currentBottomTabsTabId_;
     currentBottomTabsTabId_ = tabId;
+    if (extensionManager_ != nullptr && previousTabId != tabId) {
+        extensionManager_->publishEvent(QStringLiteral("ui.bottomTab.changed"), QJsonObject{
+            {QStringLiteral("source"), QStringLiteral("userInterface")},
+            {QStringLiteral("data"), QJsonObject{
+                {QStringLiteral("previous"), bottomTabsTabIdString(previousTabId)},
+                {QStringLiteral("current"), bottomTabsTabIdString(tabId)},
+            }},
+        });
+    }
     syncBottomTabsCurrentTabToContainers();
+    if (tabId == BottomTabsTabId::Muri && validationSection_ != nullptr) {
+        validationSection_->flushPendingMuriDiagnosticsPanelRefresh();
+    }
     if (tabId == BottomTabsTabId::Timeline && timelineSection_ != nullptr) {
         timelineSection_->flushDeferredTimelineBridgeState();
     }

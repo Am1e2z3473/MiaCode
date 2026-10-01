@@ -6,11 +6,15 @@
 
 #include "common/MuriConfig.h"
 #include "common/MuriTypes.h"
+#include "timeline/TimelineMarkerOffset.h"
 #include "tools/muri/MuriAnalyzer.h"
 #include "tools/muri/MuriPanelEntries.h"
 #include "tools/muri/MuriStaticChecker.h"
 
 namespace {
+
+using miacode::timeline::offset::NonFiniteHandling;
+using miacode::timeline::offset::shiftedNoteMarkers;
 
 struct AnalyzedChart {
     SimaiNativeParseResult parsed;
@@ -24,42 +28,12 @@ bool nearlyEqual(double a, double b, double epsilon = 1e-6)
     return qAbs(a - b) <= epsilon;
 }
 
-double shiftedTimelineSecond(double second, double offsetSeconds)
-{
-    if (!qIsFinite(second) || !qIsFinite(offsetSeconds)) {
-        return second;
-    }
-    return second + offsetSeconds;
-}
-
-QVector<TimelineNoteMarker> shiftedNoteMarkers(
-    const QVector<TimelineNoteMarker>& noteMarkers,
-    double offsetSeconds)
-{
-    QVector<TimelineNoteMarker> shifted = noteMarkers;
-    for (TimelineNoteMarker& marker : shifted) {
-        marker.second = shiftedTimelineSecond(marker.second, offsetSeconds);
-        if (marker.endSecond >= 0.0) {
-            marker.endSecond = shiftedTimelineSecond(marker.endSecond, offsetSeconds);
-        }
-        if (marker.slideTraceSecond >= 0.0) {
-            marker.slideTraceSecond = shiftedTimelineSecond(marker.slideTraceSecond, offsetSeconds);
-        }
-        if (marker.availableSecond >= 0.0) {
-            marker.availableSecond = shiftedTimelineSecond(marker.availableSecond, offsetSeconds);
-        }
-        for (double& shootSecond : marker.slideSegmentShootSeconds) {
-            shootSecond = shiftedTimelineSecond(shootSecond, offsetSeconds);
-        }
-    }
-    return shifted;
-}
-
 AnalyzedChart analyzeChart(const QString& chartText, double firstSeconds = 0.0)
 {
     AnalyzedChart result;
     result.parsed = SimaiNativeParser::parseForTimeline(chartText);
-    const QVector<TimelineNoteMarker> shiftedMarkers = shiftedNoteMarkers(result.parsed.noteMarkers, firstSeconds);
+    const QVector<TimelineNoteMarker> shiftedMarkers =
+        shiftedNoteMarkers(result.parsed.noteMarkers, firstSeconds, NonFiniteHandling::PassThrough);
     result.report = MuriAnalyzer::analyze(shiftedMarkers);
     result.staticReferences = miacode::muri::buildStaticMuriReferences(
         shiftedMarkers,
@@ -218,6 +192,10 @@ int main(int argc, char** argv)
                 QStringLiteral("runtime anchor repro detail names the affected tap lane"));
             expect(diagnostic->detail.contains(QStringLiteral("will early-judge")),
                 QStringLiteral("runtime anchor repro uses definite slide-head-tap wording for muri"));
+            expect(diagnostic->detailKind == MuriDetailKind::SlideHeadJumpStartEarlyJudge,
+                QStringLiteral("runtime anchor repro stores structured slide-head detail kind"));
+            expect(diagnostic->detailArgs.right == QStringLiteral("tap 8"),
+                QStringLiteral("runtime anchor repro stores affected tap as structured detail arg"));
         }
 
         if (const MuriStaticReference* reference =
@@ -251,6 +229,26 @@ int main(int argc, char** argv)
             QStringLiteral("mine slide head star emits NO slide-head-tap diagnostic"));
         expect(countDiagnostics(analyzed.report.diagnostics, MuriKind::SlideTooFast) == 0,
             QStringLiteral("mine slide emits NO slide-too-fast diagnostic"));
+        expect(countStaticReferences(analyzed.staticReferences, MuriKind::SlideHeadTap) == 0,
+            QStringLiteral("mine slide emits NO static slide-head-tap reference"));
+        expect(countStaticReferences(analyzed.staticReferences, MuriKind::TapOnSlide) == 0,
+            QStringLiteral("mine slide emits NO static tap-on-slide reference"));
+        expect(analyzed.visibleEntries.isEmpty(),
+            QStringLiteral("mine slide emits NO visible Muri panel entry"));
+    }
+
+    {
+        // The normal `8` in the anchor repro emits SlideHeadTap. Mine-ifying
+        // only the affected note must suppress both runtime and static paths.
+        const AnalyzedChart analyzed = analyzeChart(
+            QStringLiteral("(240){16}\n8>3[4:1],,,,,\n8m,\nE\n"));
+        expect(analyzed.parsed.ok, QStringLiteral("mine affected-note repro chart parses"));
+        expect(countDiagnostics(analyzed.report.diagnostics, MuriKind::SlideHeadTap) == 0,
+            QStringLiteral("mine affected note emits NO runtime slide-head-tap diagnostic"));
+        expect(countStaticReferences(analyzed.staticReferences, MuriKind::SlideHeadTap) == 0,
+            QStringLiteral("mine affected note emits NO static slide-head-tap reference"));
+        expect(countVisibleEntries(analyzed.visibleEntries, MuriKind::SlideHeadTap) == 0,
+            QStringLiteral("mine affected note emits NO visible slide-head-tap entry"));
     }
 
     {
@@ -509,6 +507,10 @@ int main(int argc, char** argv)
                 QStringLiteral("head-star tap-on-slide repro visible detail names the affected star lane"));
             expect(entry->rawDetail.contains(QStringLiteral("trajectory may collide with")),
                 QStringLiteral("head-star tap-on-slide repro visible detail uses warning wording when severity is warning"));
+            expect(entry->detailKind == MuriDetailKind::TapOnSlideCollide,
+                QStringLiteral("head-star tap-on-slide repro visible entry stores structured collision kind"));
+            expect(entry->detailArgs.alert == MuriAlertLevel::Warning,
+                QStringLiteral("head-star tap-on-slide repro visible entry keeps warning in structured args"));
             expect(entry->line == 2 && entry->col == 7,
                 QStringLiteral("head-star tap-on-slide repro visible entry anchors to the affected helper star"));
         }
@@ -728,6 +730,44 @@ int main(int argc, char** argv)
 
     {
         const AnalyzedChart analyzed = analyzeChart(
+            QStringLiteral("(180)\n"
+                           "{16} 1^2^3^4[8:1],3,4,, ,,,, ,,,, ,,,, \n"
+                           "{16} 1>4[8:1],3,4,, ,,,, ,,,, ,,,, \n"
+                           "{16} 1^2^3[8:1],3,,, ,,,, ,,,, ,,,,  \n"
+                           "{16} 1>3[8:1],3,,, ,,,, ,,,, ,,,,\n"));
+        expect(analyzed.parsed.ok, QStringLiteral("chained-vs-direct slide-too-fast sample parses"));
+        expect(countDiagnostics(analyzed.report.diagnostics, MuriKind::SlideTooFast) == 2,
+            QStringLiteral("chained-vs-direct slide-too-fast sample matches MaiMuriDX dynamic count"));
+        expect(countStaticReferences(analyzed.staticReferences, MuriKind::SlideTooFast) == 0,
+            QStringLiteral("chained-vs-direct slide-too-fast sample has no static slide-too-fast references"));
+        expect(countVisibleEntries(analyzed.visibleEntries, MuriKind::SlideTooFast) == 2,
+            QStringLiteral("chained-vs-direct slide-too-fast sample keeps two visible entries"));
+
+        bool sawLine2 = false;
+        bool sawLine3 = false;
+        bool sawLine4Or5 = false;
+        bool sawPerfectToleranceDetail = false;
+        for (const MuriDiagnostic& diagnostic : analyzed.report.diagnostics) {
+            if (diagnostic.kind != MuriKind::SlideTooFast) {
+                continue;
+            }
+            sawLine2 = sawLine2 || diagnostic.line == 2;
+            sawLine3 = sawLine3 || diagnostic.line == 3;
+            sawLine4Or5 = sawLine4Or5 || diagnostic.line == 4 || diagnostic.line == 5;
+            sawPerfectToleranceDetail = sawPerfectToleranceDetail
+                || (diagnostic.detail.contains(QStringLiteral("before standard timing"))
+                    && diagnostic.detail.contains(QStringLiteral("Perfect tolerance"))
+                    && !diagnostic.detailArgs.perfectWindowText.isEmpty());
+        }
+        expect(sawLine2, QStringLiteral("chained-vs-direct slide-too-fast sample reports 1^2^3^4"));
+        expect(sawLine3, QStringLiteral("chained-vs-direct slide-too-fast sample reports 1>4"));
+        expect(!sawLine4Or5, QStringLiteral("chained-vs-direct slide-too-fast sample does not report 1^2^3 or 1>3"));
+        expect(sawPerfectToleranceDetail,
+            QStringLiteral("chained-vs-direct slide-too-fast sample explains early timing and Perfect tolerance"));
+    }
+
+    {
+        const AnalyzedChart analyzed = analyzeChart(
             QStringLiteral("(128.6){1}3v1[1:11]/7v5[1:11],\nE\n"));
         expect(analyzed.parsed.ok, QStringLiteral("long-slide repro chart parses"));
         expect(countDiagnostics(analyzed.report.diagnostics, MuriKind::SlideTooFast) == 0,
@@ -829,6 +869,77 @@ int main(int argc, char** argv)
             QStringLiteral("synthetic slide-head merge repro suppresses multitouch"));
         expect(countVisibleEntries(analyzed.visibleEntries, MuriKind::MultiTouch) == 0,
             QStringLiteral("synthetic slide-head merge repro keeps multitouch hidden"));
+    }
+
+    {
+        const auto expectSharedStartMultiTouch = [&](const QString& chart, const QString& label,
+                                                    int warningCount, int errorCount) {
+            const AnalyzedChart analyzed = analyzeChart(chart);
+            expect(analyzed.parsed.ok, label + QStringLiteral(" parses"));
+            expect(countDiagnostics(analyzed.report.diagnostics, MuriKind::MultiTouch)
+                       == warningCount + errorCount,
+                label + QStringLiteral(" has no duplicate multitouch diagnostic"));
+            expect(countDiagnosticsWithAlertLevel(
+                       analyzed.report.diagnostics, MuriKind::MultiTouch, MuriAlertLevel::Warning)
+                       == warningCount,
+                label + QStringLiteral(" runtime warning count"));
+            expect(countDiagnosticsWithAlertLevel(
+                       analyzed.report.diagnostics, MuriKind::MultiTouch, MuriAlertLevel::Muri)
+                       == errorCount,
+                label + QStringLiteral(" runtime error count"));
+            expect(countVisibleEntriesWithAlertLevel(
+                       analyzed.visibleEntries, MuriKind::MultiTouch, MuriAlertLevel::Warning)
+                       == warningCount,
+                label + QStringLiteral(" visible warning count"));
+            expect(countVisibleEntriesWithAlertLevel(
+                       analyzed.visibleEntries, MuriKind::MultiTouch, MuriAlertLevel::Muri)
+                       == errorCount,
+                label + QStringLiteral(" visible error count"));
+        };
+        expectSharedStartMultiTouch(
+            QStringLiteral("(120){4}8v3[4:2]*v5[4:2],1,,,,E"),
+            QStringLiteral("shared-start tap before split"), 1, 0);
+        expectSharedStartMultiTouch(
+            QStringLiteral("(120){4}123,E"),
+            QStringLiteral("ordinary triple tap retains error severity"), 0, 1);
+        expectSharedStartMultiTouch(
+            QStringLiteral("(120){4}8v3[4:2]*v5[4:2],,1,,,E"),
+            QStringLiteral("shared-start tap after split"), 0, 1);
+        expectSharedStartMultiTouch(
+            QStringLiteral("(120){4}8v3[4:2]*v5[4:2],1h[4:1],,,,E"),
+            QStringLiteral("shared-start hold crosses split"), 0, 1);
+        expectSharedStartMultiTouch(
+            QStringLiteral("(120){4}8v3[4:2]/8v5[4:2],,1,,,E"),
+            QStringLiteral("shared-start slash notation parity"), 0, 1);
+        expectSharedStartMultiTouch(
+            QStringLiteral("(120){4}8v3[4:2]*v5[4:2],,,,,E"),
+            QStringLiteral("shared-start slides without extra press"), 0, 0);
+        expectSharedStartMultiTouch(
+            QStringLiteral("(120){4}8-3[4:2]*-5[4:2],1,,,,E"),
+            QStringLiteral("same-head slides without shared path"), 0, 1);
+        expectSharedStartMultiTouch(
+            QStringLiteral("(120){4}8v3[4:2]*v5[4:2],,,,,,123,E"),
+            QStringLiteral("unrelated triple press after shared slides"), 0, 1);
+        expectSharedStartMultiTouch(
+            QStringLiteral("(120){4}8v3[4:2]*v5[4:2],,1/2,,,E"),
+            QStringLiteral("shared-start four-hand demand"), 0, 1);
+        expectSharedStartMultiTouch(
+            QStringLiteral("(120){4}8v3[1##1],8v5[4:2],,1,,,E"),
+            QStringLiteral("different head times with simultaneous slide motion"), 0, 1);
+        expectSharedStartMultiTouch(
+            QStringLiteral("(120){4}8-2[4:1]-4[4:1]v1[4:2]*-6[4:1]-4[4:1]v3[4:2],,,,,8,,,E"),
+            QStringLiteral("later chain overlap without shared start"), 0, 1);
+        expectSharedStartMultiTouch(
+            QStringLiteral("(120){4}8v3[4:2]-7[4:2]*v5[4:2]-1[4:2],,,,8,,,E"),
+            QStringLiteral("split shared-start later chain segments retain error severity"), 0, 1);
+        const AnalyzedChart split = analyzeChart(
+            QStringLiteral("(120){4}8v3[4:2]*v5[4:2],,1,,,E"));
+        if (const MuriDiagnostic* diagnostic = firstDiagnostic(split.report.diagnostics, MuriKind::MultiTouch)) {
+            expect(nearlyEqual(diagnostic->second, 1.0),
+                QStringLiteral("shared-start error occurs at the actual triple-hand demand"));
+            expect(diagnostic->detailArgs.alert == MuriAlertLevel::Muri,
+                QStringLiteral("shared-start error detail uses the error severity"));
+        }
     }
 
     {

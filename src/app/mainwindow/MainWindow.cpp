@@ -31,7 +31,6 @@
 #include "tools/muri/MuriPanelEntries.h"
 #include "tools/muri/MuriStaticChecker.h"
 #include "tools/video_export/VideoExportDialog.h"
-#include "tools/video_export/BatchVideoExportDialog.h"
 #include "tools/video_export/VideoExportController.h"
 #include "common/AssetPaths.h"
 #include "common/ChartAssetPaths.h"
@@ -163,7 +162,6 @@ using namespace miacode::mainwindow::shared;
 
 namespace {
 constexpr qreal kEmbeddedPreviewPanelWidthRatio = miacode::window_parity::kEmbeddedPreviewPanelWidthRatio;
-constexpr int kEmbeddedPreviewPanelWidthMax = miacode::window_parity::kEmbeddedPreviewPanelWidthMax;
 constexpr int kPreviewPanelMarginTop = miacode::window_parity::kPreviewPanelMarginTop;
 constexpr int kPreviewPanelMarginBottom = 12;
 constexpr int kPreviewCanvasControlGap = miacode::window_parity::kPreviewCanvasControlGap;
@@ -480,4 +478,3 @@ void warmupFileIntoOsCache(const QString& path, qint64 maxBytes = -1)
 }
 
 }  // namespace
-

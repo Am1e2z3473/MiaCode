@@ -1,5 +1,6 @@
 ﻿#include "MainWindow.DocumentSection.h"
 #include "../../MainWindowShared.h"
+#include "../editor/MainWindow.EditorSection.h"
 #include "../window/MainWindow.WindowSection.h"
 
 #include "BracketScopeHighlighter.h"
@@ -150,7 +151,7 @@ void MainWindow::DocumentSection::refreshRestoreBackupMenu(QMenu* restoreBackupM
     const QString autosaveDirectoryPath = resolveAutosaveDirectoryPath();
     const QList<BackupRestoreEntry> entries = backupRestoreEntriesForAutosaveDirectory(autosaveDirectoryPath);
     if (entries.isEmpty()) {
-        QAction* emptyAction = restoreBackupMenu->addAction(uiText("action.restore_backup.empty", "No Backups Available"));
+        QAction* emptyAction = restoreBackupMenu->addAction(UiText::text(QStringLiteral("action.restore_backup.empty")));
         emptyAction->setEnabled(false);
         return;
     }
@@ -180,10 +181,8 @@ void MainWindow::DocumentSection::restoreBackupFilePath(const QString& path, boo
         UiDialogs::showMessageBox(
             QMessageBox::Warning,
             &owner_,
-            uiText("dialog.restore_backup.title", "Restore Backup"),
-            uiText(
-                "dialog.restore_backup.missing",
-                "Backup file does not exist:\n%1")
+            UiText::text(QStringLiteral("dialog.restore_backup.title")),
+            UiText::text(QStringLiteral("dialog.restore_backup.missing"))
                 .arg(QDir::toNativeSeparators(normalizedPath))
         );
         return;
@@ -193,19 +192,14 @@ void MainWindow::DocumentSection::restoreBackupFilePath(const QString& path, boo
         ? backupInfo.lastModified().toLocalTime().toString(QStringLiteral("yyyy-MM-dd HH:mm:ss"))
         : QFileInfo(normalizedPath).fileName();
     const QString restoreConfirmText = mentionAbnormalExit
-        ? uiText(
-              "dialog.restore_backup.abnormal_exit_confirm",
-              "MiaCode did not exit normally last time.\n\n"
-              "Restore the backup from %1?")
+        ? UiText::text(QStringLiteral("dialog.restore_backup.abnormal_exit_confirm"))
               .arg(backupTimestampLabel)
-        : uiText(
-              "dialog.restore_backup.confirm",
-              "Restore the backup from %1?")
+        : UiText::text(QStringLiteral("dialog.restore_backup.confirm"))
               .arg(backupTimestampLabel);
     const auto choice = UiDialogs::showMessageBox(
         QMessageBox::Question,
         &owner_,
-        uiText("dialog.restore_backup.title", "Restore Backup"),
+        UiText::text(QStringLiteral("dialog.restore_backup.title")),
         restoreConfirmText,
         QMessageBox::Yes | QMessageBox::No,
         QMessageBox::No);
@@ -226,10 +220,8 @@ void MainWindow::DocumentSection::restoreBackupFilePath(const QString& path, boo
         UiDialogs::showMessageBox(
             QMessageBox::Critical,
             &owner_,
-            uiText("dialog.restore_backup.title", "Restore Backup"),
-            uiText(
-                "dialog.restore_backup.read_failed",
-                "Cannot read backup file:\n%1")
+            UiText::text(QStringLiteral("dialog.restore_backup.title")),
+            UiText::text(QStringLiteral("dialog.restore_backup.read_failed"))
                 .arg(QDir::toNativeSeparators(normalizedPath))
         );
         return;
@@ -247,7 +239,7 @@ void MainWindow::DocumentSection::restoreBackupFilePath(const QString& path, boo
     updateDirtyState();
     owner_.scheduleTimelineRefresh();
     owner_.statusBar()->showMessage(
-        uiText("status.restore_backup.loaded", "Restored from backup. Save to keep the changes."),
+        UiText::text(QStringLiteral("status.restore_backup.loaded")),
         10000
     );
 }
@@ -422,7 +414,7 @@ void MainWindow::DocumentSection::rebuildAutosaveMetadata(const QString& autosav
 
 void MainWindow::DocumentSection::runAutosaveCheck(bool allowHistory)
 {
-    if (state_.currentFilePath_.isEmpty()) {
+    if (state_.currentFilePath_.isEmpty() || state_.onlinePreviewDocument_) {
         return;
     }
 
@@ -499,7 +491,7 @@ void MainWindow::DocumentSection::runAutosaveCheck(bool allowHistory)
 bool MainWindow::DocumentSection::onSaveFile()
 {
     MC_OP("MainWindow::DocumentSection::onSaveFile");
-    if (state_.currentFilePath_.isEmpty()) {
+    if (state_.currentFilePath_.isEmpty() || state_.onlinePreviewDocument_) {
         return onSaveFileAs();
     }
     return saveToPath(state_.currentFilePath_);
@@ -513,7 +505,9 @@ bool MainWindow::DocumentSection::onSaveFileAs()
     const QString path = QFileDialog::getSaveFileName(
         &owner_,
         QStringLiteral("Save simai file"),
-        state_.currentFilePath_.isEmpty() ? QStringLiteral("chart.txt") : state_.currentFilePath_,
+        state_.onlinePreviewDocument_
+            ? QDir(owner_.resolveInitialOpenDirectory()).filePath(QStringLiteral("maidata.txt"))
+            : (state_.currentFilePath_.isEmpty() ? QStringLiteral("chart.txt") : state_.currentFilePath_),
         QStringLiteral("Simai (*.txt *.simai);;All Files (*.*)")
     );
     owner_.windowSection_->logWindowGeometryDebug("save_file_as_after_dialog", QString("selected_empty=%1").arg(path.isEmpty() ? 1 : 0));
@@ -609,6 +603,7 @@ bool MainWindow::DocumentSection::saveToPath(const QString& path)
     }
     owner_.saveProjectValidationPreferences(normalizedPath);
     owner_.addRecentFilePath(normalizedPath);
+    owner_.saveProjectRenderState();
     resetAutosaveState(serialized);
     const QString autosaveDirectoryPath = resolveAutosaveDirectoryPath();
     if (!autosaveDirectoryPath.isEmpty()) {
@@ -616,6 +611,7 @@ bool MainWindow::DocumentSection::saveToPath(const QString& path)
     }
     state_.documentDirty_ = false;
     state_.currentFieldDirty_ = false;
+    state_.onlinePreviewDocument_ = false;
     updateDirtyState();
     owner_.updateWindowTitle();
     owner_.statusBar()->showMessage("Saved: " + QFileInfo(path).fileName());

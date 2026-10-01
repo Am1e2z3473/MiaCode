@@ -20,11 +20,14 @@
 #include "common/DebugLog.h"
 #include "common/DebugOptions.h"
 #include "common/MiniaudioFileAccess.h"
+#include "audio/PreviewBassDeviceLease.h"
 
 #include "../../third_party/miniaudio/miniaudio.h"
 
+#ifdef MIACODE_HAS_BASS_AUDIO
 #ifdef Q_OS_WIN
 #include <windows.h>
+#endif
 
 #include "bass.h"
 #endif
@@ -131,7 +134,7 @@ double peakColumnSecond(const WaveformLevel& level, double* peakEnergy)
     return peakIndex >= 0 ? static_cast<double>(peakIndex) * level.secondsPerColumn : -1.0;
 }
 
-#ifdef Q_OS_WIN
+#ifdef MIACODE_HAS_BASS_AUDIO
 QMutex& bassWaveformDecodeMutex()
 {
     static QMutex mutex;
@@ -142,28 +145,18 @@ class ScopedBassWaveformDevice
 {
 public:
     ScopedBassWaveformDevice()
+        : lease_(miacode::preview_audio::PreviewBassDeviceLease::acquire({
+            [] { return static_cast<miacode::preview_audio::BassDeviceLeaseApi::DeviceId>(BASS_GetDevice()); },
+            [] { return BASS_Init(0, kWaveformDecodeSampleRate, BASS_DEVICE_NOSPEAKER, nullptr, nullptr) != FALSE; },
+            [] { BASS_Free(); },
+        }))
     {
-        const DWORD currentDevice = BASS_GetDevice();
-        if (currentDevice != static_cast<DWORD>(-1)) {
-            available_ = true;
-            return;
-        }
-        ownsDevice_ = BASS_Init(0, kWaveformDecodeSampleRate, BASS_DEVICE_NOSPEAKER, nullptr, nullptr);
-        available_ = ownsDevice_;
     }
 
-    ~ScopedBassWaveformDevice()
-    {
-        if (ownsDevice_) {
-            BASS_Free();
-        }
-    }
-
-    bool available() const { return available_; }
+    bool available() const { return lease_.acquired(); }
 
 private:
-    bool available_ = false;
-    bool ownsDevice_ = false;
+    miacode::preview_audio::PreviewBassDeviceLease lease_;
 };
 #endif
 
@@ -293,7 +286,7 @@ QVector<float> decodeMonoSamplesWithMiniaudio(const QString& trackPath, double* 
     return samples;
 }
 
-#ifdef Q_OS_WIN
+#ifdef MIACODE_HAS_BASS_AUDIO
 QVector<float> decodeMonoSamplesWithBass(const QString& trackPath, double* durationSeconds)
 {
     QVector<float> samples;
@@ -398,7 +391,7 @@ QVector<float> decodeMonoSamples(
     if (backend != nullptr) {
         *backend = WaveformDecodeBackend::None;
     }
-#ifdef Q_OS_WIN
+#ifdef MIACODE_HAS_BASS_AUDIO
     const QVector<float> bassSamples = decodeMonoSamplesWithBass(trackPath, durationSeconds);
     if (!bassSamples.isEmpty()) {
         if (backend != nullptr) {

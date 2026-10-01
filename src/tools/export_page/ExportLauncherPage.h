@@ -19,6 +19,8 @@ class FlowLayout;
 
 namespace miacode::export_page {
 
+class CoverPreviewLabel;
+
 // Central-area "Export" hub page wired into MainWindow::editorStack_ — the
 // phase-2 hybrid form (E-C) of the export-page migration. Fixed-frame layout: a difficulty badge row + an
 // underline-style HORIZONTAL sub-nav row pinned on top (a left nav column
@@ -32,11 +34,10 @@ namespace miacode::export_page {
 //              VideoExportDialog panel (6-tab settings filling the height +
 //              a pinned 开始导出 footer; no in-panel transport — the
 //              preview-area transport is the only seek/progress surface).
-//   封面导出 — dialog launcher pane (composer dialog unchanged).
-//   批量导出 — dialog launcher pane (queue dialog unchanged).
+//   封面导出 — current-cover preview, composer launcher, and direct export.
+//   批量导出 — embedded queue settings panel.
 //   打包 ZIP — in-page action pane (onPackAsZip, existing progress popup).
-// All panes are action-button-only (descriptions/mode chips removed by
-// product decision 2026-06-12).
+// Descriptions/mode chips were removed by product decision 2026-06-12.
 //
 // While this page is current, MainWindow keeps activeDifficultyId_ == 0,
 // so NOTHING here may gate on hasActiveDifficulty() — availability is
@@ -62,7 +63,7 @@ public:
     // BEFORE the switch reset it to 0. Seeds the badge default (decision D4):
     // previous active difficulty → kept page selection →
     // projectLastOpenedDifficultyId_ → first existing difficulty.
-    void onPageEntered(int previousActiveDifficultyId);
+    void onPageEntered(int previousActiveDifficultyId, double rangeStart = -1.0, double rangeEnd = -1.0);
 
     // Called unconditionally from every page-leave path (same idempotent
     // pattern as LatencyDetectionPage::onPageLeft): tears down the embedded
@@ -70,6 +71,10 @@ public:
     // session end). A running export worker keeps rendering; its inline
     // progress stays on the preview transport.
     void onPageLeft();
+
+    // Tools-menu route: show the same embedded batch panel as the Export hub.
+    void openBatchExportSubPage();
+    void refreshCoverPreview();
 
     int selectedDifficultyId() const { return selectedDifficultyId_; }
     int menuActionDifficultyId() const;
@@ -103,10 +108,10 @@ private:
     bool difficultyHasChartBody(int difficultyId) const;
     bool documentHasChartBody() const;
     bool documentHasPackableContent() const;
-    QString localizedText(const QString& zh, const QString& en) const;
 
     void setCurrentSubPage(int subPage);
     void onExportCoverClicked();
+    void onExportCurrentCoverClicked();
     void onBatchExportClicked();
     void onPackAsZipClicked();
 
@@ -117,6 +122,9 @@ private:
     QList<QToolButton*> badgeButtons_;
     int selectedDifficultyId_ = 0;
     bool pageSessionActive_ = false;
+    double pendingRangeStart_ = -1.0;
+    double pendingRangeEnd_ = -1.0;
+    int pendingRangeDifficultyId_ = 0;
 
     QList<QToolButton*> subNavButtons_;
     int currentSubPage_ = SubPageVideo;
@@ -128,8 +136,17 @@ private:
     QLabel* videoUnavailableLabel_ = nullptr;
     QPointer<QWidget> embeddedVideoPanel_;
 
+    // 批量导出 sub-page: mirrors the video host but preserves its panel across
+    // badge changes so user-selected batch difficulties are never reset.
+    QWidget* batchPanelHost_ = nullptr;
+    QVBoxLayout* batchPanelHostLayout_ = nullptr;
+    QLabel* batchUnavailableLabel_ = nullptr;
+    QPointer<QWidget> embeddedBatchPanel_;
+
     LauncherCard coverCard_;
-    LauncherCard batchCard_;
+    CoverPreviewLabel* coverPreviewLabel_ = nullptr;
+    QPushButton* coverExportButton_ = nullptr;
+    bool coverPreviewQueued_ = false;
     LauncherCard zipCard_;
 };
 

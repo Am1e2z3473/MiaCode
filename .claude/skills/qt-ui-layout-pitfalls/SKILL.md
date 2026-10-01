@@ -47,6 +47,7 @@ pixels, and several Qt defaults lie** (`sizeHint()` under QSS, `SetFixedSize`,
 | 深色模式看不清/不更新 (dark mode unreadable / frozen) | Hardcoded colors; styles applied once, never on theme switch | W5 |
 | 对话框底部超出屏幕被截 (dialog clamped by screen) | Over-tall fixed dialog; middle stretch pushes content to clipped bottom | W6 |
 | 设置宽度被 QSS 覆盖 (`setFixedWidth` ineffective) | QSS `min-width` beats `setFixedWidth` | W7 |
+| 下拉弹窗右下角纯色块 (combo popup solid wedge at BR corner ONLY) | default-ctor `QProxyStyle` wraps DESKTOP style (windows11); its popup panel fights the QSS panel at 1px offset anchored top-left | W8 |
 | 1px 缝隙/曲绘露边 (1px sliver past a frame) | Per-edge rounding drifts under fractional scale; DPR not folded in | Q1 |
 | 接缝黑线/白边 (seam dark bleed / bright rim) | AA'd alpha over-composite at shared cut; LANCZOS ringing | Q2 |
 | 边框模糊/粗细不均 (blurry/uneven stroke under scale) | Stroke scales with card; fractional coords | Q3 |
@@ -59,6 +60,8 @@ pixels, and several Qt defaults lie** (`sizeHint()` under QSS, `SetFixedSize`,
 | 取消关闭但弹窗已没了 (cancel close, popups already gone) | Side-effect sweep ran BEFORE the cancellable prompt | Z4 |
 | 方向键被预览劫持 (arrows hijacked from text input) | Geometric "armed" gate without focus-widget check | Z5 |
 | 整个编辑列错位且跨页持续 (whole workspace column offset, persists across pages) | `QQuickWidget` under a quick-shell rehosted surface → top-level HWND recreated → foreign-window embed broken | Z6 |
+| macOS 页面飞出窗口/无边框白色幽灵块 (page flies out as standalone window; frameless white ghost, macOS) | bridge `QWidget::show()` after WindowContainer adoption reclaims the NSView; emptied orphan NSPanel re-shown by `hidesOnDeactivate` | Z7 |
+| macOS 导出后出现带主窗口标题的白窗，关掉后主界面内容消失 (titled white MainWindow shell post-export; closing it blanks UI, macOS) | window-modal dialog / `raise()` on the hidden `WA_DontShowOnScreen` MainWindow → macOS sheet/orderFront surfaces it | Z8 |
 
 Full recipes with code idioms and the commit history behind each: `references/recipes.md`.
 The W-patterns are also condensed in user memory `reference-widget-dialog-clipping`.
@@ -77,6 +80,10 @@ The W-patterns are also condensed in user memory `reference-widget-dialog-clippi
   spacing; do NOT re-level controls when the WM clamps the window.
 - **W7**: inline QSS override `"QPushButton { min-width:Npx; max-width:Npx; padding:0; }"`
   alongside `setFixedSize`.
+- **W8**: popup proxy styles get an explicit base (`QStyleFactory::create("Fusion")`);
+  container made translucent by hand (WState_Created dance) + ONE panel painter via a
+  Paint-event filter; QSS view AND popup-scrollbar backgrounds transparent (an opaque view
+  bg leaves a see-through hole under the scrollbar column on a layered window).
 - **Q1**: ONE shared snap helper in absolute device space —
   `snap(n) = (Math.round((origin + n*s) * dpr) / dpr - origin) / s` — and make the clip
   rect AND the stroke read the same snapped rect.
@@ -107,6 +114,16 @@ The W-patterns are also condensed in user memory `reference-widget-dialog-clippi
   (texture child → top-level HWND recreate → the `fromWinId` embed dies). Live QML preview
   in widgets = native `QQuickView` + `createWindowContainer` + key-forwarding event filter
   (cf. `IntroPreviewWidget`).
+- **Z7** (macOS): never hide()/show() a bridge top-level after WindowContainer adoption —
+  per-tab visibility goes through `WindowContainer.visible` on the foreign QWindow
+  (`kBridgeSurfaceVisibilityFollowsTabs` = false on mac). Neutralize each emptied orphan
+  NSPanel once its view leaves it (`QuickShellMacSurfaceSupport`: `hidesOnDeactivate NO`,
+  alpha 0, click-through, orderOut, retried).
+- **Z8** (macOS): dialogs launched from the hidden quick-shell MainWindow use
+  `UiDialogs::effectiveParentWidget` + `applyDetachedParentBehavior` (window-modal on the
+  `WA_DontShowOnScreen` host = macOS sheet that orderFronts it); guard
+  `raise()/activateWindow()` with `WA_DontShowOnScreen`. `#ifdef Q_OS_MACOS` all sites so
+  Windows parenting/focus is untouched.
 
 ## Known rejected approaches — do not retry
 

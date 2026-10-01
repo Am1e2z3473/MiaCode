@@ -7,8 +7,39 @@ import MiaCode.Preview
 ApplicationWindow {
     id: root
 
-    property var paletteMap: ({})
-    property var metricsMap: ({})
+    background: Item {
+        Rectangle {
+            anchors.fill: parent
+            color: root.tone("windowBg", "#f8fafd")
+        }
+
+        Image {
+            anchors.fill: parent
+            visible: root.appBackgroundActive()
+            property int sourceRevision: Number(root.appBackgroundMap.sourceRevision || 0)
+            function refreshSource() {
+                source = ""
+                source = visible ? String(root.appBackgroundMap.sourceUrl) : ""
+            }
+            onSourceRevisionChanged: refreshSource()
+            onVisibleChanged: refreshSource()
+            property string backgroundUrl: String(root.appBackgroundMap.sourceUrl || "")
+            onBackgroundUrlChanged: refreshSource()
+            Component.onCompleted: refreshSource()
+            opacity: root.appBackgroundOpacity()
+            fillMode: root.appBackgroundFillMode()
+            horizontalAlignment: root.appBackgroundHorizontalAlignment()
+            verticalAlignment: root.appBackgroundVerticalAlignment()
+            smooth: true
+            mipmap: true
+            asynchronous: true
+            cache: false
+        }
+    }
+
+    property var paletteMap: styleBridge ? styleBridge.palette : ({})
+    property var metricsMap: styleBridge ? styleBridge.metrics : ({})
+    property var appBackgroundMap: styleBridge ? styleBridge.appBackground : ({})
     property var shellController: controller
     property bool fullscreenControlsVisible: controller.previewFullscreen
     property bool fullscreenHintVisible: false
@@ -27,16 +58,20 @@ ApplicationWindow {
                 - metric("statusHeight", 28)
         )
     )
+    // User preference within the resizable content+preview area. Sidebar and
+    // splitter widths are deliberately excluded so folding or resizing them
+    // redistributes space proportionally without changing user intent.
+    property real previewPanePreferredRatio: 0
     property bool previewPaneUserResized: false
     property bool previewPaneStartupBalancePending: true
     property bool startupLayoutLocked: true
     property bool startupContentReady: false
     property real lastPreviewCanvasAspectRatio: 1.0
     property real previewPaneWidthBeforeExport: 0
+    property real previewPaneRatioBeforeExport: 0
     property bool previewPaneWidthBeforeExportUserResized: false
     property bool previewPaneWidthRestorePending: false
     property real lastPreviewPaneRestoreGeneration: 0
-    property real lastPreviewPaneSyncWidth: 0
     property real pendingStartupLayoutWidth: 0
     property real pendingStartupLayoutHeight: 0
     property real startupMinimumWindowWidth: 960
@@ -45,6 +80,12 @@ ApplicationWindow {
     property bool embeddedSeparateSurfaceReady: true
     property bool embeddedInlineSurfaceActive: false
     property bool fullscreenInlineSurfaceActive: false
+    // Once created, inline preview surfaces stay alive for their QQuickWindow lifetime.
+    // Route changes only toggle visibility/attachment; destroying a Loader while Qt's batch
+    // renderer is retiring the previous frame used to race QSG texture ownership.
+    property bool embeddedInlineSurfaceCreated: false
+    property bool fullscreenInlineSurfaceCreated: false
+    property bool fullscreenPreviewHostCreated: false
     property bool fullscreenHoveringRevealZone: false
     property bool fullscreenHoveringControls: false
     property rect previewSeekHotRect: {
@@ -67,6 +108,75 @@ ApplicationWindow {
             return
         paletteMap = styleBridge.palette
         metricsMap = styleBridge.metrics
+        appBackgroundMap = styleBridge.appBackground
+    }
+
+    function appBackgroundActive() {
+        return appBackgroundMap
+            && appBackgroundMap.active === true
+            && appBackgroundMap.sourceUrl !== undefined
+            && String(appBackgroundMap.sourceUrl).length > 0
+    }
+
+    function appBackgroundOpacity() {
+        const value = Number(appBackgroundMap && appBackgroundMap.opacity !== undefined ? appBackgroundMap.opacity : 0)
+        if (!isFinite(value))
+            return 0
+        return Math.max(0, Math.min(0.8, value))
+    }
+
+    function appBackgroundFillMode() {
+        const mode = String(appBackgroundMap && appBackgroundMap.sizeMode !== undefined ? appBackgroundMap.sizeMode : "cover")
+        if (mode === "contain")
+            return Image.PreserveAspectFit
+        if (mode === "stretch")
+            return Image.Stretch
+        if (mode === "center")
+            return Image.Pad
+        if (mode === "repeat")
+            return Image.Tile
+        return Image.PreserveAspectCrop
+    }
+
+    function appBackgroundHorizontalAlignment() {
+        const position = String(appBackgroundMap && appBackgroundMap.position !== undefined ? appBackgroundMap.position : "center")
+        if (position.indexOf("left") >= 0)
+            return Image.AlignLeft
+        if (position.indexOf("right") >= 0)
+            return Image.AlignRight
+        return Image.AlignHCenter
+    }
+
+    function appBackgroundVerticalAlignment() {
+        const position = String(appBackgroundMap && appBackgroundMap.position !== undefined ? appBackgroundMap.position : "center")
+        if (position.indexOf("top") >= 0)
+            return Image.AlignTop
+        if (position.indexOf("bottom") >= 0)
+            return Image.AlignBottom
+        return Image.AlignVCenter
+    }
+
+    function appBackgroundPanelOverlayOpacity() {
+        const key = tone("dark", false) ? "panelAlphaDark" : "panelAlphaLight"
+        const value = Number(appBackgroundMap && appBackgroundMap[key] !== undefined ? appBackgroundMap[key] : 200)
+        if (!isFinite(value))
+            return 200 / 255
+        return Math.max(0, Math.min(255, value)) / 255
+    }
+
+    function surfaceTone(key, fallback, alpha) {
+        const value = tone(key, fallback)
+        if (!appBackgroundActive())
+            return value
+        const text = String(value)
+        if (text.length < 7 || text[0] !== "#")
+            return value
+        const red = parseInt(text.slice(1, 3), 16)
+        const green = parseInt(text.slice(3, 5), 16)
+        const blue = parseInt(text.slice(5, 7), 16)
+        if (!isFinite(red) || !isFinite(green) || !isFinite(blue))
+            return value
+        return Qt.rgba(red / 255, green / 255, blue / 255, alpha)
     }
 
     function formatTransportTime(secondsValue) {
@@ -164,6 +274,8 @@ ApplicationWindow {
             + " fullscreen_window_visible=" + (fullscreenPreviewWindow.visible ? 1 : 0)
             + " embedded_inline_active=" + (embeddedInlineSurfaceActive ? 1 : 0)
             + " fullscreen_inline_active=" + (fullscreenInlineSurfaceActive ? 1 : 0)
+            + " embedded_inline_created=" + (embeddedInlineSurfaceCreated ? 1 : 0)
+            + " fullscreen_inline_created=" + (fullscreenInlineSurfaceCreated ? 1 : 0)
             + " separate_surface=" + (controller.previewUsesSeparateSurface ? 1 : 0)
         if (extra && extra.length > 0)
             payload += " " + extra
@@ -231,7 +343,7 @@ ApplicationWindow {
     }
 
     function previewPaneMinWidth() {
-        return metric("previewPanelMinWidth", 320)
+        return metric("previewPanelMinWidth", 362)
     }
 
     function previewPaneAvailableWidth(totalWidth) {
@@ -274,8 +386,7 @@ ApplicationWindow {
     function previewPaneMinimumRightWidth(totalWidth) {
         const availableWidth = Math.max(0, totalWidth - previewPaneHandleWidth())
         const leftMinWidth = workspacePaneMinWidth()
-        const minimumCandidate = metric("previewControlStatsCardMinWidth", 280)
-            + metric("previewPanelMarginX", 8) * 2
+        const minimumCandidate = previewPaneMinWidth()
         return availableWidth >= leftMinWidth + minimumCandidate
             ? minimumCandidate
             : Math.min(availableWidth, minimumCandidate)
@@ -286,8 +397,15 @@ ApplicationWindow {
         const leftMinWidth = workspacePaneMinWidth()
         const minimumRightWidth = previewPaneMinimumRightWidth(totalWidth)
         return availableWidth >= leftMinWidth + minimumRightWidth
-            ? Math.min(metric("previewPanelMaxWidth", 900), availableWidth - leftMinWidth)
+            ? Math.min(metric("previewPanelPreferredMaxWidth", 900), availableWidth - leftMinWidth)
             : availableWidth
+    }
+
+    function previewPaneUserMaxWidth(totalWidth) {
+        return Math.max(
+            0,
+            previewPaneAvailableWidth(totalWidth) - contentPaneMinWidth()
+        )
     }
 
     function previewPaneTargetWidth(totalWidth, totalHeight, minimumStatsHeight) {
@@ -299,7 +417,7 @@ ApplicationWindow {
         targetRightWidth = Math.min(targetRightWidth, rightMaxWidth)
         targetRightWidth = Math.max(
             targetRightWidth,
-            Math.min(metric("previewPanelMinWidth", 320), rightMaxWidth)
+            Math.min(previewPaneMinWidth(), rightMaxWidth)
         )
         for (let iteration = 0; iteration < 3; ++iteration) {
             const availablePreviewHeight = Math.max(
@@ -364,29 +482,18 @@ ApplicationWindow {
     }
 
     function previewPaneMaxWidth(totalWidth, totalHeight) {
-        const minWidth = previewPaneMinWidth()
-        const maxByWindow = previewPaneRightMaxWidth(totalWidth)
-        return Math.max(minWidth, Math.min(metric("previewPanelMaxWidth", 900), maxByWindow))
+        return previewPaneUserMaxWidth(totalWidth)
     }
 
     function previewPaneForcedMaxWidth(totalWidth, totalHeight) {
-        const availableWidth = Math.max(0, totalWidth - previewPaneHandleWidth())
-        const reservedWorkspaceWidth = workspacePaneMinWidth()
-        const maxByCurrentWindow = Math.max(
-            previewPaneMinWidth(),
-            availableWidth - reservedWorkspaceWidth
-        )
-        return Math.max(
-            previewPaneMinWidth(),
-            Math.min(previewPaneMaxWidth(totalWidth, totalHeight), maxByCurrentWindow)
-        )
+        return previewPaneMaxWidth(totalWidth, totalHeight)
     }
 
     function clampPreviewPaneWidth(candidate, totalWidth, totalHeight) {
-        const minWidth = previewPaneMinWidth()
         const maxWidth = previewPaneForcedMaxWidth(totalWidth, totalHeight)
-        if (maxWidth <= minWidth)
-            return minWidth
+        const minWidth = Math.min(previewPaneMinWidth(), maxWidth)
+        if (maxWidth <= 0)
+            return 0
         return Math.max(minWidth, Math.min(candidate, maxWidth))
     }
 
@@ -408,16 +515,35 @@ ApplicationWindow {
         const ratio = controller ? controller.previewPaneWidthRatio : 0
         if (ratio <= 0 || ratio >= 1)
             return 0
-        return clampPreviewPaneWidth(totalWidth * ratio, totalWidth, totalHeight)
+        return previewPaneWidthForRatio(ratio, totalWidth, totalHeight)
+    }
+
+    function previewPaneWidthForRatio(ratio, totalWidth, totalHeight) {
+        if (ratio <= 0 || ratio >= 1)
+            return 0
+        return clampPreviewPaneWidth(
+            previewPaneAvailableWidth(totalWidth) * ratio,
+            totalWidth,
+            totalHeight
+        )
+    }
+
+    function previewPaneRatioForWidth(width, totalWidth) {
+        const availableWidth = previewPaneAvailableWidth(totalWidth)
+        if (availableWidth <= 0)
+            return 0
+        return Math.max(0, Math.min(1, width / availableWidth))
     }
 
     function persistPreviewPaneWidthRatio() {
         if (!controller || workspaceRow.width <= 0)
             return
         const boundedWidth = boundedWorkspaceWidth(workspaceRow.width)
-        if (boundedWidth <= 0)
+        const ratio = previewPaneRatioForWidth(previewPaneWidth, boundedWidth)
+        if (boundedWidth <= 0 || ratio <= 0 || ratio >= 1)
             return
-        controller.setPreviewPaneWidthRatio(previewPaneWidth / boundedWidth)
+        previewPanePreferredRatio = ratio
+        controller.setPreviewPaneWidthRatio(ratio)
     }
 
     function fittedPreviewFrameWidth(hostWidth, hostHeight) {
@@ -434,7 +560,7 @@ ApplicationWindow {
     function noteStartupLayoutActivity(totalWidth, totalHeight) {
         if (!startupLayoutLocked)
             return
-        startupMinimumWindowWidth = metric("minimumWindowWidth", 960)
+        startupMinimumWindowWidth = metric("minimumWindowWidth", 1000)
         startupMinimumWindowHeight = metric("minimumWindowHeight", 640)
         applyWindowMinimumSize()
         if (totalWidth > 0)
@@ -445,7 +571,7 @@ ApplicationWindow {
     }
 
     function applyWindowMinimumSize() {
-        const nextMinimumWidth = startupLayoutLocked ? startupMinimumWindowWidth : metric("minimumWindowWidth", 960)
+        const nextMinimumWidth = startupLayoutLocked ? startupMinimumWindowWidth : metric("minimumWindowWidth", 1000)
         const nextMinimumHeight = startupLayoutLocked ? startupMinimumWindowHeight : metric("minimumWindowHeight", 640)
         root.minimumWidth = nextMinimumWidth
         root.minimumHeight = nextMinimumHeight
@@ -473,9 +599,10 @@ ApplicationWindow {
             return
         }
         const savedWidth = previewPaneSavedWidth(resolvedWidth, resolvedHeight)
+        previewPanePreferredRatio = controller ? controller.previewPaneWidthRatio : 0
         previewPaneUserResized = savedWidth > 0
         previewPaneStartupBalancePending = true
-        startupMinimumWindowWidth = metric("minimumWindowWidth", 960)
+        startupMinimumWindowWidth = metric("minimumWindowWidth", 1000)
         startupMinimumWindowHeight = metric("minimumWindowHeight", 640)
         applyWindowMinimumSize()
         previewPaneWidth = savedWidth > 0
@@ -494,29 +621,10 @@ ApplicationWindow {
         requestEmbeddedInlineSurfaceActivation("startup_layout_ready")
     }
 
-    function syncPreviewPaneWidth(totalWidth, totalHeight, preserveUserChoice, preserveCurrentWidth) {
+    function syncPreviewPaneWidth(totalWidth, totalHeight, preserveUserChoice) {
         const boundedTotalWidth = boundedWorkspaceWidth(totalWidth)
         if (boundedTotalWidth <= 0)
             return
-        const previousSyncWidth = lastPreviewPaneSyncWidth
-        lastPreviewPaneSyncWidth = boundedTotalWidth
-        const windowShrank = previousSyncWidth > 0 && boundedTotalWidth < previousSyncWidth - 1
-        const forcedMaxWidth = previewPaneForcedMaxWidth(boundedTotalWidth, totalHeight)
-        const userWidthOverflows = previewPaneWidth > forcedMaxWidth + 0.5
-        const releaseUserResizeForShrink = windowShrank
-            && previewPaneUserResized
-            && !preserveCurrentWidth
-            && userWidthOverflows
-        if (releaseUserResizeForShrink) {
-            controller.logPreviewInteraction(
-                "preview_pane_user_resize_released",
-                "reason=window_shrink previous_width=" + previousSyncWidth
-                    + " next_width=" + boundedTotalWidth
-                    + " preview_width=" + previewPaneWidth
-                    + " forced_max=" + forcedMaxWidth
-            )
-            previewPaneUserResized = false
-        }
         noteStartupLayoutActivity(boundedTotalWidth, totalHeight)
         if (startupLayoutLocked) {
             const savedWidth = previewPaneSavedWidth(boundedTotalWidth, totalHeight)
@@ -537,11 +645,6 @@ ApplicationWindow {
         const fallbackWidth = previewPaneStartupBalancePending
             ? defaultWidth
             : clampPreviewPaneWidth(defaultWidth, boundedTotalWidth, totalHeight)
-        if (preserveCurrentWidth && previewPaneWidth > 0) {
-            previewPaneWidth = clampPreviewPaneWidth(previewPaneWidth, boundedTotalWidth, totalHeight)
-            previewPaneStartupBalancePending = false
-            return
-        }
         if (!preserveUserChoice || !previewPaneUserResized) {
             previewPaneWidth = fallbackWidth
             if (!preserveUserChoice)
@@ -549,14 +652,16 @@ ApplicationWindow {
             previewPaneStartupBalancePending = false
             return
         }
-        if (previewPaneWidth <= 0) {
+        if (previewPaneWidth <= 0 || previewPanePreferredRatio <= 0 || previewPanePreferredRatio >= 1) {
             previewPaneWidth = fallbackWidth
             previewPaneStartupBalancePending = false
             return
         }
-        previewPaneWidth = clampPreviewPaneWidth(previewPaneWidth, boundedTotalWidth, totalHeight)
-        if (previewPaneWidth >= previewPaneForcedMaxWidth(boundedTotalWidth, totalHeight))
-            previewPaneUserResized = false
+        previewPaneWidth = previewPaneWidthForRatio(
+            previewPanePreferredRatio,
+            boundedTotalWidth,
+            totalHeight
+        )
         previewPaneStartupBalancePending = false
     }
 
@@ -575,6 +680,9 @@ ApplicationWindow {
             + " preview_width_state=" + previewPaneWidth
             + " preview_frame=" + previewPaneFrame.width + "x" + previewPaneFrame.height
             + " preview_canvas=" + embeddedPreviewFrame.width + "x" + embeddedPreviewFrame.height
+            + " preferred_ratio=" + previewPanePreferredRatio
+            + " effective_ratio=" + previewPaneRatioForWidth(previewPaneWidth, boundedWorkspaceWidth(workspaceRow.width))
+            + " content_min=" + contentPaneMinWidth()
             + " transport_host=" + embeddedTransportStackHost.width + "x" + embeddedTransportStackHost.height
             + " transport=" + embeddedTransport.width + "x" + embeddedTransport.height
             + " stats=" + embeddedStatsPanel.width + "x" + embeddedStatsPanel.height
@@ -591,7 +699,7 @@ ApplicationWindow {
     onMetricsMapChanged: {
         Qt.callLater(function() {
             applyWindowMinimumSize()
-            syncPreviewPaneWidth(workspaceRow.width, workspaceRow.height, true, !startupLayoutLocked)
+            syncPreviewPaneWidth(workspaceRow.width, workspaceRow.height, true)
         })
     }
     onVisibleChanged: {
@@ -643,7 +751,7 @@ ApplicationWindow {
             y = metric("initialWindowY", 120)
             initialGeometryApplied = true
         }
-        startupMinimumWindowWidth = metric("minimumWindowWidth", 960)
+        startupMinimumWindowWidth = metric("minimumWindowWidth", 1000)
         startupMinimumWindowHeight = metric("minimumWindowHeight", 640)
         applyWindowMinimumSize()
         styleBridge.syncWindowSize(width, height)
@@ -689,6 +797,7 @@ ApplicationWindow {
 
         function onAppearanceChanged() {
             root.paletteMap = styleBridge.palette
+            root.appBackgroundMap = styleBridge.appBackground
             if (embeddedTransport)
                 embeddedTransport.paletteRefreshRequested()
             if (fullscreenTransport)
@@ -718,6 +827,7 @@ ApplicationWindow {
                 root.lastPreviewPaneRestoreGeneration = nextRestoreGeneration
                 if (Math.abs(root.lastPreviewCanvasAspectRatio - 1.0) <= 0.0001 && previewPaneWidth > 0) {
                     root.previewPaneWidthBeforeExport = previewPaneWidth
+                    root.previewPaneRatioBeforeExport = previewPanePreferredRatio
                     root.previewPaneWidthBeforeExportUserResized = previewPaneUserResized
                     root.previewPaneWidthRestorePending = true
                 }
@@ -731,11 +841,19 @@ ApplicationWindow {
             root.lastPreviewCanvasAspectRatio = nextAspectRatio
             const boundedWidth = boundedWorkspaceWidth(workspaceRow.width)
             if (restoringToSquare && root.previewPaneWidthRestorePending && root.previewPaneWidthBeforeExport > 0) {
-                previewPaneWidth = clampPreviewPaneWidth(
-                    root.previewPaneWidthBeforeExport,
-                    boundedWidth,
-                    workspaceRow.height
-                )
+                previewPaneWidth = root.previewPaneWidthBeforeExportUserResized
+                        && root.previewPaneRatioBeforeExport > 0
+                    ? previewPaneWidthForRatio(
+                        root.previewPaneRatioBeforeExport,
+                        boundedWidth,
+                        workspaceRow.height
+                    )
+                    : clampPreviewPaneWidth(
+                        root.previewPaneWidthBeforeExport,
+                        boundedWidth,
+                        workspaceRow.height
+                    )
+                previewPanePreferredRatio = root.previewPaneRatioBeforeExport
                 previewPaneUserResized = root.previewPaneWidthBeforeExportUserResized
                 root.previewPaneWidthRestorePending = false
                 return
@@ -750,6 +868,20 @@ ApplicationWindow {
 
         function onPreviewFullscreenChanged() {
             logPreviewSurfaceTransition("preview_surface_fullscreen_changed")
+            // macOS gives every native fullscreen window its own Space. Hiding that
+            // window while it is still fullscreen leaves the Space behind as a black,
+            // unreachable desktop. Request the asynchronous native exit first;
+            // fullscreenPreviewWindow.onVisibilityChanged hides the window on the
+            // next event-loop turn after Qt receives NSWindowDidExitFullScreenNotification.
+            // Deferring the hide lets Cocoa finish the native state transition while
+            // keeping the QQuickWindow and its scene graph alive for the next entry.
+            if (Qt.platform.os === "osx") {
+                if (controller.previewFullscreen) {
+                    fullscreenPreviewWindow.showFullScreen()
+                } else if (fullscreenPreviewWindow.visible) {
+                    fullscreenPreviewWindow.showNormal()
+                }
+            }
             if (!controller.previewFullscreen) {
                 armEmbeddedInlineSurface("fullscreen_disabled")
                 fullscreenControlsVisible = false
@@ -761,8 +893,10 @@ ApplicationWindow {
                 embeddedSeparateSurfaceReady = true
                 styleBridge.refreshNow()
                 controller.refresh()
-                root.requestActivate()
-                embeddedPreviewInteractionRoot.forceActiveFocus()
+                if (Qt.platform.os !== "osx" || !fullscreenPreviewWindow.visible) {
+                    root.requestActivate()
+                    embeddedPreviewInteractionRoot.forceActiveFocus()
+                }
                 return
             }
             armFullscreenInlineSurface("fullscreen_enabled")
@@ -831,6 +965,7 @@ ApplicationWindow {
             )
             if (!canActivate)
                 return
+            root.embeddedInlineSurfaceCreated = true
             embeddedInlineSurfaceActive = true
             logPreviewSurfaceTransition("preview_surface_route_commit", "target=embedded")
         }
@@ -848,6 +983,8 @@ ApplicationWindow {
             )
             if (!canActivate)
                 return
+            root.fullscreenPreviewHostCreated = true
+            root.fullscreenInlineSurfaceCreated = true
             fullscreenInlineSurfaceActive = true
             fullscreenPreviewWindow.requestActivate()
             fullscreenInteractionRoot.forceActiveFocus()
@@ -1138,10 +1275,21 @@ ApplicationWindow {
 
             WindowContainer {
                 anchors.fill: parent
+                visible: startupContentReady
                 window: controller.topChromeWindow
                 Component.onCompleted: controller.syncTopChromeSurfaceSize(width, height)
-                onWidthChanged: controller.syncTopChromeSurfaceSize(width, height)
-                onHeightChanged: controller.syncTopChromeSurfaceSize(width, height)
+                onVisibleChanged: {
+                    if (visible)
+                        controller.syncTopChromeSurfaceSize(width, height)
+                }
+                onWidthChanged: {
+                    if (visible)
+                        controller.syncTopChromeSurfaceSize(width, height)
+                }
+                onHeightChanged: {
+                    if (visible)
+                        controller.syncTopChromeSurfaceSize(width, height)
+                }
             }
         }
 
@@ -1160,10 +1308,21 @@ ApplicationWindow {
                 Layout.minimumWidth: sidebarPaneWidth()
                 Layout.maximumWidth: sidebarPaneWidth()
                 Layout.fillHeight: true
+                visible: startupContentReady
                 window: controller.sidebarWindow
                 Component.onCompleted: controller.syncSidebarSurfaceSize(width, height)
-                onWidthChanged: controller.syncSidebarSurfaceSize(width, height)
-                onHeightChanged: controller.syncSidebarSurfaceSize(width, height)
+                onVisibleChanged: {
+                    if (visible)
+                        controller.syncSidebarSurfaceSize(width, height)
+                }
+                onWidthChanged: {
+                    if (visible)
+                        controller.syncSidebarSurfaceSize(width, height)
+                }
+                onHeightChanged: {
+                    if (visible)
+                        controller.syncSidebarSurfaceSize(width, height)
+                }
             }
 
             RowLayout {
@@ -1188,10 +1347,21 @@ ApplicationWindow {
                     WindowContainer {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
+                        visible: startupContentReady
                         window: controller.workspaceWindow
                         Component.onCompleted: controller.syncWorkspaceSurfaceSize(width, height)
-                        onWidthChanged: controller.syncWorkspaceSurfaceSize(width, height)
-                        onHeightChanged: controller.syncWorkspaceSurfaceSize(width, height)
+                        onVisibleChanged: {
+                            if (visible)
+                                controller.syncWorkspaceSurfaceSize(width, height)
+                        }
+                        onWidthChanged: {
+                            if (visible)
+                                controller.syncWorkspaceSurfaceSize(width, height)
+                        }
+                        onHeightChanged: {
+                            if (visible)
+                                controller.syncWorkspaceSurfaceSize(width, height)
+                        }
                     }
 
                     BottomTabsQuickHost {
@@ -1213,6 +1383,7 @@ ApplicationWindow {
                         controller: root.shellController
                         paletteMap: root.paletteMap
                         metricsMap: root.metricsMap
+                        startupContentReady: root.startupContentReady
                     }
                 }
 
@@ -1246,10 +1417,18 @@ ApplicationWindow {
 
                         property real dragStartSceneX: 0
                         property real dragStartWidth: 0
+                        property int dragMoveCount: 0
 
                         onPressed: function(mouse) {
                             dragStartSceneX = previewResizeHandle.mapToItem(root.contentItem, mouse.x, mouse.y).x
                             dragStartWidth = previewPaneWidth
+                            dragMoveCount = 0
+                            controller.logPreviewInteraction(
+                                "preview_resize_drag_begin",
+                                "start_width=" + dragStartWidth
+                                    + " workspace_row=" + workspaceRow.width + "x" + workspaceRow.height
+                                    + " preview_canvas=" + embeddedPreviewFrame.width + "x" + embeddedPreviewFrame.height
+                            )
                         }
 
                         onPositionChanged: function(mouse) {
@@ -1264,24 +1443,69 @@ ApplicationWindow {
                                 boundedWidth,
                                 workspaceRow.height
                             )
+                            previewPanePreferredRatio = previewPaneRatioForWidth(
+                                previewPaneWidth,
+                                boundedWidth
+                            )
                             previewPaneUserResized = true
+                            dragMoveCount += 1
+                            if (dragMoveCount === 1 || dragMoveCount % 15 === 0) {
+                                controller.logPreviewInteraction(
+                                    "preview_resize_drag_move_sample",
+                                    "move_count=" + dragMoveCount
+                                        + " scene_x=" + sceneX
+                                        + " delta=" + signedDelta
+                                        + " width=" + previewPaneWidth
+                                        + " bounded_width=" + boundedWidth
+                                        + " workspace_row=" + workspaceRow.width + "x" + workspaceRow.height
+                                )
+                            }
                         }
 
-                        onReleased: persistPreviewPaneWidthRatio()
-                        onCanceled: persistPreviewPaneWidthRatio()
+                        onReleased: {
+                            controller.logPreviewInteraction(
+                                "preview_resize_drag_end",
+                                "move_count=" + dragMoveCount
+                                    + " start_width=" + dragStartWidth
+                                    + " end_width=" + previewPaneWidth
+                                    + " workspace_row=" + workspaceRow.width + "x" + workspaceRow.height
+                                    + " preview_canvas=" + embeddedPreviewFrame.width + "x" + embeddedPreviewFrame.height
+                            )
+                            persistPreviewPaneWidthRatio()
+                        }
+                        onCanceled: {
+                            controller.logPreviewInteraction(
+                                "preview_resize_drag_cancel",
+                                "move_count=" + dragMoveCount
+                                    + " start_width=" + dragStartWidth
+                                    + " end_width=" + previewPaneWidth
+                                    + " workspace_row=" + workspaceRow.width + "x" + workspaceRow.height
+                                    + " preview_canvas=" + embeddedPreviewFrame.width + "x" + embeddedPreviewFrame.height
+                            )
+                            persistPreviewPaneWidthRatio()
+                        }
                     }
                 }
 
                 Rectangle {
                     id: previewPaneFrame
                     Layout.preferredWidth: previewPaneWidth
-                    Layout.minimumWidth: previewPaneMinWidth()
+                    Layout.minimumWidth: Math.min(
+                        previewPaneMinWidth(),
+                        previewPaneMaxWidth(boundedWorkspaceWidth(workspaceRow.width), workspaceRow.height)
+                    )
                     Layout.maximumWidth: previewPaneMaxWidth(boundedWorkspaceWidth(workspaceRow.width), workspaceRow.height)
                     Layout.fillHeight: true
-                    color: tone("panelBg", "#f5f7fa")
+                    color: appBackgroundActive() ? "transparent" : tone("panelBg", "#f5f7fa")
                     border.color: tone("border", "#d5e0ec")
                     onWidthChanged: schedulePreviewPaneLayoutLog("preview_frame_width")
                     onHeightChanged: schedulePreviewPaneLayoutLog("preview_frame_height")
+
+                    Rectangle {
+                        anchors.fill: parent
+                        color: surfaceTone("panelBg", "#f5f7fa", root.appBackgroundPanelOverlayOpacity())
+                        visible: root.appBackgroundActive()
+                    }
 
                     FocusScope {
                         id: embeddedPreviewInteractionRoot
@@ -1325,7 +1549,8 @@ ApplicationWindow {
                                         id: embeddedInlineSurfaceLoader
                                         anchors.fill: parent
                                         anchors.margins: 1
-                                        active: !controller.previewFullscreen
+                                        active: root.embeddedInlineSurfaceCreated
+                                        visible: !controller.previewFullscreen
                                             && embeddedInlineSurfaceActive
                                             && (!controller.previewUsesSeparateSurface
                                                 || !embeddedSeparateSurfaceReady)
@@ -1432,10 +1657,21 @@ ApplicationWindow {
 
             WindowContainer {
                 anchors.fill: parent
+                visible: startupContentReady
                 window: controller.statusWindow
                 Component.onCompleted: controller.syncStatusSurfaceSize(width, height)
-                onWidthChanged: controller.syncStatusSurfaceSize(width, height)
-                onHeightChanged: controller.syncStatusSurfaceSize(width, height)
+                onVisibleChanged: {
+                    if (visible)
+                        controller.syncStatusSurfaceSize(width, height)
+                }
+                onWidthChanged: {
+                    if (visible)
+                        controller.syncStatusSurfaceSize(width, height)
+                }
+                onHeightChanged: {
+                    if (visible)
+                        controller.syncStatusSurfaceSize(width, height)
+                }
             }
         }
     }
@@ -1443,10 +1679,17 @@ ApplicationWindow {
     Window {
         id: fullscreenPreviewWindow
 
-        visibility: controller.previewFullscreen ? Window.FullScreen : Window.Hidden
         color: "black"
         title: root.title
         flags: Qt.Window | Qt.FramelessWindowHint
+
+        Binding {
+            target: fullscreenPreviewWindow
+            property: "visibility"
+            value: controller.previewFullscreen ? Window.FullScreen : Window.Hidden
+            when: Qt.platform.os !== "osx"
+            restoreMode: Binding.RestoreNone
+        }
 
         Shortcut {
             sequence: "Esc"
@@ -1493,6 +1736,28 @@ ApplicationWindow {
             )
         }
 
+        onVisibilityChanged: {
+            controller.logShellLifecycle(
+                "fullscreen_visibility_changed",
+                "visibility=" + visibility
+                    + " visible=" + (visible ? 1 : 0)
+                    + " preview_fullscreen=" + (controller.previewFullscreen ? 1 : 0)
+            )
+            if (Qt.platform.os === "osx"
+                    && !controller.previewFullscreen
+                    && visibility === Window.Windowed) {
+                // This signal is emitted from Qt's native fullscreen-exit handling.
+                // Hiding synchronously re-enters Cocoa before that handling finishes,
+                // leaving the NSWindow unable to start another fullscreen transition.
+                Qt.callLater(function() {
+                    if (!controller.previewFullscreen
+                            && fullscreenPreviewWindow.visibility === Window.Windowed) {
+                        fullscreenPreviewWindow.hide()
+                    }
+                })
+            }
+        }
+
         onVisibleChanged: {
             controller.logShellLifecycle(
                 "fullscreen_visible_changed",
@@ -1523,7 +1788,8 @@ ApplicationWindow {
 
             Loader {
                 anchors.fill: parent
-                active: controller.previewFullscreen
+                active: root.fullscreenPreviewHostCreated
+                visible: controller.previewFullscreen
 
                 sourceComponent: Item {
                     anchors.fill: parent
@@ -1531,7 +1797,8 @@ ApplicationWindow {
                     Loader {
                         id: fullscreenInlineSurfaceLoader
                         anchors.fill: parent
-                        active: controller.previewFullscreen
+                        active: root.fullscreenInlineSurfaceCreated
+                        visible: controller.previewFullscreen
                             && fullscreenInlineSurfaceActive
                             && !controller.previewUsesSeparateSurface
                         onStatusChanged: logPreviewSurfaceTransition(
@@ -1545,15 +1812,6 @@ ApplicationWindow {
                             mediaHost: controller.previewStageMediaHost
                             logger: controller
                             surfaceRole: "fullscreen_inline"
-                            // Issue #4 fix — fullscreen window can't host the
-                            // DComp popup (z-order issue with owned popups
-                            // behind the foreground secondary window). Tell
-                            // PreviewQuickSceneRoot + PreviewQuickHudLayer to
-                            // resume their legacy QSG render path inside the
-                            // fullscreen window so chart sprites + HUD show
-                            // here. The embedded inline instance leaves this
-                            // false (DComp popup wins as before).
-                            dcompFallbackActive: true
                         }
                     }
 

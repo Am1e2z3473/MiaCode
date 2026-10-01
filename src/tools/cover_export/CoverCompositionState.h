@@ -29,7 +29,7 @@ struct CoverCompositionState {
     static QJsonObject loadPreferences();
     // Saving the last composition must NOT wipe the sibling recentFiles/presets
     // lists stored alongside it under app.cover_export — they are merged back in.
-    static void savePreferences(const QJsonObject& root);
+    static bool savePreferences(const QJsonObject& root);
 
     // Recent .miacover files (most-recent first, capped at 8), stored under
     // app.cover_export.recentFiles. Independent of the composition payload.
@@ -41,6 +41,10 @@ struct CoverCompositionState {
     // [{ name, version, composition }]. Preset compositions are normally
     // size-agnostic (no size object), so applying them keeps the current canvas.
     static QList<CoverUserPreset> loadUserPresets();
+    static QList<CoverUserPreset> builtInPresets();
+    static bool prepareBatchPreset(const QJsonObject& preset, double durationSeconds,
+                                   bool chartFrameAvailable, QJsonObject* prepared,
+                                   QStringList* frameAdjustments, QString* errorMessage);
     static void saveUserPreset(const QString& name, const QJsonObject& composition);
     static void removeUserPreset(const QString& name);
     static void renameUserPreset(const QString& oldName, const QString& newName);

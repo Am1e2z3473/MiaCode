@@ -6,11 +6,13 @@
 #include <QIcon>
 #include <QSize>
 #include <QString>
+#include <QStringList>
 #include <QVariantMap>
 
 #include <memory>
 
 #include "tools/cover_export/CoverComposerView.h"      // CoverComposerInputs, CoverExportResult, CoverComposerView
+#include "tools/video_export/CardFontSettings.h"         // CardFontSelector
 #include "tools/video_export/VideoExportController.h"    // IntroBannerSpec, VideoExportTask
 
 class QCheckBox;
@@ -31,6 +33,7 @@ class QWidget;
 namespace miacode::cover_export {
 class CoverLayer;
 class CoverLayoutModel;
+class CoverCompositionPersistenceGuard;
 class SceneFrameRenderer;
 
 // Sub-dialog launched from the video-export dialog's Font tab ("导出封面" /
@@ -50,12 +53,17 @@ public:
     // `task` supplies the difficulty-card banner (task.intro), the parsed note
     // markers + skin dir + render settings the chart-frame renderer needs, and the
     // content duration for the frame-picker range.
-    CoverStudioPanel(const VideoExportTask& task, const QSize& initialSize, QWidget* parent = nullptr);
+    CoverStudioPanel(const VideoExportTask& task, const QSize& initialSize, QWidget* parent = nullptr,
+                     bool batchMode = false);
     ~CoverStudioPanel() override;
 
     // Render the composed cover at the chosen size and save it under
     // outputDirectory (PNG when transparent, JPG otherwise).
     miacode::cover_export::CoverExportResult exportCover(const QString& outputDirectory);
+    QImage renderCoverPreview(const QSize& previewSize, QString* errorMessage = nullptr);
+    miacode::cover_export::CoverExportResult exportBatchCover(
+        const QJsonObject& preset, const QString& outputDirectory, const QString& fileStem,
+        QStringList* frameAdjustments = nullptr);
 
 protected:
     // Intercepts ←/→ on the frame slider for the held-seek (below).
@@ -68,6 +76,10 @@ public:
     QString activeLayerKey() const { return activeLayerKey_; }
     void setActiveLayerKey(const QString& key);
     void addChartFrameLayer();
+    // Prompt for an image file and add it as a custom image layer; add a custom
+    // text layer seeded with placeholder text (edited via the inspector).
+    void addImageLayer();
+    void addTextLayer();
     void duplicateActiveLayer();
     void removeActiveLayer();
     void moveActiveLayerUp();
@@ -86,6 +98,13 @@ public:
     void setActiveLayerFrameBgMode(const QString& mode);
     void setActiveLayerFrameBgBrightness(qreal brightness);
     void setActiveLayerFrameBgTransparency(qreal transparency);
+    // Custom image / text layer setters (inspector-driven).
+    void setActiveLayerImagePath(const QString& path);
+    void browseActiveLayerImage();
+    void setActiveLayerText(const QString& text);
+    void setActiveLayerFontPath(const QString& path);
+    void setActiveLayerTextColor(const QString& color);
+    void setActiveLayerTextBold(bool bold);
     void stepActiveFrameBySeconds(double deltaSeconds);
     void togglePlayback();   // play/pause the active chart frame (transport + Space)
     void cancelFrameTransportHold();
@@ -111,6 +130,14 @@ public:
     void importLayoutFromPath(const QString& path);
     void requestExport();
     void requestCancel();
+    // Persist the current composition to app preferences and then disarm the
+    // persistence guard. MUST be called by the owner window while every source
+    // widget is still alive (e.g. closeEvent) — the option-group widgets are
+    // reparented into the window's inspector column, so during widget-tree
+    // teardown they are freed BEFORE this panel; reading them from ~CoverStudioPanel
+    // would dereference dangling QComboBox pointers (their non-QPointer members stay
+    // non-null after deletion). Disarming makes the teardown-time persist a no-op.
+    void persistCompositionNow();
 
 signals:
     void exportRequested();
@@ -140,14 +167,20 @@ private:
     void centerPreviewScroll();
     void schedulePreviewResize();
     void resizePreviewToAspect();
+    QString detectedCardMode() const;
+    QString selectedCardMode(bool resolveAuto) const;
+    void refreshCardModeAutoLabel();
+    void restoreSharedCardModePreference();
+    void persistSharedCardModePreference() const;
     miacode::cover_export::CoverComposerInputs buildInputs() const;
     QSize currentSize() const;
 
     // B2 — layout save / import. The whole composition (size + background + card +
     // chart-frame settings + layer geometry) round-trips through one JSON file.
-    // The same JSON also persists to app preferences (app.cover_export): saved on
-    // export, restored on dialog open. `interactive=false` (the silent preference
-    // restore) suppresses the fallback notice boxes an explicit import shows.
+    // The same JSON also persists to app preferences (app.cover_export): checkpointed
+    // on export and on close, then restored on dialog open. `interactive=false` (the
+    // silent preference restore) suppresses the fallback notice boxes an explicit
+    // import shows.
     QJsonObject exportCompositionJson() const;
     void applyCompositionJson(const QJsonObject& root, bool interactive = true);
 
@@ -221,6 +254,11 @@ private:
     QCheckBox* cardShadowCheck_ = nullptr;
     QCheckBox* levelTextRenderCheck_ = nullptr;
     QComboBox* textOverflowCombo_ = nullptr;
+    // Difficulty-card custom fonts (empty path == the bundled default). The
+    // selector widget is reparented into the inspector column by CoverStudioWindow;
+    // read its selection only while alive (buildInputs / closeEvent-time save),
+    // never from the destructor — see the §8 lifecycle note.
+    miacode::video_export::CardFontSelector cardFontSelector_;
     QPushButton* resetLayoutButton_ = nullptr;
     QPushButton* saveLayoutButton_ = nullptr;
     QPushButton* importLayoutButton_ = nullptr;
@@ -259,6 +297,7 @@ private:
     int frameSeekHoldDirection_ = 0;
     int frameSeekHoldKey_ = 0;
     int frameSeekHoldLastElapsedMs_ = 0;
+    std::unique_ptr<CoverCompositionPersistenceGuard> compositionPersistenceGuard_;
 };
 
 }  // namespace miacode::cover_export

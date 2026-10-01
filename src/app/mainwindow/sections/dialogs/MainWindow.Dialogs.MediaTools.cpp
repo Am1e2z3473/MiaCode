@@ -8,6 +8,9 @@
 #include "EditableValueLabel.h"
 #include "UiText.h"
 #include "UiTheme.h"
+#include "tools/media/PvBatchCompressionDialog.h"
+#include "tools/media/MediaPrependPolicy.h"
+#include "tools/media/PvCompressionPolicy.h"
 #include "common/ChartAssetPaths.h"
 #include "common/ChartClockCount.h"
 #include "common/Id3TagReader.h"
@@ -164,6 +167,34 @@ QString resolveMediaToolFfmpegExecutable()
     return QString();
 }
 
+QString audioTrackBackupPath(const QFileInfo& trackInfo)
+{
+    return trackInfo.dir().filePath(
+        QStringLiteral("track_bak.%1").arg(trackInfo.suffix().toLower()));
+}
+
+QString audioTrackTempPath(const QFileInfo& trackInfo, const QString& operation)
+{
+    return trackInfo.dir().filePath(
+        QStringLiteral(".miacode_track_%1_tmp.%2")
+            .arg(operation, trackInfo.suffix().toLower()));
+}
+
+void appendAudioEncoderArguments(QStringList& args, const QString& suffix)
+{
+    if (suffix.compare(QStringLiteral("mp3"), Qt::CaseInsensitive) == 0) {
+        args << QStringLiteral("-c:a") << QStringLiteral("libmp3lame")
+             << QStringLiteral("-q:a") << QStringLiteral("2");
+    } else if (suffix.compare(QStringLiteral("wav"), Qt::CaseInsensitive) == 0) {
+        args << QStringLiteral("-c:a") << QStringLiteral("pcm_s16le");
+    } else if (suffix.compare(QStringLiteral("flac"), Qt::CaseInsensitive) == 0) {
+        args << QStringLiteral("-c:a") << QStringLiteral("flac");
+    } else if (suffix.compare(QStringLiteral("ogg"), Qt::CaseInsensitive) == 0) {
+        args << QStringLiteral("-c:a") << QStringLiteral("libvorbis")
+             << QStringLiteral("-q:a") << QStringLiteral("6");
+    }
+}
+
 // Windows can briefly refuse a rename/remove while the file is still held by a
 // just-released decoder handle, an antivirus on-write scan, or Explorer's
 // preview/thumbnail handler. Retry with a short backoff (~2s max) so these
@@ -219,9 +250,8 @@ bool copyFileReplacing(const QString& sourcePath, const QString& destinationPath
         pumpFileLockRetryDelay();
     }
     if (error != nullptr) {
-        *error = UiText::isChineseUi()
-            ? QStringLiteral("无法写入文件：%1\n\n文件可能正在被预览、播放器、资源管理器预览窗格或其他程序占用。").arg(destinationPath)
-            : QStringLiteral("Failed to write file: %1\n\nThe file may be open in preview, a media player, File Explorer preview pane, or another program.").arg(destinationPath);
+        *error = UiText::text(QStringLiteral("media_tools.failed_to_write_file_1"))
+            .arg(destinationPath);
     }
     return false;
 }
@@ -236,9 +266,8 @@ bool restoreFileFromBackup(const QString& backupPath, const QString& destination
     }
     if (!copyFileReplacing(backupPath, destinationPath, error)) {
         if (error != nullptr) {
-            *error = UiText::isChineseUi()
-                ? QStringLiteral("还原备份失败：%1\n\n文件可能正在被预览、播放器、资源管理器预览窗格或其他程序占用。").arg(destinationPath)
-                : QStringLiteral("Failed to restore backup to: %1\n\nThe file may be open in preview, a media player, File Explorer preview pane, or another program.").arg(destinationPath);
+            *error = UiText::text(QStringLiteral("media_tools.failed_to_restore_backup_to"))
+                .arg(destinationPath);
         }
         return false;
     }
@@ -284,9 +313,8 @@ bool replaceFileWithTemp(const QString& tempPath, const QString& destinationPath
                                       describeFileLockHolders(destinationPath));
         logFileLockDiag(QStringLiteral("rename_failed"), destinationPath);
         if (error != nullptr) {
-            *error = (UiText::isChineseUi()
-                ? QStringLiteral("无法替换原文件：%1\n\n文件可能仍被预览、播放器、资源管理器预览窗格或其他程序占用。请停止预览并关闭占用该文件的程序后重试。").arg(destinationPath)
-                : QStringLiteral("Failed to stage original file for replacement: %1\n\nThe file may still be open in preview, a media player, File Explorer preview pane, or another program. Stop preview and close programs using it, then try again.").arg(destinationPath))
+            *error = UiText::text(QStringLiteral("media_tools.failed_to_stage_original_file"))
+                .arg(destinationPath)
                 + QStringLiteral("\n\n[占用诊断] %1").arg(diag);
         }
         return false;
@@ -326,7 +354,7 @@ bool runFfmpegBlocking(
     progress.setWindowModality(Qt::ApplicationModal);
     // Real Cancel button (mirrors the export flow). Clicking it asks for
     // confirmation before actually aborting the ffmpeg process (see below).
-    progress.setCancelButtonText(UiText::isChineseUi() ? QStringLiteral("取消") : QStringLiteral("Cancel"));
+    progress.setCancelButtonText(UiText::text(QStringLiteral("action.cancel")));
     progress.setMinimumDuration(0);
     progress.setAutoClose(false);
     progress.setAutoReset(false);
@@ -410,7 +438,7 @@ bool runFfmpegBlocking(
                 *cancelled = true;
             }
             if (error != nullptr) {
-                *error = UiText::isChineseUi() ? QStringLiteral("已取消。") : QStringLiteral("Canceled.");
+                *error = UiText::text(QStringLiteral("media_tools.canceled"));
             }
             return false;
         }
@@ -438,9 +466,7 @@ bool probeMediaDurationSeconds(const QString& ffmpegPath, const QString& mediaPa
 {
     QStringList args;
     args << QStringLiteral("-hide_banner")
-         << QStringLiteral("-i") << mediaPath
-         << QStringLiteral("-f") << QStringLiteral("null")
-         << QStringLiteral("-");
+         << QStringLiteral("-i") << mediaPath;
 
     QProcess process;
     process.setProcessChannelMode(QProcess::MergedChannels);
@@ -488,23 +514,69 @@ bool probeMediaDurationSeconds(const QString& ffmpegPath, const QString& mediaPa
     return true;
 }
 
+bool probeVideoDimensions(const QString& ffmpegPath, const QString& mediaPath, QSize* dimensions, QString* error)
+{
+    QProcess process;
+    process.setProcessChannelMode(QProcess::MergedChannels);
+    process.start(
+        ffmpegPath,
+        {QStringLiteral("-hide_banner"), QStringLiteral("-i"), mediaPath},
+        QIODevice::ReadOnly);
+    if (!process.waitForStarted(5000)) {
+        if (error != nullptr) {
+            *error = process.errorString();
+        }
+        return false;
+    }
+    if (!process.waitForFinished(30000)) {
+        process.kill();
+        process.waitForFinished(3000);
+        if (error != nullptr) {
+            *error = QStringLiteral("Timed out while probing video dimensions.");
+        }
+        return false;
+    }
+
+    const QString output = QString::fromLocal8Bit(process.readAll());
+    static const QRegularExpression dimensionsPattern(
+        QStringLiteral(R"(Video:.*?\s(\d{2,})x(\d{2,})(?:[\s,]))"));
+    const QRegularExpressionMatch match = dimensionsPattern.match(output);
+    if (!match.hasMatch()) {
+        if (error != nullptr) {
+            *error = QStringLiteral("Failed to read video dimensions.");
+        }
+        return false;
+    }
+    const QSize size(match.captured(1).toInt(), match.captured(2).toInt());
+    if (!size.isValid()) {
+        if (error != nullptr) {
+            *error = QStringLiteral("Invalid video dimensions.");
+        }
+        return false;
+    }
+    if (dimensions != nullptr) {
+        *dimensions = size;
+    }
+    return true;
+}
+
 bool compressVideoUnder20Mb(
     const QString& ffmpegPath,
     const QString& videoPath,
     QWidget* parent,
     QString* error,
-    bool* cancelled = nullptr)
+    bool* cancelled = nullptr,
+    bool* preservedCompressed = nullptr)
 {
-    constexpr qint64 kTargetBytes = 20LL * 1024LL * 1024LL;
-    constexpr int kAudioBitrateKbps = 96;
-    constexpr int kMinVideoBitrateKbps = 120;
+    if (preservedCompressed != nullptr) {
+        *preservedCompressed = false;
+    }
+    constexpr qint64 kTargetBytes = miacode::media::kPvCompressionHardLimitBytes;
     const QFileInfo videoInfo(videoPath);
     const qint64 originalBytes = videoInfo.size();
-    if (originalBytes > 0 && originalBytes <= kTargetBytes) {
+    if (originalBytes > 0 && originalBytes < kTargetBytes) {
         if (error != nullptr) {
-            *error = UiText::isChineseUi()
-                ? QStringLiteral("当前视频已经小于 20 MiB，无需压缩。")
-                : QStringLiteral("The current video is already under 20 MiB; compression is not needed.");
+            *error = UiText::text(QStringLiteral("media_tools.the_current_video_is_already"));
         }
         return false;
     }
@@ -522,53 +594,95 @@ bool compressVideoUnder20Mb(
         return false;
     }
 
-    const qint64 outputTargetBytes = originalBytes > 0
-        ? std::min(kTargetBytes, static_cast<qint64>(std::floor(static_cast<double>(originalBytes) * 0.86)))
-        : kTargetBytes;
-    const double targetBits = static_cast<double>(outputTargetBytes) * 8.0 * 0.965;
-    int totalBitrateKbps = static_cast<int>(std::floor(targetBits / durationSeconds / 1000.0));
-    int videoBitrateKbps = std::max(kMinVideoBitrateKbps, totalBitrateKbps - kAudioBitrateKbps);
-
-    QStringList args;
-    args << QStringLiteral("-hide_banner")
-         << QStringLiteral("-y")
-         << QStringLiteral("-i") << backupPath
-         << QStringLiteral("-map") << QStringLiteral("0:v:0")
-         << QStringLiteral("-map") << QStringLiteral("0:a?")
-         << QStringLiteral("-c:v") << QStringLiteral("libx264")
-         << QStringLiteral("-preset") << QStringLiteral("slow")
-         << QStringLiteral("-b:v") << QStringLiteral("%1k").arg(videoBitrateKbps)
-         << QStringLiteral("-maxrate") << QStringLiteral("%1k").arg(videoBitrateKbps)
-         << QStringLiteral("-bufsize") << QStringLiteral("%1k").arg(videoBitrateKbps * 2)
-         << QStringLiteral("-vf") << QStringLiteral("scale='min(1280,iw)':-2")
-         << QStringLiteral("-pix_fmt") << QStringLiteral("yuv420p")
-         << QStringLiteral("-c:a") << QStringLiteral("aac")
-         << QStringLiteral("-b:a") << QStringLiteral("%1k").arg(kAudioBitrateKbps)
-         << QStringLiteral("-movflags") << QStringLiteral("+faststart")
-         << tempPath;
-    if (!runFfmpegBlocking(
-            ffmpegPath,
-            args,
-            parent,
-            UiText::isChineseUi() ? QStringLiteral("正在压缩视频...") : QStringLiteral("Compressing video..."),
-            durationSeconds,
-            error,
-            cancelled)) {
-        QFile::remove(tempPath);
+    QTemporaryDir passLogDirectory;
+    if (!passLogDirectory.isValid()) {
+        if (error != nullptr) {
+            *error = QStringLiteral("Could not create the two-pass log directory.");
+        }
         return false;
     }
 
-    const qint64 compressedBytes = QFileInfo(tempPath).size();
-    if (compressedBytes <= 0 || compressedBytes > kTargetBytes || (originalBytes > 0 && compressedBytes >= originalBytes)) {
+    miacode::media::PvCompressionPlan plan = miacode::media::makePvCompressionPlan(durationSeconds);
+    qint64 compressedBytes = 0;
+    bool encoded = false;
+    for (int attempt = 0; attempt < 2; ++attempt) {
+        QFile::remove(tempPath);
+        const QString passLogPath = QDir(passLogDirectory.path()).filePath(
+            QStringLiteral("x264-attempt-%1").arg(attempt));
+        const QStringList firstPass = miacode::media::makePvCompressionPassArguments(
+            backupPath, tempPath, passLogPath, plan, 1);
+        const QStringList secondPass = miacode::media::makePvCompressionPassArguments(
+            backupPath, tempPath, passLogPath, plan, 2);
+        if (!runFfmpegBlocking(
+                ffmpegPath,
+                firstPass,
+                parent,
+                UiText::text(QStringLiteral("media_tools.compressing_video")),
+                durationSeconds,
+                error,
+                cancelled)
+            || !runFfmpegBlocking(
+                ffmpegPath,
+                secondPass,
+                parent,
+                UiText::text(QStringLiteral("media_tools.compressing_video")),
+                durationSeconds,
+                error,
+                cancelled)) {
+            QFile::remove(tempPath);
+            return false;
+        }
+
+        compressedBytes = QFileInfo(tempPath).size();
+        if (miacode::media::isAcceptablePvCompressionOutput(originalBytes, compressedBytes)) {
+            encoded = true;
+            break;
+        }
+        if (attempt == 0 && compressedBytes >= kTargetBytes) {
+            plan = miacode::media::adjustedPvCompressionPlan(plan, compressedBytes);
+        } else {
+            break;
+        }
+    }
+
+    if (!encoded) {
         QFile::remove(tempPath);
         if (error != nullptr) {
-            *error = compressedBytes > kTargetBytes
-                ? QStringLiteral("Compressed video is still larger than 20 MiB.")
+            *error = compressedBytes >= kTargetBytes
+                ? QStringLiteral("Compressed video is still 20 MB or larger.")
                 : QStringLiteral("Compressed video was not smaller than the original file.");
         }
         return false;
     }
-    return replaceFileWithTemp(tempPath, videoPath, error);
+    if (replaceFileWithTemp(tempPath, videoPath, error)) {
+        return true;
+    }
+    // Compression itself SUCCEEDED — only the in-place replace could not complete
+    // (the original is still held open). Don't discard the finished clip: move it
+    // beside the original under a clear, user-visible name so the work is kept and
+    // the user can swap it in by hand after freeing the file. The original is left
+    // untouched, and its bytes are also in the <base>_bak backup made up-front, so
+    // nothing is lost. `error` currently holds replaceFileWithTemp's lock
+    // diagnostic; prepend the "saved as …" note so both are shown.
+    const QString preservedPath = videoInfo.dir().filePath(
+        QStringLiteral("%1_compressed.%2").arg(videoInfo.completeBaseName(), videoInfo.suffix()));
+    QFile::remove(preservedPath);
+    if (QFile::rename(tempPath, preservedPath)) {
+        if (preservedCompressed != nullptr) {
+            *preservedCompressed = true;
+        }
+        if (error != nullptr) {
+            const QString staged = *error;
+            *error = UiText::text(QStringLiteral("media_tools.compressed_but_replace_failed"))
+                         .arg(QDir::toNativeSeparators(preservedPath));
+            if (!staged.isEmpty()) {
+                *error += QStringLiteral("\n\n") + staged;
+            }
+        }
+    }
+    // If even the rename-out failed, leave the temp in place (still recoverable)
+    // and keep replaceFileWithTemp's error as-is.
+    return false;
 }
 
 bool convertTrackTo44100Hz(
@@ -579,8 +693,8 @@ bool convertTrackTo44100Hz(
     bool* cancelled = nullptr)
 {
     const QFileInfo trackInfo(trackPath);
-    const QString backupPath = trackInfo.dir().filePath(QStringLiteral("track_bak.mp3"));
-    const QString tempPath = trackInfo.dir().filePath(QStringLiteral(".miacode_track_44100_tmp.mp3"));
+    const QString backupPath = audioTrackBackupPath(trackInfo);
+    const QString tempPath = audioTrackTempPath(trackInfo, QStringLiteral("44100"));
     QFile::remove(tempPath);
     if (!copyFileReplacing(trackPath, backupPath, error)) {
         return false;
@@ -596,15 +710,14 @@ bool convertTrackTo44100Hz(
          << QStringLiteral("-y")
          << QStringLiteral("-i") << backupPath
          << QStringLiteral("-vn")
-         << QStringLiteral("-ar") << QStringLiteral("44100")
-         << QStringLiteral("-c:a") << QStringLiteral("libmp3lame")
-         << QStringLiteral("-q:a") << QStringLiteral("2")
-         << tempPath;
+         << QStringLiteral("-ar") << QStringLiteral("44100");
+    appendAudioEncoderArguments(args, trackInfo.suffix());
+    args << tempPath;
     if (!runFfmpegBlocking(
             ffmpegPath,
             args,
             parent,
-            UiText::isChineseUi() ? QStringLiteral("正在处理音频...") : QStringLiteral("Processing audio..."),
+            UiText::text(QStringLiteral("media_tools.processing_audio")),
             trackDurationSeconds,
             error,
             cancelled)) {
@@ -623,8 +736,8 @@ bool prependTrackSilence(
     bool* cancelled = nullptr)
 {
     const QFileInfo trackInfo(trackPath);
-    const QString backupPath = trackInfo.dir().filePath(QStringLiteral("track_bak.mp3"));
-    const QString tempPath = trackInfo.dir().filePath(QStringLiteral(".miacode_track_prepend_tmp.mp3"));
+    const QString backupPath = audioTrackBackupPath(trackInfo);
+    const QString tempPath = audioTrackTempPath(trackInfo, QStringLiteral("prepend"));
     QFile::remove(tempPath);
     if (!copyFileReplacing(trackPath, backupPath, error)) {
         return false;
@@ -637,24 +750,16 @@ bool prependTrackSilence(
     const double totalDurationSeconds =
         inputDurationSeconds > 0.0 ? inputDurationSeconds + silenceSeconds : 0.0;
 
-    const QString silenceDuration = QString::number(silenceSeconds, 'f', 6);
-    QStringList args;
-    args << QStringLiteral("-hide_banner")
-         << QStringLiteral("-y")
-         << QStringLiteral("-f") << QStringLiteral("lavfi")
-         << QStringLiteral("-i") << QStringLiteral("anullsrc=channel_layout=stereo:sample_rate=44100:d=%1").arg(silenceDuration)
-         << QStringLiteral("-i") << backupPath
-         << QStringLiteral("-filter_complex")
-         << QStringLiteral("[0:a]atrim=duration=%1,asetpts=PTS-STARTPTS[s];[1:a]aresample=44100,aformat=channel_layouts=stereo,asetpts=PTS-STARTPTS[a];[s][a]concat=n=2:v=0:a=1[out]").arg(silenceDuration)
-         << QStringLiteral("-map") << QStringLiteral("[out]")
-         << QStringLiteral("-c:a") << QStringLiteral("libmp3lame")
-         << QStringLiteral("-q:a") << QStringLiteral("2")
-         << tempPath;
+    const QStringList args = miacode::media::makeAudioPrependArguments(
+        backupPath,
+        tempPath,
+        trackInfo.suffix(),
+        silenceSeconds);
     if (!runFfmpegBlocking(
             ffmpegPath,
             args,
             parent,
-            UiText::isChineseUi() ? QStringLiteral("正在处理 track.mp3...") : QStringLiteral("Processing track.mp3..."),
+            UiText::text(QStringLiteral("media_tools.processing_track_mp3")).arg(trackInfo.fileName()),
             totalDurationSeconds,
             error,
             cancelled)) {
@@ -682,39 +787,94 @@ bool prependPvBlack(
         return false;
     }
 
-    // Output runs for the original video plus the prepended black screen;
-    // probe the source so the progress bar can track real percent (best-effort).
+    // Keep the source geometry/timing and size the encode against the original
+    // average bitrate instead of upscaling every PV to a fixed 1080p CRF encode.
     double inputDurationSeconds = 0.0;
-    probeMediaDurationSeconds(ffmpegPath, backupPath, &inputDurationSeconds, nullptr);
+    if (!probeMediaDurationSeconds(ffmpegPath, backupPath, &inputDurationSeconds, error)) {
+        return false;
+    }
+    QSize inputDimensions;
+    if (!probeVideoDimensions(ffmpegPath, backupPath, &inputDimensions, error)) {
+        return false;
+    }
     const double totalDurationSeconds =
-        inputDurationSeconds > 0.0 ? inputDurationSeconds + silenceSeconds : 0.0;
+        inputDurationSeconds + silenceSeconds;
 
-    QStringList args;
-    args << QStringLiteral("-hide_banner")
-         << QStringLiteral("-y")
-         << QStringLiteral("-f") << QStringLiteral("lavfi")
-         << QStringLiteral("-t") << QString::number(silenceSeconds, 'f', 6)
-         << QStringLiteral("-i") << QStringLiteral("color=c=black:s=1920x1080:r=30")
-         << QStringLiteral("-i") << backupPath
-         << QStringLiteral("-filter_complex")
-         << QStringLiteral("[0:v]format=yuv420p[v0];[1:v]scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2,setsar=1,format=yuv420p[v1];[v0][v1]concat=n=2:v=1:a=0[v]")
-         << QStringLiteral("-map") << QStringLiteral("[v]")
-         << QStringLiteral("-an")
-         << QStringLiteral("-c:v") << QStringLiteral("libx264")
-         << QStringLiteral("-preset") << QStringLiteral("veryfast")
-         << QStringLiteral("-crf") << QStringLiteral("18")
-         << QStringLiteral("-pix_fmt") << QStringLiteral("yuv420p")
-         << QStringLiteral("-movflags") << QStringLiteral("+faststart")
-         << tempPath;
-    if (!runFfmpegBlocking(
-            ffmpegPath,
-            args,
-            parent,
-            UiText::isChineseUi() ? QStringLiteral("正在处理 pv.mp4...") : QStringLiteral("Processing pv.mp4..."),
-            totalDurationSeconds,
-            error,
-            cancelled)) {
+    QTemporaryDir passLogDirectory;
+    if (!passLogDirectory.isValid()) {
+        if (error != nullptr) {
+            *error = QStringLiteral("Could not create the two-pass log directory.");
+        }
+        return false;
+    }
+
+    miacode::media::PvCompressionPlan plan = miacode::media::makePvPrependCompressionPlan(
+        pvInfo.size(),
+        inputDurationSeconds,
+        silenceSeconds);
+    qint64 outputBytes = 0;
+    bool encoded = false;
+    for (int attempt = 0; attempt < 2; ++attempt) {
         QFile::remove(tempPath);
+        const QString passLogPath = QDir(passLogDirectory.path()).filePath(
+            QStringLiteral("x264-prepend-attempt-%1").arg(attempt));
+        const QStringList firstPass = miacode::media::makePvPrependPassArguments(
+            backupPath, tempPath, passLogPath, plan, silenceSeconds, 1);
+        const QStringList secondPass = miacode::media::makePvPrependPassArguments(
+            backupPath, tempPath, passLogPath, plan, silenceSeconds, 2);
+        if (!runFfmpegBlocking(
+                ffmpegPath,
+                firstPass,
+                parent,
+                UiText::text(QStringLiteral("media_tools.processing_pv_mp4")),
+                totalDurationSeconds,
+                error,
+                cancelled)
+            || !runFfmpegBlocking(
+                ffmpegPath,
+                secondPass,
+                parent,
+                UiText::text(QStringLiteral("media_tools.processing_pv_mp4")),
+                totalDurationSeconds,
+                error,
+                cancelled)) {
+            QFile::remove(tempPath);
+            return false;
+        }
+
+        double outputDurationSeconds = 0.0;
+        QSize outputDimensions;
+        if (!probeMediaDurationSeconds(ffmpegPath, tempPath, &outputDurationSeconds, error)
+            || !probeVideoDimensions(ffmpegPath, tempPath, &outputDimensions, error)) {
+            QFile::remove(tempPath);
+            return false;
+        }
+        if (outputDimensions != inputDimensions
+            || std::abs(outputDurationSeconds - totalDurationSeconds) > 0.25) {
+            QFile::remove(tempPath);
+            if (error != nullptr) {
+                *error = QStringLiteral("Prepended video failed its dimensions or duration check.");
+            }
+            return false;
+        }
+
+        outputBytes = QFileInfo(tempPath).size();
+        if (miacode::media::isAcceptablePvPrependOutput(plan, outputBytes)) {
+            encoded = true;
+            break;
+        }
+        if (attempt == 0) {
+            plan = miacode::media::adjustedPvCompressionPlan(plan, outputBytes);
+        }
+    }
+
+    if (!encoded) {
+        QFile::remove(tempPath);
+        if (error != nullptr) {
+            *error = outputBytes >= miacode::media::kPvCompressionHardLimitBytes
+                ? QStringLiteral("Prepended video is still 20 MB or larger.")
+                : QStringLiteral("Prepended video exceeded its size target.");
+        }
         return false;
     }
     return replaceFileWithTemp(tempPath, pvPath, error);
@@ -735,15 +895,13 @@ void MainWindow::DialogsSection::onPrependPvBlack()
 void MainWindow::DialogsSection::onCompressBackgroundVideo()
 {
     MC_OP("MainWindow::DialogsSection::onCompressBackgroundVideo");
-    const QString title = UiText::isChineseUi() ? QStringLiteral("视频压缩") : QStringLiteral("Compress Video");
+    const QString title = UiText::text(QStringLiteral("media_tools.compress_video"));
     const QString chartDirPath = resolveCurrentChartDirectory();
     if (chartDirPath.isEmpty()) {
         QMessageBox::warning(
             UiDialogs::effectiveParentWidget(&owner_),
             title,
-            UiText::isChineseUi()
-                ? QStringLiteral("请先打开或保存一个谱面文件。")
-                : QStringLiteral("Open or save a chart file first.")
+            UiText::text(QStringLiteral("media_tools.open_or_save_a_chart"))
         );
         return;
     }
@@ -753,26 +911,22 @@ void MainWindow::DialogsSection::onCompressBackgroundVideo()
         QMessageBox::warning(
             UiDialogs::effectiveParentWidget(&owner_),
             title,
-            UiText::isChineseUi()
-                ? QStringLiteral("当前谱面目录缺少背景视频 .mp4。")
-                : QStringLiteral("No background .mp4 video was found next to the current chart.")
+            UiText::text(QStringLiteral("media_tools.no_background_mp4_video_was"))
         );
         return;
     }
 
     const QFileInfo videoInfo(videoPath);
-    // Size gate up-front: if the video is already under 20 MiB there is nothing
+    // Size gate up-front: if the video is already under 20 MB there is nothing
     // to compress, so say so immediately instead of making the user confirm
     // first and only then discovering there's no work to do.
-    constexpr qint64 kCompressTargetBytes = 20LL * 1024LL * 1024LL;
+    constexpr qint64 kCompressTargetBytes = miacode::media::kPvCompressionTargetBytes;
     const qint64 videoSizeBytes = videoInfo.size();
-    if (videoSizeBytes > 0 && videoSizeBytes <= kCompressTargetBytes) {
+    if (videoSizeBytes > 0 && videoSizeBytes < kCompressTargetBytes) {
         QMessageBox::information(
             UiDialogs::effectiveParentWidget(&owner_),
             title,
-            UiText::isChineseUi()
-                ? QStringLiteral("当前视频已经小于 20 MiB（%1），无需压缩。").arg(QLocale().formattedDataSize(videoSizeBytes))
-                : QStringLiteral("The current video is already under 20 MiB (%1); compression is not needed.").arg(QLocale().formattedDataSize(videoSizeBytes))
+            UiText::text(QStringLiteral("media_tools.the_current_video_is_already_2")).arg(QLocale().formattedDataSize(videoSizeBytes))
         );
         return;
     }
@@ -780,9 +934,7 @@ void MainWindow::DialogsSection::onCompressBackgroundVideo()
     if (QMessageBox::question(
             UiDialogs::effectiveParentWidget(&owner_),
             title,
-            UiText::isChineseUi()
-                ? QStringLiteral("将压缩 %1 到 20M 内，并生成/覆盖备份 %2。是否继续？").arg(videoInfo.fileName(), backupName)
-                : QStringLiteral("Compress %1 under 20 MiB and create/replace backup %2?").arg(videoInfo.fileName(), backupName)
+            UiText::text(QStringLiteral("media_tools.compress_1_under_20_mib")).arg(videoInfo.fileName(), backupName)
         ) != QMessageBox::Yes) {
         return;
     }
@@ -792,9 +944,7 @@ void MainWindow::DialogsSection::onCompressBackgroundVideo()
         QMessageBox::critical(
             UiDialogs::effectiveParentWidget(&owner_),
             title,
-            UiText::isChineseUi()
-                ? QStringLiteral("未找到 ffmpeg。请将 ffmpeg 放到程序目录，或设置 MIACODE_FFMPEG_PATH。")
-                : QStringLiteral("ffmpeg was not found. Place ffmpeg next to the app or set MIACODE_FFMPEG_PATH.")
+            UiText::text(QStringLiteral("media_tools.ffmpeg_was_not_found_place"))
         );
         return;
     }
@@ -803,11 +953,17 @@ void MainWindow::DialogsSection::onCompressBackgroundVideo()
 
     QString error;
     bool cancelled = false;
-    if (!compressVideoUnder20Mb(ffmpegPath, videoPath, UiDialogs::effectiveParentWidget(&owner_), &error, &cancelled)) {
+    bool preservedCompressed = false;
+    if (!compressVideoUnder20Mb(ffmpegPath, videoPath, UiDialogs::effectiveParentWidget(&owner_), &error, &cancelled, &preservedCompressed)) {
         if (cancelled) {
             QMessageBox::information(
                 UiDialogs::effectiveParentWidget(&owner_), title,
-                UiText::isChineseUi() ? QStringLiteral("已取消视频压缩。") : QStringLiteral("Video compression canceled."));
+                UiText::text(QStringLiteral("media_tools.video_compression_canceled")));
+        } else if (preservedCompressed) {
+            // Compression succeeded; only the auto-replace was blocked by the
+            // file lock. The compressed clip was kept beside the original — this
+            // is a heads-up, not a hard failure.
+            QMessageBox::information(UiDialogs::effectiveParentWidget(&owner_), title, error);
         } else {
             QMessageBox::critical(UiDialogs::effectiveParentWidget(&owner_), title, error);
         }
@@ -816,16 +972,12 @@ void MainWindow::DialogsSection::onCompressBackgroundVideo()
     }
     reloadPreviewMediaAfterFileOperation(false);
     owner_.statusBar()->showMessage(
-        UiText::isChineseUi()
-            ? QStringLiteral("已压缩 %1 到 20M 内。").arg(videoInfo.fileName())
-            : QStringLiteral("Compressed %1 under 20 MiB.").arg(videoInfo.fileName()),
+        UiText::text(QStringLiteral("media_tools.compressed_1_under_20_mib")).arg(videoInfo.fileName()),
         6000
     );
     showMediaOperationCompleteDialog(
         title,
-        UiText::isChineseUi()
-            ? QStringLiteral("已压缩 %1 到 20M 内（原文件已备份为 %2）。").arg(videoInfo.fileName(), backupName)
-            : QStringLiteral("Compressed %1 under 20 MiB (original backed up as %2).").arg(videoInfo.fileName(), backupName),
+        UiText::text(QStringLiteral("media_tools.compressed_1_under_20_mib_2")).arg(videoInfo.fileName(), backupName),
         videoPath
     );
 }
@@ -833,37 +985,34 @@ void MainWindow::DialogsSection::onCompressBackgroundVideo()
 void MainWindow::DialogsSection::onConvertTrackTo44100Hz()
 {
     MC_OP("MainWindow::DialogsSection::onConvertTrackTo44100Hz");
-    const QString title = UiText::isChineseUi() ? QStringLiteral("采样率转换") : QStringLiteral("Sample Rate");
+    const QString title = UiText::text(QStringLiteral("media_tools.sample_rate"));
     const QString chartDirPath = resolveCurrentChartDirectory();
     if (chartDirPath.isEmpty()) {
         QMessageBox::warning(
             UiDialogs::effectiveParentWidget(&owner_),
             title,
-            UiText::isChineseUi()
-                ? QStringLiteral("请先打开或保存一个谱面文件。")
-                : QStringLiteral("Open or save a chart file first.")
+            UiText::text(QStringLiteral("media_tools.open_or_save_a_chart"))
         );
         return;
     }
 
-    const QString trackPath = QDir(chartDirPath).filePath(QStringLiteral("track.mp3"));
-    if (!QFileInfo::exists(trackPath)) {
+    const QString trackPath = miacode::chart_assets::resolveTrackPathForDirectory(chartDirPath);
+    if (trackPath.isEmpty()) {
         QMessageBox::warning(
             UiDialogs::effectiveParentWidget(&owner_),
             title,
-            UiText::isChineseUi()
-                ? QStringLiteral("当前谱面目录缺少 track.mp3。")
-                : QStringLiteral("track.mp3 was not found next to the current chart.")
+            UiText::text(QStringLiteral("media_tools.track_mp3_was_not_found"))
         );
         return;
     }
 
+    const QFileInfo trackInfo(trackPath);
+    const QString backupName = QFileInfo(audioTrackBackupPath(trackInfo)).fileName();
     if (QMessageBox::question(
             UiDialogs::effectiveParentWidget(&owner_),
             title,
-            UiText::isChineseUi()
-                ? QStringLiteral("将 track.mp3 处理为 44100Hz，并生成/覆盖备份 track_bak.mp3。是否继续？")
-                : QStringLiteral("Convert track.mp3 to 44100 Hz and create/replace backup track_bak.mp3?")
+            UiText::text(QStringLiteral("media_tools.convert_track_mp3_to_44100"))
+                .arg(trackInfo.fileName(), backupName)
         ) != QMessageBox::Yes) {
         return;
     }
@@ -873,9 +1022,7 @@ void MainWindow::DialogsSection::onConvertTrackTo44100Hz()
         QMessageBox::critical(
             UiDialogs::effectiveParentWidget(&owner_),
             title,
-            UiText::isChineseUi()
-                ? QStringLiteral("未找到 ffmpeg。请将 ffmpeg 放到程序目录，或设置 MIACODE_FFMPEG_PATH。")
-                : QStringLiteral("ffmpeg was not found. Place ffmpeg next to the app or set MIACODE_FFMPEG_PATH.")
+            UiText::text(QStringLiteral("media_tools.ffmpeg_was_not_found_place"))
         );
         return;
     }
@@ -888,7 +1035,7 @@ void MainWindow::DialogsSection::onConvertTrackTo44100Hz()
         if (cancelled) {
             QMessageBox::information(
                 UiDialogs::effectiveParentWidget(&owner_), title,
-                UiText::isChineseUi() ? QStringLiteral("已取消采样率转换。") : QStringLiteral("Sample-rate conversion canceled."));
+                UiText::text(QStringLiteral("media_tools.sample_rate_conversion_canceled")));
         } else {
             QMessageBox::critical(UiDialogs::effectiveParentWidget(&owner_), title, error);
         }
@@ -897,16 +1044,14 @@ void MainWindow::DialogsSection::onConvertTrackTo44100Hz()
     }
     reloadPreviewMediaAfterFileOperation(true);
     owner_.statusBar()->showMessage(
-        UiText::isChineseUi()
-            ? QStringLiteral("已将 track.mp3 处理为 44100Hz。")
-            : QStringLiteral("Converted track.mp3 to 44100 Hz."),
+        UiText::text(QStringLiteral("media_tools.converted_track_mp3_to_44100"))
+            .arg(trackInfo.fileName()),
         6000
     );
     showMediaOperationCompleteDialog(
         title,
-        UiText::isChineseUi()
-            ? QStringLiteral("已将 track.mp3 处理为 44100Hz（原文件已备份为 track_bak.mp3）。")
-            : QStringLiteral("Converted track.mp3 to 44100 Hz (original backed up as track_bak.mp3)."),
+        UiText::text(QStringLiteral("media_tools.converted_track_mp3_to_44100_2"))
+            .arg(trackInfo.fileName(), backupName),
         trackPath
     );
 }
@@ -914,10 +1059,8 @@ void MainWindow::DialogsSection::onConvertTrackTo44100Hz()
 void MainWindow::DialogsSection::onMediaProcessingTools()
 {
     MC_OP("MainWindow::DialogsSection::onMediaProcessingTools");
-    const bool zh = UiText::isChineseUi();
-
     QDialog dialog(UiDialogs::effectiveParentWidget(&owner_));
-    dialog.setWindowTitle(zh ? QStringLiteral("音频/视频处理") : QStringLiteral("Audio/Video Processing"));
+    dialog.setWindowTitle(UiText::text(QStringLiteral("media_tools.audio_video_processing")));
     dialog.setModal(true);
     dialog.setMinimumWidth(480);
     dialog.setStyleSheet(UiTheme::aboutDialogStyleSheet());
@@ -934,21 +1077,20 @@ void MainWindow::DialogsSection::onMediaProcessingTools()
         void (MainWindow::DialogsSection::*handler)();
     };
     const QVector<MediaToolEntry> entries = {
-        { zh ? QStringLiteral("采样率转换") : QStringLiteral("Sample Rate"),
-          zh ? QStringLiteral("将 track.mp3 转换为 44100Hz，并自动备份原文件。")
-             : QStringLiteral("Convert track.mp3 to 44100 Hz (the original is backed up)."),
+        { UiText::text(QStringLiteral("media_tools.sample_rate")),
+          UiText::text(QStringLiteral("media_tools.sample_rate_description")),
           &MainWindow::DialogsSection::onConvertTrackTo44100Hz },
-        { zh ? QStringLiteral("视频压缩") : QStringLiteral("Compress Video"),
-          zh ? QStringLiteral("将背景视频压缩到 20M 以内，并自动备份原文件。")
-             : QStringLiteral("Compress the background video under 20 MiB (the original is backed up)."),
+        { UiText::text(QStringLiteral("media_tools.compress_video")),
+          UiText::text(QStringLiteral("media_tools.compress_the_background_video_under")),
           &MainWindow::DialogsSection::onCompressBackgroundVideo },
-        { zh ? QStringLiteral("音频开头静音处理") : QStringLiteral("Prepend Track Silence"),
-          zh ? QStringLiteral("在 track.mp3 开头插入一段静音，并自动备份原文件。")
-             : QStringLiteral("Insert silence at the start of track.mp3 (the original is backed up)."),
+        { UiText::text(QStringLiteral("media_tools.batch_pv_title")),
+          UiText::text(QStringLiteral("media_tools.batch_pv_description")),
+          &MainWindow::DialogsSection::onBatchCompressPv },
+        { UiText::text(QStringLiteral("media_tools.prepend_track_silence")),
+          UiText::text(QStringLiteral("media_tools.insert_silence_at_the_start")),
           &MainWindow::DialogsSection::onPrependTrackSilence },
-        { zh ? QStringLiteral("视频开头黑幕处理") : QStringLiteral("Prepend PV Black Screen"),
-          zh ? QStringLiteral("在背景视频开头插入一段黑幕，并自动备份原文件。")
-             : QStringLiteral("Insert a black screen at the start of the background video (the original is backed up)."),
+        { UiText::text(QStringLiteral("media_tools.prepend_pv_black_screen")),
+          UiText::text(QStringLiteral("media_tools.insert_a_black_screen_at")),
           &MainWindow::DialogsSection::onPrependPvBlack },
     };
 
@@ -969,7 +1111,12 @@ void MainWindow::DialogsSection::onMediaProcessingTools()
         // Each button runs its existing handler, which shows its own
         // confirm prompt and a determinate progress bar. The dialog stays
         // open (modal) so several tools can be run in one sitting.
-        connect(button, &QPushButton::clicked, &dialog, [this, handler = entry.handler]() {
+        connect(button, &QPushButton::clicked, &dialog, [this, &dialog, handler = entry.handler]() {
+            if (handler == &MainWindow::DialogsSection::onBatchCompressPv) {
+                dialog.accept();
+                QTimer::singleShot(0, &owner_, [this]() { onBatchCompressPv(); });
+                return;
+            }
             (this->*handler)();
         });
         cardLayout->addWidget(button, 0, Qt::AlignTop);
@@ -1015,33 +1162,41 @@ void MainWindow::DialogsSection::onMediaProcessingTools()
     dialog.exec();
 }
 
+void MainWindow::DialogsSection::onBatchCompressPv()
+{
+    MC_OP("MainWindow::DialogsSection::onBatchCompressPv");
+    miacode::media::PvBatchCompressionDialog dialog(UiDialogs::effectiveParentWidget(&owner_));
+    owner_.pvBatchCompressionDialog_ = &dialog;
+    owner_.windowSection_->applySystemWindowBackdrop(&dialog);
+    UiDialogs::prepareDialogWindow(&dialog, &owner_);
+    dialog.exec();
+    owner_.pvBatchCompressionDialog_ = nullptr;
+}
+
 void MainWindow::DialogsSection::onPrependMediaBlank(MediaBlankTarget target)
 {
     MC_OP("MainWindow::DialogsSection::onPrependMediaBlank");
     const bool isTrack = target == MediaBlankTarget::Track;
     const QString title = isTrack
-        ? (UiText::isChineseUi() ? QStringLiteral("音频开头静音处理") : QStringLiteral("Prepend Track Silence"))
-        : (UiText::isChineseUi() ? QStringLiteral("视频开头黑幕处理") : QStringLiteral("Prepend PV Black Screen"));
+        ? (UiText::text(QStringLiteral("media_tools.prepend_track_silence")))
+        : (UiText::text(QStringLiteral("media_tools.prepend_pv_black_screen")));
     const QString chartDirPath = resolveCurrentChartDirectory();
     if (chartDirPath.isEmpty()) {
         QMessageBox::warning(
             UiDialogs::effectiveParentWidget(&owner_),
             title,
-            UiText::isChineseUi()
-                ? QStringLiteral("请先打开或保存一个谱面文件。")
-                : QStringLiteral("Open or save a chart file first.")
+            UiText::text(QStringLiteral("media_tools.open_or_save_a_chart"))
         );
         return;
     }
 
-    const QDir chartDir(chartDirPath);
-    const QString trackPath = chartDir.filePath(QStringLiteral("track.mp3"));
+    const QString trackPath = miacode::chart_assets::resolveTrackPathForDirectory(chartDirPath);
     const QString videoPath = miacode::chart_assets::resolveChartVideoPath(owner_.currentFilePath_, owner_.document_.videoPath);
     const QString inputPath = isTrack ? trackPath : videoPath;
     const QFileInfo inputInfo(inputPath);
-    const QString inputName = isTrack ? QStringLiteral("track.mp3") : inputInfo.fileName();
+    const QString inputName = inputInfo.fileName();
     const QString backupName = isTrack
-        ? QStringLiteral("track_bak.mp3")
+        ? QFileInfo(audioTrackBackupPath(inputInfo)).fileName()
         : QStringLiteral("%1_bak.%2").arg(inputInfo.completeBaseName(), inputInfo.suffix());
     const QString backupPath = inputPath.isEmpty()
         ? QString()
@@ -1050,9 +1205,10 @@ void MainWindow::DialogsSection::onPrependMediaBlank(MediaBlankTarget target)
         QMessageBox::warning(
             UiDialogs::effectiveParentWidget(&owner_),
             title,
-            UiText::isChineseUi()
-                ? QStringLiteral("当前谱面目录缺少 %1。").arg(isTrack ? inputName : QStringLiteral("背景视频 .mp4"))
-                : QStringLiteral("%1 was not found next to the current chart.").arg(isTrack ? inputName : QStringLiteral("background .mp4 video"))
+            UiText::text(QStringLiteral("media_tools.1_was_not_found_next"))
+                .arg(isTrack
+                    ? UiText::text(QStringLiteral("media_tools.supported_track_audio"))
+                    : UiText::text(QStringLiteral("media_tools.background_mp4_video")))
         );
         return;
     }
@@ -1116,14 +1272,14 @@ void MainWindow::DialogsSection::onPrependMediaBlank(MediaBlankTarget target)
     beatsRowLayout->setContentsMargins(0, 0, 0, 0);
     beatsRowLayout->setSpacing(6);
     beatsRowLayout->addWidget(beatsSpin, 1);
-    auto* detectBeatsButton = new QPushButton(UiText::isChineseUi() ? QStringLiteral("自动检测") : QStringLiteral("Detect"), beatsRow);
+    auto* detectBeatsButton = new QPushButton(UiText::text(QStringLiteral("media_tools.detect")), beatsRow);
     beatsRowLayout->addWidget(detectBeatsButton, 0);
     auto* bpmRow = new QWidget(&dialog);
     auto* bpmRowLayout = new QHBoxLayout(bpmRow);
     bpmRowLayout->setContentsMargins(0, 0, 0, 0);
     bpmRowLayout->setSpacing(6);
     bpmRowLayout->addWidget(bpmSpin, 1);
-    auto* detectBpmButton = new QPushButton(UiText::isChineseUi() ? QStringLiteral("自动检测") : QStringLiteral("Detect"), bpmRow);
+    auto* detectBpmButton = new QPushButton(UiText::text(QStringLiteral("media_tools.detect")), bpmRow);
     bpmRowLayout->addWidget(detectBpmButton, 0);
     const auto applyDetectedBeats = [beatsSpin, analyzeTrackBpmAndMeter, detectedBeats]() {
         const QPair<double, QString> detected = analyzeTrackBpmAndMeter();
@@ -1135,7 +1291,7 @@ void MainWindow::DialogsSection::onPrependMediaBlank(MediaBlankTarget target)
     };
     connect(detectBeatsButton, &QPushButton::clicked, &dialog, applyDetectedBeats);
     connect(detectBpmButton, &QPushButton::clicked, &dialog, applyDetectedBpm);
-    form->addRow(UiText::isChineseUi() ? QStringLiteral("拍数") : QStringLiteral("Beats"), beatsRow);
+    form->addRow(UiText::text(QStringLiteral("media_tools.beats")), beatsRow);
     form->addRow(QStringLiteral("BPM"), bpmRow);
 
     // Live, plain-language description of what the entered beats/BPM produce —
@@ -1159,15 +1315,14 @@ void MainWindow::DialogsSection::onPrependMediaBlank(MediaBlankTarget target)
         const double bpm = bpmSpin->value();
         const double beats = beatsSpin->value();
         const double seconds = bpm > 0.0 ? beats * 60.0 / bpm : 0.0;
-        summaryLabel->setText(UiText::isChineseUi()
-            ? QStringLiteral("将在 %1 开头增加一段%2，时长为 BPM %3 下的 %4 个 4 分音（约 %5 秒）。")
-                  .arg(isTrack ? QStringLiteral("track.mp3") : QStringLiteral("背景视频"))
-                  .arg(isTrack ? QStringLiteral("空白") : QStringLiteral("黑幕"))
-                  .arg(formatNumber(bpm), formatNumber(beats), formatNumber(seconds))
-            : QStringLiteral("Prepends %1 to %2: %3 quarter-notes at %4 BPM (~%5 s).")
-                  .arg(isTrack ? QStringLiteral("silence") : QStringLiteral("a black screen"))
-                  .arg(inputName)
-                  .arg(formatNumber(beats), formatNumber(bpm), formatNumber(seconds)));
+        const QString mediaKind = isTrack
+            ? UiText::text(QStringLiteral("media_tools.silence"))
+            : UiText::text(QStringLiteral("media_tools.a_black_screen"));
+        const QString target = isTrack
+            ? inputName
+            : UiText::text(QStringLiteral("media_tools.the_background_video"));
+        summaryLabel->setText(UiText::text(QStringLiteral("media_tools.prepends_1_to_2_3"))
+            .arg(mediaKind, target, formatNumber(beats), formatNumber(bpm), formatNumber(seconds)));
     };
     connect(beatsSpin, qOverload<double>(&QDoubleSpinBox::valueChanged), &dialog, [updateSummary](double) { updateSummary(); });
     connect(bpmSpin, qOverload<double>(&QDoubleSpinBox::valueChanged), &dialog, [updateSummary](double) { updateSummary(); });
@@ -1189,7 +1344,7 @@ void MainWindow::DialogsSection::onPrependMediaBlank(MediaBlankTarget target)
 
     auto* buttonBox = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
     auto* restoreButton = buttonBox->addButton(
-        UiText::isChineseUi() ? QStringLiteral("还原备份") : QStringLiteral("Restore Backup"),
+        UiText::text(QStringLiteral("media_tools.restore_backup")),
         QDialogButtonBox::ActionRole
     );
     UiDialogs::localizeButtonBox(buttonBox);
@@ -1206,7 +1361,7 @@ void MainWindow::DialogsSection::onPrependMediaBlank(MediaBlankTarget target)
         QMessageBox::information(
             UiDialogs::effectiveParentWidget(&owner_),
             title,
-            UiText::isChineseUi() ? QStringLiteral("已还原备份。") : QStringLiteral("Backup restored.")
+            UiText::text(QStringLiteral("media_tools.backup_restored"))
         );
         reloadPreviewMediaAfterFileOperation(isTrack);
     });
@@ -1221,9 +1376,7 @@ void MainWindow::DialogsSection::onPrependMediaBlank(MediaBlankTarget target)
         QMessageBox::critical(
             UiDialogs::effectiveParentWidget(&owner_),
             title,
-            UiText::isChineseUi()
-                ? QStringLiteral("未找到 ffmpeg。请将 ffmpeg 放到程序目录，或设置 MIACODE_FFMPEG_PATH。")
-                : QStringLiteral("ffmpeg was not found. Place ffmpeg next to the app or set MIACODE_FFMPEG_PATH.")
+            UiText::text(QStringLiteral("media_tools.ffmpeg_was_not_found_place"))
         );
         return;
     }
@@ -1237,11 +1390,11 @@ void MainWindow::DialogsSection::onPrependMediaBlank(MediaBlankTarget target)
         if (cancelled) {
             QMessageBox::information(
                 UiDialogs::effectiveParentWidget(&owner_), title,
-                UiText::isChineseUi() ? QStringLiteral("已取消 track.mp3 处理。") : QStringLiteral("track.mp3 processing canceled."));
+                UiText::text(QStringLiteral("media_tools.track_mp3_processing_canceled")).arg(inputName));
         } else {
             QMessageBox::critical(
                 UiDialogs::effectiveParentWidget(&owner_),
-                UiText::isChineseUi() ? QStringLiteral("track.mp3 处理失败") : QStringLiteral("track.mp3 Failed"),
+                UiText::text(QStringLiteral("media_tools.track_mp3_failed")).arg(inputName),
                 error
             );
         }
@@ -1252,11 +1405,11 @@ void MainWindow::DialogsSection::onPrependMediaBlank(MediaBlankTarget target)
         if (cancelled) {
             QMessageBox::information(
                 UiDialogs::effectiveParentWidget(&owner_), title,
-                UiText::isChineseUi() ? QStringLiteral("已取消视频处理。") : QStringLiteral("Video processing canceled."));
+                UiText::text(QStringLiteral("media_tools.video_processing_canceled")));
         } else {
             QMessageBox::critical(
                 UiDialogs::effectiveParentWidget(&owner_),
-                UiText::isChineseUi() ? QStringLiteral("视频处理失败") : QStringLiteral("Video Failed"),
+                UiText::text(QStringLiteral("media_tools.video_failed")),
                 error
             );
         }
@@ -1266,23 +1419,20 @@ void MainWindow::DialogsSection::onPrependMediaBlank(MediaBlankTarget target)
 
     reloadPreviewMediaAfterFileOperation(isTrack);
     owner_.statusBar()->showMessage(
-        UiText::isChineseUi()
-            ? QStringLiteral("已为 %1 开头添加 %2 秒空白。").arg(inputName).arg(silenceSeconds, 0, 'f', 3)
-            : QStringLiteral("Prepended %1 seconds of blank media to %2.").arg(silenceSeconds, 0, 'f', 3).arg(inputName),
+        UiText::text(QStringLiteral("media_tools.prepended_2_seconds_of_blank"))
+            .arg(inputName)
+            .arg(silenceSeconds, 0, 'f', 3),
         6000
     );
     showMediaOperationCompleteDialog(
         title,
-        UiText::isChineseUi()
-            ? QStringLiteral("已为 %1 开头添加 %2 秒%3（原文件已备份为 %4）。")
-                  .arg(inputName)
-                  .arg(silenceSeconds, 0, 'f', 3)
-                  .arg(isTrack ? QStringLiteral("空白") : QStringLiteral("黑幕"))
-                  .arg(backupName)
-            : QStringLiteral("Prepended %1 s of %2 to %3 (original backed up as %4).")
-                  .arg(silenceSeconds, 0, 'f', 3)
-                  .arg(isTrack ? QStringLiteral("silence") : QStringLiteral("black screen"))
-                  .arg(inputName, backupName),
+        UiText::text(QStringLiteral("media_tools.prepended_2_s_of_3"))
+            .arg(inputName)
+            .arg(silenceSeconds, 0, 'f', 3)
+            .arg(isTrack
+                ? UiText::text(QStringLiteral("media_tools.silence"))
+                : UiText::text(QStringLiteral("media_tools.black_screen")))
+            .arg(backupName),
         inputPath
     );
 }

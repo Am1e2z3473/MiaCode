@@ -29,6 +29,16 @@ QRect MainWindow::quickShellRootWindowFrameGeometry() const
     return windowSection_->quickShellRootWindowFrameGeometry();
 }
 
+void MainWindow::setQuickShellRootWindow(QWindow* window)
+{
+    windowSection_->setQuickShellRootWindow(window);
+}
+
+void MainWindow::cancelChartDrop()
+{
+    windowSection_->cancelChartDrop();
+}
+
 bool MainWindow::confirmShellClose()
 {
     return windowSection_->confirmShellClose();
@@ -67,6 +77,11 @@ void MainWindow::endShellPreviewScrub(double second, bool centerView)
 void MainWindow::setShellPreviewRate(double rate)
 {
     windowSection_->setShellPreviewRate(rate);
+}
+
+void MainWindow::toggleShellMuriRenderMode()
+{
+    windowSection_->toggleShellMuriRenderMode();
 }
 
 void MainWindow::nudgeShellPreviewRate(int direction)
@@ -184,6 +199,11 @@ QString MainWindow::shellPreviewSpeedLabel() const
     return windowSection_->shellPreviewSpeedLabel();
 }
 
+bool MainWindow::shellMuriCheckRenderMode() const
+{
+    return windowSection_->shellMuriCheckRenderMode();
+}
+
 bool MainWindow::shellPreviewPlaying() const
 {
     return windowSection_->shellPreviewPlaying();
@@ -296,6 +316,11 @@ bool MainWindow::shellExportPageActive() const
 QWidget* MainWindow::shellWindowWidget() const
 {
     return windowSection_->shellWindowWidget();
+}
+
+QMenuBar* MainWindow::shellMenuBarWidget() const
+{
+    return mainMenuBar_;
 }
 
 QDockWidget* MainWindow::shellOutlineDockWidget() const

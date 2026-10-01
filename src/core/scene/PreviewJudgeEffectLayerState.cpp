@@ -4,6 +4,7 @@
 #include "core/scene/PreviewSceneMath.h"
 
 #include <QPainter>
+#include <QPainterPath>
 #include <QPen>
 #include <QtMath>
 #include <array>
@@ -29,12 +30,27 @@ constexpr qreal kJudgeEffectAlphaTailGamma = 1.00;
 constexpr qreal kJudgeEffectLaneFacingAngleOffsetDegrees = 0.0;
 constexpr qreal kJudgeEffectTapTextureAngleOffsetDegrees = 0.0;
 constexpr qreal kJudgeEffectBreakTextureAngleOffsetDegrees = 132.5;
+constexpr qreal kJudgeEffectStarryTapBurstScale = 0.693;
+constexpr qreal kJudgeEffectStarryTapRadiusScale = 1.05;
+constexpr qreal kJudgeEffectStarryTapSpriteScale = 0.84;
 constexpr qreal kJudgeEffectClipDurationSeconds =
     static_cast<qreal>(miacode::preview_gameplay::kJudgeEffectDurationSeconds);
 constexpr qreal kJudgeEffectDurationSeconds = kJudgeEffectClipDurationSeconds;
 constexpr qreal kJudgeEffectHoldSustainLifetimeSeconds = 0.6;
 constexpr int kJudgeEffectHoldSustainParticleCount = 5;
 constexpr qreal kJudgeEffectHoldSustainBaseRelativeToTap = (256.0 * 1.2) / 122.0;
+constexpr qreal kJudgeEffectTouchPartSpriteWidthUnits = 103.948685 / 100.0;
+constexpr qreal kJudgeEffectTouchOuterScaleBase = 0.282;
+constexpr qreal kJudgeEffectTouchInnerToOuterSpriteScale = 0.5;
+constexpr qreal kJudgeEffectTouchSolidSpriteScale = 1.334;
+constexpr qreal kJudgeEffectTouchInnerRingRadiusUnits = 0.24;
+constexpr qreal kJudgeEffectTouchOuterRingRadiusUnits = 0.5;
+constexpr qreal kJudgeEffectTouchSparklePointAngleStepDegrees = 45.0;
+constexpr int kJudgeEffectTouchSparklePointCount = 8;
+constexpr qreal kJudgeEffectTouchTextureOuterDiagonalAngleDegrees = -45.0;
+constexpr qreal kJudgeEffectTouchSparkleGlowAlphaScale = 0.38;
+constexpr qreal kJudgeEffectTouchSparkleGlowScale = 1.22;
+const QColor kJudgeEffectTouchPartTint = QColor::fromRgb(0xF7, 0xEA, 0x63);
 
 struct ScalarCurveKey {
     qreal time = 0.0;
@@ -144,6 +160,21 @@ const std::array<ScalarCurveKey, 7> kJudgeEffectHoldSustainAlphaKeys = {{
     {1.0, 0.0},
 }};
 
+const std::array<ScalarCurveKey, 2> kJudgeEffectTouchInnerParentScaleKeys = {{
+    {0.0, 0.9},
+    {0.31666666, 1.15},
+}};
+
+const std::array<ScalarCurveKey, 2> kJudgeEffectTouchOuterRadiusScaleKeys = {{
+    {0.0, 0.82},
+    {0.31666666, 1.22},
+}};
+
+const std::array<ScalarCurveKey, 2> kJudgeEffectTouchOuterSpriteScaleKeys = {{
+    {0.0, 1.0},
+    {0.31666666, 1.02},
+}};
+
 const std::array<qreal, 5> kJudgeEffectHoldSustainPhaseOffsets = {
     0.00, 0.18, 0.43, 0.67, 0.86,
 };
@@ -171,6 +202,9 @@ struct HoldSustainTrigger {
 };
 
 QImage buildFallbackHoldRingImage();
+QImage buildSmoothHoldRingImage();
+QImage buildDxHoldTailGlowImage();
+QImage buildTouchJudgeFivePointStarImage();
 
 qreal approximateLaneJudgeAlpha(qreal normalizedTime)
 {
@@ -201,6 +235,24 @@ const QImage& fallbackHoldRingImage()
     return image;
 }
 
+const QImage& smoothHoldRingImage()
+{
+    static const QImage image = buildSmoothHoldRingImage();
+    return image;
+}
+
+const QImage& dxHoldTailGlowImage()
+{
+    static const QImage image = buildDxHoldTailGlowImage();
+    return image;
+}
+
+const QImage& touchJudgeFivePointStarImage()
+{
+    static const QImage image = buildTouchJudgeFivePointStarImage();
+    return image;
+}
+
 QPointF rotatePointDegrees(const QPointF& point, qreal angleDegrees)
 {
     const qreal radians = qDegreesToRadians(angleDegrees);
@@ -226,6 +278,131 @@ QImage buildFallbackHoldRingImage()
     painter.drawEllipse(center, radius, radius);
     painter.setPen(QPen(core, 9.0, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
     painter.drawEllipse(center, radius, radius);
+    painter.end();
+    return image;
+}
+
+QImage buildSmoothHoldRingImage()
+{
+    constexpr int kSize = 256;
+    QImage image(kSize, kSize, QImage::Format_ARGB32_Premultiplied);
+    image.fill(Qt::transparent);
+
+    QPainter painter(&image);
+    painter.setRenderHint(QPainter::Antialiasing, true);
+    const QPointF center(kSize / 2.0, kSize / 2.0);
+    QRadialGradient gradient(center, 112.0);
+    gradient.setColorAt(0.00, QColor(255, 253, 119, 0));
+    gradient.setColorAt(0.56, QColor(255, 253, 119, 0));
+    gradient.setColorAt(0.70, QColor(255, 253, 119, 70));
+    gradient.setColorAt(0.82, QColor(255, 253, 119, 170));
+    gradient.setColorAt(0.92, QColor(255, 253, 119, 230));
+    gradient.setColorAt(1.00, QColor(255, 253, 119, 0));
+    painter.setBrush(gradient);
+    painter.setPen(Qt::NoPen);
+    painter.drawEllipse(center, 112.0, 112.0);
+    painter.end();
+    return image;
+}
+
+QImage buildDxHoldTailGlowImage()
+{
+    constexpr int kSize = 256;
+    QImage image(kSize, kSize, QImage::Format_ARGB32_Premultiplied);
+    image.fill(Qt::transparent);
+
+    QPainter painter(&image);
+    painter.setRenderHint(QPainter::Antialiasing, true);
+    const QPointF center(kSize / 2.0, kSize / 2.0);
+
+    QRadialGradient outerGlow(center, 90.0);
+    outerGlow.setColorAt(0.00, QColor(255, 238, 0, 0));
+    outerGlow.setColorAt(0.5, QColor(255, 238, 0, 0));
+
+    outerGlow.setColorAt(0.70, QColor(255, 232, 0, 132));
+    outerGlow.setColorAt(1.00, QColor(255, 228, 0, 0));
+    painter.setPen(Qt::NoPen);
+    painter.setBrush(outerGlow);
+    painter.drawEllipse(center, 84.0, 84.0);
+
+    painter.setCompositionMode(QPainter::CompositionMode_Clear);
+    painter.setPen(Qt::NoPen);
+    painter.setBrush(Qt::transparent);
+    painter.drawEllipse(center, 45.0, 45.0);
+    painter.setCompositionMode(QPainter::CompositionMode_SourceOver);
+
+    QRectF arcRect(center.x() - 21.0, center.y() - 21.0, 42.0, 42.0);
+    painter.setBrush(Qt::NoBrush);
+    painter.setPen(QPen(QColor(255, 246, 0, 92), 11.0, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
+    painter.drawArc(arcRect, 28 * 16, 260 * 16);
+    painter.setPen(QPen(QColor(255, 255, 225, 142), 5.0, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
+    painter.drawArc(arcRect, 28 * 16, 260 * 16);
+    painter.setPen(QPen(QColor(255, 206, 238, 96), 2.0, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
+    painter.drawArc(arcRect, 28 * 16, 260 * 16);
+
+    painter.setCompositionMode(QPainter::CompositionMode_Clear);
+    painter.setPen(Qt::NoPen);
+    painter.setBrush(Qt::transparent);
+    painter.drawEllipse(center, 27.0, 27.0);
+    painter.setCompositionMode(QPainter::CompositionMode_SourceOver);
+
+    painter.end();
+    return image;
+}
+
+QImage buildTouchJudgeFivePointStarImage()
+{
+    constexpr int kSize = 192;
+    QImage image(kSize, kSize, QImage::Format_ARGB32_Premultiplied);
+    image.fill(Qt::transparent);
+
+    const QPointF center(kSize / 2.0, kSize / 2.0);
+    const qreal outer = 78.0;
+    const qreal inner = outer * 0.50;
+    constexpr qreal kCornerInset = 0.17;
+    std::array<QPointF, 10> points;
+    for (int pointIndex = 0; pointIndex < 10; ++pointIndex) {
+        const qreal radius = (pointIndex % 2 == 0) ? outer : inner;
+        const qreal radians = qDegreesToRadians(-90.0 + static_cast<qreal>(pointIndex) * 36.0);
+        points[static_cast<std::size_t>(pointIndex)] = QPointF(
+            center.x() + qCos(radians) * radius,
+            center.y() + qSin(radians) * radius
+        );
+    }
+
+    const auto lerpPoint = [](const QPointF& from, const QPointF& to, qreal amount) {
+        return QPointF(
+            from.x() + (to.x() - from.x()) * amount,
+            from.y() + (to.y() - from.y()) * amount
+        );
+    };
+
+    QPainterPath star;
+    star.moveTo(lerpPoint(points[0], points[1], kCornerInset));
+    for (int pointIndex = 1; pointIndex <= 10; ++pointIndex) {
+        const int index = pointIndex % 10;
+        const int previous = (index + 9) % 10;
+        const int next = (index + 1) % 10;
+        const QPointF before = lerpPoint(points[static_cast<std::size_t>(index)], points[static_cast<std::size_t>(previous)], kCornerInset);
+        const QPointF after = lerpPoint(points[static_cast<std::size_t>(index)], points[static_cast<std::size_t>(next)], kCornerInset);
+        star.lineTo(before);
+        star.quadTo(points[static_cast<std::size_t>(index)], after);
+    }
+    star.closeSubpath();
+
+    QPainter painter(&image);
+    painter.setRenderHint(QPainter::Antialiasing, true);
+    painter.setPen(Qt::NoPen);
+    QColor glow = kJudgeEffectTouchPartTint;
+    glow.setAlphaF(kJudgeEffectTouchSparkleGlowAlphaScale);
+    QTransform grow;
+    grow.translate(center.x(), center.y());
+    grow.scale(kJudgeEffectTouchSparkleGlowScale, kJudgeEffectTouchSparkleGlowScale);
+    grow.translate(-center.x(), -center.y());
+    painter.setBrush(glow);
+    painter.drawPath(grow.map(star));
+    painter.setBrush(kJudgeEffectTouchPartTint);
+    painter.drawPath(star);
     painter.end();
     return image;
 }
@@ -343,7 +520,8 @@ PreviewJudgeEffectLayerState buildPreviewJudgeEffectLayerState(
 )
 {
     PreviewJudgeEffectLayerState layerState;
-    if (state.judgeEffect.tapImage.isNull() && state.judgeEffect.tapBreakImage.isNull()) {
+    if (!state.render.showJudgeEffects
+        || (state.judgeEffect.tapImage.isNull() && state.judgeEffect.tapBreakImage.isNull())) {
         return layerState;
     }
 
@@ -524,6 +702,9 @@ PreviewJudgeEffectLayerState buildPreviewJudgeEffectLayerState(
     const QImage* holdTexture = state.judgeEffect.holdSustainCircleImage.isNull()
         ? &fallbackHoldRingImage()
         : &state.judgeEffect.holdSustainCircleImage;
+    if (state.render.judgeEffectStyle == PreviewJudgeEffectStyle::Starry) {
+        holdTexture = &dxHoldTailGlowImage();
+    }
 
     const auto appendSprite = [&](const QImage* image,
                                   const QRectF& sourceRect,
@@ -621,6 +802,12 @@ PreviewJudgeEffectLayerState buildPreviewJudgeEffectLayerState(
         const bool useBreakShape = trigger.useBreakShape;
         const QImage* effectImage = useBreakShape ? &state.judgeEffect.tapBreakImage : &state.judgeEffect.tapImage;
         QRectF effectSourceRect = useBreakShape ? state.judgeEffect.tapBreakSourceRect : state.judgeEffect.tapSourceRect;
+        if (state.render.judgeEffectStyle == PreviewJudgeEffectStyle::Starry
+            && useBreakShape
+            && !state.judgeEffect.tapBreakDxImage.isNull()) {
+            effectImage = &state.judgeEffect.tapBreakDxImage;
+            effectSourceRect = state.judgeEffect.tapBreakDxSourceRect;
+        }
         if (effectImage == nullptr || effectImage->isNull()) {
             effectImage = useBreakShape ? &state.judgeEffect.tapImage : &state.judgeEffect.tapBreakImage;
             effectSourceRect = useBreakShape ? state.judgeEffect.tapSourceRect : state.judgeEffect.tapBreakSourceRect;
@@ -664,8 +851,74 @@ PreviewJudgeEffectLayerState buildPreviewJudgeEffectLayerState(
         const qreal rootScale = sampleScalarCurve(kJudgeEffectRootScaleKeys, motionClipTime);
         const qreal laneFacingAngle = trigger.facingAngle;
         const qreal spriteAngleOffset =
-            useBreakShape ? kJudgeEffectBreakTextureAngleOffsetDegrees : kJudgeEffectTapTextureAngleOffsetDegrees;
+            (state.render.judgeEffectStyle == PreviewJudgeEffectStyle::Starry && useBreakShape && effectImage == &state.judgeEffect.tapBreakDxImage)
+                ? kJudgeEffectTapTextureAngleOffsetDegrees
+                : (useBreakShape ? kJudgeEffectBreakTextureAngleOffsetDegrees : kJudgeEffectTapTextureAngleOffsetDegrees);
         const QPointF effectCenter = mapLogicalPointToRect(trigger.logicalCenter, playfieldRect);
+        if (state.render.judgeEffectStyle == PreviewJudgeEffectStyle::Starry && !useBreakShape) {
+            const qreal touchClipTime = qBound<qreal>(
+                0.0,
+                (motionClipTime / kJudgeEffectDurationSeconds)
+                    * static_cast<qreal>(miacode::preview_gameplay::kJudgeEffectTouchDurationSeconds),
+                static_cast<qreal>(miacode::preview_gameplay::kJudgeEffectTouchDurationSeconds)
+            );
+            const qreal touchPartAlpha = alpha;
+            const qreal innerRadiusScale = sampleScalarCurve(kJudgeEffectTouchInnerParentScaleKeys, touchClipTime);
+            const qreal outerRadiusScale = sampleScalarCurve(kJudgeEffectTouchOuterRadiusScaleKeys, touchClipTime);
+            const qreal outerSpriteScale = sampleScalarCurve(kJudgeEffectTouchOuterSpriteScaleKeys, touchClipTime);
+            const qreal prefabUnitPixels = qMax<qreal>(
+                kJudgeEffectMinBasePixels,
+                effectBasePixels * rootScale * kJudgeEffectStarryTapBurstScale
+            );
+            const QImage* part01Image = state.judgeEffect.touchPart01Image.isNull()
+                ? nullptr
+                : &state.judgeEffect.touchPart01Image;
+            const QImage* part02Image = state.judgeEffect.touchPart02DxImage.isNull()
+                ? &touchJudgeFivePointStarImage()
+                : &state.judgeEffect.touchPart02DxImage;
+            const qreal outerPieceWidthPixels =
+                kJudgeEffectTouchPartSpriteWidthUnits
+                * kJudgeEffectTouchOuterScaleBase
+                * outerSpriteScale
+                * prefabUnitPixels
+                * kJudgeEffectStarryTapSpriteScale;
+            const qreal innerPieceWidthPixels = outerPieceWidthPixels * kJudgeEffectTouchInnerToOuterSpriteScale;
+            const auto appendSparkleRing = [&](qreal radiusUnits,
+                                               qreal radiusScale,
+                                               qreal pieceWidthPixels,
+                                               qreal ringAngleOffsetDegrees) {
+                for (int pointIndex = 0; pointIndex < kJudgeEffectTouchSparklePointCount; ++pointIndex) {
+                    const bool solidStar = (pointIndex % 2) == 0;
+                    const qreal angleDegrees =
+                        laneFacingAngle
+                        + ringAngleOffsetDegrees
+                        + static_cast<qreal>(pointIndex) * kJudgeEffectTouchSparklePointAngleStepDegrees;
+                    const qreal radians = qDegreesToRadians(angleDegrees);
+                    const QPointF offset(
+                        qCos(radians) * radiusUnits * prefabUnitPixels * radiusScale * kJudgeEffectStarryTapRadiusScale,
+                        qSin(radians) * radiusUnits * prefabUnitPixels * radiusScale * kJudgeEffectStarryTapRadiusScale
+                    );
+                    const QImage* image = solidStar ? part02Image : part01Image;
+                    const qreal width = pieceWidthPixels * (solidStar ? kJudgeEffectTouchSolidSpriteScale : 1.0);
+                    const qreal aspect = image != nullptr && image->width() > 0
+                        ? static_cast<qreal>(image->height()) / static_cast<qreal>(image->width())
+                        : 1.0;
+                    appendSprite(
+                        image,
+                        QRectF(),
+                        effectCenter + offset,
+                        width,
+                        width * aspect,
+                        solidStar ? angleDegrees : angleDegrees + kJudgeEffectTouchTextureOuterDiagonalAngleDegrees,
+                        touchPartAlpha
+                    );
+                }
+            };
+            appendSparkleRing(kJudgeEffectTouchInnerRingRadiusUnits, innerRadiusScale, innerPieceWidthPixels, 45.0);
+            appendSparkleRing(kJudgeEffectTouchOuterRingRadiusUnits, outerRadiusScale, outerPieceWidthPixels, 0.0);
+            return;
+        }
+
         const int rootSize = qMax(1, qRound(effectBasePixels * rootScale));
         drawJudgeEffectShapeWithEdgeGlow(effectImage, effectSourceRect, effectCenter, rootSize, laneFacingAngle + spriteAngleOffset, alpha);
 

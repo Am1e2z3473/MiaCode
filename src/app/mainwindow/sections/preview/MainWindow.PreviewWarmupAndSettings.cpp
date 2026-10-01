@@ -15,12 +15,14 @@
 #include "common/DebugLog.h"
 #include "common/DebugOptions.h"
 #include "common/PreviewSfxAssets.h"
+#include "common/ProjectPreferences.h"
 #include "common/AssetPaths.h"
 #include "preview/runtime/PreviewRuntime.h"
 #include "preview/runtime/PreviewStageMediaHost.h"
 #include "core/scene/PreviewProgressStatsCache.h"
 #include "core/chart/transform/ChartBatchTransform.h"
 #include "core/chart/transform/ChartNormalization.h"
+#include "timeline/quick/TimelineQuickStateBridge.h"
 #include "tools/latency/LatencySandboxController.h"
 #include "tools/muri/MuriAnalyzer.h"
 #include "tools/muri/MuriPanelEntries.h"
@@ -33,6 +35,10 @@
 using namespace miacode::mainwindow::shared;
 
 namespace {
+
+// Project-preferences key holding the per-chart preview mixer
+// (<chartDir>/.miacode/preferences.json).
+constexpr auto kProjectAudioPreferencesKey = "preview_audio";
 
 struct PreviewMediaWarmupResult {
     quint64 generation = 0;
@@ -97,12 +103,25 @@ void warmupFileIntoOsCache(const QString& path, qint64 maxBytes = -1)
 
 QString standardPreviewSkinDirectoryName()
 {
-    return QStringLiteral("skinSTD");
+    return QStringLiteral("skinSD");
 }
 
 QString dxPreviewSkinDirectoryName()
 {
     return QStringLiteral("skinDX");
+}
+
+QString legacyStandardPreviewSkinDirectoryName()
+{
+    return QStringLiteral("skinSTD");
+}
+
+QString normalizePreviewSkinDirectoryName(QString name)
+{
+    name = name.trimmed();
+    return name.compare(legacyStandardPreviewSkinDirectoryName(), Qt::CaseInsensitive) == 0
+        ? standardPreviewSkinDirectoryName()
+        : name;
 }
 
 bool hasCorePreviewSkinAssets(const QString& directory)
@@ -120,20 +139,43 @@ bool hasCorePreviewSkinAssets(const QString& directory)
 
 void MainWindow::PreviewSection::ensurePreviewSfxRuntimePrepared()
 {
-    if (state_.previewSfxRuntime_ == nullptr || state_.previewSfxRuntimePrepared_) {
+    // A reload already in flight counts as prepared-in-progress. A chart change
+    // invalidates readiness, then its background data warm-up posts the atomic
+    // path+asset load on the worker (see applyPreviewSfxWarmupResult below).
+    // The completion handler in sections/frame/MainWindow.FrameBootstrap.cpp
+    // flips previewSfxRuntimePrepared_. Without the sequence check below, pressing
+    // play (or scrubbing) inside that window re-posted a SECOND full engine +
+    // sample + BGM load, and its newer assetGeneration invalidated the first
+    // reload's completion — so the redundant work also delayed the ready edge it
+    // was racing. The completion handler clears the sequence on failure too, so a
+    // failed reload still gets retried by the next call here.
+    if (state_.previewSfxRuntime_ == nullptr
+        || state_.previewSfxRuntimePrepared_
+        || state_.previewSfxRuntimePreparationSequence_ != 0) {
         return;
     }
     QElapsedTimer initTimer;
     initTimer.start();
-    state_.previewSfxRuntime_->setWarmupResolvedPaths(
-        state_.previewSfxWarmupChartPath_,
-        state_.previewSfxWarmupTrackPath_,
-        state_.previewSfxWarmupSfxDir_
-    );
-    state_.previewSfxRuntime_->reloadAssets(state_.previewAudioSettings_);
-    state_.previewSfxRuntime_->setChartPath(state_.currentFilePath_);
+    const bool hasCurrentWarmupPaths =
+        state_.previewSfxWarmupAppliedGeneration_ == state_.previewWarmupGeneration_
+        && state_.previewSfxWarmupChartPath_ == state_.currentFilePath_;
+    const QString trackPath = hasCurrentWarmupPaths
+        ? state_.previewSfxWarmupTrackPath_
+        : state_.lastTrackPath_;
+    const QString sfxDir = hasCurrentWarmupPaths
+        ? state_.previewSfxWarmupSfxDir_
+        : miacode::preview_sfx::resolveSfxDirectory();
+    const QtPreviewSfxRuntime::AssetSubmission reload =
+        state_.previewSfxRuntime_->reloadAssetsForChartWithWarmupPaths(
+            state_.currentFilePath_, trackPath, sfxDir, state_.previewAudioSettings_);
+    state_.previewSfxRuntimePrepared_ = false;
+    state_.previewSfxRuntimePreparationAssetGeneration_ = reload.post.accepted
+        ? reload.identity.assetGeneration
+        : 0;
+    state_.previewSfxRuntimePreparationSequence_ = reload.post.accepted
+        ? reload.identity.sequence
+        : 0;
     state_.previewSfxRuntime_->setBackgroundTrackPlaybackRate(state_.previewPlaybackRate_);
-    state_.previewSfxRuntimePrepared_ = state_.previewSfxRuntime_->audioEngineInitialized();
     const qint64 elapsedMs = initTimer.elapsed();
     appendStartupTimingStage("mainwindow/preview_sfx_runtime_prepare_on_demand", elapsedMs, elapsedMs);
 }
@@ -302,9 +344,31 @@ void MainWindow::PreviewSection::applyPreviewSfxWarmupResult(
     state_.previewSfxWarmupTrackPath_ = trackPath;
     state_.previewSfxWarmupSfxDir_ = sfxDir;
     appendStartupTimingStage("mainwindow/preview_sfx_data_warmup", workerElapsedMs, workerElapsedMs);
-    if (state_.previewSfxRuntime_ != nullptr) {
-        state_.previewSfxRuntime_->setWarmupResolvedPaths(chartPath, trackPath, sfxDir);
+    if (state_.previewSfxRuntime_ == nullptr
+        || state_.previewSfxRuntimePrepared_
+        || state_.previewSfxRuntimePreparationSequence_ != 0
+        || state_.previewSfxRuntime_->isDeviceCutoffActive()
+        || chartPath != state_.currentFilePath_) {
+        return;
     }
+    QElapsedTimer preloadTimer;
+    preloadTimer.start();
+    const QtPreviewSfxRuntime::AssetSubmission reload =
+        state_.previewSfxRuntime_->reloadAssetsForChartWithWarmupPaths(
+            chartPath, trackPath, sfxDir, state_.previewAudioSettings_);
+    state_.previewSfxRuntimePrepared_ = false;
+    state_.previewSfxRuntimePreparationAssetGeneration_ = reload.post.accepted
+        ? reload.identity.assetGeneration
+        : 0;
+    state_.previewSfxRuntimePreparationSequence_ = reload.post.accepted
+        ? reload.identity.sequence
+        : 0;
+    state_.previewSfxRuntime_->setBackgroundTrackPlaybackRate(state_.previewPlaybackRate_);
+    const qint64 preloadElapsedMs = preloadTimer.elapsed();
+    appendStartupTimingStage(
+        "mainwindow/preview_sfx_runtime_preload_queued",
+        preloadElapsedMs,
+        preloadElapsedMs);
 }
 
 QString MainWindow::PreviewSection::resolveDefaultTrackPath() const
@@ -410,11 +474,50 @@ void MainWindow::PreviewSection::setPauseDisplayAltHoldActive(bool active)
     applyPreviewStageMediaRouteVisualSettings();
 }
 
+void MainWindow::PreviewSection::setTouchPadAuthoringCtrlHoldActive(bool active)
+{
+    if (state_.touchPadAuthoringCtrlHoldActive_ == active) {
+        return;
+    }
+    state_.touchPadAuthoringCtrlHoldActive_ = active;
+    applyEffectivePreviewOutlineVariantToCanvas();
+}
+
 void MainWindow::PreviewSection::applyEffectivePreviewOutlineVariantToCanvas()
 {
     if (state_.previewCanvas_ != nullptr) {
-        state_.previewCanvas_->setOutlineVariant(effectivePreviewOutlineVariant());
-        state_.previewCanvas_->setOutlineImagePath(resolvePreviewCustomOutlinePath());
+        auto* editor = qobject_cast<QTextEdit*>(ui_.editorWidget_);
+        const bool editableAuthoringContext =
+            owner_.hasActiveDifficulty()
+            && ui_.editorStack_ != nullptr
+            && ui_.editorStack_->currentWidget() == ui_.chartPage_
+            && editor != nullptr
+            && !editor->isReadOnly()
+            && !state_.exportPreviewActive_
+            && QApplication::activeModalWidget() == nullptr
+            && QApplication::activePopupWidget() == nullptr;
+        if (!editableAuthoringContext) {
+            state_.touchPadAuthoringCtrlHoldActive_ = false;
+        }
+        const bool forceJudgeAreaWhenPaused =
+            state_.previewForceLabeledJudgeLineWhenPaused_ != state_.pauseDisplayAltHoldActive_;
+        const bool pausedJudgeAreaView =
+            forceJudgeAreaWhenPaused
+            && !state_.qtPreviewPlaying_
+            && !state_.exportPreviewActive_;
+        const QString customOutlinePath = effectivePreviewCustomOutlinePath();
+        const auto outlineImageMode =
+            pausedJudgeAreaView && !customOutlinePath.isEmpty()
+            ? miacode::preview::runtime::PreviewOutlineImageMode::PausedJudgeAreaComposite
+            : miacode::preview::runtime::PreviewOutlineImageMode::Direct;
+        state_.previewCanvas_->setOutlineSelection(
+            effectivePreviewOutlineVariant(),
+            customOutlinePath,
+            outlineImageMode);
+        state_.previewCanvas_->setTouchPadAuthoringEnabled(
+            state_.touchPadAuthoringCtrlHoldActive_
+            && state_.previewTouchPadAuthoringShortcutEnabled_
+            && editableAuthoringContext);
     }
 }
 
@@ -440,6 +543,11 @@ QString MainWindow::PreviewSection::resolvePreviewCustomOutlineDir() const
 QString MainWindow::PreviewSection::resolvePreviewCustomOutlinePath() const
 {
     return miacode::assets::customOutlinePathForFileName(state_.previewCustomOutlineFileName_);
+}
+
+QString MainWindow::PreviewSection::effectivePreviewCustomOutlinePath() const
+{
+    return resolvePreviewCustomOutlinePath();
 }
 
 QStringList MainWindow::PreviewSection::availablePreviewCustomOutlineFileNames() const
@@ -481,9 +589,10 @@ MainWindow::PreviewSkinVariant MainWindow::PreviewSection::previewSkinVariantFro
 
 QString MainWindow::PreviewSection::previewSkinVariantStorageValue() const
 {
-    return state_.previewSkinDirectoryName_.trimmed().isEmpty()
+    const QString normalized = normalizePreviewSkinDirectoryName(state_.previewSkinDirectoryName_);
+    return normalized.isEmpty()
         ? standardPreviewSkinDirectoryName()
-        : state_.previewSkinDirectoryName_.trimmed();
+        : normalized;
 }
 
 QString MainWindow::PreviewSection::resolvePreviewSkinRootDir() const
@@ -529,13 +638,14 @@ QStringList MainWindow::PreviewSection::availablePreviewSkinDirectoryNames() con
 
 QString MainWindow::PreviewSection::previewSkinDisplayName(const QString& directoryName) const
 {
-    if (directoryName.compare(standardPreviewSkinDirectoryName(), Qt::CaseInsensitive) == 0) {
-        return uiText("dialog.render_settings.video.skin.standard", "Standard");
+    const QString normalized = normalizePreviewSkinDirectoryName(directoryName);
+    if (normalized.compare(standardPreviewSkinDirectoryName(), Qt::CaseInsensitive) == 0) {
+        return UiText::text(QStringLiteral("dialog.render_settings.video.skin.standard"));
     }
-    if (directoryName.compare(dxPreviewSkinDirectoryName(), Qt::CaseInsensitive) == 0) {
-        return uiText("dialog.render_settings.video.skin.dx", "DX");
+    if (normalized.compare(dxPreviewSkinDirectoryName(), Qt::CaseInsensitive) == 0) {
+        return UiText::text(QStringLiteral("dialog.render_settings.video.skin.dx"));
     }
-    return directoryName;
+    return normalized;
 }
 
 QString MainWindow::PreviewSection::resolvePreviewSkinDir() const
@@ -545,9 +655,10 @@ QString MainWindow::PreviewSection::resolvePreviewSkinDir() const
         return QString();
     }
 
-    const QString selected = state_.previewSkinDirectoryName_.trimmed().isEmpty()
+    const QString normalizedSelected = normalizePreviewSkinDirectoryName(state_.previewSkinDirectoryName_);
+    const QString selected = normalizedSelected.isEmpty()
         ? standardPreviewSkinDirectoryName()
-        : state_.previewSkinDirectoryName_.trimmed();
+        : normalizedSelected;
     const QString selectedDir = QDir(root).filePath(selected);
     if (hasCorePreviewSkinAssets(selectedDir)) {
         return QDir::cleanPath(selectedDir);
@@ -598,6 +709,69 @@ void MainWindow::PreviewSection::applyPreviewAudioSettingsToRuntime()
         ? makePreviewLatencyAuditionLevels(state_.previewAudioSettings_, sandbox->sfxVolumePercent())
         : state_.previewAudioSettings_;
     state_.previewSfxRuntime_->applyLevels(levels);
+}
+
+void MainWindow::PreviewSection::loadProjectAudioPreferences()
+{
+    // The mixer is PROJECT-scoped: every chart remembers the volumes and mutes
+    // it was last edited with, in <chartDir>/.miacode/preferences.json. A
+    // project that has never stored one — a brand-new chart, or one authored
+    // before the mixer became project-scoped — starts from the app-level
+    // 本地预设 (softwarePreviewAudioSettings_). Seeding is the preset's only
+    // role; it is never written back to from here.
+    const QJsonObject projectPreferences =
+        miacode::project_preferences::load(state_.currentFilePath_);
+    const QJsonValue storedAudio =
+        projectPreferences.value(QLatin1String(kProjectAudioPreferencesKey));
+    const bool projectHasStoredMixer = storedAudio.isObject();
+    // Edits made with no project open are carried into the first project that
+    // has no mixer of its own (typically: tweak the mix on a new chart, then
+    // save it), instead of being thrown away in favor of the preset.
+    const bool adoptSessionMixer =
+        !projectHasStoredMixer && state_.previewAudioSettingsEditedWithoutProject_;
+    PreviewAudioSettings loaded = projectHasStoredMixer
+        ? PreviewAudioSettings::fromJson(storedAudio.toObject())
+        : (adoptSessionMixer ? state_.previewAudioSettings_ : state_.softwarePreviewAudioSettings_);
+    loaded.normalize();
+    // break-slide tail cheer stays an APP-scoped preference (it is a sound-design
+    // choice, not a per-chart mix), so it wins over whatever the project blob
+    // happens to carry in that field.
+    state_.previewAudioSettings_ = previewAudioSettingsWithBreakSlideTailCheerPreference(
+        loaded, state_.breakSlideTailCheerMutedPreference_);
+    state_.previewAudioSettingsEditedWithoutProject_ = false;
+    if (adoptSessionMixer) {
+        saveProjectAudioPreferences();
+    }
+    applyPreviewAudioSettingsToRuntime();
+}
+
+void MainWindow::PreviewSection::saveProjectAudioPreferences() const
+{
+    if (state_.currentFilePath_.isEmpty()) {
+        // No chart open (or never saved) — there is no project file to write
+        // to. The mixer still applies for this session, and is deliberately
+        // NOT promoted to an app-level setting: only 保存为本地预设 does that.
+        // Flag it so the next project bind adopts these edits (see
+        // loadProjectAudioPreferences).
+        state_.previewAudioSettingsEditedWithoutProject_ = true;
+        return;
+    }
+    PreviewAudioSettings stored = previewAudioSettingsWithBreakSlideTailCheerPreference(
+        state_.previewAudioSettings_, state_.breakSlideTailCheerMutedPreference_);
+    stored.normalize();
+    QJsonObject projectPreferences = miacode::project_preferences::load(state_.currentFilePath_);
+    projectPreferences.insert(QLatin1String(kProjectAudioPreferencesKey), stored.toJson());
+    miacode::project_preferences::save(state_.currentFilePath_, projectPreferences);
+}
+
+void MainWindow::loadProjectAudioPreferences()
+{
+    previewSection_->loadProjectAudioPreferences();
+}
+
+void MainWindow::saveProjectAudioPreferences() const
+{
+    previewSection_->saveProjectAudioPreferences();
 }
 
 void MainWindow::ensurePreviewSfxRuntimePrepared()
@@ -696,6 +870,11 @@ void MainWindow::setPauseDisplayAltHoldActive(bool active)
     previewSection_->setPauseDisplayAltHoldActive(active);
 }
 
+void MainWindow::setTouchPadAuthoringCtrlHoldActive(bool active)
+{
+    previewSection_->setTouchPadAuthoringCtrlHoldActive(active);
+}
+
 void MainWindow::applyPreviewOutlineVariant(
     PreviewOutlineVariant variant,
     bool useAutoSelection,
@@ -752,6 +931,17 @@ QString MainWindow::resolvePreviewSkinDir() const
 QString MainWindow::resolvePreviewSkinRootDir() const
 {
     return previewSection_->resolvePreviewSkinRootDir();
+}
+
+void MainWindow::applyPreviewSkinDirectoryToSurfaces()
+{
+    const QString skinDir = resolvePreviewSkinDir();
+    if (previewCanvas_ != nullptr) {
+        previewCanvas_->setSkinDirectory(skinDir);
+    }
+    if (timelineQuickStateBridge_ != nullptr) {
+        timelineQuickStateBridge_->setSkinDirectory(skinDir);
+    }
 }
 
 void MainWindow::applyPreviewAudioSettingsToRuntime()

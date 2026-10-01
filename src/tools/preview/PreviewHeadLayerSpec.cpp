@@ -3,12 +3,17 @@
 #include <QRectF>
 #include <QTextStream>
 
+#include "common/PreviewGameplayConfig.h"
 #include "core/scene/PreviewActiveMarkerView.h"
 #include "core/scene/PreviewHeadLayerState.h"
+#include "core/scene/PreviewJudgeEffectLayerState.h"
+#include "core/scene/PreviewJudgeOverlayShared.h"
 #include "core/scene/PreviewOpacityCurves.h"
 #include "core/scene/PreviewPreparedSceneCache.h"
 #include "core/scene/PreviewSceneConstants.h"
 #include "core/scene/PreviewSceneMath.h"
+#include "core/scene/PreviewSkinSelectors.h"
+#include "core/scene/PreviewTouchJudgeLayerState.h"
 #include "core/chart/parser/SimaiNativeParser.h"
 
 namespace {
@@ -61,12 +66,11 @@ qreal totalSlideTraceDurationSeconds(const TimelineNoteMarker& marker)
 
 qreal slideHeadRotateSpeedDegreesPerSecond(const TimelineNoteMarker& marker)
 {
-    const qreal totalLen = static_cast<qreal>(marker.slideNativeTrackLength);
     const qreal totalDuration = totalSlideTraceDurationSeconds(marker);
-    if (totalLen <= 0.0 || totalDuration <= 0.0) {
-        return 0.0;
-    }
-    return qMax<qreal>(-4.500 * totalLen / totalDuration, -1080.0);
+    return -static_cast<qreal>(
+        miacode::preview_gameplay::previewSlideHeadRotationSpeedDegreesPerSecond(
+            marker.slideNativeTrackLength,
+            totalDuration));
 }
 
 qreal slideHeadFallRotationDegrees(
@@ -218,6 +222,70 @@ bool verifySameHeadBranchesCollapseToFastestRotation(QTextStream& err)
         return false;
     }
 
+    return true;
+}
+
+bool verifyCalibratedSlideHeadRotation(QTextStream& err)
+{
+    struct RotationCase {
+        int slideImageCount;
+        int expectedRoundedFrames;
+    };
+    const RotationCase cases[] = {
+        {18, 16},
+        {23, 14},
+        {30, 12},
+        {39, 10},
+    };
+
+    for (const RotationCase& testCase : cases) {
+        const double nativeTrackLength = static_cast<double>(testCase.slideImageCount + 1);
+        const double speed =
+            miacode::preview_gameplay::previewSlideHeadRotationSpeedDegreesPerSecond(
+                nativeTrackLength,
+                0.5);
+        const int roundedFrames = qRound(
+            miacode::preview_gameplay::kSlideHeadRotationReferenceDegrees
+            * miacode::preview_gameplay::kPreviewTimingFramesPerSecond
+            / speed);
+        if (!require(
+                roundedFrames == testCase.expectedRoundedFrames,
+                QStringLiteral("%1 slide images rotate 72 degrees in %2 rounded frames, got %3")
+                    .arg(testCase.slideImageCount)
+                    .arg(testCase.expectedRoundedFrames)
+                    .arg(roundedFrames),
+                err)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+bool verifyCalibratedTapTiming(QTextStream& err)
+{
+    struct TimingCase {
+        qreal flowSpeed;
+        qreal expectedLifecycleFrames;
+    };
+    const TimingCase cases[] = {
+        {7.5, 66.0},
+        {8.0, 62.0},
+    };
+
+    for (const TimingCase& testCase : cases) {
+        const PreviewTapTiming timing =
+            miacode::preview::scene::previewTapTimingForFlowSpeed(testCase.flowSpeed);
+        const qreal lifecycleFrames =
+            timing.lifecycleDurationSeconds
+            * miacode::preview_gameplay::kPreviewTimingFramesPerSecond;
+        if (!requireNear(
+                lifecycleFrames,
+                testCase.expectedLifecycleFrames,
+                QStringLiteral("tap speed %1 lifecycle frames").arg(testCase.flowSpeed),
+                err)) {
+            return false;
+        }
+    }
     return true;
 }
 
@@ -607,6 +675,183 @@ bool verifyNegativeHsReverseFlow(QTextStream& err)
     return true;
 }
 
+bool verifyMineSkinCanFallBackToNormalArt(QTextStream& err)
+{
+    miacode::preview::scene::PreviewSkinAssets skin;
+    skin.tapImage = solidImage(64, 64);
+    skin.tapMineImage = solidImage(65, 65);
+    skin.slideTrackImage = solidImage(32, 32);
+    skin.slideTrackMineImage = solidImage(33, 33);
+    skin.noteGuideNormalImage = solidImage(48, 48);
+    skin.noteGuideMineImage = solidImage(49, 49);
+
+    TimelineNoteMarker tap;
+    tap.type = QStringLiteral("tap");
+    tap.isMine = true;
+    if (!require(
+            miacode::preview::scene::selectTapImage(skin, tap, true) == &skin.tapMineImage,
+            QStringLiteral("enabled mine skin selects dedicated tap art"),
+            err)
+        || !require(
+            miacode::preview::scene::selectTapImage(skin, tap, false) == &skin.tapImage,
+            QStringLiteral("disabled mine skin selects normal tap art"),
+            err)
+        || !require(
+            miacode::preview::scene::selectTapNoteGuideImage(skin, tap, false) == &skin.noteGuideNormalImage,
+            QStringLiteral("disabled mine skin selects normal approach guide"),
+            err)) {
+        return false;
+    }
+
+    TimelineNoteMarker slide;
+    slide.type = QStringLiteral("slide");
+    slide.trackMine = true;
+    return require(
+               miacode::preview::scene::selectSlideTrackImage(skin, slide, true) == &skin.slideTrackMineImage,
+               QStringLiteral("enabled mine skin selects dedicated slide-track art"),
+               err)
+        && require(
+               miacode::preview::scene::selectSlideTrackImage(skin, slide, false) == &skin.slideTrackImage,
+               QStringLiteral("disabled mine skin selects normal slide-track art"),
+               err);
+}
+
+bool verifyNormalMineModeRestoresExOverlay(QTextStream& err)
+{
+    const auto verifyMaterial = [&](bool starMaterial, QTextStream& stream) {
+        PreviewFrameState state;
+        state.playheadSeconds = 0.5;
+        state.render.useMineSkin = false;
+        state.skin.tapImage = solidImage(64, 64);
+        state.skin.tapMineImage = solidImage(65, 65);
+        state.skin.tapExImage = solidImage(64, 64);
+        state.skin.starImage = solidImage(70, 70);
+        state.skin.starMineImage = solidImage(71, 71);
+        state.skin.starExImage = solidImage(70, 70);
+
+        TimelineNoteMarker marker;
+        marker.type = QStringLiteral("tap");
+        marker.lane = 3;
+        marker.second = 1.0;
+        marker.isMine = true;
+        marker.isEx = true;
+        marker.tapUsesStarMaterial = starMaterial;
+        state.noteMarkers.append(marker);
+
+        const PreviewHeadLayerState layer = buildFallbackHeadLayerState(state);
+        const QImage* normalBase = starMaterial ? &state.skin.starImage : &state.skin.tapImage;
+        const QImage* mineBase = starMaterial ? &state.skin.starMineImage : &state.skin.tapMineImage;
+        return require(layer.sprites.size() == 1,
+                       starMaterial ? QStringLiteral("normal-mode mine EX star renders")
+                                    : QStringLiteral("normal-mode mine EX tap renders"),
+                       stream)
+            && require(layer.sprites.constFirst().image != normalBase
+                           && layer.sprites.constFirst().image != mineBase,
+                       starMaterial ? QStringLiteral("normal-mode mine star keeps EX overlay")
+                                    : QStringLiteral("normal-mode mine tap keeps EX overlay"),
+                       stream);
+    };
+
+    return verifyMaterial(false, err) && verifyMaterial(true, err);
+}
+
+bool verifyVerticalStraightSlideCpUsesMirroredSprite(QTextStream& err)
+{
+    const SimaiNativeParseResult parsed = SimaiNativeParser::parseForTimeline(
+        QStringLiteral("(120){4}8-5[4:1],4-1[4:1],\nE")
+    );
+    if (!require(parsed.ok, QStringLiteral("vertical straight-slide CP chart parses"), err)) {
+        return false;
+    }
+
+    int checkedSlides = 0;
+    for (const TimelineNoteMarker& marker : parsed.noteMarkers) {
+        if (marker.type != QLatin1String("slide")) {
+            continue;
+        }
+        miacode::preview::scene::PreviewJudgeOverlayPlacement placement;
+        bool useRightImage = true;
+        if (!require(
+                miacode::preview::scene::buildJudgeOverlayStraightPlacement(
+                    marker,
+                    &placement,
+                    &useRightImage),
+                QStringLiteral("vertical straight-slide CP placement builds"),
+                err)) {
+            return false;
+        }
+        const bool expectedRightImage = marker.lane == 4 && marker.endLane == 1;
+        if (!require(
+                useRightImage == expectedRightImage,
+                QStringLiteral("%1-%2 CP selects the expected mirrored sprite")
+                    .arg(marker.lane)
+                    .arg(marker.endLane),
+                err)) {
+            return false;
+        }
+        ++checkedSlides;
+    }
+    return require(
+        checkedSlides == 2,
+        QStringLiteral("vertical straight-slide CP test checks both 8-5 and 4-1"),
+        err);
+}
+
+bool verifyJudgeEffectVisibilitySwitch(QTextStream& err)
+{
+    PreviewFrameState state;
+    state.playheadSeconds = 0.1;
+    state.skin.tapImage = solidImage(64, 64);
+    state.judgeEffect.tapImage = solidImage(128, 128);
+
+    TimelineNoteMarker marker;
+    marker.type = QStringLiteral("tap");
+    marker.lane = 1;
+    marker.second = 0.0;
+    state.noteMarkers.append(marker);
+
+    const QRectF playfieldRect(0.0, 0.0, 540.0, 540.0);
+    const auto visible = miacode::preview::scene::buildPreviewJudgeEffectLayerState(
+        state,
+        miacode::preview::scene::PreviewActiveMarkerView(state.noteMarkers),
+        playfieldRect);
+    if (!require(!visible.sprites.isEmpty(), QStringLiteral("enabled judge effects render sprites"), err)) {
+        return false;
+    }
+
+    PreviewFrameState touchState;
+    touchState.playheadSeconds = 0.1;
+    touchState.skin.touchPointImage = solidImage(64, 64);
+    TimelineNoteMarker touchMarker;
+    touchMarker.type = QStringLiteral("touch");
+    touchMarker.second = 0.0;
+    touchMarker.touchPoint = QPointF(270.0, 180.0);
+    touchState.noteMarkers.append(touchMarker);
+    const auto touchVisible = miacode::preview::scene::buildPreviewTouchJudgeLayerState(
+        touchState,
+        miacode::preview::scene::PreviewActiveMarkerView(touchState.noteMarkers),
+        playfieldRect);
+    if (!require(!touchVisible.sprites.isEmpty(), QStringLiteral("enabled touch judge effects render sparkle sprites"), err)) {
+        return false;
+    }
+
+    state.render.showJudgeEffects = false;
+    const auto hidden = miacode::preview::scene::buildPreviewJudgeEffectLayerState(
+        state,
+        miacode::preview::scene::PreviewActiveMarkerView(state.noteMarkers),
+        playfieldRect);
+    if (!require(hidden.sprites.isEmpty(), QStringLiteral("disabled judge effects render no sprites"), err)) {
+        return false;
+    }
+
+    touchState.render.showJudgeEffects = false;
+    const auto touchHidden = miacode::preview::scene::buildPreviewTouchJudgeLayerState(
+        touchState,
+        miacode::preview::scene::PreviewActiveMarkerView(touchState.noteMarkers),
+        playfieldRect);
+    return require(touchHidden.sprites.isEmpty(), QStringLiteral("disabled touch judge effects render no sparkle sprites"), err);
+}
+
 }  // namespace
 
 int main(int argc, char* argv[])
@@ -616,6 +861,12 @@ int main(int argc, char* argv[])
     QTextStream out(stdout);
 
     if (!verifySameHeadBranchesCollapseToFastestRotation(err)) {
+        return 1;
+    }
+    if (!verifyCalibratedSlideHeadRotation(err)) {
+        return 1;
+    }
+    if (!verifyCalibratedTapTiming(err)) {
         return 1;
     }
     if (!verifyHeadRenderAssetCacheReuseAndInvalidation(err)) {
@@ -634,6 +885,18 @@ int main(int argc, char* argv[])
         return 1;
     }
     if (!verifyNegativeHsReverseFlow(err)) {
+        return 1;
+    }
+    if (!verifyMineSkinCanFallBackToNormalArt(err)) {
+        return 1;
+    }
+    if (!verifyNormalMineModeRestoresExOverlay(err)) {
+        return 1;
+    }
+    if (!verifyVerticalStraightSlideCpUsesMirroredSprite(err)) {
+        return 1;
+    }
+    if (!verifyJudgeEffectVisibilitySwitch(err)) {
         return 1;
     }
 
