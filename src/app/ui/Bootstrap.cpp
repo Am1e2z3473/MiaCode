@@ -1,3 +1,5 @@
+#include "common/LocalizedText.h"
+
 #include "Bootstrap.h"
 
 #include "AppVersion.h"
@@ -89,6 +91,12 @@ bool Bootstrap::start(const QString& startupOpenTarget)
     QQuickWindow::setTextRenderType(QQuickWindow::NativeTextRendering);
 
     applicationServices_ = std::make_unique<miacode::ApplicationServices>();
+    connect(&miacode::LocaleService::instance(), &miacode::LocaleService::languageChanged,
+            this, [this](const QString&) {
+        applicationServices_->uiRequests().retranslate();
+        applicationServices_->jobProgress().retranslate();
+        applicationServices_->setValidationLocale(miacode::uiValidationLocale());
+    });
     // 更新检查在这里组装：ApplicationServices 只链 Core 与 Gui，而偏好存储的
     // 生产实现会把 PreferenceDocument 拖进链接闭包，所以这两个具体实现由
     // Bootstrap 持有，装配体那边只拿到抽象端口。
@@ -101,6 +109,8 @@ bool Bootstrap::start(const QString& startupOpenTarget)
     updateEnvironment.languageToken = PreferenceDocument::resolvedLanguageToken();
     updateService_ = std::make_unique<miacode::update::UpdateService>(
         *updateFetcher_, *updateStateStore_, std::move(updateEnvironment));
+    connect(&miacode::LocaleService::instance(), &miacode::LocaleService::languageChanged,
+            updateService_.get(), &miacode::update::UpdateService::setLanguageToken);
     applicationServices_->setUpdateFetcher(updateFetcher_.get());
     applicationServices_->setUpdateService(updateService_.get());
     backend_ = std::make_unique<Session>(*applicationServices_);
@@ -298,9 +308,9 @@ void Bootstrap::openCoverExportWindow(int difficultyId)
     if (!window->show(rootWindow_, difficultyId)) {
         delete window;
         applicationServices_->uiRequests().postNotice(miacode::NoticeSeverity::Error,
-            qtTrId("cover.export_cover"),
-            qtTrId("cover.cover_export_failed_1")
-                .arg(QStringLiteral("Failed to create the cover export window.")));
+            miacode::localizedText("cover.export_cover"),
+            miacode::localizedText("cover.cover_export_failed_1")
+                .arg(miacode::localizedText("cover.window_creation_failed")));
     }
 }
 

@@ -3,6 +3,7 @@
 #include "app/MainEntrypoints.h"
 #include "app/ui/layout/WorkbenchSettings.h"
 #include "app/ui/chrome/NativeWindowTheme.h"
+#include "app/ui/preferences/LocaleService.h"
 #include "common/DebugLog.h"
 #include "tools/cover_export/CoverCompositeRenderer.h"
 
@@ -50,6 +51,7 @@ CoverExportWindow::~CoverExportWindow()
 bool CoverExportWindow::show(QQuickWindow* owner, int difficultyId)
 {
     engine_ = std::make_unique<QQmlApplicationEngine>();
+    miacode::LocaleService::instance().setQmlEngine(engine_.get());
     engine_->addImportPath(QCoreApplication::applicationDirPath() + QStringLiteral("/qml"));
     miacode::cover_export::registerCoverChartImageProvider(engine_.get(), session_.coverLayout());
     connect(engine_.get(), &QQmlApplicationEngine::warnings, this,

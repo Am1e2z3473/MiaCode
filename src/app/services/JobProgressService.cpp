@@ -14,8 +14,8 @@ bool JobProgressService::chartExport() const
     return taskType_ == TaskType::ChartExport;
 }
 
-quint64 JobProgressService::begin(const QString& title,
-                                  const QString& label,
+quint64 JobProgressService::begin(const LocalizedText& title,
+                                  const LocalizedText& label,
                                   bool cancellable,
                                   TaskType taskType)
 {
@@ -34,13 +34,13 @@ quint64 JobProgressService::begin(const QString& title,
     return token_;
 }
 
-void JobProgressService::report(int percent, const QString& label)
+void JobProgressService::report(int percent, const LocalizedText& label)
 {
     if (!active_) {
         return;
     }
     const int clamped = std::clamp(percent, 0, 100);
-    if (clamped == percent_ && label == label_ && !indeterminate_) {
+    if (clamped == percent_ && label.text() == label_.text() && !indeterminate_) {
         return;
     }
     indeterminate_ = false;
@@ -49,17 +49,22 @@ void JobProgressService::report(int percent, const QString& label)
     emit changed();
 }
 
-void JobProgressService::reportIndeterminate(const QString& label)
+void JobProgressService::reportIndeterminate(const LocalizedText& label)
 {
     if (!active_) {
         return;
     }
-    if (indeterminate_ && label == label_) {
+    if (indeterminate_ && label.text() == label_.text()) {
         return;
     }
     indeterminate_ = true;
     label_ = label;
     emit changed();
+}
+
+void JobProgressService::retranslate()
+{
+    if (active_) emit changed();
 }
 
 void JobProgressService::end()

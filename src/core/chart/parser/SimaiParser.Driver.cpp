@@ -1407,6 +1407,15 @@ bool SimaiParser::allowNegativeHsEnabled()
     return g_allowNegativeHs;
 }
 
+void SimaiParser::localizeValidationReport(SimaiValidationReport& report, SimaiValidationLocale locale)
+{
+    for (auto& issue : report.issues) {
+        issue.displayMessage = QStringLiteral("%1 %2").arg(
+            validationSeverityPrefix(issue.severity, locale),
+            localizeValidationDetail(issue.rawMessage, locale));
+    }
+}
+
 SimaiValidationReport SimaiParser::buildValidationReport(
     const QString& text,
     SimaiValidationLocale locale,
@@ -1433,12 +1442,11 @@ SimaiValidationReport SimaiParser::buildValidationReport(
         issue.endCol = 1;
         issue.severity = SimaiValidationSeverity::Error;
         issue.rawMessage = ValidationMessage::kChartEmpty();
-        issue.displayMessage = QStringLiteral("%1 %2")
-            .arg(validationSeverityPrefix(issue.severity, locale), localizeValidationDetail(issue.rawMessage, locale));
         report.issues.append(issue);
         report.errorCount = 1;
         report.strictErrorCount = 1;
         report.ok = false;
+        localizeValidationReport(report, locale);
         return report;
     }
 
@@ -1462,8 +1470,6 @@ SimaiValidationReport SimaiParser::buildValidationReport(
         issue.endCol = error.endCol;
         issue.severity = SimaiValidationSeverity::Error;
         issue.rawMessage = error.message;
-        issue.displayMessage = QStringLiteral("%1 %2")
-            .arg(validationSeverityPrefix(issue.severity, locale), localizeValidationDetail(error.message, locale));
         report.issues.append(issue);
     }
 
@@ -1476,11 +1482,10 @@ SimaiValidationReport SimaiParser::buildValidationReport(
         issue.endCol = warning.endCol;
         issue.severity = SimaiValidationSeverity::Warning;
         issue.rawMessage = warning.message;
-        issue.displayMessage = QStringLiteral("%1 %2")
-            .arg(validationSeverityPrefix(issue.severity, locale), localizeValidationDetail(warning.message, locale));
         report.issues.append(issue);
     }
 
     report.ok = (report.errorCount == 0);
+    localizeValidationReport(report, locale);
     return report;
 }

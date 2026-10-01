@@ -1,6 +1,7 @@
 #pragma once
 
 #include "app/ui/preferences/AppBackgroundSettings.h"
+#include "common/LocalizedText.h"
 
 #include <QJsonObject>
 #include <QObject>
@@ -117,10 +118,10 @@ private:
     using Settings = miacode::ui::AppBackgroundSettings;
 
     bool commit(const Settings& candidate);
-    void updateImageProjection(const QString& error = {});
+    void updateImageProjection(const miacode::LocalizedText& error = {});
     static bool isReadableFile(const QString& path);
     static QString cleanImagePath(const QString& path);
-    static QString imageError();
+    static miacode::LocalizedText imageError();
     static QVariantMap option(const QString& value, const QString& label);
 
     LoadPreferences loadPreferences_;
@@ -129,7 +130,7 @@ private:
     Settings settings_;
     QString sourceUrl_;
     bool imageReadable_ = false;
-    QString errorMessage_;
+    miacode::LocalizedText errorMessage_;
 };
 
 } // namespace miacode::ui

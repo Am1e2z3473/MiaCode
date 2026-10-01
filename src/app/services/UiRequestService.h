@@ -1,5 +1,7 @@
 #pragma once
 
+#include "common/LocalizedText.h"
+
 #include <QHash>
 #include <QObject>
 #include <QString>
@@ -19,14 +21,14 @@ enum class NoticeSeverity {
 };
 
 struct FileRequest {
-    QString title;
+    LocalizedText title;
     // Where the picker opens.  Folder pickers take a directory.  File pickers
     // take either a directory, opened with nothing selected, or a file, whose
     // directory is opened with the file preselected — an existing one for an
     // open dialog, possibly a new one (or a bare name) for a save dialog.
     // Empty is allowed and means "let the platform choose".
     QString startPath;
-    QStringList nameFilters;
+    LocalizedTextList nameFilters;
     bool saveMode = false;
     bool selectFolder = false;
 };
@@ -59,16 +61,16 @@ public:
 
     // Fire-and-forget message. Nothing is waiting on the viewer's dismissal.
     void postNotice(NoticeSeverity severity,
-                    const QString& title,
-                    const QString& text,
-                    const QString& details = QString());
+                    const LocalizedText& title,
+                    const LocalizedText& text,
+                    const LocalizedText& details = QString());
 
     // A yes/no question. The continuation runs once; declining and dismissing
     // are the same answer, so a caller can never mistake "closed the dialog"
     // for consent.
-    QString requestConfirmation(const QString& title,
-                                const QString& text,
-                                const QString& acceptLabel,
+    QString requestConfirmation(const LocalizedText& title,
+                                const LocalizedText& text,
+                                const LocalizedText& acceptLabel,
                                 NoticeCallback onResolved);
 
     // A question with more than two answers — 保存 / 放弃 / 取消 being the one
@@ -77,8 +79,8 @@ public:
     // style them; `dismissChoiceId` is what closing the dialog resolves to, so
     // Escape and the window's close button can never mean anything the caller
     // did not list.
-    QString requestChoice(const QString& title,
-                          const QString& text,
+    QString requestChoice(const LocalizedText& title,
+                          const LocalizedText& text,
                           const QVariantList& choices,
                           const QString& dismissChoiceId,
                           ChoiceCallback onResolved);
@@ -86,11 +88,13 @@ public:
     // Message carrying one extra action button beside the dismissal. The
     // continuation runs once, with true only when that action was chosen.
     QString requestNoticeAction(NoticeSeverity severity,
-                                const QString& title,
-                                const QString& text,
-                                const QString& details,
-                                const QString& actionLabel,
+                                const LocalizedText& title,
+                                const LocalizedText& text,
+                                const LocalizedText& details,
+                                const LocalizedText& actionLabel,
                                 NoticeCallback onResolved);
+
+    void retranslate();
 
     int pendingFileRequestCount() const { return static_cast<int>(pendingFileRequests_.size()); }
     int pendingNoticeCount() const { return static_cast<int>(pendingNotices_.size()); }
@@ -105,6 +109,9 @@ public:
     Q_INVOKABLE void submitChoiceResult(const QString& requestId, const QString& choiceId);
 
 signals:
+    void fileUpdated(const QString& requestId, const QVariantMap& request);
+    void noticeUpdated(const QString& requestId, const QVariantMap& notice);
+    void choiceUpdated(const QString& requestId, const QVariantMap& request);
     void fileRequested(const QString& requestId, const QVariantMap& request);
     void noticeRequested(const QString& requestId, const QVariantMap& notice);
     void choiceRequested(const QString& requestId, const QVariantMap& request);
@@ -112,17 +119,20 @@ signals:
 private:
     void resolve(const QString& requestId, const QString& path);
     QString emitNotice(NoticeSeverity severity,
-                       const QString& title,
-                       const QString& text,
-                       const QString& details,
-                       const QString& actionLabel,
+                       const LocalizedText& title,
+                       const LocalizedText& text,
+                       const LocalizedText& details,
+                       const LocalizedText& actionLabel,
                        const QString& requestId = QString(),
                        bool confirmation = false);
 
+    QHash<QString, QVariantMap> filePresentations_;
+    QHash<QString, QVariantMap> noticePresentations_;
     QHash<QString, FileCallback> pendingFileRequests_;
     QHash<QString, NoticeCallback> pendingNotices_;
     struct PendingChoice {
         ChoiceCallback callback;
+        QVariantMap presentation;
         QStringList offeredIds;
         QString dismissChoiceId;
     };

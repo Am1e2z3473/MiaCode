@@ -30,7 +30,7 @@ Item {
     Text {
         id: nameWidthProbe
         visible: false
-        text: "Touch"
+        text: qsTrId("note_stats.touch")
         font.family: Theme.uiFont
         font.pixelSize: Theme.secondaryFontSize
     }

@@ -3,6 +3,7 @@
 #include "app/services/update/SemanticVersion.h"
 
 #include <QByteArray>
+#include <QJsonObject>
 #include <QString>
 
 namespace miacode::update {
@@ -39,6 +40,8 @@ struct UpdateManifest {
     QString releasePageUrl;
     bool mandatory = false;
     QString notes;
+    QJsonObject notesByLanguage;
+    QString localizedNotes(const QString& languageToken) const;
     PlatformPackage package;
 };
 

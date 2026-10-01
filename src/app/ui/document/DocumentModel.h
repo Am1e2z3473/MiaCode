@@ -30,6 +30,9 @@ namespace miacode::ui {
 class DocumentModel final : public QObject
 {
     Q_OBJECT
+    Q_PROPERTY(QVariantList normalizationGridOptions READ normalizeGridOptions NOTIFY localeLabelsChanged)
+    Q_PROPERTY(QVariantList normalizationSectionOptions READ normalizeSectionOptions NOTIFY localeLabelsChanged)
+    Q_PROPERTY(QVariantList normalizationSyntaxOptions READ normalizeSyntaxOptions NOTIFY localeLabelsChanged)
     Q_PROPERTY(QString chartText READ chartText WRITE setChartText NOTIFY chartTextChanged)
     Q_PROPERTY(QString metadataTitle READ metadataTitle WRITE setMetadataTitle NOTIFY metadataChanged)
     Q_PROPERTY(QString metadataArtist READ metadataArtist WRITE setMetadataArtist NOTIFY metadataChanged)
@@ -234,6 +237,7 @@ public:
     Q_INVOKABLE QVariantList normalizeSyntaxOptions() const;
 
 signals:
+    void localeLabelsChanged();
     void editingFinishedRequested();
     void chartTextChanged();
     void metadataChanged();
@@ -251,7 +255,6 @@ signals:
     void documentStateChanged();
     void documentReplaced();
     void bookmarksChanged();
-    void operationFailed(const QString& title, const QString& message);
 
 private:
     enum class WorkspaceCommitKind {
@@ -283,7 +286,7 @@ private:
     void requestMetadataAudio(std::function<void(const QString&)> onSelected);
     bool saveMetadataImmediately();
     void writeExtractedCover(const QImage& cover, const QString& bgPath,
-                             const QString& existingBgPath, const QString& title);
+                             const QString& existingBgPath, const miacode::LocalizedText& title);
     void applyChartMediaImport(const QString& sourcePath,
                                miacode::ChartMediaService::Kind kind);
     miacode::ShellNotifications* notifications_ = nullptr;

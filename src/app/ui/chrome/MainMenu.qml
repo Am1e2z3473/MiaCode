@@ -65,6 +65,15 @@ Item {
         return root.topMenus()
     }
 
+    function menuTitle(text) {
+        if (!root.nativeMenuMode)
+            return text
+        let title = text.replace(/\(&.\)$/, "")
+        title = title.replace(/&&/g, "\u0000")
+        title = title.replace(/&/g, "")
+        return title.replace(/\u0000/g, "&")
+    }
+
     function closeActiveMenu() {
         if (root._activeMenu && root._activeMenu.visible)
             root._activeMenu.close()
@@ -277,7 +286,7 @@ Item {
 
         AppMenu {
             id: fileMenu
-            title: qsTrId("menu.file")
+            title: root.menuTitle(qsTrId("menu.file"))
             // 新建 / 打开 keep v1's Ctrl+Shift+N / Ctrl+Shift+O rather than the
             // platform standard keys. StandardKey.New and StandardKey.Open are
             // Ctrl+N and Ctrl+O, which the registry already hands to
@@ -396,7 +405,7 @@ Item {
 
         AppMenu {
             id: editMenu
-            title: qsTrId("metadata.edit_e")
+            title: root.menuTitle(qsTrId("metadata.edit_e"))
             AppMenuAction {
                 text: qsTrId("qml.undo")
                 shortcut: StandardKey.Undo
@@ -457,7 +466,7 @@ Item {
 
         AppMenu {
             id: toolsMenu
-            title: qsTrId("menu.tools")
+            title: root.menuTitle(qsTrId("menu.tools"))
             AppMenuAction {
                 text: qsTrId("dialog.unsaved_field_changes.field.metadata")
                 enabled: root.commandsEnabled && root.toolCommandsEnabled
@@ -485,7 +494,7 @@ Item {
         AppMenu {
             id: adjustMenu
             objectName: "adjustMenu"
-            title: qsTrId("menu.transform")
+            title: root.menuTitle(qsTrId("menu.transform"))
 
             // Rows, labels and grouping come from the shared transform table,
             // so this menu cannot drift from the shortcut editor or the
@@ -499,7 +508,7 @@ Item {
                     required property var modelData
                     objectName: "adjustTransform_" + modelData.id
                     action: AppMenuAction {
-                        text: transformItem.modelData.label
+                        text: qsTrId(transformItem.modelData.labelKey)
                         shortcut: root.nativeMenuMode && root.shortcuts.revision >= 0
                             ? root.shortcuts.sequence(transformItem.modelData.id)
                             : ""
@@ -518,7 +527,7 @@ Item {
                     required property var modelData
                     objectName: "adjustTransform_" + modelData.id
                     action: AppMenuAction {
-                        text: transformItem.modelData.label
+                        text: qsTrId(transformItem.modelData.labelKey)
                         shortcut: root.nativeMenuMode && root.shortcuts.revision >= 0
                             ? root.shortcuts.sequence(transformItem.modelData.id)
                             : ""
@@ -537,7 +546,7 @@ Item {
                     required property var modelData
                     objectName: "adjustTransform_" + modelData.id
                     action: AppMenuAction {
-                        text: transformItem.modelData.label
+                        text: qsTrId(transformItem.modelData.labelKey)
                         shortcut: root.nativeMenuMode && root.shortcuts.revision >= 0
                             ? root.shortcuts.sequence(transformItem.modelData.id)
                             : ""
@@ -558,7 +567,7 @@ Item {
             AppMenu {
                 id: adjustMoreMenu
                 objectName: "adjustMoreMenu"
-                title: root.documentSession.chartTransformMoreLabel()
+                title: qsTrId("action.transform.more")
                 Repeater {
                     model: adjustMenu.transformRows.filter(row => row.section === 3)
                     delegate: AppMenuItem {
@@ -566,7 +575,7 @@ Item {
                         required property var modelData
                         objectName: "adjustTransform_" + modelData.id
                         action: AppMenuAction {
-                            text: transformItem.modelData.label
+                            text: qsTrId(transformItem.modelData.labelKey)
                             shortcut: root.nativeMenuMode && root.shortcuts.revision >= 0
                                 ? root.shortcuts.sequence(transformItem.modelData.id)
                                 : ""
@@ -583,7 +592,7 @@ Item {
 
         AppMenu {
             id: previewMenu
-            title: qsTrId("metadata.preview_p")
+            title: root.menuTitle(qsTrId("metadata.preview_p"))
             // The native menu owns these bindings on macOS so Cocoa can render
             // their symbols. Other platforms keep ShortcutBindings as owner.
             AppMenuAction {
@@ -619,7 +628,7 @@ Item {
 
         AppMenu {
             id: extrasMenu
-            title: qsTrId("menu.extras")
+            title: root.menuTitle(qsTrId("menu.extras"))
             AppMenuAction {
                 text: root.pet.visible ? qsTrId("pet.hide") : qsTrId("pet.show")
                 enabled: root.commandsEnabled

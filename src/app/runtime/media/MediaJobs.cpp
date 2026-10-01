@@ -1,3 +1,5 @@
+#include "common/LocalizedText.h"
+
 #include "app/services/UiRequestService.h"
 #include "runtime/media/MediaJobsHost.h"
 #include "runtime/Shared.h"
@@ -127,8 +129,8 @@ void miacode::runtime::MediaJobsHost::reloadPreviewMediaAfterFileOperation(bool 
 }
 
 void miacode::runtime::MediaJobsHost::showMediaOperationCompleteDialog(
-    const QString& title,
-    const QString& summary,
+    const miacode::LocalizedText& title,
+    const miacode::LocalizedText& summary,
     const QString& producedFilePath)
 {
     miacode::UiRequestService* const requests = session_.uiRequestService();
@@ -140,7 +142,7 @@ void miacode::runtime::MediaJobsHost::showMediaOperationCompleteDialog(
         title,
         summary,
         QDir::toNativeSeparators(producedFilePath),
-        qtTrId("dialogs.open_folder"),
+        miacode::localizedText("action.open_folder"),
         [producedFilePath](bool openFolder) {
             if (!openFolder) {
                 return;

@@ -377,13 +377,6 @@ Item {
         onAccepted: root.commands.saveDocumentAs(selectedFile)
     }
 
-    ChoiceDialog {
-        id: fileErrorDialog
-        objectName: "shellFileErrorDialog"
-        choices: [{ id: "ok", label: qsTrId("action.ok"), role: "accept" }]
-        dismissChoiceId: "ok"
-    }
-
     // These actions remain discoverable while their dedicated QML pages and
     // business APIs are pending. Keeping the explanation in the visible root
     // window gives keyboard and pointer users the same immediate feedback.
@@ -405,31 +398,30 @@ Item {
         id: updatePrompt
         objectName: "shellUpdateAvailableDialog"
 
-        function present() {
-            if (!root.updates || !root.updates.updateAvailable)
-                return
-            const detail = root.updates.availableDetail()
-            title = qsTrId("dialog.update.title")
-            message = qsTrId("dialog.update.message").arg(detail.version)
-            let lines = []
+        readonly property var detail: root.updates ? root.updates.availableDetails : ({})
+        title: qsTrId("dialog.update.title")
+        message: qsTrId("dialog.update.message").arg(detail.version || "")
+        details: {
+            const lines = []
             if (detail.releasedAt)
                 lines.push(qsTrId("dialog.update.released").arg(detail.releasedAt))
             if (detail.sizeText)
                 lines.push(qsTrId("dialog.update.size").arg(detail.sizeText))
             if (detail.notes)
                 lines.push(detail.notes)
-            details = lines.join("\n")
-            // On launch the service can restore a remembered version before the
-            // network check completes, so releasePageUrl can still be empty here.
-            // Disable rather than hide the button so the dialog's shape stays
-            // stable and nothing silently no-ops.
-            choices = [
-                { id: "download", label: qsTrId("dialog.update.download"), role: "accept",
-                  enabled: !!detail.releasePageUrl },
-                { id: "later", label: qsTrId("action.later"), role: "reject" },
-                { id: "skip", label: qsTrId("dialog.update.skip"), role: "reject" }
-            ]
-            dismissChoiceId = "later"
+            return lines.join("\n")
+        }
+        choices: [
+            { id: "download", label: qsTrId("dialog.update.download"), role: "accept",
+              enabled: !!detail.releasePageUrl },
+            { id: "later", label: qsTrId("action.later"), role: "reject" },
+            { id: "skip", label: qsTrId("dialog.update.skip"), role: "reject" }
+        ]
+        dismissChoiceId: "later"
+
+        function present() {
+            if (!root.updates || !root.updates.updateAvailable)
+                return
             open()
         }
 
@@ -468,11 +460,6 @@ Item {
                                         root.documentSession.currentDifficultyId)
         }
 
-        function onOperationFailed(title, message) {
-            fileErrorDialog.title = title
-            fileErrorDialog.message = message
-            fileErrorDialog.open()
-        }
     }
 
     Connections {

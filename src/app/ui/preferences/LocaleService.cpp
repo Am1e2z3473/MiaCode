@@ -45,7 +45,8 @@ LocaleService::~LocaleService()
 
 void LocaleService::setQmlEngine(QQmlEngine* engine)
 {
-    engine_ = engine;
+    connect(this, &LocaleService::languageChanged,
+            engine, &QQmlEngine::retranslate, Qt::UniqueConnection);
 }
 
 void LocaleService::applyResolvedLanguage()
@@ -64,7 +65,6 @@ void LocaleService::setLanguageToken(const QString& token)
     if (!loadTranslatorForToken(resolved)) {
         return;
     }
-    retranslateEngine();
     emit languageChanged(resolved);
 }
 
@@ -94,13 +94,6 @@ bool LocaleService::loadTranslatorForToken(const QString& token)
         : (token.startsWith(QStringLiteral("ja")) ? QStringLiteral("ja")
                                                   : QStringLiteral("en"));
     return true;
-}
-
-void LocaleService::retranslateEngine()
-{
-    if (engine_ != nullptr) {
-        engine_->retranslate();
-    }
 }
 
 }  // namespace miacode

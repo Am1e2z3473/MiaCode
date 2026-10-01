@@ -563,7 +563,7 @@ bool miacode::runtime::VideoExportHost::buildVideoExportSnapshot(
 {
     if (snapshot == nullptr) {
         if (errorMessage != nullptr) {
-            *errorMessage = QStringLiteral("export snapshot output is null");
+            *errorMessage = qtTrId("video_export.snapshot_unavailable");
         }
         return false;
     }
@@ -805,7 +805,7 @@ bool miacode::runtime::VideoExportHost::buildVideoExportSnapshotForChartDirector
 
     if (snapshot == nullptr) {
         if (errorMessage != nullptr) {
-            *errorMessage = QStringLiteral("export snapshot output is null");
+            *errorMessage = qtTrId("video_export.snapshot_unavailable");
         }
         return false;
     }
@@ -886,7 +886,7 @@ bool miacode::runtime::VideoExportHost::buildVideoExportSnapshotForChartDirector
 
     if (built.skinDirectory.trimmed().isEmpty()) {
         if (errorMessage != nullptr) {
-            *errorMessage = qtTrId("dialog.batch_export.error.skin_missing");
+            *errorMessage = qtTrId("dialog.video_export.error.skin_missing");
         }
         return false;
     }
@@ -924,16 +924,16 @@ bool miacode::runtime::VideoExportHost::exportPreviewVideoFromCli(
     };
 
     if (request.outputWidth <= 0 || request.outputHeight <= 0 || request.fps <= 0) {
-        return fail(QStringLiteral("output width/height and fps must be positive integers"));
+        return fail(qtTrId("cli.export.size_invalid"));
     }
     if (request.outputWidth < request.outputHeight) {
-        return fail(QStringLiteral("output size currently requires width >= height"));
+        return fail(qtTrId("cli.export.size_aspect"));
     }
 
     const QString chartPath = resolveChartPathFromCliInput(request.chartPathOrDirectory);
     if (chartPath.isEmpty()) {
         return fail(
-            QStringLiteral("cannot resolve chart file from input path"),
+            qtTrId("cli.export.chart_path_invalid"),
             request.chartPathOrDirectory
         );
     }
@@ -941,7 +941,7 @@ bool miacode::runtime::VideoExportHost::exportPreviewVideoFromCli(
     bool usedSystemEncoding = false;
     const QString chartText = readTextFileWithFallbackEncoding(chartPath, &usedSystemEncoding);
     if (chartText.isNull()) {
-        return fail(QStringLiteral("failed to read chart file"), chartPath);
+        return fail(qtTrId("cli.export.chart_read_failed"), chartPath);
     }
 
     session_.setCurrentFilePath(chartPath);
@@ -952,8 +952,8 @@ bool miacode::runtime::VideoExportHost::exportPreviewVideoFromCli(
     const int difficultyId = difficultyIdFromCliToken(request.difficulty);
     if (!SimaiDocument::isDifficultyId(difficultyId)) {
         return fail(
-            QStringLiteral("invalid difficulty token"),
-            QStringLiteral("expected one of: ESY/BAS/ADV/EXP/MAS/REM/UTG or 1..7")
+            qtTrId("cli.export.difficulty_invalid"),
+            qtTrId("cli.export.difficulty_values")
         );
     }
 
@@ -965,14 +965,14 @@ bool miacode::runtime::VideoExportHost::exportPreviewVideoFromCli(
             available.append(SimaiDocument::difficultyShortName(id));
         }
         return fail(
-            QStringLiteral("requested difficulty is missing in chart"),
+            qtTrId("cli.export.difficulty_missing"),
             QStringLiteral("requested=%1 available=%2")
                 .arg(SimaiDocument::difficultyShortName(difficultyId))
                 .arg(available.join(','))
         );
     }
     if (!session_.switchToDifficultyField(difficultyId)) {
-        return fail(QStringLiteral("failed to switch to requested difficulty"));
+        return fail(qtTrId("cli.export.difficulty_switch_failed"));
     }
 
     session_.refreshTimelineMetadata();
@@ -991,12 +991,12 @@ bool miacode::runtime::VideoExportHost::exportPreviewVideoFromCli(
         }
     }
     if (session_.latestTimelineNoteMarkers_.isEmpty()) {
-        return fail(QStringLiteral("no parsed note markers for requested difficulty"));
+        return fail(qtTrId("cli.export.notes_missing"));
     }
 
     const QString previewSkinDir = session_.resolvePreviewSkinDir();
     if (previewSkinDir.trimmed().isEmpty()) {
-        return fail(QStringLiteral("preview skin directory is empty"));
+        return fail(qtTrId("cli.export.skin_directory_empty"));
     }
 
     const QFileInfo chartInfo(session_.currentFilePath_);
@@ -1016,7 +1016,7 @@ bool miacode::runtime::VideoExportHost::exportPreviewVideoFromCli(
     const QString outputDirPath = outputInfo.absolutePath();
     if (!outputDirPath.isEmpty() && !QDir(outputDirPath).exists()) {
         if (!QDir().mkpath(outputDirPath)) {
-            return fail(QStringLiteral("cannot create output directory"), outputDirPath);
+            return fail(qtTrId("cli.export.output_directory_failed"), outputDirPath);
         }
     }
 
@@ -1048,7 +1048,7 @@ bool miacode::runtime::VideoExportHost::exportPreviewVideoFromCli(
     const bool fullRangeExport = exportStartSeconds <= 1e-6;
     if (contentDurationSeconds <= 0.0) {
         return fail(
-            QStringLiteral("content duration is not positive"),
+            qtTrId("cli.export.duration_invalid"),
             QStringLiteral("start=%1 total=%2")
                 .arg(exportStartSeconds, 0, 'f', 3)
                 .arg(unifiedExportEndSecond, 0, 'f', 3)

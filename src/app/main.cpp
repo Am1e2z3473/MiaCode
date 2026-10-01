@@ -603,7 +603,7 @@ int main(int argc, char* argv[])
         QString cliError;
         const int exitCode = runCliVideoExportWorker(app, &cliError);
         if (exitCode != 0 && !cliError.trimmed().isEmpty()) {
-            QTextStream(stderr) << "Worker error: " << cliError << "\n";
+            QTextStream(stderr) << qtTrId("cli.worker_error").arg(cliError) << "\n";
         }
         return exitCode;
     }
@@ -612,7 +612,7 @@ int main(int argc, char* argv[])
         QString cliError;
         const int exitCode = runCliVideoExport(app, &cliError);
         if (exitCode != 0 && !cliError.trimmed().isEmpty()) {
-            QTextStream(stderr) << "CLI argument error: " << cliError << "\n";
+            QTextStream(stderr) << qtTrId("cli.argument_error").arg(cliError) << "\n";
         }
         return exitCode;
     }
@@ -685,7 +685,7 @@ int main(int argc, char* argv[])
 #ifdef Q_OS_WIN
                 miacode::oplog::appendStartupBeaconLine("phase=qml_ui_bootstrap_failed");
 #endif
-                QTextStream(stderr) << "Failed to start QML UI (v2).\n";
+                QTextStream(stderr) << qtTrId("startup.qml_failed") << "\n";
                 return 1;
             }
             logStartupStage("qml_ui_bootstrap_started");

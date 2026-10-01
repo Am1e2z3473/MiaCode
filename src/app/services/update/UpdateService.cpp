@@ -287,12 +287,20 @@ void UpdateService::clearFinding()
     availableVersion_.clear();
 }
 
+void UpdateService::setLanguageToken(const QString& token)
+{
+    if (environment_.languageToken == token) return;
+    environment_.languageToken = token;
+    emit findingChanged();
+    emit settingsChanged();
+}
+
 QVariantMap UpdateService::availableDetail() const
 {
     return QVariantMap{
         {QStringLiteral("version"), finding_.versionText},
         {QStringLiteral("releasedAt"), finding_.releasedAt},
-        {QStringLiteral("notes"), finding_.notes},
+        {QStringLiteral("notes"), finding_.localizedNotes(environment_.languageToken)},
         {QStringLiteral("sizeText"), formatSize(finding_.package.bytes)},
         {QStringLiteral("releasePageUrl"), finding_.releasePageUrl},
         {QStringLiteral("mandatory"), finding_.mandatory},

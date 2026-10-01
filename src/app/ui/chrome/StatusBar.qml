@@ -58,7 +58,7 @@ Rectangle {
         }
 
         StatusText {
-            text: "metadata"
+            text: qsTrId("dialog.unsaved_field_changes.field.metadata")
             visible: root.metadataActive
             Layout.preferredWidth: implicitWidth
         }

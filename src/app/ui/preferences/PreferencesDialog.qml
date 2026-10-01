@@ -5,8 +5,8 @@ import MiaCode.UI
 
 // 偏好设置. Every control writes straight through to the model, which persists
 // on each change — there is no OK/Apply, matching the Widgets dialog it
-// replaces. Language and theme are the exceptions: they need a restart, so the
-// page says so instead of pretending the change already took.
+// replaces. Language and theme changes update their presentation through the
+// corresponding model notifications.
 //
 // 快捷键 is a page here, not a dialog of its own: a modal opened from a modal
 // stacked two scrims over the same settings and put the key capture behind an
@@ -118,15 +118,6 @@ AppDialog {
                 options: [{ value: false, label: qsTrId("qml.right") }, { value: true, label: qsTrId("qml.left") }]
                 currentValue: root.preferencesModel.previewOnLeft
                 onPicked: function(value) { root.preferencesModel.previewOnLeft = value }
-            }
-            Text {
-                objectName: "preferencesRestartHint"
-                Layout.fillWidth: true
-                visible: root.preferencesModel.restartRequired
-                text: qsTrId("qml.theme_changes_take_effect_after_restarting")
-                color: Theme.colors.text.secondary
-                font.family: Theme.uiFont
-                wrapMode: Text.WordWrap
             }
         }
 
@@ -479,6 +470,13 @@ AppDialog {
 
                 Text {
                     id: updateManualResult
+                    property string outcome: ""
+                    text: {
+                        if (outcome === "up-to-date") return qsTrId("dialog.preferences.update.up_to_date")
+                        if (outcome === "no-package") return qsTrId("dialog.preferences.update.no_package")
+                        if (outcome === "" || outcome === "available") return ""
+                        return qsTrId("dialog.preferences.update.failed")
+                    }
                     objectName: "preferencesUpdateManualResultText"
                     Layout.fillWidth: true
                     color: Theme.colors.text.secondary
@@ -491,17 +489,11 @@ AppDialog {
             Connections {
                 target: root.updateService
                 function onManualCheckFinished(outcome, detail) {
+                    updateManualResult.outcome = outcome
                     if (outcome === "available") {
-                        updateManualResult.text = ""
                         root.updateRequested()
                         return
                     }
-                    if (outcome === "up-to-date")
-                        updateManualResult.text = qsTrId("dialog.preferences.update.up_to_date")
-                    else if (outcome === "no-package")
-                        updateManualResult.text = qsTrId("dialog.preferences.update.no_package")
-                    else
-                        updateManualResult.text = qsTrId("dialog.preferences.update.failed")
                 }
             }
         }

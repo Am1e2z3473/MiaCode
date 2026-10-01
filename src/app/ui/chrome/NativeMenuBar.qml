@@ -36,29 +36,22 @@ MenuBar {
     }
 
     property Action aboutApplicationAction: Action {
-        text: "About " + Qt.application.name
+        text: qsTrId("qml.about_miacode")
         enabled: root.commandsEnabled
         onTriggered: root.commands.aboutRequested()
     }
 
     property Action preferencesApplicationAction: Action {
-        text: "Preferences..."
+        text: qsTrId("dialog.preferences.title")
         enabled: root.commandsEnabled
         onTriggered: root.commands.preferencesRequested()
     }
 
     property Action quitApplicationAction: Action {
-        text: "Quit " + Qt.application.name
+        text: qsTrId("shortcut.file.quit")
         shortcut: StandardKey.Quit
         enabled: root.commandsEnabled
         onTriggered: root.commands.exitRequested()
-    }
-
-    function nativeMenuTitle(text) {
-        let title = text.replace(/\(&.\)$/, "")
-        title = title.replace(/&&/g, "\u0000")
-        title = title.replace(/&/g, "")
-        return title.replace(/\u0000/g, "&")
     }
 
     Component.onCompleted: {
@@ -67,7 +60,6 @@ MenuBar {
         menus[1].addAction(root.preferencesApplicationAction)
         menus[5].addAction(root.aboutApplicationAction)
         for (let i = 0; i < menus.length; ++i) {
-            menus[i].title = root.nativeMenuTitle(menus[i].title)
             root.addMenu(menus[i])
         }
     }

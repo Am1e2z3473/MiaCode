@@ -1,4 +1,5 @@
 #include "preview/AudioSettingsModel.h"
+#include "ui/preferences/LocaleService.h"
 
 #include "audio/PreviewAudioSettings.h"
 #include "audio/PreviewAudioWorkerProtocol.h"
@@ -95,6 +96,8 @@ AudioSettingsModel::AudioSettingsModel(miacode::PreviewSurface*& surfaceSlot,
     : QObject(parent)
     , surfaceSlot_(&surfaceSlot)
 {
+    connect(&miacode::LocaleService::instance(), &miacode::LocaleService::languageChanged,
+            this, [this](const QString&) { emit changed(); });
 }
 
 AudioSettingsModel::~AudioSettingsModel() = default;

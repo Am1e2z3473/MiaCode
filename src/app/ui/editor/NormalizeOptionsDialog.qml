@@ -21,9 +21,9 @@ AppDialog {
     property int sectionMeasureCount: 4
     property string syntax: "segment_preserving"
 
-    readonly property var gridOptions: documentSession.normalizeGridOptions()
-    readonly property var sectionOptions: documentSession.normalizeSectionOptions()
-    readonly property var syntaxOptions: documentSession.normalizeSyntaxOptions()
+    readonly property var gridOptions: documentSession.normalizationGridOptions
+    readonly property var sectionOptions: documentSession.normalizationSectionOptions
+    readonly property var syntaxOptions: documentSession.normalizationSyntaxOptions
 
     function indexOfValue(options, value) {
         for (let i = 0; i < options.length; ++i) {

@@ -2,6 +2,7 @@
 
 #include "core/chart/document/SimaiTimingMetadata.h"
 
+#include <QCoreApplication>
 #include <QHash>
 #include <QRegularExpression>
 
@@ -225,7 +226,7 @@ ChartWorkspaceResult ChartWorkspace::replaceExtraFields(
         for (const SimaiPropertyIssue& issue : propertyIssues) {
             issues.append({issue.line, issue.column, issue.endColumn,
                 ChartWorkspaceIssueSeverity::Error,
-                QStringLiteral("Expected an extra field in the form &key=value."),
+                qtTrId("metadata.extra_field_format"),
                 issue.code});
         }
         return reject(issues);
