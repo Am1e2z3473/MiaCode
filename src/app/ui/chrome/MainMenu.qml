@@ -486,7 +486,7 @@ Item {
             AppMenuAction {
                 text: qsTrId("qml.normalize_whole_chart")
                 enabled: root.commandsEnabled && root.chartCommandsEnabled
-                         && root.normalizationEnabled
+                         && root.normalizationEnabled && root.commands.canNormalize
                 onTriggered: root.commands.normalizeChartRequested()
             }
         }
@@ -514,6 +514,7 @@ Item {
                             : ""
                         shortcutText: root.shortcuts.displayText(transformItem.modelData.id)
                         enabled: root.commandsEnabled && root.chartCommandsEnabled
+                                 && root.commands.canTransform
                         onTriggered: root.commands.chartTransformRequested(
                                          transformItem.modelData.id)
                     }
@@ -533,6 +534,7 @@ Item {
                             : ""
                         shortcutText: root.shortcuts.displayText(transformItem.modelData.id)
                         enabled: root.commandsEnabled && root.chartCommandsEnabled
+                                 && root.commands.canTransform
                         onTriggered: root.commands.chartTransformRequested(
                                          transformItem.modelData.id)
                     }
@@ -552,6 +554,7 @@ Item {
                             : ""
                         shortcutText: root.shortcuts.displayText(transformItem.modelData.id)
                         enabled: root.commandsEnabled && root.chartCommandsEnabled
+                                 && root.commands.canTransform
                         onTriggered: root.commands.chartTransformRequested(
                                          transformItem.modelData.id)
                     }
@@ -560,13 +563,15 @@ Item {
             AppMenuAction {
                 text: qsTrId("qml.normalize_whole_chart")
                 enabled: root.commandsEnabled && root.chartCommandsEnabled
-                         && root.normalizationEnabled
+                         && root.normalizationEnabled && root.commands.canNormalize
                 onTriggered: root.commands.normalizeChartRequested()
             }
 
             AppMenu {
                 id: adjustMoreMenu
                 objectName: "adjustMoreMenu"
+                enabled: root.commandsEnabled && root.chartCommandsEnabled
+                         && root.commands.canTransform
                 title: qsTrId("action.transform.more")
                 Repeater {
                     model: adjustMenu.transformRows.filter(row => row.section === 3)
@@ -581,6 +586,7 @@ Item {
                                 : ""
                             shortcutText: root.shortcuts.displayText(transformItem.modelData.id)
                             enabled: root.commandsEnabled && root.chartCommandsEnabled
+                                     && root.commands.canTransform
                             onTriggered: root.commands.chartTransformRequested(
                                              transformItem.modelData.id)
                         }

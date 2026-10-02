@@ -21,6 +21,8 @@ Item {
     readonly property bool canCut: sourceVisible && sourceEditor.canCut
     readonly property bool canCopy: sourceVisible && sourceEditor.canCopy
     readonly property bool canPaste: sourceVisible && sourceEditor.canPaste
+    readonly property bool canTransform: sourceVisible && sourceEditor.canTransform
+    readonly property bool normalizationAvailable: sourceVisible && sourceEditor.canNormalize
     readonly property string selectionBeatStatusText:
         sourceVisible ? sourceEditor.selectionBeatStatusText : ""
     readonly property string selectionBeatTooltipText:
@@ -87,7 +89,7 @@ Item {
     }
 
     function canNormalizeChart() {
-        return sourceVisible
+        return normalizationAvailable
     }
 
     function normalizationSelectionDescription() {
@@ -344,6 +346,7 @@ Item {
         editorController: root.editorController
         syncController: root.editorSync
         preferences: root.preferences
+        onNormalizeChartRequested: root.pages.openNormalizeWholeChart()
     }
 
     Flickable {

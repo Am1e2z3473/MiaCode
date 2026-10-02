@@ -3,8 +3,7 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import MiaCode.UI
 
-// Options for 整谱规范化. Opens over the editor, reports the chosen options and
-    // leaves the actual transform to the caller — the dialog owns no document state.
+// 谱面整理选项；调用方执行整理事务。
 AppDialog {
     id: root
 
@@ -12,8 +11,7 @@ AppDialog {
     // line/column range), supplied by the caller.
     property string selectionDescription: ""
 
-    // Option lists come from the document model so the labels stay neutral
-    // (“分段保留” / “单行紧凑”) rather than exposing implementation versions.
+    // 选项由文档模型提供，显示名称使用“保留分段”和“紧凑格式”。
     required property var documentSession
 
     // Seed values; the caller reads the same-named properties back on accept.
@@ -37,7 +35,7 @@ AppDialog {
     preferredWidth: 420
     preferredHeight: implicitHeight
     footer: DialogFooter {
-        acceptText: qsTrId("action.ok")
+        acceptText: qsTrId("dialog.normalize.apply")
         cancelText: qsTrId("action.cancel")
         onAccepted: root.accept()
         onRejected: root.reject()

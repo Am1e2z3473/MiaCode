@@ -25,7 +25,7 @@ ApplicationWindow {
         saveEnabled: mainView.editorActive
         wholeDocumentSaveEnabled: mainView.documentSession.hasDocument
         documentAvailable: mainView.documentSession.hasDocument
-        editorCommandsEnabled: mainView.editorActive
+        editorCommandsEnabled: mainView.editorCommandsAvailable
         chartCommandsEnabled: mainView.chartEditorActive
         toolCommandsEnabled: mainView.documentSession.hasDocument
         normalizationEnabled: mainView.pages.activePageId !== "export"

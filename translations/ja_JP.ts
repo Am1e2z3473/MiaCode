@@ -971,13 +971,17 @@ Failed: %2</source>
         <source>Select Folder</source>
         <translation>フォルダーを選択</translation>
     </message>
+    <message id="dialog.normalize.apply">
+        <source>Format</source>
+        <translation>整理</translation>
+    </message>
     <message id="dialog.normalize.compact_single_line">
-        <source>Compact single line</source>
-        <translation>単一行に圧縮</translation>
+        <source>Compact format</source>
+        <translation>コンパクト形式</translation>
     </message>
     <message id="dialog.normalize.segment_preserving">
-        <source>Keep segments</source>
-        <translation>セグメントを保持</translation>
+        <source>Preserve segments</source>
+        <translation>区切りを保持</translation>
     </message>
     <message id="dialog.open_startup_folder.missing_maidata.message">
         <source>No maidata.txt was found in the dropped folder:
@@ -1843,19 +1847,19 @@ Restore the backup from %1?</source>
     </message>
     <message id="document.chart_section_every_2_measures">
         <source>Every 2 measures</source>
-        <translation>2小節ごと</translation>
+        <translation>2 小節ごと</translation>
     </message>
     <message id="document.chart_section_every_4_measures">
         <source>Every 4 measures</source>
-        <translation>4小節ごと</translation>
+        <translation>4 小節ごと</translation>
     </message>
     <message id="document.chart_section_none">
-        <source>No sectioning</source>
-        <translation>区切りなし</translation>
+        <source>Continuous</source>
+        <translation>連続表示</translation>
     </message>
     <message id="document.chart_sectioning">
-        <source>Chart sectioning</source>
-        <translation>譜面の区切り</translation>
+        <source>Blank-line grouping</source>
+        <translation>空行で区切る</translation>
     </message>
     <message id="document.choose_audio">
         <source>Choose audio</source>
@@ -2970,8 +2974,8 @@ The file may be open in preview, a media player, File Explorer preview pane, or 
         <translation>追加</translation>
     </message>
     <message id="qml.align_to_the_1_384_grid">
-        <source>Align to the 1/384 grid</source>
-        <translation>384 分グリッドに整列</translation>
+        <source>Align to 1/384 of a measure</source>
+        <translation>1/384 小節に揃える</translation>
     </message>
     <message id="qml.all_files">
         <source>All files (*)</source>
@@ -3154,8 +3158,8 @@ The file may be open in preview, a media player, File Explorer preview pane, or 
         <translation>現在の譜面ソース位置に追従</translation>
     </message>
     <message id="qml.format_syntax">
-        <source>Format syntax</source>
-        <translation>構文を整形</translation>
+        <source>Output format</source>
+        <translation>出力形式</translation>
     </message>
     <message id="qml.hand_radius">
         <source>Hand radius</source>
@@ -3294,12 +3298,12 @@ The file may be open in preview, a media player, File Explorer preview pane, or 
         <translation>通常レンダリング</translation>
     </message>
     <message id="qml.normalize_selected_lines_1_2">
-        <source>Normalize selected lines %1–%2.</source>
-        <translation>選択した %1～%2 行を正規化します。</translation>
+        <source>Range: selected text within lines %1–%2</source>
+        <translation>整理範囲：選択したテキスト（%1～%2 行）</translation>
     </message>
     <message id="qml.normalize_the_entire_chart_source">
-        <source>Normalize the entire chart source.</source>
-        <translation>譜面ソース全体を正規化します。</translation>
+        <source>Range: entire chart source</source>
+        <translation>整理範囲：譜面ソース全体</translation>
     </message>
     <message id="qml.normalize_whole_chart">
         <source>Format Chart</source>

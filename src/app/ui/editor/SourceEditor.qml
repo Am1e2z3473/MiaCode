@@ -1,4 +1,5 @@
 import QtQuick
+import QtQml.Models
 import QtQuick.Controls
 import QtQuick.Shapes
 import QtQuick.Window
@@ -11,6 +12,8 @@ Rectangle {
     required property var documentSession
     required property var editorController
     required property var syncController
+    signal normalizeChartRequested()
+
     property var preferences: null
     // EditorPane must provide effective visibility (including its own host),
     // so an editor retained behind an overlay cannot acknowledge navigation.
@@ -230,11 +233,14 @@ Rectangle {
     color: Theme.surfaceColor(Theme.colors.background.surface)
     clip: true
 
-    readonly property bool canUndo: editorController.canUndo
-    readonly property bool canRedo: editorController.canRedo
-    readonly property bool canCut: sourceArea.selectedText.length > 0
+    readonly property bool canUndo: !sourceArea.readOnly && editorController.canUndo
+    readonly property bool canRedo: !sourceArea.readOnly && editorController.canRedo
+    readonly property bool canCut: !sourceArea.readOnly && sourceArea.selectedText.length > 0
     readonly property bool canCopy: sourceArea.selectedText.length > 0
-    readonly property bool canPaste: true
+    readonly property bool canPaste: !sourceArea.readOnly && sourceArea.canPaste
+    readonly property bool canTransform: canCut
+    readonly property bool canNormalize: !sourceArea.readOnly
+        && documentSession.currentDifficultyId > 0
 
     function undo() {
         // 先提交输入法文字，再从与当前正文一致的历史中取出撤销步骤。
@@ -572,7 +578,7 @@ Rectangle {
         if (sourceArea.selectionStart === sourceArea.selectionEnd)
             return qsTrId("qml.normalize_the_entire_chart_source")
         const startLine = sourceArea.text.substring(0, sourceArea.selectionStart).split("\n").length
-        const endLine = sourceArea.text.substring(0, sourceArea.selectionEnd).split("\n").length
+        const endLine = sourceArea.text.substring(0, sourceArea.selectionEnd - 1).split("\n").length
         return qsTrId("qml.normalize_selected_lines_1_2").arg(startLine).arg(endLine)
     }
 
@@ -674,143 +680,200 @@ Rectangle {
         objectName: "editorContextMenu"
         parent: Overlay.overlay
 
-        property point requestedPosition: Qt.point(0, 0)
-        readonly property rect caretBounds: {
-            editorScroll.contentY
-            return sourceArea.mapToItem(parent, sourceArea.cursorRectangle)
-        }
-        // 鼠标位置、光标和菜单统一使用浮层坐标；窗口边界收敛后再处理遮挡。
-        readonly property var placement: {
-            const viewportWidth = parent ? parent.width : 0
-            const viewportHeight = parent ? parent.height : 0
-            let menuWidth = Math.min(implicitWidth, viewportWidth)
-            const menuHeight = Math.min(implicitHeight, viewportHeight)
-            let menuX = Math.max(0, Math.min(requestedPosition.x, viewportWidth - menuWidth))
-            let menuY = Math.max(0, Math.min(requestedPosition.y, viewportHeight - menuHeight))
-            const gap = Theme.menuPadding
-            const left = Math.max(0, caretBounds.x - gap)
-            const right = Math.min(viewportWidth, caretBounds.x + caretBounds.width + gap)
-            const top = Math.max(0, caretBounds.y - gap)
-            const bottom = Math.min(viewportHeight, caretBounds.y + caretBounds.height + gap)
-            const overlaps = menuX < right && menuX + menuWidth > left
-                && menuY < bottom && menuY + menuHeight > top
-            if (overlaps) {
-                const rightSpace = viewportWidth - right
-                if (rightSpace >= menuWidth) {
-                    menuX = right
-                } else if (left >= menuWidth) {
-                    menuX = left - menuWidth
-                } else if (viewportHeight - bottom >= menuHeight) {
-                    menuY = bottom
-                } else if (top >= menuHeight) {
-                    menuY = top - menuHeight
-                } else {
-                    // 狭窄窗口按光标两侧的实际空间限制菜单宽度。
-                    const useRight = rightSpace >= left
-                    menuWidth = Math.min(menuWidth, useRight ? rightSpace : left)
-                    menuX = useRight ? right : left - menuWidth
-                }
-            }
-            return { x: menuX, y: menuY, width: menuWidth, height: menuHeight }
-        }
+        property rect placement: Qt.rect(0, 0, 0, 0)
         x: placement.x
         y: placement.y
         width: placement.width
         height: placement.height
 
-        readonly property var transformRows: root.documentSession.chartTransformMenu()
-        // sourceArea keeps its selection while the popup holds focus
-        // (persistentSelection), so this can bind live like 剪切 / 复制 above.
-        readonly property bool hasSelection: sourceArea.selectedText.length > 0
-
-        AppMenuItem {
-            text: qsTrId("action.cut")
-            enabled: sourceArea.selectedText.length > 0
-            onTriggered: root.cut()
-        }
-        AppMenuItem {
-            text: qsTrId("action.copy")
-            enabled: sourceArea.selectedText.length > 0
-            onTriggered: root.copy()
-        }
-        AppMenuItem {
-            text: qsTrId("action.paste")
-            onTriggered: root.paste()
-        }
-        AppMenuSeparator {}
-        AppMenuItem {
-            text: qsTrId("net.select_all")
-            onTriggered: root.selectAll()
-        }
-        AppMenuItem {
-            text: qsTrId("qml.find_and_replace")
-            onTriggered: root.openFindReplace()
-        }
-        AppMenuSeparator {}
-        AppMenuItem {
-            text: qsTrId("qml.export_selection")
-            enabled: editorContextMenu.hasSelection
-            onTriggered: root.exportSelectionRange()
-        }
-        AppMenuSeparator {}
-
-        // Same rows, labels and grouping as the menubar's 调整 menu — both read
-        // documentSession.chartTransformMenu(). Every one of them edits the
-        // selection, so they are disabled without one.
-        Repeater {
-            model: editorContextMenu.transformRows.filter(row => row.section === 0)
-            delegate: AppMenuItem {
-                required property var modelData
-                text: qsTrId(modelData.labelKey)
-                enabled: editorContextMenu.hasSelection
-                onTriggered: root.applyChartTransform(modelData.id)
-            }
-        }
-        AppMenuSeparator {}
-        Repeater {
-            model: editorContextMenu.transformRows.filter(row => row.section === 1)
-            delegate: AppMenuItem {
-                required property var modelData
-                text: qsTrId(modelData.labelKey)
-                enabled: editorContextMenu.hasSelection
-                onTriggered: root.applyChartTransform(modelData.id)
-            }
-        }
-        AppMenuSeparator {}
-        Repeater {
-            model: editorContextMenu.transformRows.filter(row => row.section === 2)
-            delegate: AppMenuItem {
-                required property var modelData
-                text: qsTrId(modelData.labelKey)
-                enabled: editorContextMenu.hasSelection
-                onTriggered: root.applyChartTransform(modelData.id)
-            }
-        }
-        AppMenu {
-            title: qsTrId("action.transform.more")
-            enabled: editorContextMenu.hasSelection
-            Repeater {
-                model: editorContextMenu.transformRows.filter(row => row.section === 3)
-                delegate: AppMenuItem {
-                    required property var modelData
-                    text: qsTrId(modelData.labelKey)
-                    onTriggered: root.applyChartTransform(modelData.id)
+        function placeAt(point, textBounds) {
+            // 打开前完成行布局与避让；显示和关闭动画复用同一组几何。
+            contentItem.forceLayout()
+            const viewportWidth = parent.width
+            const viewportHeight = parent.height
+            const menuWidth = Math.min(implicitWidth, viewportWidth)
+            const menuHeight = Math.min(measuredHeight(), viewportHeight)
+            const menuX = Math.max(0, Math.min(point.x, viewportWidth - menuWidth))
+            const menuY = Math.max(0, Math.min(point.y, viewportHeight - menuHeight))
+            const gap = Theme.menuPadding
+            const left = Math.max(0, Math.min(textBounds.x - gap, viewportWidth))
+            const right = Math.max(0, Math.min(textBounds.x + textBounds.width + gap, viewportWidth))
+            const top = Math.max(0, Math.min(textBounds.y - gap, viewportHeight))
+            const bottom = Math.max(0, Math.min(textBounds.y + textBounds.height + gap, viewportHeight))
+            let chosen = Qt.rect(menuX, menuY, menuWidth, menuHeight)
+            const overlaps = menuX < right && menuX + menuWidth > left
+                && menuY < bottom && menuY + menuHeight > top
+            if (overlaps) {
+                const belowHeight = Math.min(menuHeight, viewportHeight - bottom)
+                const aboveHeight = Math.min(menuHeight, top)
+                const rightWidth = Math.min(menuWidth, viewportWidth - right)
+                const leftWidth = Math.min(menuWidth, left)
+                const candidates = [
+                    Qt.rect(menuX, bottom, menuWidth, belowHeight),
+                    Qt.rect(menuX, top - aboveHeight, menuWidth, aboveHeight),
+                    Qt.rect(right, menuY, rightWidth, menuHeight),
+                    Qt.rect(left - leftWidth, menuY, leftWidth, menuHeight)
+                ]
+                let bestArea = 0
+                for (const candidate of candidates) {
+                    const area = candidate.width * candidate.height
+                    if (area > bestArea) {
+                        chosen = candidate
+                        bestArea = area
+                    }
                 }
+            }
+            placement = chosen
+        }
+
+        readonly property var transformRows: root.documentSession.chartTransformMenu()
+        // 每次打开时确定操作列表，条目与几何在关闭动画期间保持一致。
+        property bool hasSelection: false
+        property bool canTransform: false
+        property bool canNormalize: false
+
+        function prepareItems() {
+            const selected = root.canCopy
+            const transform = root.canTransform
+            const normalize = root.canNormalize
+            if (menuEntries.count > 0 && selected === hasSelection
+                    && transform === canTransform && normalize === canNormalize)
+                return
+            hasSelection = selected
+            canTransform = transform
+            canNormalize = normalize
+
+            const rows = []
+            function action(labelKey, operation) {
+                rows.push({ kind: "action", labelKey: labelKey, operation: operation })
+            }
+            function separator() {
+                rows.push({ kind: "separator", labelKey: "", operation: "" })
+            }
+            action("action.cut", "cut")
+            action("action.copy", "copy")
+            action("action.paste", "paste")
+            separator()
+            action("net.select_all", "select_all")
+            action("qml.find_and_replace", "find")
+            if (selected || normalize)
+                separator()
+            if (selected)
+                action("qml.export_selection", "export")
+            if (transform) {
+                separator()
+                for (let section = 0; section < 3; ++section) {
+                    if (section > 0)
+                        separator()
+                    for (const row of transformRows.filter(row => row.section === section))
+                        action(row.labelKey, row.id)
+                }
+            }
+            if (normalize)
+                action("qml.normalize_whole_chart", "normalize")
+            if (transform)
+                rows.push({ kind: "submenu", labelKey: "action.transform.more", operation: "" })
+            menuEntries.clear()
+            for (const row of rows)
+                menuEntries.append(row)
+        }
+
+        function triggerOperation(operation) {
+            switch (operation) {
+            case "cut": root.cut(); break
+            case "copy": root.copy(); break
+            case "paste": root.paste(); break
+            case "select_all": root.selectAll(); break
+            case "find": root.openFindReplace(); break
+            case "export": root.exportSelectionRange(); break
+            case "normalize": root.normalizeChartRequested(); break
+            default: root.applyChartTransform(operation); break
+            }
+        }
+
+        ListModel { id: menuEntries }
+
+        Instantiator {
+            model: menuEntries
+            delegate: DelegateChooser {
+                role: "kind"
+                DelegateChoice {
+                    roleValue: "action"
+                    delegate: AppMenuItem {
+                        required property string labelKey
+                        required property string operation
+                        text: qsTrId(labelKey)
+                        enabled: operation === "cut" ? root.canCut
+                            : operation === "copy" ? root.canCopy
+                            : operation === "paste" ? root.canPaste : true
+                        onTriggered: editorContextMenu.triggerOperation(operation)
+                    }
+                }
+                DelegateChoice {
+                    roleValue: "separator"
+                    delegate: AppMenuSeparator {}
+                }
+                DelegateChoice {
+                    roleValue: "submenu"
+                    delegate: AppMenu {
+                        id: transformMoreMenu
+                        title: qsTrId("action.transform.more")
+                        Instantiator {
+                            model: editorContextMenu.transformRows.filter(row => row.section === 3)
+                            delegate: AppMenuItem {
+                                required property var modelData
+                                text: qsTrId(modelData.labelKey)
+                                onTriggered: root.applyChartTransform(modelData.id)
+                            }
+                            onObjectAdded: (index, item) => transformMoreMenu.insertItem(index, item)
+                            onObjectRemoved: (index, item) => transformMoreMenu.removeItem(item)
+                        }
+                    }
+                }
+            }
+            onObjectAdded: (index, item) => {
+                if (item instanceof AppMenu)
+                    editorContextMenu.insertMenu(index, item)
+                else
+                    editorContextMenu.insertItem(index, item)
+            }
+            onObjectRemoved: (index, item) => {
+                if (item instanceof AppMenu)
+                    editorContextMenu.removeMenu(item)
+                else
+                    editorContextMenu.removeItem(item)
             }
         }
     }
 
     // Both context-menu routes end here: a right-click passes the hit point,
     // and the keyboard route (Menu key / Shift+F10) passes the caret.
-    function openContextMenuAt(x, y) {
+    function openContextMenuAt(x, y, textPosition = -1) {
         sourceArea.forceActiveFocus()
-        editorContextMenu.requestedPosition = sourceArea.mapToItem(editorContextMenu.parent, x, y)
+        const overlay = editorContextMenu.parent
+        const point = sourceArea.mapToItem(overlay, x, y)
+        const caret = sourceArea.mapToItem(overlay, sourceArea.cursorRectangle)
+        const hit = editorInputBridge.textHitPoint(x, y)
+        const position = textPosition >= 0 ? textPosition : sourceArea.positionAt(hit.x, hit.y)
+        const lineBounds = editorInputBridge.textLineBounds(position)
+        const line = lineBounds.height > 0 ? sourceArea.mapToItem(overlay, lineBounds) : caret
+        const caretOnLine = caret.y < line.y + line.height && caret.y + caret.height > line.y
+        const viewport = editorScroll.mapToItem(overlay,
+            Qt.rect(0, 0, editorScroll.width, editorScroll.height))
+        const left = Math.max(viewport.x, caretOnLine ? Math.min(caret.x, line.x) : line.x)
+        const top = Math.max(viewport.y, line.y)
+        const right = Math.min(viewport.x + viewport.width,
+            caretOnLine ? Math.max(caret.x + caret.width, line.x + line.width) : line.x + line.width)
+        const bottom = Math.min(viewport.y + viewport.height, line.y + line.height)
+        const bounds = Qt.rect(left, top, Math.max(0, right - left), Math.max(0, bottom - top))
+        editorContextMenu.prepareItems()
+        editorContextMenu.placeAt(point, bounds)
         editorContextMenu.open()
     }
 
     function openContextMenuAtCaret() {
         const caret = sourceArea.cursorRectangle
-        openContextMenuAt(caret.x, caret.y + caret.height)
+        openContextMenuAt(caret.x, caret.y + caret.height, sourceArea.cursorPosition)
     }
 
     FindReplaceBar {
@@ -915,6 +978,9 @@ Rectangle {
         TextArea.flickable: TextArea {
             id: sourceArea
             objectName: "sourceArea"
+            ContextMenu.menu: null
+            // 接收系统上下文事件；鼠标与键盘入口负责打开自定义菜单。
+            ContextMenu.onRequested: position => {}
             property bool reservesPlainSpace: true
             property bool syncingFromController: false
             property bool readyForUserEdits: false

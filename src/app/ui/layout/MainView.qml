@@ -38,6 +38,8 @@ Item {
             : baseTitle
     }
     readonly property bool editorActive: state.hasActiveEditor && !pages.overlayActive
+    readonly property bool editorCommandsAvailable: state.difficultyEditorActive
+        && !pages.overlayActive
     readonly property bool chartEditorActive: documentSession.hasDocument
         && documentSession.currentDifficultyId > 0 && !pages.overlayActive
     readonly property alias mainMenuCommands: menuCommands
@@ -60,11 +62,13 @@ Item {
 
     MainMenuCommands {
         id: menuCommands
-        canUndo: splitView.canUndo
-        canRedo: splitView.canRedo
-        canCut: splitView.canCut
-        canCopy: splitView.canCopy
-        canPaste: splitView.canPaste
+        canUndo: root.editorCommandsAvailable && splitView.canUndo
+        canRedo: root.editorCommandsAvailable && splitView.canRedo
+        canCut: root.editorCommandsAvailable && splitView.canCut
+        canCopy: root.editorCommandsAvailable && splitView.canCopy
+        canPaste: root.editorCommandsAvailable && splitView.canPaste
+        canTransform: root.editorCommandsAvailable && splitView.canTransform
+        canNormalize: root.editorCommandsAvailable && splitView.normalizationAvailable
         onExitRequested: root.requestClose()
         onUndoRequested: root.undo()
         onRedoRequested: root.redo()
@@ -246,7 +250,7 @@ Item {
                 saveEnabled: root.editorActive
                 wholeDocumentSaveEnabled: root.documentSession.hasDocument
                 documentAvailable: root.documentSession.hasDocument
-                editorCommandsEnabled: root.editorActive
+                editorCommandsEnabled: root.editorCommandsAvailable
                 chartCommandsEnabled: root.chartEditorActive
                 toolCommandsEnabled: root.documentSession.hasDocument
                 leadingInset: root.applicationContext.windowChrome
@@ -278,8 +282,8 @@ Item {
                               && state.bottomPanelVisible && root.timelineSession.panelVisible
                 bottomPanelEnabled: state.difficultyEditorActive || state.latencyEditorActive
                 saveEnabled: root.editorActive
-                canUndo: splitView.canUndo
-                canRedo: splitView.canRedo
+                canUndo: menuCommands.canUndo
+                canRedo: menuCommands.canRedo
                 onToggleSidebarRequested: root.toggleSidebar()
                 onToggleBottomRequested: {
                     state.bottomPanelVisible = !state.bottomPanelVisible
