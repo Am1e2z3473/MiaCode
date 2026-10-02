@@ -18,7 +18,9 @@ This file inventories libraries, tools, fonts, media assets, and reference proje
 | SoundTouch | Audio processing under [third_party/soundtouch](third_party/soundtouch) | LGPL 2.1, see [third_party/soundtouch/COPYING.TXT](third_party/soundtouch/COPYING.TXT). Static linking and redistribution obligations need review before public release. |
 | miniz | ZIP packaging under [third_party/miniz](third_party/miniz) | MIT License, see [third_party/miniz/LICENSE](third_party/miniz/LICENSE). |
 | BASS, BASSmix, BASS_FX, BASS_AAC, BASSOPUS, BASSFLAC | Cross-platform audio backend, offline export mixing, and waveform decoding; packaged native runtimes | Kept for non-commercial MiaCode builds/releases. BASS is not a general open-source dependency; do not use MiaCode's bundled BASS files for commercial redistribution without appropriate BASS licensing. |
-| Lucide Icons | Utility UI SVGs under `src/app/ui/resources/icons/` and the checkbox mark under `resources/icons/checkmark.svg` | ISC License; see [licenses/Lucide-ISC.txt](licenses/Lucide-ISC.txt) and the upstream [Lucide repository](https://github.com/lucide-icons/lucide). |
+| Fluent System Icons | Utility UI SVGs under `src/app/ui/resources/icons/`, including regular and selected filled variants, and the checkbox mark under `resources/icons/checkmark.svg` | MIT License; see [licenses/Fluent-MIT.txt](licenses/Fluent-MIT.txt) and the upstream [Fluent repository](https://github.com/microsoft/fluentui-system-icons). |
+| Phosphor Icons | Latency editor metronome icons under `src/app/ui/resources/icons/metronome.svg` and `metronome-fill.svg`, with contours thickened to match the UI icon weight | MIT License; see [licenses/Phosphor-MIT.txt](licenses/Phosphor-MIT.txt) and the upstream [Phosphor repository](https://github.com/phosphor-icons/core). |
+| Tabler Icons | A–B range playback icons under `src/app/ui/resources/icons/range-play.svg` and `range-play-active.svg`, with adapted stroke weights | MIT License; see [licenses/Tabler-MIT.txt](licenses/Tabler-MIT.txt) and the upstream [Tabler repository](https://github.com/tabler/tabler-icons). |
 
 ## Fonts
 

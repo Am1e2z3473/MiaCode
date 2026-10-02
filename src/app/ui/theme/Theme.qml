@@ -584,9 +584,11 @@ QtObject {
     }
 
     // Shared UI geometry.
-    readonly property int controlRadius: 6
-    readonly property int popupRadius: 12
-    readonly property int workspaceRadius: 10
+    readonly property int controlRadius: 8
+    readonly property int compactControlRadius: 6
+    readonly property int smallControlRadius: 5
+    readonly property int popupRadius: 16
+    readonly property int workspaceRadius: 14
     readonly property int itemRadius: controlRadius
     readonly property int controlMinHeight: 30
     readonly property int compactControlHeight: 24
@@ -603,6 +605,7 @@ QtObject {
     readonly property int chromeInsetX: 3
     readonly property int chromeInsetY: 2
     readonly property int chromePadding: 4
+    readonly property int chromeHighlightOutset: 1
     readonly property int chromeMinSize: 24
     // Content inset for a chromed row. HoverChrome insets itself from the
     // control but never the content, so ChromeRow spends this on padding to
@@ -618,7 +621,7 @@ QtObject {
     readonly property int splitHandleActiveThickness: 3
     readonly property int splitHandleHitExtent: 9
     readonly property int activityButtonSize: 48
-    readonly property int activityIconSize: 24
+    readonly property int activityIconSize: 22
     readonly property int activityIconTop: Math.round((activityButtonSize - activityIconSize) * 0.5)
 
     // Per-difficulty swatch, matching v1 difficultyColor() in MainWindowShared.
@@ -627,7 +630,7 @@ QtObject {
     ]
     readonly property color difficultyColorFallback: "#8A8F98"
     readonly property int difficultySwatchSize: 10
-    readonly property int difficultySwatchRadius: 3
+    readonly property int difficultySwatchRadius: 4
     function difficultyColor(difficultyId) {
         return difficultyId >= 1 && difficultyId <= difficultyColors.length
             ? difficultyColors[difficultyId - 1]

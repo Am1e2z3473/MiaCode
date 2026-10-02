@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Controls.impl as ControlsImpl
 import QtQuick.Layouts
 import MiaCode.UI
 
@@ -30,30 +31,15 @@ ComboBox {
         elide: Text.ElideRight
     }
 
-    indicator: Item {
+    indicator: ControlsImpl.IconImage {
         x: root.width - width - 8
         y: root.topPadding + (root.availableHeight - height) / 2
         width: 12
         height: 12
 
-        Canvas {
-            anchors.fill: parent
-            onPaint: {
-                const ctx = getContext("2d")
-                ctx.reset()
-                ctx.strokeStyle = root.enabled ? Theme.colors.text.secondary
-                                               : Theme.colors.text.disabled
-                ctx.lineWidth = 1.5
-                ctx.lineCap = "round"
-                ctx.lineJoin = "round"
-                ctx.beginPath()
-                ctx.moveTo(2.5, 4.5)
-                ctx.lineTo(6, 8)
-                ctx.lineTo(9.5, 4.5)
-                ctx.stroke()
-            }
-            Component.onCompleted: requestPaint()
-        }
+        source: Qt.resolvedUrl("icons/chevron-down.svg")
+        sourceSize: Qt.size(12, 12)
+        color: root.enabled ? Theme.colors.text.secondary : Theme.colors.text.disabled
     }
 
     background: Rectangle {

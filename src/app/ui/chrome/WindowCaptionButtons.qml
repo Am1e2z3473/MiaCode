@@ -2,7 +2,7 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import QtQuick.Controls
-import QtQuick.Shapes
+import QtQuick.Controls.impl as ControlsImpl
 import MiaCode.UI
 
 Row {
@@ -59,91 +59,18 @@ Row {
             : (button.hovered || button.visualFocus ? Theme.colors.text.active : Theme.colors.text.secondary)
 
         contentItem: Item {
-            implicitWidth: 10
-            implicitHeight: 10
+            implicitWidth: 14
+            implicitHeight: 14
 
-            Item {
+            ControlsImpl.IconImage {
                 anchors.centerIn: parent
-                width: 10
-                height: 10
-
-                // Minimize glyph: 10px horizontal line
-                Rectangle {
-                    anchors.centerIn: parent
-                    width: 10
-                    height: 1
-                    color: button.iconColor
-                    visible: button.buttonType === "minimize"
-                }
-
-                // Maximize glyph: 10x10 square outline
-                Rectangle {
-                    anchors.centerIn: parent
-                    width: 10
-                    height: 10
-                    color: "transparent"
-                    border.color: button.iconColor
-                    border.width: 1
-                    visible: button.buttonType === "maximize"
-                }
-
-                // Restore glyph: two overlapping 8x8 squares
-                Item {
-                    anchors.centerIn: parent
-                    width: 10
-                    height: 10
-                    visible: button.buttonType === "restore"
-
-                    // Back square top and right edges
-                    Rectangle {
-                        x: 2; y: 0; width: 8; height: 1
-                        color: button.iconColor
-                    }
-                    Rectangle {
-                        x: 9; y: 0; width: 1; height: 8
-                        color: button.iconColor
-                    }
-                    Rectangle {
-                        x: 2; y: 0; width: 1; height: 3
-                        color: button.iconColor
-                    }
-                    Rectangle {
-                        x: 7; y: 7; width: 3; height: 1
-                        color: button.iconColor
-                    }
-
-                    // Front square
-                    Rectangle {
-                        x: 0; y: 2; width: 8; height: 8
-                        color: "transparent"
-                        border.color: button.iconColor
-                        border.width: 1
-                    }
-                }
-
-                // Close glyph: 10x10 cross (X)
-                Shape {
-                    anchors.centerIn: parent
-                    width: 10
-                    height: 10
-                    visible: button.buttonType === "close"
-                    preferredRendererType: Shape.CurveRenderer
-
-                    ShapePath {
-                        strokeColor: button.iconColor
-                        strokeWidth: 1
-                        capStyle: ShapePath.FlatCap
-                        startX: 0.5; startY: 0.5
-                        PathLine { x: 9.5; y: 9.5 }
-                    }
-                    ShapePath {
-                        strokeColor: button.iconColor
-                        strokeWidth: 1
-                        capStyle: ShapePath.FlatCap
-                        startX: 9.5; startY: 0.5
-                        PathLine { x: 0.5; y: 9.5 }
-                    }
-                }
+                width: 14
+                height: 14
+                source: Qt.resolvedUrl(button.buttonType === "minimize" ? "icons/remove.svg"
+                    : button.buttonType === "maximize" ? "icons/maximize.svg"
+                    : button.buttonType === "restore" ? "icons/restore.svg" : "icons/close.svg")
+                sourceSize: Qt.size(14, 14)
+                color: button.iconColor
             }
         }
 

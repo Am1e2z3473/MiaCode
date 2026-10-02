@@ -14,6 +14,12 @@ Item {
     readonly property real minimumWidth: tabLayout.implicitWidth
         + tabLayout.anchors.leftMargin + tabLayout.anchors.rightMargin
 
+    component TimelineTab: AppTab {
+        panelTab: true
+        compact: true
+        labelFontSize: Theme.compactFontSize
+    }
+
     RowLayout {
         id: tabLayout
         anchors.fill: parent
@@ -22,19 +28,15 @@ Item {
         spacing: 0
         z: 1
 
-        AppTab {
+        TimelineTab {
             Layout.alignment: Qt.AlignVCenter
-            panelTab: true
-            compact: true
             visible: root.timelineSession.timelineTabVisible
             text: root.timelineSession.timelineTabLabel
             active: root.timelineSession.currentTabId === "timeline"
             onClicked: root.timelineSession.setCurrentTabId("timeline")
         }
-        AppTab {
+        TimelineTab {
             Layout.alignment: Qt.AlignVCenter
-            panelTab: true
-            compact: true
             visible: root.timelineSession.validationTabVisible
             text: root.timelineSession.validationTabLabel
             Layout.leftMargin: 4
@@ -42,10 +44,8 @@ Item {
             active: root.timelineSession.currentTabId === "validation"
             onClicked: root.timelineSession.setCurrentTabId("validation")
         }
-        AppTab {
+        TimelineTab {
             Layout.alignment: Qt.AlignVCenter
-            panelTab: true
-            compact: true
             visible: root.timelineSession.muriTabVisible
             text: root.timelineSession.muriTabLabel
             Layout.leftMargin: 4
@@ -58,6 +58,7 @@ Item {
 
         AppCheckBox {
             compact: true
+            font.pixelSize: Theme.compactFontSize
             Layout.alignment: Qt.AlignVCenter
             visible: root.timelineSession.currentTabId === "timeline"
             text: root.timelineSession.followCodeLabel

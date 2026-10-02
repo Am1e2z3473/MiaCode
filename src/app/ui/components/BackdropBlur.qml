@@ -11,6 +11,7 @@ Item {
     required property Item sourceItem
     required property T.Popup popup
     property int blurRadius: Theme.popupBlurRadius
+    property real cornerRadius: Theme.popupRadius
     readonly property real padding: blurRadius
     readonly property real sampleWidth: width + 2 * padding
     readonly property real sampleHeight: height + 2 * padding
@@ -89,7 +90,7 @@ Item {
             y: root.padding
             width: root.width
             height: root.height
-            radius: Theme.popupRadius
+            radius: root.cornerRadius
             color: "white"
         }
     }

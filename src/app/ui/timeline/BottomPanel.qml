@@ -216,6 +216,7 @@ Item {
         y: timelineItem.y + (timelineItem.timelineTop - height) / 2
         visible: timelineItem.visible
         iconSource: Qt.resolvedUrl("icons/sliders-horizontal.svg")
+        filledIconSource: Qt.resolvedUrl("icons/sliders-horizontal-fill.svg")
         tooltip: qsTrId("qml.timeline_brightness")
         active: brightnessMenu.active
         Accessible.description: qsTrId("qml.open_waveform_and_beat_line_brightness_settings")

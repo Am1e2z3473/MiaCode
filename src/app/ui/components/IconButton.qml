@@ -7,6 +7,7 @@ AbstractButton {
     id: root
 
     property url iconSource
+    property url filledIconSource
     property string label: ""
     // Optional text glyph (e.g. "+" / "−") when no iconSource is set.
     property string glyph: ""
@@ -55,7 +56,8 @@ AbstractButton {
                 anchors.verticalCenter: parent.verticalCenter
                 width: root.iconWidth
                 height: root.iconHeight
-                source: root.iconSource
+                source: (root.active || root.checked) && root.filledIconSource.toString().length > 0
+                    ? root.filledIconSource : root.iconSource
                 sourceSize: Qt.size(root.iconWidth, root.iconHeight)
                 color: root.glyphColor
             }
@@ -87,6 +89,7 @@ AbstractButton {
 
     background: HoverChrome {
         id: chrome
+        cornerRadius: root.compact ? Theme.compactControlRadius : Theme.controlRadius
         contentWidth: root.contentImplicitWidth
         contentHeight: root.glyph.length > 0 ? glyphLabel.implicitHeight : root.iconHeight
         stateColors: root.stateColors

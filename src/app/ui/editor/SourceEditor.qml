@@ -686,44 +686,38 @@ Rectangle {
         width: placement.width
         height: placement.height
 
-        function placeAt(point, textBounds) {
-            // 打开前完成行布局与避让；显示和关闭动画复用同一组几何。
+        function placeAt(point, lineBounds) {
+            // 点击位置决定水平锚点；当前行决定上下避让，选区长度不参与定位。
             contentItem.forceLayout()
             const viewportWidth = parent.width
             const viewportHeight = parent.height
             const menuWidth = Math.min(implicitWidth, viewportWidth)
             const menuHeight = Math.min(measuredHeight(), viewportHeight)
-            const menuX = Math.max(0, Math.min(point.x, viewportWidth - menuWidth))
-            const menuY = Math.max(0, Math.min(point.y, viewportHeight - menuHeight))
             const gap = Theme.menuPadding
-            const left = Math.max(0, Math.min(textBounds.x - gap, viewportWidth))
-            const right = Math.max(0, Math.min(textBounds.x + textBounds.width + gap, viewportWidth))
-            const top = Math.max(0, Math.min(textBounds.y - gap, viewportHeight))
-            const bottom = Math.max(0, Math.min(textBounds.y + textBounds.height + gap, viewportHeight))
-            let chosen = Qt.rect(menuX, menuY, menuWidth, menuHeight)
-            const overlaps = menuX < right && menuX + menuWidth > left
-                && menuY < bottom && menuY + menuHeight > top
-            if (overlaps) {
-                const belowHeight = Math.min(menuHeight, viewportHeight - bottom)
-                const aboveHeight = Math.min(menuHeight, top)
-                const rightWidth = Math.min(menuWidth, viewportWidth - right)
-                const leftWidth = Math.min(menuWidth, left)
-                const candidates = [
-                    Qt.rect(menuX, bottom, menuWidth, belowHeight),
-                    Qt.rect(menuX, top - aboveHeight, menuWidth, aboveHeight),
-                    Qt.rect(right, menuY, rightWidth, menuHeight),
-                    Qt.rect(left - leftWidth, menuY, leftWidth, menuHeight)
-                ]
-                let bestArea = 0
-                for (const candidate of candidates) {
-                    const area = candidate.width * candidate.height
-                    if (area > bestArea) {
-                        chosen = candidate
-                        bestArea = area
-                    }
-                }
+            const rightX = point.x + gap
+            const menuX = Math.max(0, Math.min(rightX, viewportWidth - menuWidth))
+            const menuY = Math.max(0, Math.min(point.y, viewportHeight - menuHeight))
+            if (rightX + menuWidth <= viewportWidth) {
+                // 即使长菜单向上贴齐窗口，左边缘仍在点击位置右侧。
+                placement = Qt.rect(menuX, menuY, menuWidth, menuHeight)
+                return
             }
-            placement = chosen
+
+            // 右侧空间不足时保留菜单宽度，沿当前行的上下边缘放置。
+            const top = Math.max(0, Math.min(lineBounds.y - gap, viewportHeight))
+            const bottom = Math.max(0, Math.min(
+                lineBounds.y + lineBounds.height + gap, viewportHeight))
+            const belowSpace = viewportHeight - bottom
+            const aboveSpace = top
+            if (belowSpace >= menuHeight) {
+                placement = Qt.rect(menuX, bottom, menuWidth, menuHeight)
+            } else if (aboveSpace >= menuHeight) {
+                placement = Qt.rect(menuX, top - menuHeight, menuWidth, menuHeight)
+            } else if (belowSpace >= aboveSpace) {
+                placement = Qt.rect(menuX, bottom, menuWidth, belowSpace)
+            } else {
+                placement = Qt.rect(menuX, 0, menuWidth, aboveSpace)
+            }
         }
 
         readonly property var transformRows: root.documentSession.chartTransformMenu()
@@ -762,7 +756,7 @@ Rectangle {
                 action("qml.export_selection", "export")
             if (transform) {
                 separator()
-                for (let section = 0; section < 3; ++section) {
+                for (const section of [0, 2]) {
                     if (section > 0)
                         separator()
                     for (const row of transformRows.filter(row => row.section === section))
@@ -818,6 +812,18 @@ Rectangle {
                     delegate: AppMenu {
                         id: transformMoreMenu
                         title: qsTrId("action.transform.more")
+                        readonly property var subdivisionRows: editorContextMenu.transformRows.filter(row => row.section === 1)
+                        Instantiator {
+                            model: transformMoreMenu.subdivisionRows
+                            delegate: AppMenuItem {
+                                required property var modelData
+                                text: qsTrId(modelData.labelKey)
+                                onTriggered: root.applyChartTransform(modelData.id)
+                            }
+                            onObjectAdded: (index, item) => transformMoreMenu.insertItem(index, item)
+                            onObjectRemoved: (index, item) => transformMoreMenu.removeItem(item)
+                        }
+                        AppMenuSeparator {}
                         Instantiator {
                             model: editorContextMenu.transformRows.filter(row => row.section === 3)
                             delegate: AppMenuItem {
@@ -825,7 +831,8 @@ Rectangle {
                                 text: qsTrId(modelData.labelKey)
                                 onTriggered: root.applyChartTransform(modelData.id)
                             }
-                            onObjectAdded: (index, item) => transformMoreMenu.insertItem(index, item)
+                            onObjectAdded: (index, item) => transformMoreMenu.insertItem(
+                                transformMoreMenu.subdivisionRows.length + 1 + index, item)
                             onObjectRemoved: (index, item) => transformMoreMenu.removeItem(item)
                         }
                     }
@@ -852,22 +859,14 @@ Rectangle {
         sourceArea.forceActiveFocus()
         const overlay = editorContextMenu.parent
         const point = sourceArea.mapToItem(overlay, x, y)
-        const caret = sourceArea.mapToItem(overlay, sourceArea.cursorRectangle)
         const hit = editorInputBridge.textHitPoint(x, y)
         const position = textPosition >= 0 ? textPosition : sourceArea.positionAt(hit.x, hit.y)
         const lineBounds = editorInputBridge.textLineBounds(position)
-        const line = lineBounds.height > 0 ? sourceArea.mapToItem(overlay, lineBounds) : caret
-        const caretOnLine = caret.y < line.y + line.height && caret.y + caret.height > line.y
-        const viewport = editorScroll.mapToItem(overlay,
-            Qt.rect(0, 0, editorScroll.width, editorScroll.height))
-        const left = Math.max(viewport.x, caretOnLine ? Math.min(caret.x, line.x) : line.x)
-        const top = Math.max(viewport.y, line.y)
-        const right = Math.min(viewport.x + viewport.width,
-            caretOnLine ? Math.max(caret.x + caret.width, line.x + line.width) : line.x + line.width)
-        const bottom = Math.min(viewport.y + viewport.height, line.y + line.height)
-        const bounds = Qt.rect(left, top, Math.max(0, right - left), Math.max(0, bottom - top))
+        const localBounds = lineBounds.height > 0
+            ? lineBounds : sourceArea.positionToRectangle(position)
+        const line = sourceArea.mapToItem(overlay, localBounds)
         editorContextMenu.prepareItems()
-        editorContextMenu.placeAt(point, bounds)
+        editorContextMenu.placeAt(point, line)
         editorContextMenu.open()
     }
 

@@ -1131,9 +1131,17 @@ Failed: %2</source>
         <source>Performance</source>
         <translation>性能</translation>
     </message>
-    <message id="dialog.preferences.preview_side">
-        <source>Preview Position</source>
-        <translation>预览位置</translation>
+    <message id="dialog.preferences.interface_layout">
+        <source>Interface layout</source>
+        <translation>界面布局</translation>
+    </message>
+    <message id="dialog.preferences.layout.editor_preview">
+        <source>Editor | Preview</source>
+        <translation>编辑器｜预览</translation>
+    </message>
+    <message id="dialog.preferences.layout.preview_editor">
+        <source>Preview | Editor</source>
+        <translation>预览｜编辑器</translation>
     </message>
     <message id="dialog.preferences.shortcuts_group">
         <source>Shortcuts</source>
@@ -3333,9 +3341,9 @@ The file may be open in preview, a media player, File Explorer preview pane, or 
         <source>Open playback-speed presets</source>
         <translation>打开播放速度预设</translation>
     </message>
-    <message id="qml.open_preview_rendering_mode_menu">
-        <source>Open preview rendering-mode menu</source>
-        <translation>打开预览渲染模式菜单</translation>
+    <message id="qml.preview_rendering_mode">
+        <source>Preview rendering mode</source>
+        <translation>预览渲染模式</translation>
     </message>
     <message id="qml.open_simai_file">
         <source>Open Simai file</source>
@@ -3508,6 +3516,22 @@ The file may be open in preview, a media player, File Explorer preview pane, or 
     <message id="qml.title_font_preview">
         <source>Title-font preview</source>
         <translation>标题字体预览</translation>
+    </message>
+    <message id="qml.close_bottom_panel">
+        <source>Close bottom panel</source>
+        <translation>关闭底部面板</translation>
+    </message>
+    <message id="qml.close_sidebar">
+        <source>Close sidebar</source>
+        <translation>关闭侧栏</translation>
+    </message>
+    <message id="qml.open_bottom_panel">
+        <source>Open bottom panel</source>
+        <translation>打开底部面板</translation>
+    </message>
+    <message id="qml.open_sidebar">
+        <source>Open sidebar</source>
+        <translation>打开侧栏</translation>
     </message>
     <message id="qml.toggle_bottom_panel">
         <source>Toggle bottom panel</source>

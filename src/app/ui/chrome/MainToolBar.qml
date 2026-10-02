@@ -104,13 +104,15 @@ Rectangle {
         }
         ToolBarButton {
             iconSource: Qt.resolvedUrl("icons/panel-left.svg")
-            tooltip: qsTrId("qml.toggle_sidebar")
+            filledIconSource: Qt.resolvedUrl("icons/panel-left-fill.svg")
+            tooltip: root.sidebarActive ? qsTrId("qml.close_sidebar") : qsTrId("qml.open_sidebar")
             active: root.sidebarActive
             onClicked: root.toggleSidebarRequested()
         }
         ToolBarButton {
             iconSource: Qt.resolvedUrl("icons/panel-bottom.svg")
-            tooltip: qsTrId("qml.toggle_bottom_panel")
+            filledIconSource: Qt.resolvedUrl("icons/panel-bottom-fill.svg")
+            tooltip: root.bottomActive ? qsTrId("qml.close_bottom_panel") : qsTrId("qml.open_bottom_panel")
             enabled: root.bottomPanelEnabled
             active: root.bottomActive
             onClicked: root.toggleBottomRequested()

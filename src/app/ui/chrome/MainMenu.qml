@@ -266,6 +266,7 @@ Item {
             height: Theme.controlMinHeight
             visible: root.visibleCount < 6
             iconSource: Qt.resolvedUrl("icons/more.svg")
+            filledIconSource: Qt.resolvedUrl("icons/more-fill.svg")
             iconWidth: 16
             iconHeight: 16
             tooltip: qsTrId("qml.more")

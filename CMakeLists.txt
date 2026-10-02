@@ -758,6 +758,25 @@ set_source_files_properties(
 )
 
 set(MIACODE_UI_ICON_FILES
+    src/app/ui/resources/icons/range-play.svg
+    src/app/ui/resources/icons/range-play-active.svg
+    src/app/ui/resources/icons/maximize.svg
+    src/app/ui/resources/icons/restore.svg
+    src/app/ui/resources/icons/check.svg
+    src/app/ui/resources/icons/file-fill.svg
+    src/app/ui/resources/icons/export-fill.svg
+    src/app/ui/resources/icons/tools-fill.svg
+    src/app/ui/resources/icons/panel-left-fill.svg
+    src/app/ui/resources/icons/panel-bottom-fill.svg
+    src/app/ui/resources/icons/metadata-fill.svg
+    src/app/ui/resources/icons/metronome-fill.svg
+    src/app/ui/resources/icons/stop-fill.svg
+    src/app/ui/resources/icons/play-fill.svg
+    src/app/ui/resources/icons/pause-fill.svg
+    src/app/ui/resources/icons/circle-play-fill.svg
+    src/app/ui/resources/icons/preview-settings-fill.svg
+    src/app/ui/resources/icons/sliders-horizontal-fill.svg
+    src/app/ui/resources/icons/more-fill.svg
     src/app/ui/resources/icons/folder-open.svg
     src/app/ui/resources/icons/save.svg
     src/app/ui/resources/icons/undo.svg
@@ -786,7 +805,6 @@ set(MIACODE_UI_ICON_FILES
     src/app/ui/resources/icons/more.svg
     src/app/ui/resources/icons/metadata.svg
     src/app/ui/resources/icons/metronome.svg
-    src/app/ui/resources/icons/app-icon.svg
     src/app/ui/resources/icons/app-titlebar.png
     src/app/ui/resources/icons/app-titlebar@2x.png
     src/app/ui/resources/icons/chevron-down.svg
