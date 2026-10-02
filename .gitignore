@@ -150,6 +150,13 @@ scripts/build/*
 !scripts/build/package-win.ps1
 !scripts/build/provision-qt.ps1
 !scripts/build/windows-toolchain.psd1
+!scripts/build/android-toolchain.json
+!scripts/build/build-android.ps1
+!scripts/build/provision-android.ps1
+!scripts/build/extract-android-sdk.py
+!scripts/build/audit-android-apk.py
+!scripts/build/android-ui-qa.py
+!scripts/build/mobile-qml-closure.py
 !scripts/debug/
 scripts/debug/*
 !scripts/debug/analyze_timeline_cadence.py
@@ -206,3 +213,8 @@ __pycache__/
 # Throwaway slide-arrow-count analysis script + its generated CSV (repo root).
 /slide_arrow_count.py
 /slide_arrow_count.csv
+
+# Android signing material and the machine-specific emulator shortcut.
+*.keystore
+*.jks
+/启动安卓虚拟机.cmd

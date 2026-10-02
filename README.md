@@ -1,116 +1,35 @@
-<p align="center">
-  <img src="resources/icons/app.png" alt="MiaCode avatar" width="128">
-</p>
+# MiaCode Mobile
 
-# MiaCode
+MiaCode v2 的独立 Android 产品工程。目标为 Android 12 / API 31 及以上的 ARM64 手机和平板，APK 发布，本机离线完成编辑、预览和作品导出。界面强制横屏，复用 v2 的 QML 组件、主题、图标和谱面核心。
 
-[中文](README.md) | [English](README_EN.md)
+## 当前状态
 
-MiaCode 是一款全功能的跨平台 maimai 谱面创作工具。项目基于 Qt 6 / C++ / QML 打造，性能优异，在低配设备上也能流畅运行。
-## 特性
+开发目标为 P5，当前仍在实现和验证 P2 / P3 / P4。已经接入 v2 文本编辑器、多难度、语法高亮、撤销历史、谱面整理核心、原生预览场景、时间轴、波形及异步检测。实际 v2 导出页已在 Android 模拟器上验证单次选区 MP4 / WAV 导出，经 SAF 保存到 Downloads，最终文件与应用私有完整文件的 SHA256 一致。批量导出、封面编辑与批量封面、部分预览设置和片头曲绘仍未完成，设备与后台行为也需要继续验证。
 
-### 原生全平台支持
-
-原生支持 Windows / macOS / Linux 全部主流平台。
-
-### 现代化的类 VSCode 工作台 UI
-
-兼顾美观与实用，多组件宽度自由调节，编辑器与预览区面板可左右交换重排。
-
-精心搭配的深、浅色两种主题，可跟随系统方案自动切换。
-
-中 / 英 / 日三种语言支持，可跟随系统默认自动切换。
-
-### 实时预览
-
-预览画面与代码编辑双向联动，实时更新，键入修改即刻反映在预览画面上，无需处于播放模式，可随时拖拽进度条查看配置。
-
-### 视频导出与封面创作工具
-
-#### 导出
-
-一键导出包含精致片头转场动画的谱面预览视频，片头可自定义字体、背景等样式。
-
-支持多种 PV / BG 缩放显示模式，无需手动剪辑即可一键导出含有全景 PV 的预览视频。
-
-支持自定义导出区间，可以指定起始时间戳，或直接在编辑器内选择谱面段落区间并套用。
-
-#### 封面
-
-一键导出用于发布谱面视频的平台封面。支持自定义字体、背景等样式，也可以叠加谱面帧截图，用于展示配置。
-
-### 谱面校验与检测
-
-完整支持 Simai 语法与所有社区主流扩展语法与音符种类。
-
-支持谱面格式实时校验，可快速跳转到指定行，可用于检查是否存在无法被主流编辑器与游戏模拟器读取的内容。
-
-内置由 MaiMuriDX 驱动的实时谱面无理配置检测工具与对应的预览模式，可快速跳转到指定行，可用于检查撞尾 / 多押 / 内无 / 外无，支持部分自定义参数调节。
-
-### 更多实用小功能：
-
-#### 个性化
-
-- 自定义背景
-
-#### 编辑
-
-- 输入法禁止与全角字符转换
-- 自动补全时值
-- 谱面格式规范化
-- 书签跳转段落
-- 快捷编写 Touch 音符
+UI 验收要求为与 v2 至少 90% 相似。这个要求尚未完成截图对照验收；组件复用数量不作为相似度结论。详细进度与验收口径见 [迁移记录](docs/specs/android/ANDROID_P5_WORKLOG_ZH.md)。
 
 ## 构建
 
-### 依赖
+工程不依赖原 v2 的源码或构建目录。Qt、Android SDK / NDK 和 JDK 可以共用本机安装，使用脚本参数明确指定路径。所有构建和测试产物写入 `build-devtools`，Release，最多 4 个任务。
 
-- CMake 3.21+
-- C++20 编译器
-- Qt 6.8+
+Android 构建入口为 `scripts/build/build-android.ps1`；具体参数以脚本 `param` 为准。开发测试签名不作为正式发布签名。
 
-更详细的打包说明见 [scripts/README.md](scripts/README.md)。
-
-### Windows
-
-使用一键脚本自动安装 Qt、准备依赖、构建并打包：
+Windows 宿主仅用于验证同一套 Android QML、谱面核心和场景：
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\build\build-win.ps1
+cmake -S . -B build-devtools/host -G "Visual Studio 17 2022" -A x64 -DMIACODE_ANDROID_HOST_PROBE=ON -DCMAKE_PREFIX_PATH=<Qt-host-root>
+cmake --build build-devtools/host --config Release --parallel 4
+ctest --test-dir build-devtools/host -C Release --output-on-failure
 ```
 
-## 仓库结构
+在 Qt 运行库、插件和 QML 模块路径已配置时，可使用宿主 `MiaCodeAndroid.exe --fixture <maidata.txt> --storage-root <test-storage> --capture <output.png> --size 1280x720 --preview-second 10` 截图。`--fixture` 会先复制工程到测试私有目录，编辑和恢复写入不会改动输入工程。
 
-- [src](src)：应用源码、核心模型、预览、音频、导出和工具实现
-- [assets](assets)：运行资源、皮肤、音效、背景素材与生成数据
-- [resources](resources)：Qt resource collection 与应用图标
-- [scripts](scripts)：构建、依赖准备、打包和维护脚本
-- [third_party](third_party)：随仓库 vendored 或引用的第三方依赖
-- [docs](docs)：架构、调试、导出、时间轴和开源准备文档
-- [samples](samples)：示例谱面和验收材料
+测试使用自行提供的 simai 工程与媒体文件，测试副本和截图保存在 `build-devtools`；原始输入保持只读。测试素材、导出视频和本机签名密钥不进入 Git。
 
-## 发布
+更新 QML 组件清单：`python scripts/build/mobile-qml-closure.py`。
 
-当前 release 包由维护者在本地使用脚本打包。
+## 文件与权限
 
-## 许可证与鸣谢
+Android 使用 SAF 选择工程、素材和输出位置；编辑会话与恢复记录保存在应用私有目录。用户决定是否允许后台导出。正式导出需要继续验证权限撤回、取消、锁屏、系统回收和批量任务恢复。
 
-MiaCode 自有源代码使用 MIT License，见 [LICENSE](LICENSE)。仓库整体、随仓库分发的资源、打包产物和发布包定位为非商业使用；具体边界见 [LICENSE_SCOPE.md](LICENSE_SCOPE.md)。第三方库、字体、音效、图片、FFmpeg、BASS、Qt 以及参考实现可能有各自的许可证或分发限制，请以 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) 为准。
-
-感谢 [Minepig/MaiMuriDX](https://github.com/Minepig/MaiMuriDX) 等项目提供的 simai 解析、预览和工程实现参考。感谢 [gfdfdxc/maimai-transition](https://github.com/gfdfdxc/maimai-transition) 提供片头参考。感谢 [Majdata Net](https://majdata.net/) 提供社区谱面下载，感谢 [MaiViewer](https://www.maiviewer.net/) 提供官方谱面 simai 抄谱参考。
-
-特别感谢 hitomi 老师无偿提供 MiaCode logo 绘制。
-
-感谢内部测试时期给出建议、复现问题和协助调试的朋友们，名单见 [ACKNOWLEDGEMENTS.md](ACKNOWLEDGEMENTS.md)。
-
-## 更新日志
-
-历史更新记录已移至 [CHANGELOG.md](CHANGELOG.md)。
-
-## 社群
-
-QQ 群：1095435375
-
-<p align="center">
-  <img src="resources/community/qq-group.png" alt="MiaCode QQ 群二维码" width="360">
-</p>
+源码来源和版本记录在 `migration-origin.json`。v2 Linux 版本与 Visual Maimai Mobile 用于适配参考。许可证与素材授权记录保留在 `LICENSE`、`LICENSE_SCOPE.md` 和 `licenses`，发布前需要完成最终核对。

@@ -13,6 +13,10 @@ namespace miacode::assets {
 inline QString findAssetRoot()
 {
     static const QString cachedRoot = []() -> QString {
+#ifdef Q_OS_ANDROID
+        if (QDir(QStringLiteral("assets:/miacode")).exists()) return QStringLiteral("assets:/miacode");
+#endif
+        if (QDir(QStringLiteral(":/assets")).exists()) return QStringLiteral(":/assets");
         QStringList candidates;
         QDir cursor(QCoreApplication::applicationDirPath());
         candidates << QDir::cleanPath(cursor.filePath("../Resources/assets"));

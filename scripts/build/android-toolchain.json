@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "qt": "6.11.1",
+  "abi": "arm64-v8a",
+  "minSdk": 31,
+  "targetSdk": 35,
+  "compileSdk": 36,
+  "buildTools": "36.0.0",
+  "jdkMajor": 17,
+  "ndk": "27.2.12479018",
+  "stage": "p2-p4-implementation",
+  "release16KbGate": "test APK ELF and ZIP alignment verified; physical 16KB-device validation and release signing pending",
+  "sdkPackages": [
+    {"path": "platforms/android-36", "archive": "platform-36_r02.zip", "sha1": "2c1a80dd4d9f7d0e6dd336ec603d9b5c55a6f576"},
+    {"path": "build-tools/36.0.0", "archive": "build-tools_r36_windows.zip", "sha1": "f16ccffd34de8790dede813a6c7d8e2c11a27b50"},
+    {"path": "ndk/27.2.12479018", "archive": "android-ndk-r27c-windows.zip", "sha1": "ac5f7762764b1f15341094e148ad4f847d050c38"},
+    {"path": "platform-tools", "archive": "platform-tools_r37.0.1-win.zip", "sha1": "e03e78b1d80b396f1c3358e31251cb31740e1110"}
+  ]
+}

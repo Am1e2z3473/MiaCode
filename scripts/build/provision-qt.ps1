@@ -39,10 +39,12 @@ param(
     [Parameter(Mandatory = $true)][string]$AqtArch,
     [Parameter(Mandatory = $true)][string]$ArchDir,
     [string]$HostPlatform = "windows_x86",
+    [ValidateSet('desktop', 'android')][string]$Target = 'desktop',
     [string[]]$Modules = @(),
     [string]$OutputDir = "",
     [string]$BaseUrl = "https://download.qt.io",
     [switch]$PlanOnly,
+    [switch]$AddonsOnly,
     [switch]$Force
 )
 
@@ -59,12 +61,23 @@ if ([string]::IsNullOrWhiteSpace($OutputDir)) {
 
 function Test-QtRootValid {
     param([string]$Path)
+    $moduleComponents = @{ qtmultimedia = 'Qt6Multimedia'; qtshadertools = 'Qt6ShaderTools'; qttools = 'Qt6LinguistTools' }
+    foreach ($module in $Modules) {
+        if ($moduleComponents.ContainsKey($module)) {
+            $component = $moduleComponents[$module]
+            if (!(Test-Path (Join-Path $Path "lib/cmake/$component/${component}Config.cmake"))) { return $false }
+        }
+    }
     if ($Modules -contains "qtquick3d") {
         foreach ($component in @("Qt6Quick3D", "Qt6Quick3DHelpers")) {
             if (!(Test-Path (Join-Path $Path "lib\cmake\$component\${component}Config.cmake"))) {
                 return $false
             }
         }
+    }
+    if ($Target -eq 'android') {
+        return (Test-Path (Join-Path $Path 'lib/cmake/Qt6/qt.toolchain.cmake')) -and
+            (Test-Path (Join-Path $Path 'plugins/platforms/libplugins_platforms_qtforandroid_arm64-v8a.so'))
     }
     return (Test-Path (Join-Path $Path "lib\cmake\Qt6")) -and (Test-Path (Join-Path $Path "bin\windeployqt.exe"))
 }
@@ -75,9 +88,11 @@ function Get-Url {
     $curl = Get-Command curl.exe -ErrorAction SilentlyContinue
     if ($null -ne $curl) {
         if ([string]::IsNullOrWhiteSpace($OutFile)) {
-            return (& $curl.Source -s -L --fail --retry 3 --retry-delay 2 $Url 2>$null) -join "`n"
+            $response = & $curl.Source -s -L --fail --connect-timeout 15 --max-time 120 --retry 3 --retry-delay 2 $Url
+            if ($LASTEXITCODE -ne 0) { throw "Metadata request failed: $Url" }
+            return $response -join "`n"
         }
-        & $curl.Source -s -L --fail --retry 3 --retry-delay 2 -o $OutFile $Url
+        & $curl.Source -s -L --fail --connect-timeout 15 --max-time 1800 --retry 3 --retry-delay 2 -o $OutFile $Url
         if ($LASTEXITCODE -ne 0) { throw "Download failed: $Url" }
         return ""
     }
@@ -116,8 +131,8 @@ $versionNoDots = $Version.Replace(".", "")
 $majorVersion = ($Version -split "\.")[0]
 # The repository folder strips the host prefix from the aqt arch name:
 # win64_mingw -> mingw, win64_msvc2022_64 -> msvc2022_64.
-$repoArchSuffix = $AqtArch -replace '^win(64|32)_', ''
-$desktopBase = "$BaseUrl/online/qtsdkrepository/$HostPlatform/desktop"
+$repoArchSuffix = $AqtArch -replace '^(win(64|32)_|android_)', ''
+$repositoryBase = "$BaseUrl/online/qtsdkrepository/$HostPlatform/$Target"
 # Qt < 6.11 keeps every architecture beside a flat version folder; Qt >= 6.11
 # uses one folder per architecture. Probe both and take whichever resolves.
 $layoutCandidates = @(
@@ -126,7 +141,7 @@ $layoutCandidates = @(
 )
 $layout = $null
 foreach ($candidate in $layoutCandidates) {
-    $updatesUrl = "$desktopBase/$($candidate.Folder)/Updates.xml"
+    $updatesUrl = "$repositoryBase/$($candidate.Folder)/Updates.xml"
     if (Test-UrlExists $updatesUrl) {
         $layout = $candidate
         $layout.UpdatesUrl = $updatesUrl
@@ -158,7 +173,8 @@ function Get-PackageArchives {
 
 # Package names: qt.qt6.<versionNoDots>.<aqtArch> for the base, and
 # qt.qt6.<versionNoDots>.addons.<module>.<aqtArch> for add-ons.
-$packageNames = @("qt.qt6.$versionNoDots.$AqtArch")
+$packageNames = @()
+if (!$AddonsOnly) { $packageNames += "qt.qt6.$versionNoDots.$AqtArch" }
 foreach ($module in $Modules) {
     $packageNames += "qt.qt6.$versionNoDots.addons.$module.$AqtArch"
 }
@@ -187,7 +203,7 @@ foreach ($packageName in $packageNames) {
     if ($archives.Count -eq 0) {
         throw "Package '$packageName' not found in $($layout.UpdatesUrl) (or it has no downloadable archives)."
     }
-    $packageFolderUrl = "$desktopBase/$($layout.Folder)/$packageName"
+    $packageFolderUrl = "$repositoryBase/$($layout.Folder)/$packageName"
     foreach ($archive in $archives) {
         $entry = Resolve-ArchiveEntry -PackageFolderUrl $packageFolderUrl -ArchiveName $archive
         $entry.Package = $packageName
@@ -254,11 +270,15 @@ try {
         Remove-Item -LiteralPath $localArchive -Force
     }
 } finally {
-    if (Test-Path $tempDir) { Remove-Item -Recurse -Force $tempDir }
+    $resolvedTemp = [IO.Path]::GetFullPath($tempDir)
+    $tempParent = [IO.Path]::GetFullPath([IO.Path]::GetTempPath()).TrimEnd('\') + '\'
+    if (!$resolvedTemp.StartsWith($tempParent, [StringComparison]::OrdinalIgnoreCase) -or
+        [IO.Path]::GetFileName($resolvedTemp) -notmatch '^miacode-qt-[a-f0-9]{32}$') { throw 'Unexpected Qt temporary cleanup path' }
+    if (Test-Path -LiteralPath $resolvedTemp) { Remove-Item -LiteralPath $resolvedTemp -Recurse -Force }
 }
 
 if (!(Test-QtRootValid $targetRoot)) {
-    throw "Qt extraction finished but $targetRoot does not contain lib\cmake\Qt6 and bin\windeployqt.exe."
+    throw "Qt extraction finished but $targetRoot does not contain the required $Target Qt toolchain."
 }
 $sizeMb = [math]::Round((Get-ChildItem -LiteralPath $targetRoot -Recurse -File | Measure-Object Length -Sum).Sum / 1MB, 1)
 Write-Host "Qt $Version ($ArchDir) installed at $targetRoot ($sizeMb MB, $([math]::Round($totalBytes / 1MB, 1)) MB downloaded)"

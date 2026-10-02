@@ -98,6 +98,10 @@ ComboBox {
             optionWidth = Math.ceil(widest) + 2 * Theme.rowPaddingX
         }
 
+        // Keep the preceding choice reachable when the list is first polished.
+        // Default highlight positioning can otherwise leave it partly scrolled off.
+        onOpened: contentItem.positionViewAtIndex(Math.max(0, root.currentIndex - 1), ListView.Beginning)
+
         contentItem: ListView {
             clip: true
             implicitHeight: contentHeight

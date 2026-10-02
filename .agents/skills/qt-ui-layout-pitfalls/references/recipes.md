@@ -424,6 +424,27 @@ open, select and close, including reopening during a fade-out.
 
 ---
 
+### Q9. SplitView resize triggers a workbench scale loop
+
+**Symptom:** dragging the preview divider stalls the Qt main thread while Android system
+services remain responsive. A six-cell statistics Grid repeatedly reports a 3×1 capacity.
+
+**Root cause:** the global workbench scale reads preview minimum height; that height reads
+statistics implicit height, which switches at a width breakpoint. Width changes height,
+height changes scale, and scale changes width again. Setting Grid rows and columns through
+separate bindings also exposes a transient invalid combination.
+
+**Recipe:** compute the global scale from a width-independent minimum height using the
+maximum supported statistics row height. Keep actual row height responsive. Specify only
+Grid columns and let Qt derive rows from child count. Test resize in both directions across
+the breakpoint while playback is active, and assert unchanged global scale plus adequate
+grid capacity. Preserve runtime screenshots and inspect logs for layout loops.
+
+Android verification (2026-10-01): `drag-fix-widest.png` and `drag-fix-narrow-again.png`
+show one and two rows with real PV, notes and waveform playback progressing.
+
+---
+
 ## Sync-pair constants to keep aligned (UI-layout-relevant)
 
 - `kBottomTabsContentScaleMax = 4.0` — `MainWindow.WindowShell.cpp` +

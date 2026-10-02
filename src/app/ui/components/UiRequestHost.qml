@@ -12,6 +12,7 @@ Item {
     // no session yet, which is why Connections guards on it rather than the
     // property being required.
     property var requests: null
+    property bool externalFileDialogs: false
 
     // The request currently shown by fileDialog / folderDialog. A picker can
     // only be open once at a time, so one id per dialog is enough.
@@ -53,7 +54,7 @@ Item {
 
     Connections {
         target: root.requests
-        function onFileRequested(requestId, request) { root.openRequest(requestId, request) }
+        function onFileRequested(requestId, request) { if (!root.externalFileDialogs) root.openRequest(requestId, request) }
         function onChoiceRequested(requestId, request) {
             root.activeChoiceId = requestId
             choiceDialog.title = request.title

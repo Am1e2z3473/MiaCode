@@ -1,3 +1,0 @@
-language: objective-c
-xcode_project: SoundTouch.xcodeproj
-xcode_scheme: SoundTouch

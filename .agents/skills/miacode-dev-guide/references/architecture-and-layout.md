@@ -7,6 +7,7 @@
 | 任务 | 入口 | 复用与边界 |
 | --- | --- | --- |
 | 启动、窗口与装配 | `src/app/main.cpp`、`src/app/ui/Bootstrap.cpp`、`src/app/runtime/` | Session 拥有宿主；QML 引擎创建根窗口 |
+| 安卓 P0/P1 原型 | `src/android/`、`packaging/android/`、`scripts/build/build-android.ps1` | 独立 CMake 入口；文档权威复用 ChartWorkspace，SAF/JNI 与恢复由 AndroidDocumentSession/AndroidPlatformBridge 接入；媒体探针不能替代 v2 渲染一致性验收，进度见 `docs/specs/android/ANDROID_P0_P1_IMPLEMENTATION_ZH.md` |
 | 文档、打开保存、分析 | `src/app/services/` | ChartWorkspace、ChartWorkspaceFileService、AnalysisService；不要在 QML model 复制文档权威 |
 | 编辑器与书签 | `src/app/ui/editor/`、`src/editor/` | EditorController/InputBridge、EditorSyncController；文本策略与书签语法复用 src/editor |
 | 播放、走带与同步 | `src/app/runtime/playback/`、`src/app/services/PlaybackControl.h` | PlaybackCoordinator 是播放权威；Preview/Timeline 通过端口和带身份的快照交互 |

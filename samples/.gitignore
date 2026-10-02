@@ -1,9 +1,0 @@
-# Local editor sidecar + media for demo charts — not source deliverables.
-*/.miacode/
-*/.autosave/
-*/track.mp3
-*/track_bak.mp3
-*/*.mp4
-*/*.bak.txt
-*/majSetting.json
-*/majdata.json

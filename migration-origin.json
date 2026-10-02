@@ -1,0 +1,23 @@
+{
+  "sourceProduct": "MiaCode v2",
+  "sourceRevision": "c190bb2c138cf61032dd7ac97ec41027da4bb40d",
+  "targetProduct": "MiaCode Mobile",
+  "platform": "Android",
+  "minimumSdk": 31,
+  "orientation": "sensorLandscape",
+  "uiSimilarityRequired": 0.9,
+  "stagesTarget": "P5",
+  "copiedDirectories": [
+    "src",
+    "resources",
+    "translations",
+    "packaging",
+    "scripts/build"
+  ],
+  "excluded": [
+    ".git",
+    ".qt",
+    "build-devtools"
+  ],
+  "status": "implementation"
+}

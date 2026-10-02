@@ -373,6 +373,7 @@ Rectangle {
                                 AppTextField {
                                     Layout.fillWidth: true
                                     text: root.session ? root.session.outputPath : ""
+                                    inputMethodHints: Qt.ImhNoPredictiveText | Qt.ImhNoAutoUppercase | Qt.ImhPreferLatin
                                     onEditingFinished: if (root.session) root.session.outputPath = text
                                 }
                                 AppButton {
@@ -539,6 +540,7 @@ Rectangle {
                                 id: exportRangeStartField
 
                                 objectName: "exportRangeStartField"
+                                inputMethodHints: Qt.ImhFormattedNumbersOnly | Qt.ImhNoPredictiveText
                                 Layout.preferredWidth: 100
                                 Layout.alignment: Qt.AlignVCenter
                                 text: root.session ? root.session.exportStartSeconds.toFixed(3) : "0"
@@ -566,6 +568,7 @@ Rectangle {
                                 id: exportRangeEndField
 
                                 objectName: "exportRangeEndField"
+                                inputMethodHints: Qt.ImhFormattedNumbersOnly | Qt.ImhNoPredictiveText
                                 Layout.preferredWidth: 100
                                 Layout.alignment: Qt.AlignVCenter
                                 text: root.session ? root.session.exportEndSeconds.toFixed(3) : "0"

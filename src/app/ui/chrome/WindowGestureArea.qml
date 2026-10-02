@@ -7,6 +7,7 @@ Item {
     id: root
 
     required property var hostWindow
+    enabled: Qt.platform.os !== "android"
 
     DragHandler {
         target: null

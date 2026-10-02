@@ -1,0 +1,5 @@
+&title=Incomplete input is recoverable
+&artist=Fixture
+&first=0
+&lv_5=13
+&inote_5=(180){4}1,2h[

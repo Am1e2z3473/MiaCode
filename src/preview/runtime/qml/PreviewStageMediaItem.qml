@@ -43,10 +43,12 @@ Item {
                 && !root.mediaHost.hasVideoMedia
             fillMode: root.fitContain ? Image.PreserveAspectFit : Image.PreserveAspectCrop
             source: root.mediaHost ? root.mediaHost.imageSource : ""
+            // Bound preview memory on Android; export uses its own full resolution source.
+            sourceSize: Qt.platform.os === "android" ? Qt.size(2048, 2048) : Qt.size(-1, -1)
             asynchronous: true
             cache: true
             smooth: true
-            mipmap: true
+            mipmap: Qt.platform.os !== "android"
         }
 
         VideoOutput {
@@ -77,10 +79,11 @@ Item {
                 && !root.mediaHost.hasVideoMedia
             fillMode: Image.PreserveAspectFit
             source: root.mediaHost ? root.mediaHost.imageSource : ""
+            sourceSize: Qt.platform.os === "android" ? Qt.size(2048, 2048) : Qt.size(-1, -1)
             asynchronous: true
             cache: true
             smooth: true
-            mipmap: true
+            mipmap: Qt.platform.os !== "android"
         }
 
         VideoOutput {

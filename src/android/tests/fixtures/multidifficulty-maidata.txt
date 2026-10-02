@@ -1,0 +1,17 @@
+&title=Android 多难度回归
+&artist=MiaCode
+&first=0.125
+&des=Offline fixture
+&clock_count=4
+&video=media/background.mp4
+&wholebpm=180
+&custom_android_fixture=preserve unknown metadata
+&lv_4=12
+&des_4=Expert author
+&inote_4=(180){4}1,2,3,4,E
+&lv_5=13+
+&des_5=Master author
+&inote_5=(180){8}1/5,2h[4:1],3-6[4:1],A1,B2,(240){4}7,8,E
+&lv_6=14
+&des_6=ReMaster author
+&inote_6=(200){16}1,2,3,4,5,6,7,8,E

@@ -238,8 +238,10 @@ void SimaiSyntaxHighlighter::setDiagnostics(const QVariantList& value)
         const int line = diagnostic.value(QStringLiteral("line")).toInt();
         diagnosticsByLine_[line].append(item);
     }
-    rehighlight();
     emit diagnosticsChanged();
+    // Applying formats can synchronously change TextEdit bindings. Finish the
+    // diagnostics binding before rehighlighting the document on its own thread.
+    QMetaObject::invokeMethod(this, [this] { rehighlight(); }, Qt::QueuedConnection);
 }
 
 bool SimaiSyntaxHighlighter::isOpeningBracket(QChar ch, BracketKind* kindOut, QChar* closingOut)

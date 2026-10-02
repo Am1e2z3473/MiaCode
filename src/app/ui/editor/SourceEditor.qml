@@ -1210,6 +1210,7 @@ Rectangle {
 
             EditorPointerArea {
                 id: editorPointer
+                enabled: Qt.platform.os !== "android"
                 objectName: "editorPointer"
                 anchors.fill: parent
                 editor: sourceArea

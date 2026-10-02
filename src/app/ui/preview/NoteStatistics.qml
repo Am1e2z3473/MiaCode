@@ -9,6 +9,7 @@ import MiaCode.UI
 // independent — do not share a width threshold with PreviewTransport.
 Item {
     id: root
+    objectName: "previewNoteStatistics"
 
     required property var statistics
     property bool dataAvailable: true
@@ -24,7 +25,10 @@ Item {
     readonly property int columns: wideLayout ? 6 : 3
     readonly property int rows: wideLayout ? 1 : 2
 
-    implicitHeight: wideLayout ? 55 : 96
+    readonly property real wideHeight: 55
+    readonly property real compactHeight: 96
+    readonly property real maximumImplicitHeight: Math.max(wideHeight, compactHeight)
+    implicitHeight: wideLayout ? wideHeight : compactHeight
     height: implicitHeight
 
     Text {
@@ -51,7 +55,8 @@ Item {
         anchors.topMargin: 4
         anchors.bottomMargin: 4
         columns: root.columns
-        rows: root.rows
+        // Let Grid derive rows from columns and child count. Updating both
+        // constraints separately creates an invalid 3x1 intermediate grid.
         columnSpacing: 0
         rowSpacing: 0
 

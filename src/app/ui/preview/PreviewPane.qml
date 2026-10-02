@@ -17,8 +17,13 @@ Rectangle {
     // exactly one PreviewSurface may subscribe to the runtime at a time. The
     // compact and fullscreen owners use the same rule.
     property bool surfaceActive: true
+    property real minimumStageSize: 64
     readonly property real minimumHeight: heading.implicitHeight + transport.implicitHeight
-                                          + statistics.implicitHeight + 64
+                                          + statistics.implicitHeight + root.minimumStageSize
+    // A workbench transform must not depend on a width-sensitive breakpoint.
+    // Otherwise a wider statistics row changes scale, which changes its width again.
+    readonly property real stableMinimumHeight: heading.implicitHeight + transport.implicitHeight
+        + statistics.maximumImplicitHeight + root.minimumStageSize
     readonly property real minimumWidth: transport.minimumWidth
     signal fullscreenRequested()
 

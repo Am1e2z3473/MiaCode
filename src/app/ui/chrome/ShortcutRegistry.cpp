@@ -9,6 +9,7 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QJsonValue>
+#include <QStandardPaths>
 
 
 namespace miacode::ui {
@@ -16,7 +17,11 @@ namespace {
 
 QString userOverridePath()
 {
+#ifdef Q_OS_ANDROID
+    return QDir(QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation)).filePath(QStringLiteral("shortcuts.json"));
+#else
     return QDir(QCoreApplication::applicationDirPath()).filePath(QStringLiteral("shortcuts.json"));
+#endif
 }
 
 QString parseShortcutTextValue(const QJsonValue& value)

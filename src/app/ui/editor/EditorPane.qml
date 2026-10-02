@@ -201,14 +201,16 @@ Item {
         pages: root.pages
     }
 
-    LatencyPage {
+    Loader {
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.top: tabs.bottom
         anchors.bottom: parent.bottom
-        visible: root.viewState.latencyEditorActive && root.pages.activePageId === "latency"
-        latency: root.latency
-        pages: root.pages
+        active: root.viewState.latencyEditorActive && root.pages.activePageId === "latency"
+        sourceComponent: LatencyPage {
+            latency: root.latency
+            pages: root.pages
+        }
     }
 
     component DifficultyHeaderField: Item {
@@ -333,6 +335,7 @@ Item {
 
     SourceEditor {
         id: sourceEditor
+        objectName: "v2SourceEditor"
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.top: difficultyHeader.bottom

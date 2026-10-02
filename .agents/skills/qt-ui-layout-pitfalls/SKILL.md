@@ -60,6 +60,7 @@ pixels, and several Qt defaults lie** (`sizeHint()` under QSS, `SetFixedSize`,
 | 同色面板明暗不同 / 关闭壁纸后仍透明 | Parent/child surface fills compound alpha; wallpaper and surface alpha use different enable gates | Z1 |
 | 模态弹窗藏到主窗口下方 / clicks only play the task-dialog warning sound | QuickShell uses a hidden QWidget backend, so parentless application-modal dialogs lack a native owner and can fall behind the visible QQuickWindow | Z8 |
 | 下拉列表弹出为空白细条 (combo popup collapses to padding) | A base Popup's default contentData can force contentItem initialization before a derived ListView is installed | Z9 |
+| 拖拽分隔条后界面卡住、统计 Grid 持续报容量错误 | Workbench scale depends on a width-sensitive implicit height, creating a width→height→scale→width cycle | Q9 |
 | 点击区域错位 (hit area ≠ visual) | Hit geometry and visuals derived from different sources | Z2 |
 | 平台蓝色填充闪现 (platform blue-fill flashes) | Viewport default paint path fires on style/palette events | Z3 |
 | 取消关闭但弹窗已没了 (cancel close, popups already gone) | Side-effect sweep ran BEFORE the cancellable prompt | Z4 |

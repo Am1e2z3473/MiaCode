@@ -803,7 +803,7 @@ void ExportSession::browseOutputPath()
     miacode::FileRequest request;
     request.title = qtTrId("dialog.video_export.title");
     request.startPath = task_.outputPath;
-    request.nameFilters = QStringList{QStringLiteral("MP4 (*.mp4)")};
+    request.nameFilters = QStringList{QStringLiteral("MP4 (*.mp4)"), QStringLiteral("WAV (*.wav)")};
     request.saveMode = true;
     uiRequests_->requestFile(request, [this](const QString& path) {
         if (!path.isEmpty()) {
@@ -906,6 +906,7 @@ void ExportSession::browseBatchOutputDirectory()
     request.title = qtTrId("dialog.batch_export.select_folder");
     request.startPath = batchOutputDirectory_;
     request.selectFolder = true;
+    request.saveMode = true;
     uiRequests_->requestFile(request, [this](const QString& path) {
         if (!path.isEmpty()) {
             setBatchOutputDirectory(path);

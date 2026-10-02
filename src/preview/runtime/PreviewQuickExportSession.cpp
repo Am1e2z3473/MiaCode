@@ -17,6 +17,9 @@
 #include <QQuickRenderControl>
 #include <QQuickRenderTarget>
 #include <QQuickWindow>
+#ifdef Q_OS_ANDROID
+#include <GLES3/gl3.h>
+#endif
 
 #include <cstring>
 
