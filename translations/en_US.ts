@@ -971,13 +971,17 @@ Failed: %2</translation>
         <source>Select Folder</source>
         <translation>Select Folder</translation>
     </message>
+    <message id="dialog.normalize.apply">
+        <source>Format</source>
+        <translation>Format</translation>
+    </message>
     <message id="dialog.normalize.compact_single_line">
-        <source>Compact single line</source>
-        <translation>Compact single line</translation>
+        <source>Compact format</source>
+        <translation>Compact format</translation>
     </message>
     <message id="dialog.normalize.segment_preserving">
-        <source>Keep segments</source>
-        <translation>Keep segments</translation>
+        <source>Preserve segments</source>
+        <translation>Preserve segments</translation>
     </message>
     <message id="dialog.open_startup_folder.missing_maidata.message">
         <source>No maidata.txt was found in the dropped folder:
@@ -1850,12 +1854,12 @@ Restore the backup from %1?</translation>
         <translation>Every 4 measures</translation>
     </message>
     <message id="document.chart_section_none">
-        <source>No sectioning</source>
-        <translation>No sectioning</translation>
+        <source>Continuous</source>
+        <translation>Continuous</translation>
     </message>
     <message id="document.chart_sectioning">
-        <source>Chart sectioning</source>
-        <translation>Chart sectioning</translation>
+        <source>Blank-line grouping</source>
+        <translation>Blank-line grouping</translation>
     </message>
     <message id="document.choose_audio">
         <source>Choose audio</source>
@@ -2970,8 +2974,8 @@ The file may be open in preview, a media player, File Explorer preview pane, or 
         <translation>Add</translation>
     </message>
     <message id="qml.align_to_the_1_384_grid">
-        <source>Align to the 1/384 grid</source>
-        <translation>Align to the 1/384 grid</translation>
+        <source>Align to 1/384 of a measure</source>
+        <translation>Align to 1/384 of a measure</translation>
     </message>
     <message id="qml.all_files">
         <source>All files (*)</source>
@@ -3154,8 +3158,8 @@ The file may be open in preview, a media player, File Explorer preview pane, or 
         <translation>Follow current chart-source position</translation>
     </message>
     <message id="qml.format_syntax">
-        <source>Format syntax</source>
-        <translation>Format syntax</translation>
+        <source>Output format</source>
+        <translation>Output format</translation>
     </message>
     <message id="qml.hand_radius">
         <source>Hand radius</source>
@@ -3294,12 +3298,12 @@ The file may be open in preview, a media player, File Explorer preview pane, or 
         <translation>Normal rendering</translation>
     </message>
     <message id="qml.normalize_selected_lines_1_2">
-        <source>Normalize selected lines %1–%2.</source>
-        <translation>Normalize selected lines %1–%2.</translation>
+        <source>Range: selected text within lines %1–%2</source>
+        <translation>Range: selected text within lines %1–%2</translation>
     </message>
     <message id="qml.normalize_the_entire_chart_source">
-        <source>Normalize the entire chart source.</source>
-        <translation>Normalize the entire chart source.</translation>
+        <source>Range: entire chart source</source>
+        <translation>Range: entire chart source</translation>
     </message>
     <message id="qml.normalize_whole_chart">
         <source>Format Chart</source>

@@ -971,13 +971,17 @@ Failed: %2</source>
         <source>Select Folder</source>
         <translation>选择文件夹</translation>
     </message>
+    <message id="dialog.normalize.apply">
+        <source>Format</source>
+        <translation>整理</translation>
+    </message>
     <message id="dialog.normalize.compact_single_line">
-        <source>Compact single line</source>
-        <translation>单行紧凑</translation>
+        <source>Compact format</source>
+        <translation>紧凑格式</translation>
     </message>
     <message id="dialog.normalize.segment_preserving">
-        <source>Keep segments</source>
-        <translation>分段保留</translation>
+        <source>Preserve segments</source>
+        <translation>保留分段</translation>
     </message>
     <message id="dialog.open_startup_folder.missing_maidata.message">
         <source>No maidata.txt was found in the dropped folder:
@@ -1850,12 +1854,12 @@ Restore the backup from %1?</source>
         <translation>每 4 小节</translation>
     </message>
     <message id="document.chart_section_none">
-        <source>No sectioning</source>
-        <translation>不分段</translation>
+        <source>Continuous</source>
+        <translation>连续排列</translation>
     </message>
     <message id="document.chart_sectioning">
-        <source>Chart sectioning</source>
-        <translation>谱面分段</translation>
+        <source>Blank-line grouping</source>
+        <translation>空行分组</translation>
     </message>
     <message id="document.choose_audio">
         <source>Choose audio</source>
@@ -2970,8 +2974,8 @@ The file may be open in preview, a media player, File Explorer preview pane, or 
         <translation>添加</translation>
     </message>
     <message id="qml.align_to_the_1_384_grid">
-        <source>Align to the 1/384 grid</source>
-        <translation>对齐到 384 分网格</translation>
+        <source>Align to 1/384 of a measure</source>
+        <translation>对齐至 1/384 小节</translation>
     </message>
     <message id="qml.all_files">
         <source>All files (*)</source>
@@ -3154,8 +3158,8 @@ The file may be open in preview, a media player, File Explorer preview pane, or 
         <translation>跟随当前谱面代码位置</translation>
     </message>
     <message id="qml.format_syntax">
-        <source>Format syntax</source>
-        <translation>整理语法</translation>
+        <source>Output format</source>
+        <translation>输出格式</translation>
     </message>
     <message id="qml.hand_radius">
         <source>Hand radius</source>
@@ -3294,12 +3298,12 @@ The file may be open in preview, a media player, File Explorer preview pane, or 
         <translation>常规渲染</translation>
     </message>
     <message id="qml.normalize_selected_lines_1_2">
-        <source>Normalize selected lines %1–%2.</source>
-        <translation>将规范化选中的第 %1 - %2 行。</translation>
+        <source>Range: selected text within lines %1–%2</source>
+        <translation>整理范围：选中内容（第 %1–%2 行）</translation>
     </message>
     <message id="qml.normalize_the_entire_chart_source">
-        <source>Normalize the entire chart source.</source>
-        <translation>将规范化整份谱面正文。</translation>
+        <source>Range: entire chart source</source>
+        <translation>整理范围：整张谱面的正文</translation>
     </message>
     <message id="qml.normalize_whole_chart">
         <source>Format Chart</source>

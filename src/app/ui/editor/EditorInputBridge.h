@@ -2,6 +2,7 @@
 
 #include <QObject>
 #include <QPointF>
+#include <QRectF>
 #include <QPointer>
 #include <QQuickTextDocument>
 #include <QVariantMap>
@@ -29,6 +30,7 @@ public:
     void setTextDocument(QQuickTextDocument* document);
     Q_INVOKABLE QPointF textHitPoint(qreal x, qreal y) const;
     Q_INVOKABLE QVariantMap wordRange(int position) const;
+    Q_INVOKABLE QRectF textLineBounds(int position) const;
 
 signals:
     void targetChanged();

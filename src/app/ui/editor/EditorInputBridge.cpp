@@ -129,6 +129,21 @@ QPointF EditorInputBridge::textHitPoint(qreal x, qreal y) const
     return QPointF(x, topPadding + layout->position().y() + line.y() + line.height() / 2);
 }
 
+QRectF EditorInputBridge::textLineBounds(int position) const
+{
+    QTextDocument* document = textDocument_ ? textDocument_->textDocument() : nullptr;
+    if (!target_ || !document) return {};
+    position = qBound(0, position, document->characterCount() - 1);
+    const QTextBlock block = document->findBlock(position);
+    const QTextLayout* layout = block.layout();
+    if (!layout) return {};
+    const QTextLine line = layout->lineForTextPosition(position - block.position());
+    if (!line.isValid()) return {};
+    return line.naturalTextRect().translated(layout->position()
+        + QPointF(target_->property("leftPadding").toReal(),
+                  target_->property("topPadding").toReal()));
+}
+
 QVariantMap EditorInputBridge::wordRange(int position) const
 {
     QTextCursor cursor(textDocument_->textDocument());

@@ -47,6 +47,17 @@ Menu {
     }
     width: popupWidthForAnchor(root.anchorItem)
 
+    function measuredHeight() {
+        // ListView 首次布局的 contentHeight 包含估算值；菜单按条目测量。
+        let total = root.topPadding + root.bottomPadding
+        for (let i = 0; i < root.count; ++i) {
+            const item = root.itemAt(i)
+            if (item)
+                total += item.implicitHeight
+        }
+        return Math.ceil(total + Math.max(0, root.count - 1) * root.contentItem.spacing)
+    }
+
     function popupWidthForAnchor(anchor) {
         const preferred = Math.max(root.implicitWidth,
                                    !root.hugContent && anchor ? anchor.width : 0)
@@ -59,22 +70,23 @@ Menu {
         parent = anchor
         closePolicy = Popup.CloseOnEscape | Popup.CloseOnPressOutsideParent
         root.anchorItem = anchor
+        root.contentItem.forceLayout()
+        root.reposition()
         open()
-        Qt.callLater(root.reposition)
     }
 
     function reposition() {
         if (!root.anchorItem || Overlay.overlay === null)
             return
         x = root.openRightAligned ? root.anchorItem.width - width : 0
-        y = -height
+        y = -implicitHeight
     }
 
-    onImplicitHeightChanged: if (visible)
+    onImplicitHeightChanged: if (active)
         reposition()
-    onWidthChanged: if (visible)
+    onWidthChanged: if (active)
         reposition()
-    onCountChanged: if (visible)
+    onCountChanged: if (active)
         reposition()
 
     background: FloatingCard {
