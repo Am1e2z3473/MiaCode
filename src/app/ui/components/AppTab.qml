@@ -10,11 +10,14 @@ Item {
     property string text
     property string secondaryText
     property url iconSource
+    property url filledIconSource
     property int difficultyId: 0
     property string tooltip
     property bool active: false
     property bool panelTab: false
     property bool compact: false
+    property int labelFontSize: compact ? Theme.compactFontSize
+                                       : panelTab ? Theme.uiFontSize : Theme.secondaryFontSize
     property bool closable: false
     property int count: -1
     property real preferredTabWidth: 160
@@ -74,7 +77,8 @@ Item {
                     visible: !root.panelTab
                              && root.difficultyId <= 0
                              && root.iconSource.toString().length > 0
-                    source: root.iconSource
+                    source: root.active && root.filledIconSource.toString().length > 0
+                        ? root.filledIconSource : root.iconSource
                     sourceSize: Qt.size(15, 15)
                     color: root.active ? Theme.colors.text.active : Theme.colors.text.secondary
                 }
@@ -87,9 +91,7 @@ Item {
                     elide: Text.ElideRight
                     color: root.active ? Theme.colors.text.active : Theme.colors.text.secondary
                     font.family: Theme.uiFont
-                    font.pixelSize: root.compact ? Theme.compactFontSize
-                                                 : root.panelTab ? Theme.uiFontSize
-                                                                 : Theme.secondaryFontSize
+                    font.pixelSize: root.labelFontSize
                     horizontalAlignment: Text.AlignLeft
                     verticalAlignment: Text.AlignVCenter
                 }
@@ -159,6 +161,7 @@ Item {
         }
 
         background: HoverChrome {
+            cornerRadius: root.compact ? Theme.compactControlRadius : Theme.controlRadius
             stateColors: root.panelTab ? Theme.colors.popupState : Theme.colors.state
             contentHeight: label.implicitHeight
             selected: root.active

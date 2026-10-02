@@ -52,6 +52,172 @@ AppDialog {
             0, Math.min(keepY, Math.max(0, shortcutList.contentHeight - shortcutList.height)))
     }
 
+    component PreviewPositionCard: AbstractButton {
+        id: card
+
+        required property bool previewOnLeft
+        required property bool selected
+        readonly property string layoutLabel: previewOnLeft
+            ? qsTrId("dialog.preferences.layout.preview_editor")
+            : qsTrId("dialog.preferences.layout.editor_preview")
+
+        implicitWidth: 180
+        implicitHeight: (width - 24) * 9 / 16 + 46
+        hoverEnabled: true
+        focusPolicy: Qt.TabFocus
+        Accessible.role: Accessible.RadioButton
+        Accessible.name: qsTrId("dialog.preferences.interface_layout") + ": " + layoutLabel
+        Accessible.checkable: true
+        Accessible.checked: selected
+
+        background: Rectangle {
+            radius: Theme.controlRadius
+            color: Theme.overlayColor(card.selected ? Theme.colors.state.selected
+                 : card.down ? Theme.colors.state.pressed
+                 : card.hovered ? Theme.colors.state.hover : Theme.colors.background.control)
+            border.width: card.selected || card.visualFocus ? 2 : 1
+            border.color: card.selected || card.visualFocus
+                ? Theme.colors.accent.primary : Theme.colors.border.control
+        }
+
+        contentItem: Item {
+            Rectangle {
+                id: miniature
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.top: parent.top
+                anchors.margins: 12
+                height: width * 9 / 16
+                radius: Theme.compactControlRadius
+                color: Theme.surfaceColor(Theme.colors.background.surface)
+                border.width: 1
+                border.color: Theme.colors.border.normal
+
+                Rectangle {
+                    x: 5; y: 5
+                    width: parent.width - 10
+                    height: 5
+                    radius: 2
+                    color: Theme.colors.border.control
+                }
+                Rectangle {
+                    x: 5; y: 14
+                    width: 10
+                    height: parent.height - 19
+                    radius: 2
+                    color: Theme.colors.border.control
+                }
+
+                Item {
+                    id: previewPane
+                    x: card.previewOnLeft ? 19 : miniature.width - width - 5
+                    y: 14
+                    width: (miniature.width - 29) * 0.44
+                    height: miniature.height - 19
+
+                    Rectangle {
+                        anchors.centerIn: parent
+                        anchors.verticalCenterOffset: -8
+                        width: Math.min(parent.width - 8, parent.height - 22)
+                        height: width
+                        radius: width / 2
+                        color: "transparent"
+                        border.width: 2
+                        border.color: Theme.colors.accent.primary
+                    }
+                    Grid {
+                        anchors.left: parent.left
+                        anchors.right: parent.right
+                        anchors.bottom: parent.bottom
+                        columns: 3
+                        spacing: 3
+
+                        Repeater {
+                            model: 3
+                            delegate: Item {
+                                width: (previewPane.width - 6) / 3
+                                height: 5
+
+                                Rectangle {
+                                    width: 3; height: 3
+                                    y: 1
+                                    radius: 1
+                                    color: Theme.colors.text.disabled
+                                }
+                                Rectangle {
+                                    x: 5; y: 0
+                                    width: parent.width - 5
+                                    height: 1
+                                    color: Theme.colors.text.disabled
+                                }
+                                Rectangle {
+                                    x: 5; y: 4
+                                    width: (parent.width - 5) * 0.6
+                                    height: 1
+                                    color: Theme.colors.text.secondary
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Item {
+                    id: editorPane
+                    x: card.previewOnLeft ? miniature.width - width - 5 : 19
+                    y: 14
+                    width: (miniature.width - 29) * 0.5
+                    height: miniature.height - 19
+
+                    Column {
+                        anchors.left: parent.left
+                        anchors.right: parent.right
+                        spacing: 5
+                        Repeater {
+                            model: [0.85, 0.6, 0.75, 0.5]
+                            delegate: Rectangle {
+                                required property real modelData
+                                width: editorPane.width * modelData
+                                height: 2
+                                radius: 1
+                                color: Theme.colors.text.disabled
+                            }
+                        }
+                    }
+                    Rectangle {
+                        anchors.left: parent.left
+                        anchors.right: parent.right
+                        anchors.bottom: parent.bottom
+                        height: 18
+                        radius: 2
+                        color: Theme.colors.border.control
+
+                        Repeater {
+                            model: 5
+                            delegate: Rectangle {
+                                required property int index
+                                x: (index + 1) * parent.width / 6
+                                y: 3
+                                width: 1
+                                height: parent.height - 6
+                                color: Theme.colors.text.disabled
+                            }
+                        }
+                    }
+                }
+            }
+
+            Text {
+                anchors.horizontalCenter: parent.horizontalCenter
+                anchors.bottom: parent.bottom
+                anchors.bottomMargin: 10
+                text: card.layoutLabel
+                font.family: Theme.uiFont
+                font.pixelSize: Theme.uiFontSize
+                color: card.selected ? Theme.colors.text.active : Theme.colors.text.secondary
+            }
+        }
+    }
+
     body: ColumnLayout {
         spacing: 10
 
@@ -112,12 +278,44 @@ AppDialog {
                 currentValue: root.preferencesModel.darkThemeToken
                 onPicked: function(value) { root.preferencesModel.darkThemeToken = value }
             }
-            LabeledCombo {
-                objectName: "preferencesPreviewSideCombo"
-                label: qsTrId("dialog.preferences.preview_side")
-                options: [{ value: false, label: qsTrId("qml.right") }, { value: true, label: qsTrId("qml.left") }]
-                currentValue: root.preferencesModel.previewOnLeft
-                onPicked: function(value) { root.preferencesModel.previewOnLeft = value }
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 5
+
+                Text {
+                    Layout.preferredWidth: 120
+                    Layout.alignment: Qt.AlignTop
+                    Layout.topMargin: Math.round((Theme.controlMinHeight - implicitHeight) / 2)
+                    text: qsTrId("dialog.preferences.interface_layout")
+                    color: Theme.colors.text.secondary
+                    font.family: Theme.uiFont
+                    font.pixelSize: Theme.uiFontSize
+                    wrapMode: Text.WordWrap
+                }
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    Layout.topMargin: Theme.chromeInsetY
+                    spacing: 24
+
+                    PreviewPositionCard {
+                        objectName: "preferencesPreviewRightCard"
+                        Layout.fillWidth: true
+                        Layout.maximumWidth: 200
+                        previewOnLeft: false
+                        selected: !root.preferencesModel.previewOnLeft
+                        onClicked: root.preferencesModel.previewOnLeft = false
+                    }
+                    PreviewPositionCard {
+                        objectName: "preferencesPreviewLeftCard"
+                        Layout.fillWidth: true
+                        Layout.maximumWidth: 200
+                        previewOnLeft: true
+                        selected: root.preferencesModel.previewOnLeft
+                        onClicked: root.preferencesModel.previewOnLeft = true
+                    }
+                    Item { Layout.fillWidth: true }
+                }
             }
         }
 

@@ -27,6 +27,7 @@ Item {
             sourceItem: root.backdropSource
             popup: root.popup
             blurRadius: root.blurRadius
+            cornerRadius: root.cornerRadius
         }
     }
 

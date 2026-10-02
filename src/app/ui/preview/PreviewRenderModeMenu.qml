@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Controls.impl as ControlsImpl
 import MiaCode.UI
 
 // Sticky extras live in this popup (a Menu would dismiss on item click).
@@ -19,7 +20,7 @@ AppStickyPopup {
             required property bool active
 
             implicitHeight: 28
-            implicitWidth: Math.ceil(12 + 10 + labelMetrics.advanceWidth + leftPadding + rightPadding)
+            implicitWidth: Math.ceil(14 + 10 + labelMetrics.advanceWidth + leftPadding + rightPadding)
             leftPadding: 12
             rightPadding: 16
             selected: modeRow.active
@@ -35,16 +36,16 @@ AppStickyPopup {
             }
 
             contentItem: Item {
-                Text {
+                ControlsImpl.IconImage {
                     id: checkMark
                     anchors.left: parent.left
                     anchors.verticalCenter: parent.verticalCenter
-                    width: 12
-                    text: modeRow.active ? "✓" : ""
+                    width: 14
+                    height: 14
+                    source: Qt.resolvedUrl("icons/check.svg")
+                    sourceSize: Qt.size(14, 14)
+                    visible: modeRow.active
                     color: Theme.colors.text.active
-                    font.family: Theme.uiFont
-                    font.pixelSize: Theme.uiFontSize
-                    horizontalAlignment: Text.AlignHCenter
                 }
 
                 Text {

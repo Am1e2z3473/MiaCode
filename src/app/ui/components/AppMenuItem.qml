@@ -29,7 +29,7 @@ MenuItem {
     implicitWidth: Math.ceil(labelMetrics.advanceWidth + chromeWidth
                              + (shortcutLabel.text.length > 0 ? shortcutLabel.implicitWidth + row.spacing : 0))
     readonly property real chromeWidth: leftPadding + rightPadding
-                                        + (checkable ? 12 + row.spacing : 0)
+                                        + (checkable ? 14 + row.spacing : 0)
                                         + (difficultyId > 0 ? Theme.difficultySwatchSize + row.spacing : 0)
 
     TextMetrics {
@@ -56,7 +56,7 @@ MenuItem {
         spacing: 10
 
         Item {
-            Layout.preferredWidth: root.checkable ? 12 : 0
+            Layout.preferredWidth: root.checkable ? 14 : 0
             visible: root.checkable
         }
 
@@ -97,6 +97,7 @@ MenuItem {
     }
 
     background: HoverChrome {
+        cornerRadius: root.compact ? Theme.compactControlRadius : Theme.controlRadius
         stateColors: Theme.colors.popupState
         selected: root.checked
         hovered: root.highlighted || root.hovered
@@ -104,29 +105,27 @@ MenuItem {
         focused: root.visualFocus
     }
 
-    indicator: Text {
+    indicator: ControlsImpl.IconImage {
         x: root.mirrored ? root.width - width - root.rightPadding : root.leftPadding
         y: root.topPadding + (root.availableHeight - height) / 2
-        width: 12
-        height: implicitHeight
-        visible: root.checkable
-        text: root.checked ? "✓" : ""
+        width: 14
+        height: 14
+        visible: root.checkable && root.checked
+        source: Qt.resolvedUrl("icons/check.svg")
+        sourceSize: Qt.size(14, 14)
         color: Theme.colors.text.active
-        font: root.font
-        horizontalAlignment: Text.AlignHCenter
     }
 
     // Same placement contract as Qt Basic MenuItem; sized down slightly.
-    arrow: ControlsImpl.ColorImage {
+    arrow: ControlsImpl.IconImage {
         x: root.mirrored ? root.leftPadding : root.width - width - root.rightPadding + 6
         y: root.topPadding + (root.availableHeight - height) / 2
         width: 8
         height: 12
         visible: root.subMenu
         mirror: root.mirrored
-        source: root.subMenu
-                ? "qrc:/qt-project.org/imports/QtQuick/Controls/Basic/images/arrow-indicator.png"
-                : ""
+        source: Qt.resolvedUrl("icons/chevron-right.svg")
+        sourceSize: Qt.size(8, 12)
         color: root.labelColor
         opacity: 0.85
     }

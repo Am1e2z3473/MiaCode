@@ -157,6 +157,10 @@ Rectangle {
                         : modelData === root.viewState.latencyEditorKey
                             ? Qt.resolvedUrl("icons/metronome.svg") : ""
                     difficultyId: root.difficultyIdForKey(modelData)
+                    filledIconSource: modelData === root.viewState.metadataEditorKey
+                        ? Qt.resolvedUrl("icons/metadata-fill.svg")
+                        : modelData === root.viewState.latencyEditorKey
+                            ? Qt.resolvedUrl("icons/metronome-fill.svg") : ""
                     tooltip: root.tooltipForKey(modelData)
                     active: root.viewState.activeEditorKey === modelData
                     closable: true

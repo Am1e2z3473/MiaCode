@@ -190,6 +190,7 @@ Item {
             Layout.preferredWidth: implicitWidth
             Layout.preferredHeight: implicitHeight
             iconSource: Qt.resolvedUrl("icons/stop.svg")
+            filledIconSource: Qt.resolvedUrl("icons/stop-fill.svg")
             active: root.rangePreviewState.armed
             stateColors: root.rangePreviewState.armed
                 ? Theme.colors.dangerState : Theme.colors.buttonState
@@ -206,6 +207,8 @@ Item {
             Layout.preferredWidth: implicitWidth
             Layout.preferredHeight: implicitHeight
             iconSource: Qt.resolvedUrl(root.previewSession.playing ? "icons/pause.svg" : "icons/play.svg")
+            filledIconSource: Qt.resolvedUrl(root.previewSession.playing
+                ? "icons/pause-fill.svg" : "icons/play-fill.svg")
             active: root.rangePreviewState.armed
             stateColors: root.rangePreviewState.armed
                 ? Theme.colors.accentState : Theme.colors.buttonState
@@ -252,7 +255,8 @@ Item {
                         > root.rangePreviewState.session.exportStartSeconds
             Layout.preferredWidth: implicitWidth
             Layout.preferredHeight: implicitHeight
-            iconSource: Qt.resolvedUrl("icons/circle-play.svg")
+            iconSource: Qt.resolvedUrl("icons/range-play.svg")
+            filledIconSource: Qt.resolvedUrl("icons/range-play-active.svg")
             active: root.rangePreviewState.active
             tooltip: qsTrId("preview.range_mode")
             onClicked: root.rangePreviewState.active = !root.rangePreviewState.active
@@ -283,6 +287,7 @@ Item {
             visible: root.showCanvasMenuButton
             active: canvasMenu.active
             iconSource: Qt.resolvedUrl("icons/preview-settings.svg")
+            filledIconSource: Qt.resolvedUrl("icons/preview-settings-fill.svg")
             tooltip: qsTrId("preview.canvas.menu_tooltip")
             Accessible.description: qsTrId("preview.canvas.menu_description")
             onClicked: {

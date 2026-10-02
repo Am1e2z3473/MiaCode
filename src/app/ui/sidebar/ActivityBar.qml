@@ -25,12 +25,14 @@ Rectangle {
 
         ActivityButton {
             iconSource: Qt.resolvedUrl("icons/file.svg")
+            filledIconSource: Qt.resolvedUrl("icons/file-fill.svg")
             tooltip: qsTrId("qml.chart")
             selected: root.activeView === "chart"
             onClicked: root.viewRequested("chart")
         }
         ActivityButton {
             iconSource: Qt.resolvedUrl("icons/export.svg")
+            filledIconSource: Qt.resolvedUrl("icons/export-fill.svg")
             tooltip: qsTrId("sidebar.export")
             enabled: root.documentAvailable
             selected: root.activeView === "export"
@@ -39,6 +41,7 @@ Rectangle {
         ActivityButton {
             id: toolsButton
             iconSource: Qt.resolvedUrl("icons/tools.svg")
+            filledIconSource: Qt.resolvedUrl("icons/tools-fill.svg")
             tooltip: qsTrId("qml.tools")
             enabled: root.toolsAvailable
             selected: toolsPopup.active
@@ -85,6 +88,7 @@ Rectangle {
         id: button
 
         required property url iconSource
+        property url filledIconSource
         required property string tooltip
         property bool selected: false
 
@@ -96,7 +100,8 @@ Rectangle {
             anchors.centerIn: parent
             width: Theme.activityIconSize
             height: Theme.activityIconSize
-            source: button.iconSource
+            source: button.selected && button.filledIconSource.toString().length > 0
+                ? button.filledIconSource : button.iconSource
             sourceSize: Qt.size(Theme.activityIconSize, Theme.activityIconSize)
             color: !button.enabled ? Theme.colors.text.disabled
                  : button.selected ? Theme.colors.activityIcon.active
@@ -107,7 +112,7 @@ Rectangle {
         background: Item {
             HoverChrome {
                 anchors.fill: parent
-                contentWidth: Theme.activityIconSize
+                contentWidth: Theme.activityIconSize + 1
                 contentHeight: Theme.activityIconSize
                 stateColors: Theme.colors.activityState
                 hovered: button.hovered
@@ -115,15 +120,6 @@ Rectangle {
                 selected: button.selected
             }
 
-            Rectangle {
-                anchors.left: parent.left
-                anchors.verticalCenter: parent.verticalCenter
-                width: 2
-                height: Theme.activityIconSize
-                radius: 1
-                visible: button.selected
-                color: Theme.colors.accent.primary
-            }
         }
 
         Tooltip {

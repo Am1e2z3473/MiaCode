@@ -61,8 +61,9 @@ Rectangle {
             implicitWidth: renderModeLabelText.implicitWidth + leftPadding + rightPadding
             selected: renderModeMenu.active
             focusPolicy: Qt.TabFocus
-            Accessible.name: root.previewSession.renderModeLabel
-            Accessible.description: qsTrId("qml.open_preview_rendering_mode_menu")
+            Accessible.role: Accessible.Button
+            Accessible.name: qsTrId("qml.preview_rendering_mode")
+            Accessible.description: root.previewSession.renderModeLabel
             onClicked: {
                 if (renderModeMenu.active) {
                     renderModeMenu.close()
@@ -81,6 +82,11 @@ Rectangle {
                 font.pixelSize: Theme.uiFontSize
                 horizontalAlignment: Text.AlignHCenter
                 verticalAlignment: Text.AlignVCenter
+            }
+
+            Tooltip {
+                visible: renderModeButton.hovered
+                text: qsTrId("qml.preview_rendering_mode")
             }
 
         }

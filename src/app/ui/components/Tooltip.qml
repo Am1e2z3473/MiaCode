@@ -1,9 +1,23 @@
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Window
 import MiaCode.UI
 
 ToolTip {
     id: root
+
+    readonly property Window hostWindow: root.parent ? root.parent.Window.window : null
+    popupType: Popup.Item
+    z: 1000
+    margins: 6
+    topMargin: root.hostWindow?.tooltipTopMargin ?? 6
+    y: {
+        const above = -root.implicitHeight - 6
+        const anchorTop = root.parent && root.hostWindow
+            ? root.parent.mapToItem(root.hostWindow.contentItem, 0, 0).y : 0
+        return anchorTop + above >= root.topMargin
+            ? above : (root.parent ? root.parent.height : 0) + 6
+    }
 
     enter: FadeTransition {}
     exit: FadeTransition { appearing: false }

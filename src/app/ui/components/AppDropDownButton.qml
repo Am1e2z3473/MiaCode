@@ -25,7 +25,7 @@ AbstractButton {
     focusPolicy: Qt.TabFocus
     Accessible.name: root.tooltip.length > 0 ? root.tooltip : root.text
 
-    readonly property int chevronSize: 12
+    property int chevronSize: 12
     property int longestLabelWidth: 0
 
     function syncLongestLabelWidth() {
@@ -96,6 +96,7 @@ AbstractButton {
     }
 
     background: HoverChrome {
+        cornerRadius: root.compact ? Theme.compactControlRadius : Theme.controlRadius
         stateColors: Theme.colors.buttonState
         contentHeight: Math.max(label.implicitHeight, root.chevronSize)
         baseColor: Theme.colors.background.elevated
