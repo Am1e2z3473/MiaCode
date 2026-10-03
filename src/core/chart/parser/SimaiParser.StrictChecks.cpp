@@ -42,6 +42,7 @@ void runStrictFormatChecks(ParseState* state, const QStringList& lines)
         QString stripped;
         stripped.reserve(line.size());
         for (int i = 0; i < line.size(); ++i) {
+            miacode::task::CancellationScope::checkpoint();
             const QChar ch = line.at(i);
             if (ch == QChar('(')) {
                 const int close = line.indexOf(QChar(')'), i + 1);
@@ -74,6 +75,7 @@ void runStrictFormatChecks(ParseState* state, const QStringList& lines)
 
     auto noteLikeLine = [](const QString& line) {
         for (QChar ch : line) {
+            miacode::task::CancellationScope::checkpoint();
             if (isDigitLane(ch)) {
                 return true;
             }
@@ -93,6 +95,7 @@ void runStrictFormatChecks(ParseState* state, const QStringList& lines)
     };
 
     for (int lineIndex = 0; lineIndex < lines.size(); ++lineIndex) {
+        miacode::task::CancellationScope::checkpoint();
         QString line = lines.at(lineIndex);
         if (line.endsWith('\r')) {
             line.chop(1);
@@ -123,6 +126,7 @@ void runStrictFormatChecks(ParseState* state, const QStringList& lines)
         }
 
         for (int i = 0; i < line.size(); ++i) {
+            miacode::task::CancellationScope::checkpoint();
             const QChar ch = line.at(i);
             if (ch == QChar('(') || ch == QChar('[') || ch == QChar('{')) {
                 stack.append(OpenBracket{ch, lineNumber, i + 1});
@@ -140,6 +144,7 @@ void runStrictFormatChecks(ParseState* state, const QStringList& lines)
     }
 
     while (!stack.isEmpty()) {
+        miacode::task::CancellationScope::checkpoint();
         const OpenBracket open = stack.takeLast();
         appendTokenError(state, open.line, open.col, QString("Unclosed bracket '%1'").arg(open.ch));
     }

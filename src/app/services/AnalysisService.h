@@ -2,21 +2,35 @@
 
 #include <QByteArray>
 #include <QObject>
+#include <QTimer>
 #include <QVector>
 
 #include <optional>
+#include <stop_token>
 
 #include "ChartWorkspace.h"
 #include "common/MuriRenderOptions.h"
 #include "common/MuriTypes.h"
 #include "core/chart/parser/SimaiParser.h"
 #include "timeline/TimelineData.h"
+#include "timeline/TimelineSlowRefresh.h"
 
 namespace miacode {
 
-// Immutable, revision-stamped output of one workspace analysis transaction.
-// A later async scheduler can discard this whole value when its revision no
-// longer matches ChartWorkspace; it never needs to inspect a MainWindow cache.
+// Shared parse output. Preview consumers can use this before diagnostics finish.
+struct ParsedChartSnapshot {
+    quint64 revision = 0;
+    quint64 documentOpenGeneration = 0;
+    int difficultyId = 0;
+    bool available = false;
+    QString chartText;
+    double firstSeconds = 0.0;
+    miacode::simai::SimaiTimingMetadata timingMetadata;
+    SimaiParseResult parseResult;
+    TimelinePreviewRefreshState previewState;
+};
+
+// Revision-stamped diagnostics derived from the shared parse output.
 struct AnalysisSnapshot {
     quint64 revision = 0;
     int difficultyId = 0;
@@ -41,9 +55,13 @@ public:
         const MuriRenderOptions& renderOptions = {},
         double staticTapOnSlideThresholdSeconds = -1.0,
         QObject* parent = nullptr);
+    ~AnalysisService() override;
 
     AnalysisSnapshot snapshot() const;
+    const ParsedChartSnapshot& parsedSnapshot() const { return parsedSnapshot_; }
     void requestAnalysis();
+    void shutdown();
+    void setDiagnosticsDeferred(bool deferred);
     void setLocale(SimaiValidationLocale locale);
     // The panel follows the preview's muri parameters. Re-analyzes only when one the
     // analyzer reads (hand radius, wifi C rule, tail threshold) actually moved, so a
@@ -58,6 +76,7 @@ public:
         double staticTapOnSlideThresholdSeconds = -1.0);
 
 signals:
+    void parseReady(int difficultyId, quint64 revision);
     // The whole pending/available value is installed before this signal is
     // emitted. Consumers read it once and gate the complete package by the
     // workspace (difficultyId, revision) identity.
@@ -65,25 +84,33 @@ signals:
     void analysisReady(int difficultyId, quint64 revision);
 
 private:
-    struct AnalysisRequest {
-        ChartWorkspaceSnapshot workspace;
-        SimaiDocument document;
-        SimaiValidationLocale locale = SimaiValidationLocale::English;
-        MuriRenderOptions renderOptions;
-        double staticTapOnSlideThresholdSeconds = -1.0;
-    };
-
-    static AnalysisSnapshot analyzeRequest(AnalysisRequest request);
-    void dispatchPendingRequest();
+    void cancelPendingAnalysis();
+    static ParsedChartSnapshot parse(ParsedChartSnapshot request);
+    static AnalysisSnapshot diagnose(const ParsedChartSnapshot& parsed,
+                                    SimaiValidationLocale locale,
+                                    const MuriRenderOptions& renderOptions,
+                                    double staticTapOnSlideThresholdSeconds);
+    void dispatchPendingParse();
+    void requestDiagnostics();
+    void dispatchDiagnostics();
     bool identityIsCurrent(int difficultyId, quint64 revision) const;
 
     ChartWorkspace* workspace_ = nullptr;
     SimaiValidationLocale locale_ = SimaiValidationLocale::English;
     MuriRenderOptions renderOptions_;
     double staticTapOnSlideThresholdSeconds_ = -1.0;
+    ParsedChartSnapshot parsedSnapshot_;
     AnalysisSnapshot snapshot_;
-    std::optional<AnalysisRequest> pendingRequest_;
-    bool workerRunning_ = false;
+    std::optional<ParsedChartSnapshot> pendingParse_;
+    QTimer diagnosticsTimer_;
+    std::stop_source parseCancellation_;
+    std::stop_source diagnosticsCancellation_;
+    quint64 diagnosticsGeneration_ = 0;
+    bool parseWorkerRunning_ = false;
+    bool diagnosticsWorkerRunning_ = false;
+    bool diagnosticsRequested_ = false;
+    bool diagnosticsDeferred_ = false;
+    bool shuttingDown_ = false;
 };
 
 }  // namespace miacode

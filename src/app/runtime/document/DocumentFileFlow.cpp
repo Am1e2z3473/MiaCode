@@ -354,7 +354,6 @@ void miacode::runtime::DocumentSessionHost::resetWorkingPosition()
     }
     session_.resetWorkingPositionPending_ = true;
     state_.pendingDifficultySwitchPreviewRestore_ = false;
-    state_.pendingDifficultySwitchPreviewRestoreRevision_ = 0;
     state_.pendingDifficultySwitchPreviewRestoreDifficultyId_ = 0;
     state_.pendingDifficultySwitchPreviewRestoreSecond_ = 0.0;
     session_.setTouchPadAuthoringAnchor(-1.0, -1.0);

@@ -179,6 +179,7 @@ void miacode::runtime::PlaybackCoordinator::seekPreviewDiscreteToSecond(double s
     state_.qtPreviewTimelineDirty_ = true;
     miacode::runtime::shared::writePreviewPlayingFlag(playbackState_, services_.shellNotifications(), false);
     services_.editorSync().setPlaybackActive(false);
+    services_.analysis().setDiagnosticsDeferred(false);
     if (state_.scene_ != nullptr) {
         state_.scene_->setActivePlaybackProfilingEnabled(false);
     }
@@ -722,6 +723,7 @@ void miacode::runtime::PlaybackCoordinator::stopQtPreviewPlayback(bool keepPosit
     }
     miacode::runtime::shared::writePreviewPlayingFlag(playbackState_, services_.shellNotifications(), false);
     services_.editorSync().setPlaybackActive(false);
+    services_.analysis().setDiagnosticsDeferred(false);
     if (state_.scene_ != nullptr) {
         state_.scene_->setActivePlaybackProfilingEnabled(false);
     }

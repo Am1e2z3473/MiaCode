@@ -11,7 +11,6 @@
         QChronoTimer* qtPreviewTimelineTimer_ = nullptr;
         QTimer* previewStatsUiTimer_ = nullptr;
         QTimer* previewSeekDebounceTimer_ = nullptr;
-        QTimer* timelineAnalysisIdleTimer_ = nullptr;
         QTimer* bottomTabsContentScalePersistTimer_ = nullptr;
         QTimer* visualLayoutPersistTimer_ = nullptr;
         miacode::ui::ExportSession* qmlExportSession_ = nullptr;
@@ -46,8 +45,6 @@
         // shared record; State itself no longer stores any of these values.
         TimelineState& timeline_;
         TimelineQuickStateBridge*& timelineQuickStateBridge_ = timeline_.timelineQuickStateBridge_;
-        QThreadPool*& timelineSlowRefreshPool_ = timeline_.timelineSlowRefreshPool_;
-        QThreadPool*& timelineAnalysisPool_ = timeline_.timelineAnalysisPool_;
         bool& timelineReady_ = timeline_.timelineReady_;
         quint64& deferredTimelineBridgeFlushGeneration_ = timeline_.deferredTimelineBridgeFlushGeneration_;
         bool& pendingQuickTimelineCursorSync_ = timeline_.pendingQuickTimelineCursorSync_;
@@ -63,14 +60,10 @@
         bool& latestTimelinePreviewSnapshotReady_ = timeline_.latestTimelinePreviewSnapshotReady_;
         TimelineQuickModel& timelineQuickModel_ = timeline_.timelineQuickModel_;
         TimelineSlowRefreshRequest& pendingTimelineSlowRefresh_ = timeline_.pendingTimelineSlowRefresh_;
-        TimelineAnalysisRefreshRequest& pendingTimelineAnalysisRefresh_ = timeline_.pendingTimelineAnalysisRefresh_;
+        TimelineSlowRefreshRequest& pendingTimelineAnalysisRefresh_ = timeline_.pendingTimelineAnalysisRefresh_;
         quint64& timelineRevision_ = timeline_.timelineRevision_;
         quint64& timelineSlowRequestedRevision_ = timeline_.timelineSlowRequestedRevision_;
-        quint64& timelineSlowRunningRevision_ = timeline_.timelineSlowRunningRevision_;
         quint64& timelineAnalysisRequestedRevision_ = timeline_.timelineAnalysisRequestedRevision_;
-        quint64& timelineAnalysisRunningRevision_ = timeline_.timelineAnalysisRunningRevision_;
-        bool& timelineSlowWorkerRunning_ = timeline_.timelineSlowWorkerRunning_;
-        bool& timelineAnalysisWorkerRunning_ = timeline_.timelineAnalysisWorkerRunning_;
         quint64& waveformRefreshGeneration_ = timeline_.waveformRefreshGeneration_;
         PreviewCanvasFrameRateMode& timelineFrameRateMode_ = timeline_.timelineFrameRateMode_;
         bool& timelineSyncEnabled_ = timeline_.timelineSyncEnabled_;
@@ -484,7 +477,6 @@
         // composition window entirely.
         bool editorImeInputDisabled_ = true;
         bool pendingDifficultySwitchPreviewRestore_ = false;
-        quint64 pendingDifficultySwitchPreviewRestoreRevision_ = 0;
         int pendingDifficultySwitchPreviewRestoreDifficultyId_ = 0;
         double pendingDifficultySwitchPreviewRestoreSecond_ = 0.0;
         int previewStatsLayoutRows_ = 0;
@@ -534,15 +526,12 @@
     QtPreviewSfxRuntime*& previewSfxRuntime_ = state_.previewSfxRuntime_;
     PreviewAudioDeviceWatcher*& previewAudioDeviceWatcher_ = state_.previewAudioDeviceWatcher_;
     QThreadPool*& previewWarmupPool_ = state_.previewWarmupPool_;
-    QThreadPool*& timelineSlowRefreshPool_ = state_.timelineSlowRefreshPool_;
-    QThreadPool*& timelineAnalysisPool_ = state_.timelineAnalysisPool_;
     QTimer*& autosaveTimer_ = ui_.autosaveTimer_;
     QTimer*& autosaveIdleTimer_ = ui_.autosaveIdleTimer_;
     QChronoTimer*& qtPreviewTimer_ = ui_.qtPreviewTimer_;
     QChronoTimer*& qtPreviewTimelineTimer_ = ui_.qtPreviewTimelineTimer_;
     QTimer*& previewStatsUiTimer_ = ui_.previewStatsUiTimer_;
     QTimer*& previewSeekDebounceTimer_ = ui_.previewSeekDebounceTimer_;
-    QTimer*& timelineAnalysisIdleTimer_ = ui_.timelineAnalysisIdleTimer_;
     QTimer*& bottomTabsContentScalePersistTimer_ = ui_.bottomTabsContentScalePersistTimer_;
     QTimer*& visualLayoutPersistTimer_ = ui_.visualLayoutPersistTimer_;
     QProcess*& videoExportWorkerProcess_ = state_.videoExportWorkerProcess_;
@@ -584,14 +573,10 @@
     bool& latestTimelinePreviewSnapshotReady_ = state_.latestTimelinePreviewSnapshotReady_;
     TimelineQuickModel& timelineQuickModel_ = state_.timelineQuickModel_;
     TimelineSlowRefreshRequest& pendingTimelineSlowRefresh_ = state_.pendingTimelineSlowRefresh_;
-    TimelineAnalysisRefreshRequest& pendingTimelineAnalysisRefresh_ = state_.pendingTimelineAnalysisRefresh_;
+    TimelineSlowRefreshRequest& pendingTimelineAnalysisRefresh_ = state_.pendingTimelineAnalysisRefresh_;
     quint64& timelineRevision_ = state_.timelineRevision_;
     quint64& timelineSlowRequestedRevision_ = state_.timelineSlowRequestedRevision_;
-    quint64& timelineSlowRunningRevision_ = state_.timelineSlowRunningRevision_;
     quint64& timelineAnalysisRequestedRevision_ = state_.timelineAnalysisRequestedRevision_;
-    quint64& timelineAnalysisRunningRevision_ = state_.timelineAnalysisRunningRevision_;
-    bool& timelineSlowWorkerRunning_ = state_.timelineSlowWorkerRunning_;
-    bool& timelineAnalysisWorkerRunning_ = state_.timelineAnalysisWorkerRunning_;
     QByteArray& lastPreviewNoteMarkerSignature_ = state_.lastPreviewNoteMarkerSignature_;
     QByteArray& muriAnalysisReportNoteMarkerSignature_ = state_.muriAnalysisReportNoteMarkerSignature_;
     int& muriAnalysisReportDifficultyId_ = state_.muriAnalysisReportDifficultyId_;

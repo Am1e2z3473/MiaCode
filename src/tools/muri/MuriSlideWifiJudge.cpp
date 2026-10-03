@@ -1,5 +1,7 @@
 #include "tools/muri/MuriSlideWifiJudge.h"
 
+#include "common/TaskCancellation.h"
+
 #include <algorithm>
 
 #include <QJsonArray>
@@ -167,6 +169,7 @@ bool buildRuntimeSlideJudgeSequence(
     }
 
     for (int segmentIndex = 0; segmentIndex < marker.slideSegmentKeys.size(); ++segmentIndex) {
+        miacode::task::CancellationScope::checkpoint();
         const QString& segmentKey = marker.slideSegmentKeys.at(segmentIndex);
         const QJsonObject entry = slides.value(segmentKey).toObject();
         if (entry.isEmpty()) {
@@ -195,6 +198,7 @@ bool buildRuntimeSlideJudgeSequence(
 
             const int appendStart = sharedHead ? 1 : 0;
             for (int areaIndex = appendStart; areaIndex < segmentSequence.size(); ++areaIndex) {
+                miacode::task::CancellationScope::checkpoint();
                 judgeSequence->append(segmentSequence.at(areaIndex));
                 partition->append(false);
             }
@@ -244,6 +248,7 @@ bool buildRuntimeWifiJudgeSequence(
         return false;
     }
     for (const QVector<QStringList>& lane : *laneJudgeSequence) {
+        miacode::task::CancellationScope::checkpoint();
         if (lane.size() != totalAreaNum) {
             return false;
         }
@@ -385,6 +390,7 @@ bool progressRuntimeSlideOnce(
 
     if (note->pressingPad.isEmpty()) {
         for (const QString& pad : note->judgeSequence.at(note->curAreaIdx)) {
+            miacode::task::CancellationScope::checkpoint();
             RuntimePadEvent cause;
             if (!padStateForTick(padStates, pad, &cause)) {
                 continue;
@@ -414,6 +420,7 @@ bool progressRuntimeSlideOnce(
     if (runtimeSlideCanSkipArea(*note)) {
         const int skippedAreaIndex = note->curAreaIdx;
         for (const QString& pad : note->judgeSequence.at(note->curAreaIdx + 1)) {
+            miacode::task::CancellationScope::checkpoint();
             RuntimePadEvent cause;
             RuntimePadEvent padStateCause;
             const bool down = padStateForTick(padStates, pad, &padStateCause);
@@ -457,6 +464,7 @@ void updateRuntimeSlideNote(
     }
 
     while (note->curAreaIdx < note->totalAreaNum) {
+        miacode::task::CancellationScope::checkpoint();
         if (!progressRuntimeSlideOnce(note, nowSecond, padStates, padUpThisTick)) {
             break;
         }
@@ -494,6 +502,7 @@ bool progressRuntimeWifiLaneOnce(
 
     if (note->pressingPads.at(lane).isEmpty()) {
         for (const QString& pad : note->laneJudgeSequence.at(lane).at(note->curAreaIdxes.at(lane))) {
+            miacode::task::CancellationScope::checkpoint();
             RuntimePadEvent cause;
             if (!padStateForTick(padStates, pad, &cause)) {
                 continue;
@@ -522,6 +531,7 @@ bool progressRuntimeWifiLaneOnce(
 
     if (note->curAreaIdxes.at(lane) < note->totalAreaNum - 1) {
         for (const QString& pad : note->laneJudgeSequence.at(lane).at(note->curAreaIdxes.at(lane) + 1)) {
+            miacode::task::CancellationScope::checkpoint();
             RuntimePadEvent cause;
             RuntimePadEvent padStateCause;
             const bool down = padStateForTick(padStates, pad, &padStateCause);
@@ -560,7 +570,9 @@ void updateRuntimeWifiNote(
     }
 
     for (int lane = 0; lane < note->laneJudgeSequence.size(); ++lane) {
+        miacode::task::CancellationScope::checkpoint();
         while (note->curAreaIdxes.at(lane) < note->totalAreaNum) {
+            miacode::task::CancellationScope::checkpoint();
             if (!progressRuntimeWifiLaneOnce(note, nowSecond, lane, padStates, padUpThisTick)) {
                 break;
             }
@@ -612,6 +624,7 @@ QHash<QString, RuntimeSlideJudgeResult> simulateRuntimeSlideAndWifiJudgments(
     wifiNotes.reserve(noteMarkers.size());
 
     for (const TimelineNoteMarker& marker : noteMarkers) {
+        miacode::task::CancellationScope::checkpoint();
         // Mine slides/wifi are dodged by autoplay — exclude them from the
         // runtime judgment simulation entirely (no judged result is consumed,
         // and they must not occupy pads that real notes are judged against).
@@ -648,6 +661,7 @@ QHash<QString, RuntimeSlideJudgeResult> simulateRuntimeSlideAndWifiJudgments(
             true);
     int maxActionTick = 0;
     for (const RuntimeHandAction& action : actions) {
+        miacode::task::CancellationScope::checkpoint();
         const int actionEndTick = judgeTickForPadActiveEnd(action.endSecond);
         maxActionTick = qMax(maxActionTick, actionEndTick);
     }
@@ -668,8 +682,10 @@ QHash<QString, RuntimeSlideJudgeResult> simulateRuntimeSlideAndWifiJudgments(
     QVector<int> activeActionIndices;
     int actionPointer = 0;
     for (int tick = 0; tick <= maxActionTick; ++tick) {
+        miacode::task::CancellationScope::checkpoint();
         const double nowSecond = tickToSecond(tick);
         while (actionPointer < actions.size()) {
+            miacode::task::CancellationScope::checkpoint();
             const RuntimeHandAction& action = actions.at(actionPointer);
             if (nowSecond + kPadTimeEpsilon < action.startSecond) {
                 break;
@@ -682,6 +698,7 @@ QHash<QString, RuntimeSlideJudgeResult> simulateRuntimeSlideAndWifiJudgments(
             buildRuntimeTouchPoints(actions, activeActionIndices, nowSecond);
         QHash<QString, RuntimePadEvent> padStates;
         for (const RuntimeTouchPoint& touchPoint : touchPoints) {
+            miacode::task::CancellationScope::checkpoint();
             if (touchPoint.actionIndex < 0 || touchPoint.actionIndex >= actions.size()) {
                 continue;
             }
@@ -696,6 +713,7 @@ QHash<QString, RuntimeSlideJudgeResult> simulateRuntimeSlideAndWifiJudgments(
             event.col = action.col;
 
             for (const QString& pad : allPads) {
+                miacode::task::CancellationScope::checkpoint();
                 if (pointDistance(touchPoint.center, miacode::muri::padCenter(pad))
                     > touchPoint.radius + miacode::muri::padRadius(pad) + kPadTimeEpsilon) {
                     continue;
@@ -708,15 +726,18 @@ QHash<QString, RuntimeSlideJudgeResult> simulateRuntimeSlideAndWifiJudgments(
 
         QHash<QString, RuntimePadEvent> padUpThisTick;
         for (auto it = previousPadStates.constBegin(); it != previousPadStates.constEnd(); ++it) {
+            miacode::task::CancellationScope::checkpoint();
             if (!padStates.contains(it.key())) {
                 padUpThisTick.insert(it.key(), it.value());
             }
         }
 
         for (RuntimeSlideNoteState& note : slideNotes) {
+            miacode::task::CancellationScope::checkpoint();
             updateRuntimeSlideNote(&note, nowSecond, padStates, padUpThisTick);
         }
         for (RuntimeWifiNoteState& note : wifiNotes) {
+            miacode::task::CancellationScope::checkpoint();
             updateRuntimeWifiNote(&note, nowSecond, padStates, padUpThisTick);
         }
 
@@ -725,6 +746,7 @@ QHash<QString, RuntimeSlideJudgeResult> simulateRuntimeSlideAndWifiJudgments(
         QVector<int> finishedActionIndices;
         finishedActionIndices.reserve(activeActionIndices.size());
         for (int actionIndex : activeActionIndices) {
+            miacode::task::CancellationScope::checkpoint();
             if (actionIndex < 0 || actionIndex >= actions.size()) {
                 continue;
             }
@@ -733,11 +755,13 @@ QHash<QString, RuntimeSlideJudgeResult> simulateRuntimeSlideAndWifiJudgments(
             }
         }
         for (int actionIndex : finishedActionIndices) {
+            miacode::task::CancellationScope::checkpoint();
             activeActionIndices.removeAll(actionIndex);
         }
     }
 
     for (RuntimeSlideNoteState& note : slideNotes) {
+        miacode::task::CancellationScope::checkpoint();
         if (note.judged) {
             continue;
         }
@@ -746,6 +770,7 @@ QHash<QString, RuntimeSlideJudgeResult> simulateRuntimeSlideAndWifiJudgments(
         note.judgeSecond = qMax(note.endSecond, note.criticalSecond);
     }
     for (RuntimeWifiNoteState& note : wifiNotes) {
+        miacode::task::CancellationScope::checkpoint();
         if (note.judged) {
             continue;
         }
@@ -755,6 +780,7 @@ QHash<QString, RuntimeSlideJudgeResult> simulateRuntimeSlideAndWifiJudgments(
     }
 
     for (const RuntimeSlideNoteState& note : slideNotes) {
+        miacode::task::CancellationScope::checkpoint();
         RuntimeSlideJudgeResult result;
         result.valid = true;
         result.isWifi = false;
@@ -767,6 +793,7 @@ QHash<QString, RuntimeSlideJudgeResult> simulateRuntimeSlideAndWifiJudgments(
         result.segmentStartAreaIndices = note.segmentStartAreaIndices;
         result.segmentEndAreaIndices = note.segmentEndAreaIndices;
         for (int segmentIndex = 0; segmentIndex < note.segmentEndAreaIndices.size(); ++segmentIndex) {
+            miacode::task::CancellationScope::checkpoint();
             const int areaIndex = note.segmentEndAreaIndices.at(segmentIndex);
             double completedSecond = (areaIndex >= 0 && areaIndex < note.areaHits.size())
                 ? note.areaHits.at(areaIndex).second
@@ -779,6 +806,7 @@ QHash<QString, RuntimeSlideJudgeResult> simulateRuntimeSlideAndWifiJudgments(
         results.insert(note.markerKey, result);
     }
     for (const RuntimeWifiNoteState& note : wifiNotes) {
+        miacode::task::CancellationScope::checkpoint();
         RuntimeSlideJudgeResult result;
         result.valid = true;
         result.isWifi = true;
@@ -809,11 +837,13 @@ void applyRuntimeJudgeResultToState(const RuntimeSlideJudgeResult& result, Marke
         QVector<QVector<QVector<MuriCheckpointState>>> runtimeLanes;
         runtimeLanes.reserve(result.wifiLaneAreaHits.size());
         for (int laneIndex = 0; laneIndex < result.wifiLaneAreaHits.size(); ++laneIndex) {
+            miacode::task::CancellationScope::checkpoint();
             QVector<QVector<MuriCheckpointState>> laneAreas;
             const QVector<RuntimeJudgeHit>& laneHits = result.wifiLaneAreaHits.at(laneIndex);
             const QVector<QStringList>& lanePads = result.wifiLaneJudgeSequence.value(laneIndex);
             laneAreas.reserve(laneHits.size());
             for (int areaIndex = 0; areaIndex < laneHits.size(); ++areaIndex) {
+                miacode::task::CancellationScope::checkpoint();
                 QVector<MuriCheckpointState> checkpoints;
                 const RuntimeJudgeHit& hit = laneHits.at(areaIndex);
                 if (hit.judged) {
@@ -848,6 +878,7 @@ void applyRuntimeJudgeResultToState(const RuntimeSlideJudgeResult& result, Marke
     } else {
         int fallbackStartAreaIndex = 0;
         for (int index = 0; index < result.segmentCompletedSeconds.size() && index < state->slideSegments.size(); ++index) {
+            miacode::task::CancellationScope::checkpoint();
             if (result.segmentCompletedSeconds.at(index) >= 0.0) {
                 state->slideSegments[index].completedSecond = result.segmentCompletedSeconds.at(index);
             }
@@ -858,6 +889,7 @@ void applyRuntimeJudgeResultToState(const RuntimeSlideJudgeResult& result, Marke
             for (int areaIndex = segmentStartAreaIndex;
                  areaIndex <= segmentEndAreaIndex && areaIndex < result.areaHits.size();
                  ++areaIndex) {
+                miacode::task::CancellationScope::checkpoint();
                 QVector<MuriCheckpointState> checkpoints;
                 const RuntimeJudgeHit& hit = result.areaHits.at(areaIndex);
                 if (hit.judged) {
@@ -921,15 +953,21 @@ EarlyJudgeCauseInfo latestEarlyJudgeCauseForState(const MarkerMuriState& state)
 {
     EarlyJudgeCauseInfo latestCause;
     for (const MuriSegmentState& segment : state.slideSegments) {
+        miacode::task::CancellationScope::checkpoint();
         for (const QVector<MuriCheckpointState>& area : segment.areaCheckpoints) {
+            miacode::task::CancellationScope::checkpoint();
             for (const MuriCheckpointState& checkpoint : area) {
+                miacode::task::CancellationScope::checkpoint();
                 updateLatestEarlyJudgeCause(checkpoint, &latestCause);
             }
         }
     }
     for (const QVector<QVector<MuriCheckpointState>>& laneAreas : state.wifiLaneAreas) {
+        miacode::task::CancellationScope::checkpoint();
         for (const QVector<MuriCheckpointState>& area : laneAreas) {
+            miacode::task::CancellationScope::checkpoint();
             for (const MuriCheckpointState& checkpoint : area) {
+                miacode::task::CancellationScope::checkpoint();
                 updateLatestEarlyJudgeCause(checkpoint, &latestCause);
             }
         }

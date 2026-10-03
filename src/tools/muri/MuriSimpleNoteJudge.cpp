@@ -1,5 +1,7 @@
 #include "tools/muri/MuriSimpleNoteJudge.h"
 
+#include "common/TaskCancellation.h"
+
 #include <algorithm>
 
 #include <QHash>
@@ -84,6 +86,7 @@ bool findOccupyingPadCause(
 
     int bestIndex = -1;
     for (int index = 0; index < padWindows.size(); ++index) {
+        miacode::task::CancellationScope::checkpoint();
         const MuriPadWindow& window = padWindows.at(index);
         if (normalizedPadToken(window.pad) != normalizedPadToken(pad)) {
             continue;
@@ -156,6 +159,7 @@ bool matchesStaticSlideEndOverlap(
     }
 
     for (const MuriStaticReference& reference : staticReferences) {
+        miacode::task::CancellationScope::checkpoint();
         if (reference.kind != MuriKind::Overlap
             || reference.affected.markerKey != note.markerKey
             || reference.cause.markerKey != cause.sourceMarkerKey) {
@@ -184,6 +188,7 @@ bool consumeRuntimePadEvent(
 
         const RuntimeTouchGroup& group = touchGroups.at(topLevel.touchGroupIndex);
         for (int childNoteIndex : group.childNoteIndices) {
+            miacode::task::CancellationScope::checkpoint();
             if (childNoteIndex < 0 || childNoteIndex >= notes->size()) {
                 continue;
             }
@@ -218,6 +223,7 @@ void updateRuntimeTopLevelNote(
         const RuntimeTouchGroup& group = touchGroups.at(topLevel.touchGroupIndex);
         int judgedCount = 0;
         for (int childNoteIndex : group.childNoteIndices) {
+            miacode::task::CancellationScope::checkpoint();
             if (childNoteIndex < 0 || childNoteIndex >= notes->size()) {
                 continue;
             }
@@ -230,6 +236,7 @@ void updateRuntimeTopLevelNote(
 
         if (judgedCount + kPadTimeEpsilon >= group.threshold) {
             for (int childNoteIndex : group.childNoteIndices) {
+                miacode::task::CancellationScope::checkpoint();
                 if (childNoteIndex < 0 || childNoteIndex >= notes->size()) {
                     continue;
                 }
@@ -270,20 +277,25 @@ void simulateSimpleNoteJudgments(
     QMap<int, QVector<int>> expiryBuckets = buildNoteExpiryBuckets(*notes);
     QMap<int, bool> timelineTicks;
     for (auto it = eventsByTick.constBegin(); it != eventsByTick.constEnd(); ++it) {
+        miacode::task::CancellationScope::checkpoint();
         timelineTicks.insert(it.key(), true);
     }
     for (auto it = expiryBuckets.constBegin(); it != expiryBuckets.constEnd(); ++it) {
+        miacode::task::CancellationScope::checkpoint();
         timelineTicks.insert(it.key(), true);
     }
 
     for (auto tickIt = timelineTicks.constBegin(); tickIt != timelineTicks.constEnd(); ++tickIt) {
+        miacode::task::CancellationScope::checkpoint();
         const int tick = tickIt.key();
         const double nowSecond = tickToSecond(tick);
 
         const QMap<QString, RuntimePadEvent> events = eventsByTick.value(tick);
         for (auto eventIt = events.constBegin(); eventIt != events.constEnd(); ++eventIt) {
+            miacode::task::CancellationScope::checkpoint();
             const RuntimePadEvent& event = eventIt.value();
             for (const RuntimeTopLevelNote& topLevel : topLevelNotes) {
+                miacode::task::CancellationScope::checkpoint();
                 if (consumeRuntimePadEvent(notes, touchGroups, topLevel, nowSecond, event)) {
                     break;
                 }
@@ -291,6 +303,7 @@ void simulateSimpleNoteJudgments(
         }
 
         for (const RuntimeTopLevelNote& topLevel : topLevelNotes) {
+            miacode::task::CancellationScope::checkpoint();
             updateRuntimeTopLevelNote(notes, touchGroups, topLevel, nowSecond);
         }
     }
@@ -302,6 +315,7 @@ QSet<QString> buildSameMomentPadOverlapKeys(const QVector<JudgeableSimpleNote>& 
     markerKeysByMomentPad.reserve(notes.size());
 
     for (const JudgeableSimpleNote& note : notes) {
+        miacode::task::CancellationScope::checkpoint();
         const QString pad = normalizedPadToken(note.pad);
         if (pad.isEmpty()) {
             continue;
@@ -314,10 +328,12 @@ QSet<QString> buildSameMomentPadOverlapKeys(const QVector<JudgeableSimpleNote>& 
     QSet<QString> overlapKeys;
     overlapKeys.reserve(notes.size());
     for (auto it = markerKeysByMomentPad.constBegin(); it != markerKeysByMomentPad.constEnd(); ++it) {
+        miacode::task::CancellationScope::checkpoint();
         if (it.value().size() <= 1) {
             continue;
         }
         for (const QString& markerKey : it.value()) {
+            miacode::task::CancellationScope::checkpoint();
             overlapKeys.insert(markerKey);
         }
     }
@@ -355,6 +371,7 @@ QVector<MultiTouchActionCluster> buildMultiTouchActionClusters(
     clusters.reserve(touchPoints.size());
 
     for (const RuntimeTouchPoint& touchPoint : touchPoints) {
+        miacode::task::CancellationScope::checkpoint();
         if (touchPoint.actionIndex < 0 || touchPoint.actionIndex >= actions.size()) {
             continue;
         }
@@ -362,6 +379,7 @@ QVector<MultiTouchActionCluster> buildMultiTouchActionClusters(
         const RuntimeHandAction& action = actions.at(touchPoint.actionIndex);
         bool merged = false;
         for (MultiTouchActionCluster& cluster : clusters) {
+            miacode::task::CancellationScope::checkpoint();
             if (cluster.representativePoint.actionIndex < 0
                 || cluster.representativePoint.actionIndex >= actions.size()) {
                 continue;
@@ -432,6 +450,7 @@ void collectSimpleNoteMultiTouchDiagnostics(
 
     int maxTick = 0;
     for (const RuntimeHandAction& action : actions) {
+        miacode::task::CancellationScope::checkpoint();
         maxTick = qMax(maxTick, judgeTickForPadActiveEnd(action.endSecond));
     }
     QVector<int> activeActionIndices;
@@ -439,8 +458,10 @@ void collectSimpleNoteMultiTouchDiagnostics(
     QSet<quint64> previousMergedSlidePairs;
     int actionPointer = 0;
     for (int tick = 0; tick <= maxTick; ++tick) {
+        miacode::task::CancellationScope::checkpoint();
         const double nowSecond = tickToSecond(tick);
         while (actionPointer < actions.size()) {
+            miacode::task::CancellationScope::checkpoint();
             const RuntimeHandAction& action = actions.at(actionPointer);
             if (nowSecond + kPadTimeEpsilon < action.startSecond) {
                 break;
@@ -465,6 +486,7 @@ void collectSimpleNoteMultiTouchDiagnostics(
         int nonTouchHandCount = 0;
         bool involvesTouch = false;
         for (const MultiTouchActionCluster& cluster : touchClusters) {
+            miacode::task::CancellationScope::checkpoint();
             if (cluster.representativePoint.actionIndex < 0
                 || cluster.representativePoint.actionIndex >= actions.size()) {
                 continue;
@@ -475,6 +497,7 @@ void collectSimpleNoteMultiTouchDiagnostics(
             bool clusterHasTouchLike = false;
             bool clusterHasNonTouch = false;
             for (int actionIndex : cluster.actionIndices) {
+                miacode::task::CancellationScope::checkpoint();
                 if (actionIndex < 0 || actionIndex >= actions.size()) {
                     continue;
                 }
@@ -494,6 +517,7 @@ void collectSimpleNoteMultiTouchDiagnostics(
         }
         if (handCount > 2 && !touchPointActionIndices.isEmpty()) {
             std::sort(touchPointActionIndices.begin(), touchPointActionIndices.end(), [&actions](int a, int b) {
+                miacode::task::CancellationScope::checkpoint();
                 const RuntimeHandAction& left = actions.at(a);
                 const RuntimeHandAction& right = actions.at(b);
                 if (left.order != right.order) {
@@ -509,6 +533,7 @@ void collectSimpleNoteMultiTouchDiagnostics(
             QVector<int> causeActionIndices;
             causeActionIndices.reserve(touchPointActionIndices.size());
             for (int actionIndex : touchPointActionIndices) {
+                miacode::task::CancellationScope::checkpoint();
                 const RuntimeHandAction& action = actions.at(actionIndex);
                 if (uniqueSources.contains(action.markerKey)) {
                     continue;
@@ -525,6 +550,7 @@ void collectSimpleNoteMultiTouchDiagnostics(
             signatureParts.reserve(causeActionIndices.size());
             detailParts.reserve(causeActionIndices.size());
             for (int actionIndex : causeActionIndices) {
+                miacode::task::CancellationScope::checkpoint();
                 const RuntimeHandAction& action = actions.at(actionIndex);
                 signatureParts.append(action.markerKey);
                 detailParts.append(
@@ -537,6 +563,7 @@ void collectSimpleNoteMultiTouchDiagnostics(
                 int anchorActionIndex = causeActionIndices.constFirst();
                 DiagnosticAnchor anchorInfo = diagnosticAnchorFromAction(actions.at(anchorActionIndex));
                 for (int actionIndex : causeActionIndices) {
+                    miacode::task::CancellationScope::checkpoint();
                     const DiagnosticAnchor candidateAnchor = diagnosticAnchorFromAction(actions.at(actionIndex));
                     if (diagnosticAnchorComesBefore(candidateAnchor, anchorInfo)) {
                         anchorInfo = candidateAnchor;
@@ -569,6 +596,7 @@ void collectSimpleNoteMultiTouchDiagnostics(
         QVector<int> finishedActionIndices;
         finishedActionIndices.reserve(activeActionIndices.size());
         for (int actionIndex : activeActionIndices) {
+            miacode::task::CancellationScope::checkpoint();
             if (actionIndex < 0 || actionIndex >= actions.size()) {
                 continue;
             }
@@ -577,6 +605,7 @@ void collectSimpleNoteMultiTouchDiagnostics(
             }
         }
         for (int actionIndex : finishedActionIndices) {
+            miacode::task::CancellationScope::checkpoint();
             activeActionIndices.removeAll(actionIndex);
         }
         previousMergedSlidePairs.swap(currentMergedSlidePairs);
@@ -651,12 +680,14 @@ void collectSimpleNoteRuntimeDiagnostics(
     suppressJudgeSpriteKeys.reserve(multiTouchMarkerKeys.size());
     forceRenderJudgeSpriteKeys.reserve(notes.size());
     for (const QString& markerKey : multiTouchMarkerKeys) {
+        miacode::task::CancellationScope::checkpoint();
         if (!overlapRenderKeys.contains(markerKey)) {
             suppressJudgeSpriteKeys.insert(markerKey);
         }
     }
 
     for (const RuntimeTopLevelNote& topLevel : topLevelNotes) {
+        miacode::task::CancellationScope::checkpoint();
         if (topLevel.touchGroupIndex >= 0) {
             continue;
         }
@@ -784,6 +815,7 @@ void collectSimpleNoteRuntimeDiagnostics(
 
     collector.judgeSpriteEvents.reserve(collector.judgeSpriteEvents.size() + notes.size());
     for (const JudgeableSimpleNote& note : notes) {
+        miacode::task::CancellationScope::checkpoint();
         if (suppressJudgeSpriteKeys.contains(note.markerKey)
             && !forceRenderJudgeSpriteKeys.contains(note.markerKey)) {
             continue;

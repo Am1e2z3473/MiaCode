@@ -456,6 +456,7 @@ QString detectMisplacedSlideHeadModifierMessage(const QString& token)
 {
     bool hasSlideHeadCh = false;
     for (QChar ch : token) {
+        miacode::task::CancellationScope::checkpoint();
         if (ch == QChar('?') || ch == QChar('!') || ch == QChar('@')) {
             hasSlideHeadCh = true;
             break;
@@ -471,6 +472,7 @@ QString detectMisplacedSlideHeadModifierMessage(const QString& token)
     // `1!`, `1h@`, `A1?`.
     int firstShapeIdx = -1;
     for (int i = 1; i < token.size(); ++i) {
+        miacode::task::CancellationScope::checkpoint();
         if (isSlideShapeChar(token.at(i))) {
             firstShapeIdx = i;
             break;
@@ -485,6 +487,7 @@ QString detectMisplacedSlideHeadModifierMessage(const QString& token)
     // parseSlideHeadModifierPrefix already accepts arbitrary
     // interleavings within the head region.
     for (int i = 0; i < token.size(); ++i) {
+        miacode::task::CancellationScope::checkpoint();
         const QChar ch = token.at(i);
         if (ch != QChar('?') && ch != QChar('!') && ch != QChar('@')) {
             continue;
@@ -554,6 +557,7 @@ void parseToken(ParseState* state, const QString& token, int lineNumber, int col
 
     bool simpleDigitCluster = true;
     for (QChar ch : token) {
+        miacode::task::CancellationScope::checkpoint();
         if (!isDigitLane(ch)) {
             simpleDigitCluster = false;
             break;
@@ -561,6 +565,7 @@ void parseToken(ParseState* state, const QString& token, int lineNumber, int col
     }
     if (simpleDigitCluster && token.size() > 1) {
         for (int i = 0; i < token.size(); ++i) {
+            miacode::task::CancellationScope::checkpoint();
             parseTapOrHoldToken(state, token.mid(i, 1), lineNumber, column + i, groupIndices);
         }
         return;
@@ -629,6 +634,7 @@ void sortTimedMarkerRefs(QVector<TimedMarkerRef>* refs)
         return;
     }
     std::sort(refs->begin(), refs->end(), [](const TimedMarkerRef& a, const TimedMarkerRef& b) {
+        miacode::task::CancellationScope::checkpoint();
         if (a.second != b.second) {
             return a.second < b.second;
         }
@@ -653,16 +659,19 @@ void markOpenIntervalMatches(
     int right = 0;
     const int centerCount = centers.size();
     for (const TimedMarkerRef& query : queries) {
+        miacode::task::CancellationScope::checkpoint();
         const double lowerBound = query.second - lowerRadius;
         const double upperBound = query.second + upperRadius;
 
         while (left < centerCount && !(centers[left].second > lowerBound)) {
+            miacode::task::CancellationScope::checkpoint();
             ++left;
         }
         if (right < left) {
             right = left;
         }
         while (right < centerCount && centers[right].second < upperBound) {
+            miacode::task::CancellationScope::checkpoint();
             ++right;
         }
 
@@ -752,6 +761,7 @@ SimaiParseResult parseInternal(
             state.meterNumerator,
             state.meterDenominator);
         while (state.currentMeasureStartSecond + measureDuration <= targetSecond + kTimelineEpsilon) {
+            miacode::task::CancellationScope::checkpoint();
             state.currentMeasureStartSecond += measureDuration;
             appendDistinctSecond(&state.result.measureLineSeconds, state.currentMeasureStartSecond);
         }
@@ -760,6 +770,7 @@ SimaiParseResult parseInternal(
     const QStringList lines = text.split('\n');
     const auto nextSignificantLineDirectiveText = [&](int nextLineIndex) {
         for (int i = nextLineIndex; i < lines.size(); ++i) {
+            miacode::task::CancellationScope::checkpoint();
             QString nextLine = lines.at(i);
             if (nextLine.endsWith('\r')) {
                 nextLine.chop(1);
@@ -805,6 +816,7 @@ SimaiParseResult parseInternal(
         clearPendingLineEndNote();
     };
     for (int lineIndex = 0; lineIndex < lines.size(); ++lineIndex) {
+        miacode::task::CancellationScope::checkpoint();
         QString line = lines.at(lineIndex);
         if (line.endsWith('\r')) {
             line.chop(1);
@@ -824,6 +836,7 @@ SimaiParseResult parseInternal(
             initializedMeasureLines = true;
         }
         for (int i = 0; i < line.size(); ++i) {
+            miacode::task::CancellationScope::checkpoint();
             const QChar ch = line.at(i);
 
             if (ch == QChar('|') && i + 1 < line.size() && line.at(i + 1) == QChar('|')) {
@@ -890,6 +903,7 @@ SimaiParseResult parseInternal(
                     if (strictMode) {
                         int warningEndCol = close + 1;
                         while (warningEndCol < line.size() && line.at(warningEndCol) == QChar(',')) {
+                            miacode::task::CancellationScope::checkpoint();
                             ++warningEndCol;
                         }
                         appendTokenWarning(
@@ -974,6 +988,7 @@ SimaiParseResult parseInternal(
             if (ch == QChar('`')) {
                 int runEnd = i + 1;
                 while (runEnd < line.size() && line.at(runEnd) == QChar('`')) {
+                    miacode::task::CancellationScope::checkpoint();
                     ++runEnd;
                 }
                 if (strictMode && !eachOperandPending) {
@@ -1066,6 +1081,7 @@ SimaiParseResult parseInternal(
         state.result.noteMarkers.begin(),
         state.result.noteMarkers.end(),
         [](const TimelineNoteMarker& a, const TimelineNoteMarker& b) {
+            miacode::task::CancellationScope::checkpoint();
             if (!qFuzzyCompare(a.second + 1.0, b.second + 1.0)) {
                 return a.second < b.second;
             }
@@ -1078,6 +1094,7 @@ SimaiParseResult parseInternal(
 
     QHash<int, QHash<qint64, QVector<int>>> slideTraceGroups;
     for (int i = 0; i < state.result.noteMarkers.size(); ++i) {
+        miacode::task::CancellationScope::checkpoint();
         const TimelineNoteMarker& marker = state.result.noteMarkers.at(i);
         if ((marker.type != "slide" && marker.type != "wifi") || marker.slideTraceSecond < 0.0) {
             continue;
@@ -1086,13 +1103,16 @@ SimaiParseResult parseInternal(
         slideTraceGroups[marker.eachGroupId][key].append(i);
     }
     for (auto groupIt = slideTraceGroups.cbegin(); groupIt != slideTraceGroups.cend(); ++groupIt) {
+        miacode::task::CancellationScope::checkpoint();
         const auto& traceGroups = groupIt.value();
         for (auto traceIt = traceGroups.cbegin(); traceIt != traceGroups.cend(); ++traceIt) {
+            miacode::task::CancellationScope::checkpoint();
             const QVector<int>& group = traceIt.value();
             if (group.size() < 2) {
                 continue;
             }
             for (int index : group) {
+                miacode::task::CancellationScope::checkpoint();
                 if (index >= 0 && index < state.result.noteMarkers.size()) {
                     state.result.noteMarkers[index].slideEach = true;
                 }
@@ -1110,6 +1130,7 @@ SimaiParseResult parseInternal(
     QHash<int, QVector<TimedMarkerRef>> endQueriesByLane;
 
     for (int i = 0; i < state.result.noteMarkers.size(); ++i) {
+        miacode::task::CancellationScope::checkpoint();
         const TimelineNoteMarker& marker = state.result.noteMarkers.at(i);
         if (marker.type == "tap") {
             tapsByLane[marker.lane].append(TimedMarkerRef{i, marker.second});
@@ -1157,9 +1178,11 @@ SimaiParseResult parseInternal(
                 marker.slideSegmentPadEnterTimes.size(),
                 qMin(marker.slideSegmentShootSeconds.size(), marker.slideSegmentDurations.size()));
             for (int segmentIndex = 0; segmentIndex < segmentCount; ++segmentIndex) {
+                miacode::task::CancellationScope::checkpoint();
                 const double shootSecond = marker.slideSegmentShootSeconds.at(segmentIndex);
                 const double durationSecond = marker.slideSegmentDurations.at(segmentIndex);
                 for (const MuriPadTimeEntry& entry : marker.slideSegmentPadEnterTimes.at(segmentIndex)) {
+                    miacode::task::CancellationScope::checkpoint();
                     if (entry.pad.isEmpty()) {
                         continue;
                     }
@@ -1170,6 +1193,7 @@ SimaiParseResult parseInternal(
         } else if (marker.type == "wifi" && marker.endSecond >= marker.slideTraceSecond) {
             const double durationSecond = marker.endSecond - marker.slideTraceSecond;
             for (const MuriPadTimeEntry& entry : marker.wifiPadEnterTimes) {
+                miacode::task::CancellationScope::checkpoint();
                 if (entry.pad.isEmpty()) {
                     continue;
                 }
@@ -1180,33 +1204,42 @@ SimaiParseResult parseInternal(
     }
 
     for (auto it = traceByLane.begin(); it != traceByLane.end(); ++it) {
+        miacode::task::CancellationScope::checkpoint();
         sortTimedMarkerRefs(&it.value());
     }
     for (auto it = endByLane.begin(); it != endByLane.end(); ++it) {
+        miacode::task::CancellationScope::checkpoint();
         sortTimedMarkerRefs(&it.value());
     }
     for (auto it = tapsByLane.begin(); it != tapsByLane.end(); ++it) {
+        miacode::task::CancellationScope::checkpoint();
         sortTimedMarkerRefs(&it.value());
     }
     for (auto it = holdTailsByLane.begin(); it != holdTailsByLane.end(); ++it) {
+        miacode::task::CancellationScope::checkpoint();
         sortTimedMarkerRefs(&it.value());
     }
     for (auto it = touchesByPad.begin(); it != touchesByPad.end(); ++it) {
+        miacode::task::CancellationScope::checkpoint();
         sortTimedMarkerRefs(&it.value());
     }
     for (auto it = traceQueriesByLane.begin(); it != traceQueriesByLane.end(); ++it) {
+        miacode::task::CancellationScope::checkpoint();
         sortTimedMarkerRefs(&it.value());
     }
     for (auto it = endQueriesByLane.begin(); it != endQueriesByLane.end(); ++it) {
+        miacode::task::CancellationScope::checkpoint();
         sortTimedMarkerRefs(&it.value());
     }
     for (auto it = touchWindowsByPad.begin(); it != touchWindowsByPad.end(); ++it) {
+        miacode::task::CancellationScope::checkpoint();
         sortTimedMarkerRefs(&it.value().slideHead);
         sortTimedMarkerRefs(&it.value().wifiHead);
         sortTimedMarkerRefs(&it.value().padEnter);
     }
 
     for (auto it = tapsByLane.cbegin(); it != tapsByLane.cend(); ++it) {
+        miacode::task::CancellationScope::checkpoint();
         const auto traceIt = traceByLane.constFind(it.key());
         if (traceIt == traceByLane.constEnd()) {
             continue;
@@ -1223,6 +1256,7 @@ SimaiParseResult parseInternal(
     }
 
     for (auto it = holdTailsByLane.cbegin(); it != holdTailsByLane.cend(); ++it) {
+        miacode::task::CancellationScope::checkpoint();
         const auto traceIt = traceByLane.constFind(it.key());
         if (traceIt == traceByLane.constEnd()) {
             continue;
@@ -1239,6 +1273,7 @@ SimaiParseResult parseInternal(
     }
 
     for (auto it = touchesByPad.cbegin(); it != touchesByPad.cend(); ++it) {
+        miacode::task::CancellationScope::checkpoint();
         const auto bucketIt = touchWindowsByPad.constFind(it.key());
         if (bucketIt == touchWindowsByPad.constEnd()) {
             continue;
@@ -1275,6 +1310,7 @@ SimaiParseResult parseInternal(
     }
 
     for (auto it = traceQueriesByLane.cbegin(); it != traceQueriesByLane.cend(); ++it) {
+        miacode::task::CancellationScope::checkpoint();
         const auto endIt = endByLane.constFind(it.key());
         if (endIt == endByLane.constEnd()) {
             continue;
@@ -1292,6 +1328,7 @@ SimaiParseResult parseInternal(
     }
 
     for (auto it = endQueriesByLane.cbegin(); it != endQueriesByLane.cend(); ++it) {
+        miacode::task::CancellationScope::checkpoint();
         const auto traceIt = traceByLane.constFind(it.key());
         if (traceIt == traceByLane.constEnd()) {
             continue;
@@ -1338,6 +1375,7 @@ QString localizeValidationDetail(QString detail, SimaiValidationLocale locale)
     const QHash<QString, QString>& prefixMap =
         japanese ? ValidationMessage::jaPrefixMap() : ValidationMessage::zhPrefixMap();
     for (const QString& prefix : ValidationMessage::zhPrefixOrder()) {
+        miacode::task::CancellationScope::checkpoint();
         if (!detail.startsWith(prefix)) {
             continue;
         }
@@ -1410,6 +1448,7 @@ bool SimaiParser::allowNegativeHsEnabled()
 void SimaiParser::localizeValidationReport(SimaiValidationReport& report, SimaiValidationLocale locale)
 {
     for (auto& issue : report.issues) {
+        miacode::task::CancellationScope::checkpoint();
         issue.displayMessage = QStringLiteral("%1 %2").arg(
             validationSeverityPrefix(issue.severity, locale),
             localizeValidationDetail(issue.rawMessage, locale));
@@ -1462,6 +1501,7 @@ SimaiValidationReport SimaiParser::buildValidationReport(
 
     report.issues.reserve(strictResult.errors.size() + strictResult.warnings.size());
     for (const SimaiMessage& error : strictResult.errors) {
+        miacode::task::CancellationScope::checkpoint();
         ++report.errorCount;
 
         SimaiValidationIssue issue;
@@ -1474,6 +1514,7 @@ SimaiValidationReport SimaiParser::buildValidationReport(
     }
 
     for (const SimaiMessage& warning : strictResult.warnings) {
+        miacode::task::CancellationScope::checkpoint();
         ++report.warningCount;
 
         SimaiValidationIssue issue;

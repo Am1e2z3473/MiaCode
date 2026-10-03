@@ -1,5 +1,7 @@
 #include "tools/muri/MuriAnalyzer.h"
 
+#include "common/TaskCancellation.h"
+
 #include <algorithm>
 #include <cmath>
 #include <limits>
@@ -363,10 +365,12 @@ void addSlidePadWindowsAndTrails(
         qMin(marker.slideSegmentDurations.size(), marker.slideSegmentPoints.size())
     );
     for (int segmentIndex = 0; segmentIndex < segmentCount; ++segmentIndex) {
+        miacode::task::CancellationScope::checkpoint();
         const QVector<MuriPadTimeEntry>& padTimes = marker.slideSegmentPadEnterTimes.at(segmentIndex);
         const double shootSecond = marker.slideSegmentShootSeconds.at(segmentIndex);
         const double durationSecond = qMax(0.0, marker.slideSegmentDurations.at(segmentIndex));
         for (int padIndex = 0; padIndex < padTimes.size(); ++padIndex) {
+            miacode::task::CancellationScope::checkpoint();
             const double startSecond = shootSecond + padTimes.at(padIndex).proportion * durationSecond;
             const double nextSecond = (padIndex + 1 < padTimes.size())
                 ? (shootSecond + padTimes.at(padIndex + 1).proportion * durationSecond)
@@ -406,6 +410,7 @@ void addWifiPadWindowsAndTrails(
     using namespace miacode::muri;
     const double durationSecond = qMax(0.0, marker.endSecond - marker.slideTraceSecond);
     for (int padIndex = 0; padIndex < marker.wifiPadEnterTimes.size(); ++padIndex) {
+        miacode::task::CancellationScope::checkpoint();
         const double startSecond =
             marker.slideTraceSecond + marker.wifiPadEnterTimes.at(padIndex).proportion * durationSecond;
         const double nextSecond = (padIndex + 1 < marker.wifiPadEnterTimes.size())
@@ -465,6 +470,7 @@ QVector<MuriPadWindow> buildRuntimePadWindows(
     QVector<MuriActionTrail> ignoredActionTrails;
 
     for (const TimelineNoteMarker& marker : noteMarkers) {
+        miacode::task::CancellationScope::checkpoint();
         // Mine notes (simai `m`) are dodged by autoplay — they generate no
         // pad window, hand path, or overlap conflict.
         if (marker.isMine || marker.trackMine) {
@@ -497,6 +503,7 @@ QVector<MuriPadWindow> buildRuntimePadWindows(
                 }
 
                 for (int childNoteIndex : group.childNoteIndices) {
+                    miacode::task::CancellationScope::checkpoint();
                     if (childNoteIndex < 0 || childNoteIndex >= notes.size()) {
                         continue;
                     }
@@ -534,6 +541,7 @@ QVector<MuriPadWindow> buildRuntimePadWindows(
     }
 
     for (const JudgeableSimpleNote& note : notes) {
+        miacode::task::CancellationScope::checkpoint();
         if (!note.headStarTapLike) {
             continue;
         }
@@ -641,6 +649,7 @@ QVector<RuntimeHandAction> buildRuntimeHandActions(
     actions.reserve(notes.size() + touchGroups.size() + noteMarkers.size() * 3);
 
     for (int noteIndex = 0; noteIndex < notes.size(); ++noteIndex) {
+        miacode::task::CancellationScope::checkpoint();
         const JudgeableSimpleNote& note = notes.at(noteIndex);
         if (note.type == QLatin1String("tap")) {
             // Synthetic head-stars keep their own labels, but use the same tap
@@ -716,6 +725,7 @@ QVector<RuntimeHandAction> buildRuntimeHandActions(
     }
 
     for (const RuntimeTouchGroup& group : touchGroups) {
+        miacode::task::CancellationScope::checkpoint();
         if (group.allOnSlide) {
             continue;
         }
@@ -726,6 +736,7 @@ QVector<RuntimeHandAction> buildRuntimeHandActions(
             // covers (and early-judges) overlapping slides, and no synthetic
             // two-hand press is fabricated from an oversized circle.
             for (int childNoteIndex : group.childNoteIndices) {
+                miacode::task::CancellationScope::checkpoint();
                 if (childNoteIndex < 0 || childNoteIndex >= notes.size()) {
                     continue;
                 }
@@ -752,6 +763,7 @@ QVector<RuntimeHandAction> buildRuntimeHandActions(
         QVector<QPointF> touchPoints;
         touchPoints.reserve(group.childNoteIndices.size());
         for (int childNoteIndex : group.childNoteIndices) {
+            miacode::task::CancellationScope::checkpoint();
             if (childNoteIndex < 0 || childNoteIndex >= notes.size()) {
                 continue;
             }
@@ -782,6 +794,7 @@ QVector<RuntimeHandAction> buildRuntimeHandActions(
 
     if (includeSlideLike) {
         for (const TimelineNoteMarker& marker : noteMarkers) {
+            miacode::task::CancellationScope::checkpoint();
             const QString markerKey = makeMarkerAnalysisKey(marker);
             const int order = marker.parseOrder >= 0 ? marker.parseOrder : 0;
             if (marker.type == QLatin1String("slide")) {
@@ -789,6 +802,7 @@ QVector<RuntimeHandAction> buildRuntimeHandActions(
                     qMin(marker.slideSegmentShootSeconds.size(), marker.slideSegmentDurations.size()),
                     marker.slideSegmentPoints.size());
                 for (int segmentIndex = 0; segmentIndex < segmentCount; ++segmentIndex) {
+                    miacode::task::CancellationScope::checkpoint();
                     const double startSecond = marker.slideSegmentShootSeconds.at(segmentIndex);
                     const double durationSecond = qMax(0.0, marker.slideSegmentDurations.at(segmentIndex));
                     const bool isLastSegment = (segmentIndex + 1 >= segmentCount);
@@ -858,6 +872,7 @@ QVector<RuntimeHandAction> buildRuntimeHandActions(
     }
 
     std::stable_sort(actions.begin(), actions.end(), [](const RuntimeHandAction& a, const RuntimeHandAction& b) {
+        miacode::task::CancellationScope::checkpoint();
         return a.startSecond < b.startSecond;
     });
 
@@ -924,6 +939,7 @@ QVector<RuntimeTouchPoint> buildRuntimeTouchPoints(
     touchPoints.reserve(activeActionIndices.size());
 
     for (int actionIndex : activeActionIndices) {
+        miacode::task::CancellationScope::checkpoint();
         if (actionIndex < 0 || actionIndex >= actions.size()) {
             continue;
         }
@@ -952,6 +968,7 @@ QVector<RuntimeTouchPoint> buildRuntimeTouchPoints(
                     && nowSecond < candidateAction.endSecond - kPadTimeEpsilon;
             };
             for (const RuntimeTouchPoint& existing : touchPoints) {
+                miacode::task::CancellationScope::checkpoint();
                 if (existing.actionIndex < 0 || existing.actionIndex >= actions.size()) {
                     continue;
                 }
@@ -999,6 +1016,7 @@ QVector<PadWindowInterval> buildPadWindowIntervals(
     intervals.reserve(padWindows.size());
 
     for (const MuriPadWindow& window : padWindows) {
+        miacode::task::CancellationScope::checkpoint();
         if (window.pad.isEmpty()) {
             continue;
         }
@@ -1035,6 +1053,7 @@ QMap<int, QMap<QString, RuntimePadEvent>> buildRuntimePadEvents(
     QMap<int, QMap<QString, RuntimePadEvent>> eventsByTick;
 
     for (const TimelineNoteMarker& marker : noteMarkers) {
+        miacode::task::CancellationScope::checkpoint();
         // Autoplay dodges mines — they generate no pad-down press (which could
         // otherwise perturb a neighbouring real note's runtime judgment).
         if (marker.isMine || marker.trackMine) {
@@ -1062,6 +1081,7 @@ QMap<int, QMap<QString, RuntimePadEvent>> buildRuntimePadEvents(
     }
 
     for (const TimelineNoteMarker& marker : noteMarkers) {
+        miacode::task::CancellationScope::checkpoint();
         if (marker.isMine || marker.trackMine) {
             continue;
         }
@@ -1096,13 +1116,16 @@ QMap<int, QMap<QString, RuntimePadEvent>> buildRuntimePadEvents(
     const QVector<PadWindowInterval> intervals = buildPadWindowIntervals(padWindows, markerRefs);
     QHash<QString, QVector<int>> intervalIndicesByPad;
     for (int index = 0; index < intervals.size(); ++index) {
+        miacode::task::CancellationScope::checkpoint();
         intervalIndicesByPad[intervals.at(index).pad].append(index);
     }
 
     for (auto it = intervalIndicesByPad.constBegin(); it != intervalIndicesByPad.constEnd(); ++it) {
+        miacode::task::CancellationScope::checkpoint();
         QMap<int, QVector<int>> addByTick;
         QMap<int, QVector<int>> removeByTick;
         for (int intervalIndex : it.value()) {
+            miacode::task::CancellationScope::checkpoint();
             const PadWindowInterval& interval = intervals.at(intervalIndex);
             addByTick[interval.startTick].append(intervalIndex);
             removeByTick[interval.endTick + 1].append(intervalIndex);
@@ -1110,20 +1133,25 @@ QMap<int, QMap<QString, RuntimePadEvent>> buildRuntimePadEvents(
 
         QMap<int, bool> changeTicks;
         for (auto addIt = addByTick.constBegin(); addIt != addByTick.constEnd(); ++addIt) {
+            miacode::task::CancellationScope::checkpoint();
             changeTicks.insert(addIt.key(), true);
         }
         for (auto removeIt = removeByTick.constBegin(); removeIt != removeByTick.constEnd(); ++removeIt) {
+            miacode::task::CancellationScope::checkpoint();
             changeTicks.insert(removeIt.key(), true);
         }
 
         QVector<int> activeIntervals;
         bool hadActive = false;
         for (auto tickIt = changeTicks.constBegin(); tickIt != changeTicks.constEnd(); ++tickIt) {
+            miacode::task::CancellationScope::checkpoint();
             const int tick = tickIt.key();
             for (int intervalIndex : removeByTick.value(tick)) {
+                miacode::task::CancellationScope::checkpoint();
                 activeIntervals.removeAll(intervalIndex);
             }
             for (int intervalIndex : addByTick.value(tick)) {
+                miacode::task::CancellationScope::checkpoint();
                 activeIntervals.append(intervalIndex);
             }
 
@@ -1131,6 +1159,7 @@ QMap<int, QMap<QString, RuntimePadEvent>> buildRuntimePadEvents(
             if (!hadActive && hasActive) {
                 int bestIntervalIndex = activeIntervals.constFirst();
                 for (int intervalIndex : activeIntervals) {
+                    miacode::task::CancellationScope::checkpoint();
                     const PadWindowInterval& current = intervals.at(intervalIndex);
                     const PadWindowInterval& best = intervals.at(bestIntervalIndex);
                     if (current.sourceOrder > best.sourceOrder) {
@@ -1186,6 +1215,7 @@ MuriAnalysisReport MuriAnalyzer::analyze(
     QStringList signatureParts;
     signatureParts.reserve(noteMarkers.size());
     for (const TimelineNoteMarker& marker : noteMarkers) {
+        miacode::task::CancellationScope::checkpoint();
         signatureParts.append(makeMarkerAnalysisKey(marker));
     }
     report.sourceSignature = signatureParts.join(QLatin1Char(';'));
@@ -1219,6 +1249,7 @@ MuriAnalysisReport MuriAnalyzer::analyze(
             renderOptions);
 
     std::sort(report.padWindows.begin(), report.padWindows.end(), [](const MuriPadWindow& a, const MuriPadWindow& b) {
+        miacode::task::CancellationScope::checkpoint();
         if (!qFuzzyCompare(a.startSecond + 1.0, b.startSecond + 1.0)) {
             return a.startSecond < b.startSecond;
         }
@@ -1233,10 +1264,12 @@ MuriAnalysisReport MuriAnalyzer::analyze(
 
     QHash<QString, QVector<int>> windowsByPad;
     for (int index = 0; index < report.padWindows.size(); ++index) {
+        miacode::task::CancellationScope::checkpoint();
         windowsByPad[report.padWindows.at(index).pad].append(index);
     }
 
     for (const TimelineNoteMarker& marker : noteMarkers) {
+        miacode::task::CancellationScope::checkpoint();
         // Mine slides/wifi (trackMine) are dodged — no slide/wifi judge sprite
         // or SlideTooFast diagnostic. (pad windows + judgeable simple notes are
         // already mine-skipped upstream; this is the judgment-emission loop.)

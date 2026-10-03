@@ -201,7 +201,8 @@ public:
     bool useMineSkin() const;
     miacode::preview_gameplay::CenterDisplayMode centerDisplayMode() const;
 
-    void reset();
+    // Release marker storage when the owning document closes.
+    void reset(bool releaseStorage = false);
     void noteTickForProfiling();
     void notePresentedTextureStats(const PreviewTextureStats& stats);
     void noteFixedTimerPacingMetrics(

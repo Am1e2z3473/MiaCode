@@ -1,5 +1,7 @@
 #include "tools/muri/MuriOverlayBuilder.h"
 
+#include "common/TaskCancellation.h"
+
 #include "timeline/TimelineData.h"
 #include "common/MuriConfig.h"
 #include "common/MuriTypes.h"  // makeMarkerAnalysisKey
@@ -21,8 +23,10 @@ QVector<QStringList> checkpointPadsForArea(
     QVector<QStringList> result;
     result.reserve(checkpointTimes.size());
     for (double checkpoint : checkpointTimes) {
+        miacode::task::CancellationScope::checkpoint();
         QStringList pads;
         for (const MuriPadTimeEntry& entry : padTimes) {
+            miacode::task::CancellationScope::checkpoint();
             if (qAbs(entry.proportion - checkpoint) <= kPadTimeEpsilon && !entry.pad.isEmpty()) {
                 pads.append(entry.pad);
             }
@@ -41,11 +45,13 @@ PadWindowIndex earliestPadWindow(
 {
     PadWindowIndex best;
     for (const QString& pad : pads) {
+        miacode::task::CancellationScope::checkpoint();
         const auto it = windowsByPad.constFind(pad);
         if (it == windowsByPad.constEnd()) {
             continue;
         }
         for (int windowIndex : it.value()) {
+            miacode::task::CancellationScope::checkpoint();
             if (windowIndex < 0 || windowIndex >= windows.size()) {
                 continue;
             }
@@ -67,6 +73,7 @@ double completionSecondForArea(const QVector<MuriCheckpointState>& checkpoints)
 {
     double second = -1.0;
     for (const MuriCheckpointState& checkpoint : checkpoints) {
+        miacode::task::CancellationScope::checkpoint();
         second = qMax(second, checkpoint.second);
     }
     return second;
@@ -87,6 +94,7 @@ QVector<MuriCheckpointState> buildCheckpointStates(
 
     double cursorSecond = earliestAllowedSecond;
     for (int index = 0; index < checkpointTimes.size(); ++index) {
+        miacode::task::CancellationScope::checkpoint();
         MuriCheckpointState state;
         state.proportion = checkpointTimes.at(index);
         state.pads = checkpointPads.value(index);
@@ -136,6 +144,7 @@ MarkerMuriState buildSlideState(
     state.slideSegments.reserve(segmentCount);
     double chainCursorSecond = marker.second;
     for (int segmentIndex = 0; segmentIndex < segmentCount; ++segmentIndex) {
+        miacode::task::CancellationScope::checkpoint();
         MuriSegmentState segmentState;
         const double shootSecond = marker.slideSegmentShootSeconds.at(segmentIndex);
         const double durationSecond = qMax(0.0, marker.slideSegmentDurations.at(segmentIndex));
@@ -146,6 +155,7 @@ MarkerMuriState buildSlideState(
         double cursorSecond = chainCursorSecond;
         bool sawCheckpoint = false;
         for (const QVector<double>& area : areas) {
+            miacode::task::CancellationScope::checkpoint();
             const QVector<QStringList> pads = checkpointPadsForArea(padTimes, area);
             QVector<MuriCheckpointState> checkpointStates = buildCheckpointStates(
                 area,
@@ -162,6 +172,7 @@ MarkerMuriState buildSlideState(
                 const double areaSecond = completionSecondForArea(checkpointStates);
                 if (areaSecond + kPadTimeEpsilon < cursorSecond) {
                     for (MuriCheckpointState& checkpointState : checkpointStates) {
+                        miacode::task::CancellationScope::checkpoint();
                         checkpointState.second = cursorSecond;
                     }
                 }
@@ -172,6 +183,7 @@ MarkerMuriState buildSlideState(
 
         double expectedCompleted = shootSecond;
         for (const MuriPadTimeEntry& entry : padTimes) {
+            miacode::task::CancellationScope::checkpoint();
             expectedCompleted = qMax(expectedCompleted, shootSecond + entry.proportion * durationSecond);
         }
         segmentState.expectedCompletedSecond = expectedCompleted;
@@ -218,6 +230,7 @@ MarkerMuriState buildWifiState(const TimelineNoteMarker& marker)
     const double durationSecond = qMax(0.0, marker.endSecond - marker.slideTraceSecond);
     double expectedCompleted = marker.slideTraceSecond;
     for (const MuriPadTimeEntry& entry : marker.wifiPadEnterTimes) {
+        miacode::task::CancellationScope::checkpoint();
         expectedCompleted = qMax(expectedCompleted, marker.slideTraceSecond + entry.proportion * durationSecond);
     }
     state.wifiExpectedCompletedSecond = expectedCompleted;
@@ -245,6 +258,7 @@ void buildOverlayActions(
     }
 
     for (const TimelineNoteMarker& marker : noteMarkers) {
+        miacode::task::CancellationScope::checkpoint();
         const QString markerKey = makeMarkerAnalysisKey(marker);
         const QString pad = notePad(marker);
         if (marker.type == QLatin1String("tap")) {

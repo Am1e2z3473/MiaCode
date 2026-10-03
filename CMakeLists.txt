@@ -967,6 +967,7 @@ target_link_libraries(MiaCode PRIVATE
     Qt6::Network
     Qt6::Qml
     Qt6::Quick
+    Qt6::QuickPrivate
     Qt6::Quick3D
     Qt6::Quick3DHelpers
     Qt6::QuickControls2

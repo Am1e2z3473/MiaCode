@@ -1,5 +1,7 @@
 #include "tools/muri/MuriDiagnosticCollector.h"
 
+#include "common/TaskCancellation.h"
+
 #include <algorithm>
 #include <cmath>
 
@@ -21,6 +23,7 @@ QVector<MuriDiagnostic> dedupeDenseOverlapDiagnostics(const QVector<MuriDiagnost
     keptOverlapCountBySecond.reserve(diagnostics.size());
 
     for (const MuriDiagnostic& diagnostic : diagnostics) {
+        miacode::task::CancellationScope::checkpoint();
         if (diagnostic.kind != MuriKind::Overlap) {
             deduped.append(diagnostic);
             continue;
@@ -192,6 +195,7 @@ bool MuriDiagnosticCollector::appendSlideJudgeSpriteEvent(const TimelineNoteMark
 void MuriDiagnosticCollector::finalize()
 {
     std::sort(diagnostics.begin(), diagnostics.end(), [](const MuriDiagnostic& a, const MuriDiagnostic& b) {
+        miacode::task::CancellationScope::checkpoint();
         if (!qFuzzyCompare(a.second + 1.0, b.second + 1.0)) {
             return a.second < b.second;
         }
@@ -202,6 +206,7 @@ void MuriDiagnosticCollector::finalize()
     });
     diagnostics = dedupeDenseOverlapDiagnostics(diagnostics);
     std::sort(judgeSpriteEvents.begin(), judgeSpriteEvents.end(), [](const MuriJudgeSpriteEvent& a, const MuriJudgeSpriteEvent& b) {
+        miacode::task::CancellationScope::checkpoint();
         if (!qFuzzyCompare(a.second + 1.0, b.second + 1.0)) {
             return a.second < b.second;
         }

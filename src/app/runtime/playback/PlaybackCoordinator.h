@@ -27,7 +27,7 @@ class ApplicationServices;
 namespace miacode::runtime {
 
 // PlaybackCoordinator only needs a QObject to anchor timers/connections and
-// to act as its own liveness token for the async analysis callbacks below —
+// to act as its own liveness token for the shared analysis notifications —
 // it never calls into any Session API. Production wiring passes the owning
 // Session (Session IS-A QObject); ValidationPortSpec-style specs may pass any
 // QObject, since nothing here ever casts owner_ back to a concrete type.
@@ -95,11 +95,7 @@ public:
     void applyLatestTimelinePreviewStateToPausedPreview();
     void requestTimelineSlowRefresh();
     void dispatchTimelineSlowRefresh();
-    void scheduleTimelineAnalysisRefresh(
-        const TimelineSlowRefreshRequest& request,
-        const SimaiParseResult& parseResult,
-        const TimelinePreviewRefreshState& previewState
-    );
+    void scheduleTimelineAnalysisRefresh(const TimelineSlowRefreshRequest& request);
     bool scheduleTimelineAnalysisRefreshFromLatestPreviewState(int delayMs = -1);
     void requestTimelineAnalysisDispatch(int delayMs = -1);
     void dispatchTimelineAnalysisRefresh();

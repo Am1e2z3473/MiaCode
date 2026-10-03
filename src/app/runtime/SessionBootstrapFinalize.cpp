@@ -244,9 +244,6 @@ void Session::finishFrameBootstrap(const std::function<void(const QString&)>& lo
     previewHeldSeekTimer_->setInterval(miacode::preview_interaction::kSeekHoldTickIntervalMs);
     connect(previewHeldSeekTimer_, &QTimer::timeout, this, &Session::applyPreviewHeldSeekTick);
 
-    timelineAnalysisIdleTimer_ = new QTimer(this);
-    timelineAnalysisIdleTimer_->setSingleShot(true);
-    connect(timelineAnalysisIdleTimer_, &QTimer::timeout, this, &Session::dispatchTimelineAnalysisRefresh);
     logStartupStage("timers_ready");
 
     loadPortableState();

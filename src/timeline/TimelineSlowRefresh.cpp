@@ -1,5 +1,7 @@
 #include "timeline/TimelineSlowRefresh.h"
 
+#include "common/TaskCancellation.h"
+
 #include "common/MuriTypes.h"
 #include "timeline/TimelineMarkerOffset.h"
 #include "tools/muri/MuriAnalyzer.h"
@@ -16,6 +18,7 @@ QByteArray noteMarkerSignature(const QVector<TimelineNoteMarker>& notes)
     QByteArray signature;
     signature.reserve(notes.size() * 128);
     for (const TimelineNoteMarker& marker : notes) {
+        miacode::task::CancellationScope::checkpoint();
         signature.append(QByteArray::number(marker.sourceLine));
         signature.append('|');
         signature.append(QByteArray::number(marker.sourceCol));
@@ -37,6 +40,7 @@ QByteArray noteMarkerSignature(const QVector<TimelineNoteMarker>& notes)
         signature.append(QByteArray::number(marker.slideSegmentKeys.size()));
         signature.append('|');
         for (int index = 0; index < marker.slideSegmentKeys.size(); ++index) {
+            miacode::task::CancellationScope::checkpoint();
             signature.append(marker.slideSegmentKeys.at(index).toUtf8());
             signature.append(',');
         }
@@ -44,6 +48,7 @@ QByteArray noteMarkerSignature(const QVector<TimelineNoteMarker>& notes)
         signature.append(QByteArray::number(marker.slideSegmentShootSeconds.size()));
         signature.append('|');
         for (double second : marker.slideSegmentShootSeconds) {
+            miacode::task::CancellationScope::checkpoint();
             signature.append(QByteArray::number(second, 'f', 6));
             signature.append(',');
         }
@@ -51,6 +56,7 @@ QByteArray noteMarkerSignature(const QVector<TimelineNoteMarker>& notes)
         signature.append(QByteArray::number(marker.slideSegmentDurations.size()));
         signature.append('|');
         for (double duration : marker.slideSegmentDurations) {
+            miacode::task::CancellationScope::checkpoint();
             signature.append(QByteArray::number(duration, 'f', 6));
             signature.append(',');
         }
@@ -111,12 +117,14 @@ double computeDurationSeconds(
 {
     double durationSeconds = qMax(0.0, parseResult.durationSeconds + firstSeconds);
     for (const TimelineNoteMarker& marker : noteMarkers) {
+        miacode::task::CancellationScope::checkpoint();
         durationSeconds = qMax(durationSeconds, marker.second);
         if (marker.endSecond > marker.second) {
             durationSeconds = qMax(durationSeconds, marker.endSecond);
         }
     }
     for (const TimelineBeatMarker& marker : beatMarkers) {
+        miacode::task::CancellationScope::checkpoint();
         durationSeconds = qMax(durationSeconds, marker.second);
     }
     return durationSeconds;
@@ -176,6 +184,7 @@ TimelinePreviewRefreshState buildTimelinePreviewRefreshState(const QString& char
 
 TimelineAnalysisRefreshResult buildTimelineAnalysisRefreshResult(const TimelineAnalysisRefreshRequest& request)
 {
+    miacode::task::CancellationScope::check();
     TimelineAnalysisRefreshResult result;
     result.revision = request.revision;
     result.difficultyId = request.difficultyId;
@@ -187,11 +196,13 @@ TimelineAnalysisRefreshResult buildTimelineAnalysisRefreshResult(const TimelineA
         request.validationLocale,
         &request.parseResult,
         request.timingMetadata);
+    miacode::task::CancellationScope::check();
     result.noteMarkerSignature = request.noteMarkerSignature;
     result.analysisReport = MuriAnalyzer::analyze(
         request.noteMarkers,
         request.renderOptions,
         request.staticTapOnSlideThresholdSeconds);
+    miacode::task::CancellationScope::check();
     result.staticReferences = miacode::muri::buildStaticMuriReferences(
         request.noteMarkers,
         request.staticTapOnSlideThresholdSeconds);

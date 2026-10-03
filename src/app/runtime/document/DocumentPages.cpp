@@ -269,7 +269,6 @@ bool miacode::runtime::DocumentSessionHost::clearEditorPresentation()
     state_.activeDifficultyId_ = 0;
     state_.activeOutlineKey_ = QStringLiteral("chart");
     state_.pendingDifficultySwitchPreviewRestore_ = false;
-    state_.pendingDifficultySwitchPreviewRestoreRevision_ = 0;
     state_.pendingDifficultySwitchPreviewRestoreDifficultyId_ = 0;
     state_.pendingDifficultySwitchPreviewRestoreSecond_ = 0.0;
     setChartBottomTabsMode(false);
@@ -363,7 +362,6 @@ bool miacode::runtime::DocumentSessionHost::switchToDifficultyField(int difficul
             authority->repositionSilently(restorePreviewSecond, "switch_to_difficulty_field");
         }
         state_.pendingDifficultySwitchPreviewRestore_ = true;
-        state_.pendingDifficultySwitchPreviewRestoreRevision_ = state_.timelineRevision_ + 1;
         state_.pendingDifficultySwitchPreviewRestoreDifficultyId_ = difficultyId;
         state_.pendingDifficultySwitchPreviewRestoreSecond_ = restorePreviewSecond;
         if (state_.timelineQuickStateBridge_ != nullptr) {
@@ -374,7 +372,6 @@ bool miacode::runtime::DocumentSessionHost::switchToDifficultyField(int difficul
         }
     } else {
         state_.pendingDifficultySwitchPreviewRestore_ = false;
-        state_.pendingDifficultySwitchPreviewRestoreRevision_ = 0;
         state_.pendingDifficultySwitchPreviewRestoreDifficultyId_ = 0;
         state_.pendingDifficultySwitchPreviewRestoreSecond_ = 0.0;
     }
@@ -473,20 +470,23 @@ void miacode::runtime::DocumentSessionHost::loadDocument()
 
 void miacode::runtime::DocumentSessionHost::clearTimelineAndPreview(bool preservePresentation)
 {
-    state_.timelineQuickModel_.clear();
+    const bool releaseStorage = !session_.applicationServices_.workspace().snapshot().hasDocument;
+    state_.timelineQuickModel_.clear(releaseStorage);
     state_.pendingTimelineSlowRefresh_ = TimelineSlowRefreshRequest();
-    state_.pendingTimelineAnalysisRefresh_ = TimelineAnalysisRefreshRequest();
+    state_.pendingTimelineAnalysisRefresh_ = TimelineSlowRefreshRequest();
     state_.timelineSlowRequestedRevision_ = 0;
-    state_.timelineSlowRunningRevision_ = 0;
     state_.timelineAnalysisRequestedRevision_ = 0;
-    state_.timelineAnalysisRunningRevision_ = 0;
     // The signature describes the markers still installed in the scene. A
     // preserved scene keeps its outgoing markers until the incoming parse is
     // ready, including when that parse produces an empty marker set.
     if (!preservePresentation) {
         state_.lastPreviewNoteMarkerSignature_.clear();
     }
-    state_.latestTimelineNoteMarkers_.clear();
+    if (releaseStorage) {
+        state_.latestTimelineNoteMarkers_ = QVector<TimelineNoteMarker>();
+    } else {
+        state_.latestTimelineNoteMarkers_.clear();
+    }
     state_.latestTimelineNoteMarkerSignature_.clear();
     state_.latestTimelinePreviewRevision_ = 0;
     state_.latestTimelinePreviewSnapshotReady_ = false;
@@ -500,16 +500,17 @@ void miacode::runtime::DocumentSessionHost::clearTimelineAndPreview(bool preserv
     state_.muriAnalysisReportDifficultyId_ = 0;
     state_.muriAnalysisReportTimelineRevision_ = 0;
     state_.muriAnalysisResultAvailable_ = false;
-    state_.muriStaticReferences_.clear();
+    if (releaseStorage) {
+        state_.muriStaticReferences_ = QVector<MuriStaticReference>();
+    } else {
+        state_.muriStaticReferences_.clear();
+    }
     state_.muriStaticReferencesNoteMarkerSignature_.clear();
     state_.muriStaticReferencesDifficultyId_ = 0;
     state_.muriStaticReferencesTimelineRevision_ = 0;
     state_.muriStaticReferencesAvailable_ = false;
     state_.pendingDeferredValidationUiRefresh_ = false;
     state_.pendingDeferredMuriUiRefresh_ = false;
-    if (ui_.timelineAnalysisIdleTimer_ != nullptr) {
-        ui_.timelineAnalysisIdleTimer_->stop();
-    }
     session_.clearPreviewFollowDecoration();
     session_.clearPreviewObjectStats();
     state_.previewTrackDurationSeconds_ = 0.0;
@@ -537,14 +538,12 @@ void miacode::runtime::DocumentSessionHost::clearTimelineAndPreview(bool preserv
     if (state_.timelineQuickStateBridge_ != nullptr) {
         if (!preservePresentation) {
             state_.timelineQuickStateBridge_->clear();
-        } else {
-            state_.timelineQuickStateBridge_->setPlayheadUpperLimitSeconds(-1.0);
         }
         state_.timelineQuickStateBridge_->setMuriAnalysisReport(state_.muriAnalysisReport_);
     }
     if (state_.scene_ != nullptr) {
         if (!preservePresentation) {
-            state_.scene_->reset();
+            state_.scene_->reset(releaseStorage);
         }
         state_.scene_->setMuriAnalysisReport(state_.muriAnalysisReport_);
     }

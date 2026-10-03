@@ -1,5 +1,7 @@
 #include "tools/muri/MuriAnalyzerGeometry.h"
 
+#include "common/TaskCancellation.h"
+
 #include <cmath>
 #include <limits>
 
@@ -18,6 +20,7 @@ QVector<QPointF> centeredPathPoints(const QVector<QPointF>& points)
     QVector<QPointF> result;
     result.reserve(points.size());
     for (const QPointF& point : points) {
+        miacode::task::CancellationScope::checkpoint();
         result.append(QPointF(
             miacode::muri::kLogicalCanvasCenter + point.x(),
             miacode::muri::kLogicalCanvasCenter + point.y()
@@ -89,6 +92,7 @@ bool coveringCircleContainsAll(const CoveringCircle& circle, const QVector<QPoin
         return false;
     }
     for (const QPointF& point : points) {
+        miacode::task::CancellationScope::checkpoint();
         if (pointDistance(circle.center, point) > circle.radius + 1e-3) {
             return false;
         }
@@ -112,6 +116,7 @@ CoveringCircle smallestCoveringCircle(const QVector<QPointF>& points)
 
     best.radius = std::numeric_limits<double>::infinity();
     for (int i = 0; i < points.size(); ++i) {
+        miacode::task::CancellationScope::checkpoint();
         CoveringCircle circle;
         circle.center = points.at(i);
         circle.radius = 0.0;
@@ -122,7 +127,9 @@ CoveringCircle smallestCoveringCircle(const QVector<QPointF>& points)
     }
 
     for (int i = 0; i < points.size(); ++i) {
+        miacode::task::CancellationScope::checkpoint();
         for (int j = i + 1; j < points.size(); ++j) {
+            miacode::task::CancellationScope::checkpoint();
             const CoveringCircle circle = coveringCircleFromTwoPoints(points.at(i), points.at(j));
             if (coveringCircleContainsAll(circle, points) && circle.radius < best.radius) {
                 best = circle;
@@ -131,8 +138,11 @@ CoveringCircle smallestCoveringCircle(const QVector<QPointF>& points)
     }
 
     for (int i = 0; i < points.size(); ++i) {
+        miacode::task::CancellationScope::checkpoint();
         for (int j = i + 1; j < points.size(); ++j) {
+            miacode::task::CancellationScope::checkpoint();
             for (int k = j + 1; k < points.size(); ++k) {
+                miacode::task::CancellationScope::checkpoint();
                 const CoveringCircle circle =
                     coveringCircleFromThreePoints(points.at(i), points.at(j), points.at(k));
                 if (coveringCircleContainsAll(circle, points) && circle.radius < best.radius) {

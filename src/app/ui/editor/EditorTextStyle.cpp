@@ -4,6 +4,7 @@
 #include <QTextCursor>
 #include <QTextDocument>
 #include <QtGlobal>
+#include <QtQuick/private/qquicktextinterface_p.h>
 
 
 namespace miacode::ui {
@@ -56,6 +57,17 @@ void EditorTextStyle::applyImmediately()
     // become a no-op instead of applying a stale range later.
     rangePending_ = false;
     applyToDocument();
+}
+
+void EditorTextStyle::invalidateRendering()
+{
+    if (textDocument_ == nullptr) return;
+    if (auto* item = qobject_cast<QQuickTextInterface*>(textDocument_->parent())) {
+        // Qt queues a complete text-node rebuild. An ordinary item update or
+        // rehighlight retains the old node offsets, which may exceed the end
+        // of a shorter replacement document.
+        item->invalidate();
+    }
 }
 
 void EditorTextStyle::onContentsChange(int position, int charsRemoved, int charsAdded)

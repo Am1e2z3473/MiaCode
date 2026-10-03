@@ -560,6 +560,7 @@ void miacode::runtime::PlaybackCoordinator::finalizeQtPreviewPlaybackStart(doubl
     state_.qtPreviewTimelineElapsed_.restart();
     miacode::runtime::shared::writePreviewPlayingFlag(playbackState_, services_.shellNotifications(), true);
     services_.editorSync().setPlaybackActive(true);
+    services_.analysis().setDiagnosticsDeferred(true);
     if (state_.previewSfxRuntime_ != nullptr) {
         state_.previewSfxRuntime_->armDeviceChangeCutoffClock(
             effectiveStartSecond,
@@ -671,6 +672,7 @@ void miacode::runtime::PlaybackCoordinator::pauseQtPreviewPlaybackExact(PauseSec
     stopQtPreviewTimers();
     miacode::runtime::shared::writePreviewPlayingFlag(playbackState_, services_.shellNotifications(), false);
     services_.editorSync().setPlaybackActive(false);
+    services_.analysis().setDiagnosticsDeferred(false);
     miacode::runtime::shared::writePreviewPauseSecond(
         playbackState_.pauseSecond_, wallClockPauseSecond, playbackState_.playing_, "pause_qt_preview_playback_exact");
     state_.pausedPreviewMediaSeekPending_ = false;
@@ -1085,6 +1087,7 @@ void miacode::runtime::PlaybackCoordinator::pauseQtPreviewPlaybackForReanchor()
     state_.qtPreviewTimelineDirty_ = true;
     miacode::runtime::shared::writePreviewPlayingFlag(playbackState_, services_.shellNotifications(), false);
     services_.editorSync().setPlaybackActive(false);
+    services_.analysis().setDiagnosticsDeferred(false);
     if (state_.scene_ != nullptr) {
         state_.scene_->setActivePlaybackProfilingEnabled(false);
     }
@@ -1148,6 +1151,7 @@ void miacode::runtime::PlaybackCoordinator::anchorQtPreviewPlaybackToSecond(doub
     state_.qtPreviewTimelineDirty_ = true;
     miacode::runtime::shared::writePreviewPlayingFlag(playbackState_, services_.shellNotifications(), false);
     services_.editorSync().setPlaybackActive(false);
+    services_.analysis().setDiagnosticsDeferred(false);
     if (state_.scene_ != nullptr) {
         state_.scene_->setActivePlaybackProfilingEnabled(false);
     }

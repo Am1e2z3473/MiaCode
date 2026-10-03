@@ -329,7 +329,7 @@ miacode_add_spec(qml_editor_controller_spec
         src/editor/SimaiCompletionCatalog.cpp
         src/editor/BookmarkCommentSyntax.h
         src/editor/BookmarkCommentSyntax.cpp
-    LIBS Qt6::Core Qt6::Gui Qt6::Qml Qt6::Quick Qt6::QuickControls2 Qt6::Test
+    LIBS Qt6::Core Qt6::Gui Qt6::Qml Qt6::Quick Qt6::QuickPrivate Qt6::QuickControls2 Qt6::Test
     INCLUDES src src/app/ui src/editor src/app/ui
 )
 target_compile_definitions(qml_editor_controller_spec PRIVATE

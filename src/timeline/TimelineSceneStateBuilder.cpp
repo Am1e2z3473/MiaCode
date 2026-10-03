@@ -155,15 +155,8 @@ QSizeF timelineTextLogicalSize(const QFont& font, const QString& text)
 
 double maxNavigableSecond(const TimelineSceneBuildRequest& request)
 {
-    double maxSecond = qMax(
-        0.0,
-        qMax(
-            request.snapshot.maximumSecond,
-            qMax(
-                request.snapshot.durationSeconds,
-                qMax(
-                    request.playbackEntrySeconds,
-                    qMax(request.playheadSeconds, qMax(request.cursorSeconds, 0.0))))));
+    // Geometry follows the source extent; transient cursor positions belong to overlays.
+    double maxSecond = qMax(0.0, qMax(request.snapshot.maximumSecond, request.snapshot.durationSeconds));
     if (request.playheadUpperLimitSeconds > 0.0) {
         maxSecond = qMax(maxSecond, request.playheadUpperLimitSeconds);
     }

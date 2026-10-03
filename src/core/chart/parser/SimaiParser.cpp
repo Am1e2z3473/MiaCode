@@ -1,5 +1,7 @@
 #include "SimaiParser.h"
 
+#include "common/TaskCancellation.h"
+
 #include "common/OperationLog.h"
 
 #include <QFile>
@@ -108,6 +110,7 @@ bool tokenContainsSlideShape(const QString& token)
     // make the token slide-bound even when the duration block is malformed or
     // missing, so slide diagnostics own those errors.
     for (int i = 1; i < token.size(); ++i) {
+        miacode::task::CancellationScope::checkpoint();
         if (isSlideShapeChar(token.at(i))) {
             return true;
         }
@@ -146,6 +149,7 @@ bool parseTapModifierSequence(
 
     const auto parsePart = [state](const QString& part) -> bool {
         for (int i = 0; i < part.size();) {
+            miacode::task::CancellationScope::checkpoint();
             const QChar ch = part.at(i);
             const QChar lower = ch.toLower();
             if (lower == QChar('b')) {
@@ -216,6 +220,7 @@ bool parseSlideHeadModifierPrefix(const QString& token, int* modifierCount, Slid
     *state = SlideHeadModifierState();
 
     while ((1 + *modifierCount) < token.size()) {
+        miacode::task::CancellationScope::checkpoint();
         const QChar ch = token.at(1 + *modifierCount);
         if (ch == QChar('B') || ch == QChar('X')) {
             return false;
@@ -264,6 +269,7 @@ bool parseSlideHeadModifierPrefix(const QString& token, int* modifierCount, Slid
 bool slideCoreHasDisallowedModifiers(const QString& core)
 {
     for (int i = 1; i < core.size(); ++i) {
+        miacode::task::CancellationScope::checkpoint();
         const QChar ch = core.at(i);
         const QChar lower = ch.toLower();
         if (lower == QChar('x')
@@ -292,6 +298,7 @@ QString detectFullwidthSyntaxIssueMessage(const QString& token)
     static const QString kFullwidthSlideSymbols = QStringLiteral("－＜＞＾ｖＶｐｑｓｚｗ＊？！");
 
     for (QChar ch : token) {
+        miacode::task::CancellationScope::checkpoint();
         if (kFullwidthDigits.contains(ch)) {
             return QStringLiteral("Fullwidth digit detected, use halfwidth digits: %1").arg(token);
         }
@@ -442,6 +449,7 @@ bool parseTouchSuffix(
 
     auto parseModifierPart = [token, hasHold, hasFirework, hasBreak, hasMine, errorMessage](const QString& modifierPart) {
         for (QChar ch : modifierPart) {
+            miacode::task::CancellationScope::checkpoint();
             if (ch == QChar('h')) {
                 *hasHold = true;
             } else if (ch == QChar('f')) {
@@ -500,6 +508,7 @@ double polylineLength(const QVector<QPointF>& points)
     }
     double length = 0.0;
     for (int i = 1; i < points.size(); ++i) {
+        miacode::task::CancellationScope::checkpoint();
         length += QLineF(points.at(i - 1), points.at(i)).length();
     }
     return length;
@@ -751,6 +760,7 @@ void buildLinearSamples(const QPointF& start, const QPointF& end, QVector<QPoint
     angles->reserve(kPathSampleCount);
     const double angle = slideAngleDegrees(start, end);
     for (int i = 0; i < kPathSampleCount; ++i) {
+        miacode::task::CancellationScope::checkpoint();
         const double t = static_cast<double>(i) / static_cast<double>(kPathSampleCount - 1);
         const QPointF point(start.x() + (end.x() - start.x()) * t, start.y() + (end.y() - start.y()) * t);
         points->append(point);
@@ -766,6 +776,7 @@ QVector<QPointF> buildTrackArrowPoints(const QPointF& start, const QPointF& end,
     QVector<QPointF> points;
     points.reserve(arrowCount);
     for (int i = 0; i < arrowCount; ++i) {
+        miacode::task::CancellationScope::checkpoint();
         const double t = static_cast<double>(i + 1) / static_cast<double>(arrowCount + 1);
         points.append(QPointF(start.x() + delta.x() * t, start.y() + delta.y() * t));
     }
@@ -791,6 +802,7 @@ void finalizeEachGroup(ParseState* state, const QVector<int>& groupIndices)
     int headlessSlideCount = 0;
 
     for (int index : groupIndices) {
+        miacode::task::CancellationScope::checkpoint();
         if (index < 0 || index >= noteMarkers->size()) {
             continue;
         }
@@ -839,12 +851,15 @@ void finalizeEachGroup(ParseState* state, const QVector<int>& groupIndices)
 
     if (noteEachGroupCount >= 2) {
         for (int index : tapIndices) {
+            miacode::task::CancellationScope::checkpoint();
             (*noteMarkers)[index].isEach = true;
         }
         for (int index : holdIndices) {
+            miacode::task::CancellationScope::checkpoint();
             (*noteMarkers)[index].isEach = true;
         }
         for (int index : touchHoldIndices) {
+            miacode::task::CancellationScope::checkpoint();
             (*noteMarkers)[index].isEach = true;
         }
     }
@@ -855,23 +870,27 @@ void finalizeEachGroup(ParseState* state, const QVector<int>& groupIndices)
         // rule as tap/hold/touch, while `sameHeadSlide` remains the separate
         // double-star indicator.
         for (int index : slideIndices) {
+            miacode::task::CancellationScope::checkpoint();
             (*noteMarkers)[index].headEach = true;
         }
     }
 
     if (slideIndices.size() >= 2) {
         for (int index : slideIndices) {
+            miacode::task::CancellationScope::checkpoint();
             (*noteMarkers)[index].slideEach = true;
         }
     }
 
     if (noteEachGroupCount >= 2) {
         for (int index : touchIndices) {
+            miacode::task::CancellationScope::checkpoint();
             (*noteMarkers)[index].isEach = true;
         }
     }
 
     for (int i = 0; i < groupIndices.size(); ++i) {
+        miacode::task::CancellationScope::checkpoint();
         const int aIndex = groupIndices[i];
         if (aIndex < 0 || aIndex >= noteMarkers->size()) {
             continue;
@@ -884,6 +903,7 @@ void finalizeEachGroup(ParseState* state, const QVector<int>& groupIndices)
             continue;  // mines never form a same-head (double-star) each pair
         }
         for (int j = 0; j < groupIndices.size(); ++j) {
+            miacode::task::CancellationScope::checkpoint();
             if (i == j) {
                 continue;
             }
@@ -949,6 +969,7 @@ double nativeSlideTrackLengthForAreas(const QVector<QVector<QPointF>>& areas)
 {
     double length = 1.0;
     for (const QVector<QPointF>& areaPoints : areas) {
+        miacode::task::CancellationScope::checkpoint();
         length += static_cast<double>(areaPoints.size());
     }
     return length;
@@ -958,6 +979,7 @@ double runtimeSlideTrackLengthForJudgeSequence(const QJsonArray& judgeSequence)
 {
     double length = 1.0;
     for (const QJsonValue& areaValue : judgeSequence) {
+        miacode::task::CancellationScope::checkpoint();
         if (!areaValue.isArray()) {
             continue;
         }
@@ -984,12 +1006,14 @@ void populateSlideTrackLengths(TimelineNoteMarker* marker)
     }
 
     for (const QVector<QVector<QPointF>>& segmentAreas : marker->slideTrackAreaPoints) {
+        miacode::task::CancellationScope::checkpoint();
         marker->slideNativeTrackLength += nativeSlideTrackLengthForAreas(segmentAreas);
     }
 
     const QJsonObject slides = slideRuntimeRoot().value("slides").toObject();
     bool foundRuntimeLength = false;
     for (const QString& key : marker->slideSegmentKeys) {
+        miacode::task::CancellationScope::checkpoint();
         const QJsonObject entry = slides.value(key).toObject();
         if (entry.isEmpty()) {
             continue;
@@ -1080,6 +1104,7 @@ bool touchHitsSlide(const TimelineNoteMarker& touch, const TimelineNoteMarker& s
         }
         const QJsonArray padEnterTimes = entry.value("pad_enter_times").toArray();
         for (const QJsonValue& itemValue : padEnterTimes) {
+            miacode::task::CancellationScope::checkpoint();
             if (!itemValue.isObject()) {
                 continue;
             }
@@ -1101,6 +1126,7 @@ bool touchHitsSlide(const TimelineNoteMarker& touch, const TimelineNoteMarker& s
         && slide.slideSegmentKeys.size() == slide.slideSegmentDurations.size()) {
         const QJsonObject slides = slideDataRoot().value("slides").toObject();
         for (int i = 0; i < slide.slideSegmentKeys.size(); ++i) {
+            miacode::task::CancellationScope::checkpoint();
             const QJsonObject entry = slides.value(slide.slideSegmentKeys.at(i)).toObject();
             if (touchHitsEntry(entry, slide.slideSegmentShootSeconds.at(i), slide.slideSegmentDurations.at(i))) {
                 return true;
@@ -1112,6 +1138,7 @@ bool touchHitsSlide(const TimelineNoteMarker& touch, const TimelineNoteMarker& s
     if (slide.type == "wifi" && slide.endSecond >= slide.slideTraceSecond) {
         const double durationSecond = slide.endSecond - slide.slideTraceSecond;
         for (const MuriPadTimeEntry& entry : slide.wifiPadEnterTimes) {
+            miacode::task::CancellationScope::checkpoint();
             if (entry.pad != touch.touchPad) {
                 continue;
             }
@@ -1150,6 +1177,7 @@ bool parseStandardSlideChain(
     QChar lastTarget = slideCore.at(0);
 
     for (int i = 1; i < slideCore.size(); ++i) {
+        miacode::task::CancellationScope::checkpoint();
         const QChar ch = slideCore.at(i);
         if (ch == QChar('[')) {
             if (!shapeFound) {
@@ -1168,6 +1196,7 @@ bool parseStandardSlideChain(
             QString signature;
             ++i;
             while (i < slideCore.size() && slideCore.at(i) != QChar(']')) {
+                miacode::task::CancellationScope::checkpoint();
                 signature.append(slideCore.at(i));
                 ++i;
             }
@@ -1254,6 +1283,7 @@ bool parseStandardSlideChain(
         double totalLength = 0.0;
         // Approximate chain duration splitting by sampled polyline length.
         for (const QString& key : parsedShapes) {
+            miacode::task::CancellationScope::checkpoint();
             const QJsonObject entry = slideDataRoot().value("slides").toObject().value(key).toObject();
             QVector<QPointF> points;
             QVector<double> angles;
@@ -1267,6 +1297,7 @@ bool parseStandardSlideChain(
         }
         segmentDurations->reserve(lengths.size());
         for (double length : lengths) {
+            miacode::task::CancellationScope::checkpoint();
             segmentDurations->append(totalDuration * length / totalLength);
         }
         return true;
@@ -1284,12 +1315,14 @@ bool parseStandardSlideChain(
             // at the call site but still wants the note to parse.
             double totalDuration = 0.0;
             for (const auto& item : waitAndDurations) {
+                miacode::task::CancellationScope::checkpoint();
                 totalDuration += qMax(0.0, item.second);
             }
             return distributeTotalDurationByShapeLength(totalDuration);
         }
         segmentDurations->reserve(waitAndDurations.size());
         for (const auto& item : waitAndDurations) {
+            miacode::task::CancellationScope::checkpoint();
             segmentDurations->append(item.second);
         }
         return true;
@@ -1362,6 +1395,7 @@ SlideDurationPlacementStrict classifySlideDurationPlacementStrict(const QString&
     QVector<bool> segmentHasDuration;
     int i = 1;
     while (i < slideCore.size()) {
+        miacode::task::CancellationScope::checkpoint();
         if (slideCore.at(i) == QChar('[')) {
             if (segmentHasDuration.isEmpty() || segmentHasDuration.last()) {
                 return SlideDurationPlacementStrict::Invalid;
@@ -1391,6 +1425,7 @@ SlideDurationPlacementStrict classifySlideDurationPlacementStrict(const QString&
 
     int timedCount = 0;
     for (bool hasDuration : segmentHasDuration) {
+        miacode::task::CancellationScope::checkpoint();
         if (hasDuration) {
             ++timedCount;
         }
@@ -1442,6 +1477,7 @@ bool isValidSlideChainStrict(const QString& slideCore)
     bool sawShape = false;
     const int n = slideCore.size();
     while (i < n) {
+        miacode::task::CancellationScope::checkpoint();
         const QChar ch = slideCore.at(i);
         if (ch == QChar('[')) {
             const int close = slideCore.indexOf(QChar(']'), i + 1);
@@ -1511,6 +1547,7 @@ QString normalizedSlideLookupKey(const QString& token)
     key.reserve(core.size());
     key.append(core.at(0));
     for (int i = 1; i < core.size(); ++i) {
+        miacode::task::CancellationScope::checkpoint();
         const QChar ch = core.at(i);
         if (ch == QChar('b')
             || ch == QChar('x')
@@ -1548,6 +1585,7 @@ void loadSamplePath(const QJsonArray& samples, QVector<QPointF>* points, QVector
     points->reserve(samples.size());
     angles->reserve(samples.size());
     for (const QJsonValue& sampleValue : samples) {
+        miacode::task::CancellationScope::checkpoint();
         if (!sampleValue.isObject()) {
             continue;
         }
@@ -1596,6 +1634,7 @@ bool populateSlideFromLookup(const QString& key, TimelineNoteMarker* marker)
         segmentAreas.reserve(areaArray.size());
         segmentRotations.reserve(areaArray.size());
         for (const QJsonValue& areaValue : areaArray) {
+            miacode::task::CancellationScope::checkpoint();
             if (!areaValue.isArray()) {
                 continue;
             }
@@ -1605,6 +1644,7 @@ bool populateSlideFromLookup(const QString& key, TimelineNoteMarker* marker)
             areaPoints.reserve(arrowArray.size());
             areaRotations.reserve(arrowArray.size());
             for (const QJsonValue& arrowValue : arrowArray) {
+                miacode::task::CancellationScope::checkpoint();
                 if (!arrowValue.isObject()) {
                     continue;
                 }
@@ -1622,6 +1662,7 @@ bool populateSlideFromLookup(const QString& key, TimelineNoteMarker* marker)
         const QJsonArray thresholdArray = entry.value("track_thresholds").toArray();
         thresholds.reserve(thresholdArray.size());
         for (const QJsonValue& thresholdValue : thresholdArray) {
+            miacode::task::CancellationScope::checkpoint();
             thresholds.append(thresholdValue.toDouble());
         }
         marker->slideTrackAreaThresholds = QVector<QVector<double>>{thresholds};
@@ -1630,10 +1671,12 @@ bool populateSlideFromLookup(const QString& key, TimelineNoteMarker* marker)
         const QJsonArray checkpointArray = entry.value("track_checkpoints").toArray();
         checkpointGroups.reserve(checkpointArray.size());
         for (const QJsonValue& areaValue : checkpointArray) {
+            miacode::task::CancellationScope::checkpoint();
             QVector<double> areaCheckpoints;
             const QJsonArray values = areaValue.toArray();
             areaCheckpoints.reserve(values.size());
             for (const QJsonValue& value : values) {
+                miacode::task::CancellationScope::checkpoint();
                 areaCheckpoints.append(value.toDouble());
             }
             checkpointGroups.append(areaCheckpoints);
@@ -1644,10 +1687,12 @@ bool populateSlideFromLookup(const QString& key, TimelineNoteMarker* marker)
         const QJsonArray cutArray = entry.value("track_cut_indices").toArray();
         cutGroups.reserve(cutArray.size());
         for (const QJsonValue& areaValue : cutArray) {
+            miacode::task::CancellationScope::checkpoint();
             QVector<int> areaCuts;
             const QJsonArray values = areaValue.toArray();
             areaCuts.reserve(values.size());
             for (const QJsonValue& value : values) {
+                miacode::task::CancellationScope::checkpoint();
                 areaCuts.append(value.toInt());
             }
             cutGroups.append(areaCuts);
@@ -1673,6 +1718,7 @@ bool populateSlideFromLookup(const QString& key, TimelineNoteMarker* marker)
         marker->wifiLanePoints.reserve(laneArray.size());
         marker->wifiLaneAngles.reserve(laneArray.size());
         for (const QJsonValue& laneValue : laneArray) {
+            miacode::task::CancellationScope::checkpoint();
             QVector<QPointF> points;
             QVector<double> angles;
             loadSamplePath(laneValue.toArray(), &points, &angles);
@@ -1688,6 +1734,7 @@ bool populateSlideFromLookup(const QString& key, TimelineNoteMarker* marker)
         marker->wifiTrackAreaRotations.reserve(areaArray.size());
         marker->wifiTrackAreaImageIndices.reserve(areaArray.size());
         for (const QJsonValue& areaValue : areaArray) {
+            miacode::task::CancellationScope::checkpoint();
             if (!areaValue.isArray()) {
                 continue;
             }
@@ -1699,6 +1746,7 @@ bool populateSlideFromLookup(const QString& key, TimelineNoteMarker* marker)
             areaRotations.reserve(arrowArray.size());
             imageIndices.reserve(arrowArray.size());
             for (const QJsonValue& arrowValue : arrowArray) {
+                miacode::task::CancellationScope::checkpoint();
                 if (!arrowValue.isObject()) {
                     continue;
                 }
@@ -1716,6 +1764,7 @@ bool populateSlideFromLookup(const QString& key, TimelineNoteMarker* marker)
         const QJsonArray thresholdArray = entry.value("track_thresholds").toArray();
         marker->wifiTrackAreaThresholds.reserve(thresholdArray.size());
         for (const QJsonValue& thresholdValue : thresholdArray) {
+            miacode::task::CancellationScope::checkpoint();
             marker->wifiTrackAreaThresholds.append(thresholdValue.toDouble());
         }
 
@@ -1723,10 +1772,12 @@ bool populateSlideFromLookup(const QString& key, TimelineNoteMarker* marker)
         const QJsonArray checkpointArray = entry.value("track_checkpoints").toArray();
         marker->wifiTrackAreaCheckpoints.reserve(checkpointArray.size());
         for (const QJsonValue& areaValue : checkpointArray) {
+            miacode::task::CancellationScope::checkpoint();
             QVector<double> areaCheckpoints;
             const QJsonArray values = areaValue.toArray();
             areaCheckpoints.reserve(values.size());
             for (const QJsonValue& value : values) {
+                miacode::task::CancellationScope::checkpoint();
                 areaCheckpoints.append(value.toDouble());
             }
             marker->wifiTrackAreaCheckpoints.append(areaCheckpoints);
@@ -1742,6 +1793,7 @@ int inferSlideEndLane(const QString& token, int fallbackLane)
     const int open = token.indexOf('[');
     const QString head = open >= 0 ? token.left(open) : token;
     for (int i = head.size() - 1; i >= 0; --i) {
+        miacode::task::CancellationScope::checkpoint();
         if (isDigitLane(head.at(i))) {
             return head.at(i).digitValue();
         }
