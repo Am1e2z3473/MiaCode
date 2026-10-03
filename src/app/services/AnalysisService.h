@@ -6,11 +6,11 @@
 #include <QVector>
 
 #include <optional>
-#include <stop_token>
 
 #include "ChartWorkspace.h"
 #include "common/MuriRenderOptions.h"
 #include "common/MuriTypes.h"
+#include "common/TaskCancellation.h"
 #include "core/chart/parser/SimaiParser.h"
 #include "timeline/TimelineData.h"
 #include "timeline/TimelineSlowRefresh.h"
@@ -103,8 +103,8 @@ private:
     AnalysisSnapshot snapshot_;
     std::optional<ParsedChartSnapshot> pendingParse_;
     QTimer diagnosticsTimer_;
-    std::stop_source parseCancellation_;
-    std::stop_source diagnosticsCancellation_;
+    miacode::task::CancellationFlag parseCancellation_;
+    miacode::task::CancellationFlag diagnosticsCancellation_;
     quint64 diagnosticsGeneration_ = 0;
     bool parseWorkerRunning_ = false;
     bool diagnosticsWorkerRunning_ = false;
