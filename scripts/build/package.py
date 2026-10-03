@@ -327,10 +327,23 @@ def msvc_env(arch: str) -> dict[str, str]:
     return env
 
 
+def drop_stale_cmake_cache():
+    cache = BUILD_DIR / "CMakeCache.txt"
+    if not cache.is_file():
+        return
+    match = re.search(r"^CMAKE_CXX_COMPILER:\w+=(.+)$", cache.read_text(encoding="utf-8", errors="replace"), re.M)
+    if match and Path(match.group(1).strip()).is_file():
+        return
+    print("Compiler recorded in CMake cache is missing; reconfiguring")
+    cache.unlink()
+    shutil.rmtree(BUILD_DIR / "CMakeFiles", ignore_errors=True)
+
+
 def build_windows():
     spec = WINDOWS[PLATFORM]
     qt = windows_qt_root()
     env = msvc_env(spec["arch"])
+    drop_stale_cmake_cache()
     env["PATH"] = str(qt / "bin") + os.pathsep + env.get("PATH", "")
     run([
         "cmake", "-S", ROOT, "-B", BUILD_DIR, "-G", spec["generator"],
