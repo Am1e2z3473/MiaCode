@@ -16,11 +16,8 @@ namespace miacode::ui {
 namespace {
 
 struct VisualLine {
-    qreal x = 0;
     qreal y = 0;
-    qreal width = 0;
     qreal height = 0;
-    int lineIndex = 0;
 };
 
 }
@@ -50,10 +47,12 @@ QVariantList SimaiSyntaxHighlighter::lineTopPositions() const
     return positions;
 }
 
-QVariantList SimaiSyntaxHighlighter::selectionLineRanges(int start, int end) const
+QVariantList SimaiSyntaxHighlighter::selectionLineRanges(
+    int start, int end, qreal viewportTop, qreal viewportBottom) const
 {
     QVariantList ranges;
-    if (!textDocument_ || !textDocument_->textDocument() || start >= end) {
+    if (!textDocument_ || !textDocument_->textDocument() || start >= end
+        || viewportBottom <= viewportTop) {
         return ranges;
     }
     QTextDocument* document = textDocument_->textDocument();
@@ -68,10 +67,35 @@ QVariantList SimaiSyntaxHighlighter::selectionLineRanges(int start, int end) con
         return ranges;
     }
 
-    QVector<VisualLine> selected;
+    // 从视口顶部命中的显示行开始，长选区和长换行段落都按视口规模遍历。
+    const int viewportPosition = documentLayout->hitTest(
+        QPointF(0, qMax(qreal(0), viewportTop)), Qt::FuzzyHit);
+    if (viewportPosition < 0) {
+        return ranges;
+    }
+    const int firstPosition = qMax(start, viewportPosition);
+    QTextBlock firstBlock = document->findBlock(firstPosition);
+    int firstLine = 0;
+    if (QTextLayout* layout = firstBlock.layout(); layout != nullptr) {
+        const QTextLine line = layout->lineForTextPosition(firstPosition - firstBlock.position());
+        if (line.isValid()) {
+            firstLine = line.lineNumber();
+        }
+    }
+    // 一条相邻行使圆角闭合点位于视口之外，滚动时保持选区轮廓连续。
+    if (firstLine > 0) {
+        --firstLine;
+    } else if (firstBlock.position() > start && firstBlock.previous().isValid()) {
+        firstBlock = firstBlock.previous();
+        if (QTextLayout* layout = firstBlock.layout(); layout != nullptr) {
+            firstLine = qMax(0, layout->lineCount() - 1);
+        }
+    }
+
     int lineIndex = 0;
-    for (QTextBlock block = document->findBlock(start);
-         block.isValid() && block.position() < end;
+    bool reachedViewportEnd = false;
+    for (QTextBlock block = firstBlock;
+         block.isValid() && block.position() < end && !reachedViewportEnd;
          block = block.next()) {
         QTextLayout* layout = block.layout();
         if (layout == nullptr) {
@@ -80,39 +104,33 @@ QVariantList SimaiSyntaxHighlighter::selectionLineRanges(int start, int end) con
         const QPointF origin = documentLayout->blockBoundingRect(block).topLeft();
         const int blockPos = block.position();
         const int lineCount = layout->lineCount();
-        for (int i = 0; i < lineCount; ++i) {
+        for (int i = block == firstBlock ? firstLine : 0; i < lineCount; ++i) {
             const QTextLine line = layout->lineAt(i);
             if (!line.isValid()) {
                 continue;
             }
             const int currentLineIndex = lineIndex++;
+            const qreal lineTop = origin.y() + line.y();
+            reachedViewportEnd = lineTop >= viewportBottom;
             const int lineStart = blockPos + line.textStart();
             const int lineEnd = lineStart + line.textLength();
             const int from = qMax(start, lineStart);
             const int to = qMin(end, lineEnd);
-            if (from >= to) {
-                continue;
+            if (from < to) {
+                const qreal x0 = line.cursorToX(from - blockPos);
+                const qreal x1 = line.cursorToX(to - blockPos);
+                QVariantMap range;
+                range.insert(QStringLiteral("x"), origin.x() + x0);
+                range.insert(QStringLiteral("y"), lineTop);
+                range.insert(QStringLiteral("width"), qMax(qreal(0), x1 - x0));
+                range.insert(QStringLiteral("height"), line.height());
+                range.insert(QStringLiteral("lineIndex"), currentLineIndex);
+                ranges.append(range);
             }
-            const qreal x0 = line.cursorToX(from - blockPos);
-            const qreal x1 = line.cursorToX(to - blockPos);
-            VisualLine visual;
-            visual.x = origin.x() + x0;
-            visual.y = origin.y() + line.y();
-            visual.width = qMax(qreal(0), x1 - x0);
-            visual.height = line.height();
-            visual.lineIndex = currentLineIndex;
-            selected.append(visual);
+            if (reachedViewportEnd) {
+                break;
+            }
         }
-    }
-
-    for (const VisualLine& visual : selected) {
-        QVariantMap range;
-        range.insert(QStringLiteral("x"), visual.x);
-        range.insert(QStringLiteral("y"), visual.y);
-        range.insert(QStringLiteral("width"), visual.width);
-        range.insert(QStringLiteral("height"), visual.height);
-        range.insert(QStringLiteral("lineIndex"), visual.lineIndex);
-        ranges.append(range);
     }
     return ranges;
 }
