@@ -3802,8 +3802,8 @@ Error: %1</source>
         <translation>bg.jpg を生成しました（選択した MP3 の埋め込みカバーから）。</translation>
     </message>
     <message id="validation.difficulty_header">
-        <source>Difficulty header</source>
-        <translation>難易度ヘッダー</translation>
+        <source>Chart information</source>
+        <translation>譜面情報</translation>
     </message>
     <message id="validation.difficulty_level_missing">
         <source>Difficulty level is required.</source>

@@ -902,7 +902,7 @@ QVariantList DocumentModel::syntaxIssues() const
             {QStringLiteral("line"), 0},
             {QStringLiteral("column"), 0},
             {QStringLiteral("endColumn"), 0},
-            {QStringLiteral("severity"), QStringLiteral("error")},
+            {QStringLiteral("severity"), QStringLiteral("warning")},
             {QStringLiteral("message"), qtTrId("validation.difficulty_level_missing")},
             {QStringLiteral("code"), QStringLiteral("missing_difficulty_level")},
             {QStringLiteral("difficultyId"), presentationState_.activeDifficultyId},
@@ -917,11 +917,11 @@ int DocumentModel::syntaxIssueCount() const
 }
 int DocumentModel::syntaxErrorCount() const
 {
-    return validationSnapshot_.errorCount + (currentDifficultyLevelMissing() ? 1 : 0);
+    return validationSnapshot_.errorCount;
 }
 int DocumentModel::syntaxWarningCount() const
 {
-    return validationSnapshot_.warningCount;
+    return validationSnapshot_.warningCount + (currentDifficultyLevelMissing() ? 1 : 0);
 }
 int DocumentModel::parsedNoteCount() const
 {

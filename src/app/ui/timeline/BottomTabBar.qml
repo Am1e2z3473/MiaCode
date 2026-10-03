@@ -14,6 +14,26 @@ Item {
     readonly property real minimumWidth: tabLayout.implicitWidth
         + tabLayout.anchors.leftMargin + tabLayout.anchors.rightMargin
 
+    function countIssues(rows) {
+        let errors = 0
+        let warnings = 0
+        for (const row of rows) {
+            if (row.severity === "error")
+                ++errors
+            else if (row.severity === "warning")
+                ++warnings
+        }
+        return { errors: errors, warnings: warnings }
+    }
+
+    component AnalysisTab: TimelineTab {
+        required property var issueRows
+        readonly property var issueCounts: root.countIssues(issueRows)
+        count: issueCounts.errors > 0 ? issueCounts.errors : issueCounts.warnings
+        countColor: issueCounts.errors > 0
+            ? Theme.colors.danger.primary : Theme.colors.accent.badge
+    }
+
     component TimelineTab: AppTab {
         panelTab: true
         compact: true
@@ -35,21 +55,21 @@ Item {
             active: root.timelineSession.currentTabId === "timeline"
             onClicked: root.timelineSession.setCurrentTabId("timeline")
         }
-        TimelineTab {
+        AnalysisTab {
             Layout.alignment: Qt.AlignVCenter
             visible: root.timelineSession.validationTabVisible
             text: root.timelineSession.validationTabLabel
             Layout.leftMargin: 4
-            count: root.analysisSession.validationRows.length
+            issueRows: root.analysisSession.validationRows
             active: root.timelineSession.currentTabId === "validation"
             onClicked: root.timelineSession.setCurrentTabId("validation")
         }
-        TimelineTab {
+        AnalysisTab {
             Layout.alignment: Qt.AlignVCenter
             visible: root.timelineSession.muriTabVisible
             text: root.timelineSession.muriTabLabel
             Layout.leftMargin: 4
-            count: root.analysisSession.muriRows.length
+            issueRows: root.analysisSession.muriRows
             active: root.timelineSession.currentTabId === "muri"
             onClicked: root.timelineSession.setCurrentTabId("muri")
         }

@@ -3802,8 +3802,8 @@ Error: %1</source>
         <translation>已生成 bg.jpg（来源：所选 MP3 内嵌封面）。</translation>
     </message>
     <message id="validation.difficulty_header">
-        <source>Difficulty header</source>
-        <translation>难度头字段</translation>
+        <source>Chart information</source>
+        <translation>谱面信息</translation>
     </message>
     <message id="validation.difficulty_level_missing">
         <source>Difficulty level is required.</source>
