@@ -489,7 +489,9 @@ Rectangle {
                 return ""
             root.followLayoutTick
             sourceArea.text
-            return root.lineRangePath(highlighter.selectionLineRanges(rangeStart, rangeEnd))
+            const viewportTop = editorScroll.contentY - sourceArea.y - sourceArea.topPadding
+            return root.lineRangePath(highlighter.selectionLineRanges(
+                rangeStart, rangeEnd, viewportTop, viewportTop + editorScroll.height))
         }
 
         // One filled contour keeps shared row edges out of antialiasing and
@@ -962,17 +964,8 @@ Rectangle {
             contentY = kept
             applyingViewport = false
         }
-        // TextEdit 与 QSyntaxHighlighter 组合在布局尺寸变化后存在不重绘的
-        // 已知问题（QTBUG-58092 一类），窗口缩放后内容要等交互才刷新。
-        // 视口尺寸变化时重新应用高亮，强制文本布局重绘。
-        function refreshHighlight() {
-            Qt.callLater(() => {
-                sourceArea.rehighlight()
-                root.bumpFollowLayout()
-            })
-        }
-        onWidthChanged: refreshHighlight()
-        onHeightChanged: refreshHighlight()
+        onWidthChanged: Qt.callLater(root.bumpFollowLayout)
+        onHeightChanged: Qt.callLater(root.bumpFollowLayout)
 
         TextArea.flickable: TextArea {
             id: sourceArea
@@ -1198,11 +1191,6 @@ Rectangle {
                     || root.documentSession.validationRevision !== root.documentSession.documentRevision
                     ? [] : root.documentSession.syntaxIssues
             }
-            // 视口尺寸变化时由 editorScroll.refreshHighlight() 触发重高亮。
-            function rehighlight() {
-                highlighter.rehighlight()
-            }
-
             cursorDelegate: Rectangle {
                 id: editorCaret
                 width: 2

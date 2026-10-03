@@ -39,8 +39,9 @@ public:
     // 返回每个逻辑行顶部在文档坐标系中的 y 坐标。
     Q_INVOKABLE QVariantList lineTopPositions() const;
 
-    // 选区覆盖到的每一条 QTextLine：左右为该行上选区起止的 cursorToX。
-    Q_INVOKABLE QVariantList selectionLineRanges(int start, int end) const;
+    // 视口内的选区显示行，保留上下相邻行以维持裁剪边缘的连续轮廓。
+    Q_INVOKABLE QVariantList selectionLineRanges(
+        int start, int end, qreal viewportTop, qreal viewportBottom) const;
 
     // 光标所在逻辑行（QTextBlock）的全部 QTextLine，用于当前行全宽焦点背景。
     Q_INVOKABLE QVariantList cursorBlockLines(int position) const;
