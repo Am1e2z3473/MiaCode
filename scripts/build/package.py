@@ -143,10 +143,12 @@ def provision_windows_qt():
     aqt = spec["aqt"]
     suffix = re.sub(r"^win(64|32)_", "", aqt)
     desktop = f"https://download.qt.io/online/qtsdkrepository/{host}/desktop"
-    folder = f"qt6_{version_nodots}/qt6_{version_nodots}_{suffix}"
+    repository_version = f"qt6_{version_nodots}"
+    repository_arch = repository_version if host == "windows_arm64" else f"{repository_version}_{suffix}"
+    folder = f"{repository_version}/{repository_arch}"
+    print(f"Qt repository layout: {folder}")
     with urllib.request.urlopen(f"{desktop}/{folder}/Updates.xml", timeout=30) as response:
         updates = response.read()
-    print(f"Qt repository layout: {folder}")
     tree = ET.fromstring(updates)
     packages = []
     if "base" in needed:
