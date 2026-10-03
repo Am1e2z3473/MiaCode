@@ -526,8 +526,7 @@ FrameLayerActivityStats estimateFrameLayerActivity(
                     ++stats.slideMotionVisible;
                 }
             }
-            if (marker.availableSecond >= 0.0
-                && playheadSecond >= marker.second - kDiagSlideTrackAppearLeadInSeconds
+            if (playheadSecond >= marker.second - kDiagSlideTrackAppearLeadInSeconds
                 && !(marker.endSecond > marker.slideTraceSecond && playheadSecond >= marker.endSecond)) {
                 if (isWifi) {
                     ++stats.wifiTrackVisible;

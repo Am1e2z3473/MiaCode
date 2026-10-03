@@ -251,8 +251,9 @@ PreviewTrackLayerState buildPreviewTrackLayerState(
                 continue;
             }
             const PreviewSlideTrackTiming trackTiming = markerTrackTiming(marker.hsMultiplier);
-            if (marker.availableSecond < 0.0
-                || marker.slideTrackAreaPoints.isEmpty()
+            // A track can start before chart time zero. Its geometry and
+            // visibility window determine whether it can be rendered.
+            if (marker.slideTrackAreaPoints.isEmpty()
                 || state.playheadSeconds < marker.second - trackTiming.appearLeadInSeconds
                 || (marker.endSecond > marker.slideTraceSecond && state.playheadSeconds >= marker.endSecond)) {
                 continue;
@@ -538,8 +539,7 @@ PreviewTrackLayerState buildPreviewTrackLayerState(
             continue;
         }
         const PreviewSlideTrackTiming trackTiming = markerTrackTiming(marker.hsMultiplier);
-        if (marker.availableSecond < 0.0
-            || marker.wifiTrackAreaPoints.isEmpty()
+        if (marker.wifiTrackAreaPoints.isEmpty()
             || state.playheadSeconds < marker.second - trackTiming.appearLeadInSeconds
             || (marker.endSecond > marker.slideTraceSecond && state.playheadSeconds >= marker.endSecond)) {
             continue;

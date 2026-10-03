@@ -173,6 +173,8 @@ miacode_add_spec(preview_realtime_object_hot_path_spec
     EXECUTION ctest STATUS active PLATFORM all
     SOURCES
         src/tools/preview/PreviewRealtimeObjectHotPathSpec.cpp
+        ${_miacode_chart_core}
+        resources/slide_data.qrc
         ${_miacode_log_core}
         src/core/scene/PreviewActiveMarkerView.h
         src/core/scene/PreviewPreparedSceneCache.h
