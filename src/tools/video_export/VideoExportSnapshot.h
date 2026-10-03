@@ -41,8 +41,8 @@ struct VideoExportSnapshot {
         static_cast<double>(miacode::muri::kStaticTapOnSlideThresholdDefaultMs) / 1000.0;
     double exportStartSeconds = 0.0;
     double contentDurationSeconds = 0.0;
-    int outputWidth = 1024;
-    int outputHeight = 1024;
+    int outputWidth = 1080;
+    int outputHeight = 1080;
     int fps = 60;
     int audioBitrateKbps = 192;
     VideoExportPreset preset = VideoExportPreset::HighQuality;

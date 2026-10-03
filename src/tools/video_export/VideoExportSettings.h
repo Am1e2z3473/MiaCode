@@ -17,9 +17,8 @@ struct VideoExportResolutionPreset {
     double aspectRatio = 1.0;
 };
 
-inline constexpr std::array<VideoExportResolutionPreset, 10> kVideoExportResolutionPresets{{
+inline constexpr std::array<VideoExportResolutionPreset, 9> kVideoExportResolutionPresets{{
     {720, 720, "720x720 (1:1)", 1.0},
-    {1024, 1024, "1024x1024 (1:1)", 1.0},
     {960, 720, "960x720 (4:3)", 4.0 / 3.0},
     {1280, 720, "1280x720 (16:9)", 16.0 / 9.0},
     {1080, 1080, "1080x1080 (1:1)", 1.0},

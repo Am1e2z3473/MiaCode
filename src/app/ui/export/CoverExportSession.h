@@ -266,7 +266,7 @@ private:
     QString cardFontDisplayPath_;
     QString cardFontBodyPath_;
     int selectedDifficultyId_ = 0;
-    int resolutionIndex_ = 4;
+    int resolutionIndex_ = 3;
     bool pageSessionActive_ = false;
     bool hasLoadedPreferences_ = false;
     bool blurBackground_ = true;

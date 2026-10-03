@@ -88,7 +88,7 @@ int runCliVideoExport(QGuiApplication& app, QString* errorMessage)
         QStringList{QStringLiteral("r"), QStringLiteral("resolution")},
         qtTrId("cli.video_export.resolution"),
         QStringLiteral("size"),
-        QStringLiteral("1024")
+        QStringLiteral("1080")
     ));
     parser.addOption(QCommandLineOption(
         QStringList{QStringLiteral("f"), QStringLiteral("fps")},

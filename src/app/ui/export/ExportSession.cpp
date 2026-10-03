@@ -512,7 +512,7 @@ void ExportSession::applyPreferences()
     }
     const int savedWidth = task_.outputWidth;
     const int savedHeight = task_.outputHeight;
-    resolutionIndex_ = 1;
+    resolutionIndex_ = 3;
     for (int i = 0; i < static_cast<int>(std::size(kResolutionPresets)); ++i) {
         if (kResolutionPresets[i].width == savedWidth && kResolutionPresets[i].height == savedHeight) {
             resolutionIndex_ = i;

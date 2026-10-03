@@ -196,8 +196,8 @@ struct VideoExportTask {
     PreviewJudgeEffectStyle judgeEffectStyle = PreviewJudgeEffectStyle::Standard;
     double exportStartSeconds = 0.0;
     double contentDurationSeconds = 0.0;
-    int outputWidth = 1024;
-    int outputHeight = 1024;
+    int outputWidth = 1080;
+    int outputHeight = 1080;
     int fps = 60;
     // Dev/iteration: cap the rendered output to the first N seconds (0 = full).
     // Only the leading frames are rendered and the mux is trimmed (-shortest), so

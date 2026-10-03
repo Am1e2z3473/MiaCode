@@ -87,8 +87,9 @@ void applyVideoExportPreferences(const QJsonObject& settings, VideoExportTask* t
     const int width = settings.value(QStringLiteral("resolution_width")).toInt(task->outputWidth);
     const int height = settings.value(QStringLiteral("resolution_height")).toInt(task->outputHeight);
     if (width > 0 && height > 0) {
-        task->outputWidth = width;
-        task->outputHeight = height;
+        const bool removedPreset = width == 1024 && height == 1024;
+        task->outputWidth = removedPreset ? 1080 : width;
+        task->outputHeight = removedPreset ? 1080 : height;
     }
     task->fps = normalizedVideoExportFps(settings.value(QStringLiteral("fps")).toInt(task->fps));
     task->audioBitrateKbps = normalizedVideoExportAudioBitrateKbps(
