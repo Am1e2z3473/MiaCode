@@ -20,6 +20,7 @@ Item {
                                        : panelTab ? Theme.uiFontSize : Theme.secondaryFontSize
     property bool closable: false
     property int count: -1
+    property color countColor: Theme.colors.accent.badge
     property real preferredTabWidth: 160
     readonly property bool hovered: tabButton.hovered || closeButton.hovered
 
@@ -111,7 +112,7 @@ Item {
                     implicitHeight: 16
                     radius: height / 2
                     visible: root.count > 0
-                    color: Theme.colors.accent.badge
+                    color: root.countColor
 
                     Text {
                         id: countLabel

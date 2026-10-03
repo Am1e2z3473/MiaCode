@@ -149,7 +149,7 @@ void AnalysisModel::refresh()
             row.line = 0;
             row.column = 0;
             row.endColumn = 0;
-            row.severity = QStringLiteral("error");
+            row.severity = QStringLiteral("warning");
             row.alert = QStringLiteral("metadata");
             row.code = QStringLiteral("missing_difficulty_level");
             row.title = qtTrId("validation.difficulty_level_missing_type");

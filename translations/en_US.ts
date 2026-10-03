@@ -3802,8 +3802,8 @@ Error: %1</translation>
         <translation>Wrote bg.jpg from the selected MP3&apos;s embedded cover.</translation>
     </message>
     <message id="validation.difficulty_header">
-        <source>Difficulty header</source>
-        <translation>Difficulty header</translation>
+        <source>Chart information</source>
+        <translation>Chart information</translation>
     </message>
     <message id="validation.difficulty_level_missing">
         <source>Difficulty level is required.</source>
