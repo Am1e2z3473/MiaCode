@@ -81,8 +81,8 @@ void AnalysisService::shutdown()
 
 void AnalysisService::cancelPendingAnalysis()
 {
-    parseCancellation_.request_stop();
-    diagnosticsCancellation_.request_stop();
+    if (parseCancellation_) parseCancellation_->store(true, std::memory_order_relaxed);
+    if (diagnosticsCancellation_) diagnosticsCancellation_->store(true, std::memory_order_relaxed);
     ++diagnosticsGeneration_;
     diagnosticsTimer_.stop();
     diagnosticsRequested_ = false;
@@ -229,8 +229,8 @@ void AnalysisService::dispatchPendingParse()
     ParsedChartSnapshot request = std::move(*pendingParse_);
     pendingParse_.reset();
     parseWorkerRunning_ = true;
-    parseCancellation_ = std::stop_source();
-    const std::stop_token cancellation = parseCancellation_.get_token();
+    parseCancellation_ = std::make_shared<std::atomic_bool>(false);
+    const auto cancellation = parseCancellation_;
     QPointer<AnalysisService> guard(this);
     QThreadPool::globalInstance()->start([guard, cancellation, request = std::move(request)]() mutable {
         std::optional<ParsedChartSnapshot> result;
@@ -247,7 +247,7 @@ void AnalysisService::dispatchPendingParse()
         QMetaObject::invokeMethod(guard.data(), [guard, cancellation, result = std::move(result)]() mutable {
             if (guard.isNull()) return;
             guard->parseWorkerRunning_ = false;
-            if (result && !cancellation.stop_requested()
+            if (result && !cancellation->load(std::memory_order_relaxed)
                 && guard->identityIsCurrent(result->difficultyId, result->revision)) {
                 guard->parsedSnapshot_ = std::move(*result);
                 emit guard->parseReady(guard->parsedSnapshot_.difficultyId, guard->parsedSnapshot_.revision);
@@ -262,7 +262,7 @@ void AnalysisService::requestDiagnostics()
 {
     if (shuttingDown_ || !parsedSnapshot_.available
         || !identityIsCurrent(parsedSnapshot_.difficultyId, parsedSnapshot_.revision)) return;
-    diagnosticsCancellation_.request_stop();
+    if (diagnosticsCancellation_) diagnosticsCancellation_->store(true, std::memory_order_relaxed);
     ++diagnosticsGeneration_;
     diagnosticsRequested_ = true;
     snapshot_ = AnalysisSnapshot();
@@ -280,8 +280,8 @@ void AnalysisService::dispatchDiagnostics()
         || diagnosticsTimer_.isActive() || !parsedSnapshot_.available) return;
     diagnosticsRequested_ = false;
     diagnosticsWorkerRunning_ = true;
-    diagnosticsCancellation_ = std::stop_source();
-    const std::stop_token cancellation = diagnosticsCancellation_.get_token();
+    diagnosticsCancellation_ = std::make_shared<std::atomic_bool>(false);
+    const auto cancellation = diagnosticsCancellation_;
     const quint64 generation = diagnosticsGeneration_;
     QPointer<AnalysisService> guard(this);
     QThreadPool::globalInstance()->start([
@@ -301,7 +301,7 @@ void AnalysisService::dispatchDiagnostics()
         QMetaObject::invokeMethod(guard.data(), [guard, cancellation, result = std::move(result), generation]() mutable {
             if (guard.isNull()) return;
             guard->diagnosticsWorkerRunning_ = false;
-            if (result && !cancellation.stop_requested() && generation == guard->diagnosticsGeneration_
+            if (result && !cancellation->load(std::memory_order_relaxed) && generation == guard->diagnosticsGeneration_
                 && guard->identityIsCurrent(result->difficultyId, result->revision)) {
                 result->locale = guard->locale_;
                 SimaiParser::localizeValidationReport(result->validation, result->locale);

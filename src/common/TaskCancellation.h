@@ -1,8 +1,11 @@
 #pragma once
 
-#include <stop_token>
+#include <atomic>
+#include <memory>
 
 namespace miacode::task {
+
+using CancellationFlag = std::shared_ptr<std::atomic_bool>;
 
 // Caught at the worker boundary; stack unwinding releases intermediate results.
 struct Cancelled {};
@@ -12,7 +15,7 @@ struct Cancelled {};
 // outside a scope retain the synchronous behavior of the parser and analyzer.
 class CancellationScope final {
 public:
-    explicit CancellationScope(std::stop_token token) noexcept
+    explicit CancellationScope(const CancellationFlag& token) noexcept
         : token_(token), previous_(current_)
     {
         current_ = this;
@@ -24,7 +27,7 @@ public:
 
     static void check()
     {
-        if (current_ && current_->token_.stop_requested()) {
+        if (current_ && current_->token_->load(std::memory_order_relaxed)) {
             current_->unwinding_ = true;
             throw Cancelled{};
         }
@@ -43,7 +46,7 @@ public:
     }
 
 private:
-    std::stop_token token_;
+    CancellationFlag token_;
     CancellationScope* previous_;
     unsigned checkpointCount_ = 0;
     bool unwinding_ = false;
