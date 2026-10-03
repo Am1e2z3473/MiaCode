@@ -307,7 +307,7 @@ private:
     bool hasPendingSelectionRangeExport_ = false;
     double pendingRangeStartSeconds_ = 0.0;
     double pendingRangeEndSeconds_ = 0.0;
-    int resolutionIndex_ = 1;
+    int resolutionIndex_ = 3;
     QStringList chartDirectories_;
     QList<int> batchSelectedDifficultyIds_;
     QString batchOutputDirectory_;

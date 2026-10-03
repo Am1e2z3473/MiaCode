@@ -430,8 +430,8 @@ VideoExportTask miacode::runtime::VideoExportHost::buildVideoExportSeedTask(int 
     task.exportStartSeconds = 0.0;
     task.contentDurationSeconds = unifiedExportEndSecond;
     task.fullRangeExport = true;
-    task.outputWidth = 1024;
-    task.outputHeight = 1024;
+    task.outputWidth = 1080;
+    task.outputHeight = 1080;
     task.fps = 60;
         task.showTimestamp = session_.previewShowTimestamp_;
     task.showObjectStatsHud = session_.exportShowObjectStatsHud_;
