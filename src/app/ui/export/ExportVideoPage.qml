@@ -165,6 +165,15 @@ Rectangle {
                 }
             }
 
+            Rectangle {
+                Layout.fillWidth: true
+                Layout.leftMargin: root.tabInset
+                Layout.rightMargin: root.tabInset
+                Layout.topMargin: Theme.panelPadding
+                Layout.preferredHeight: 1
+                color: Theme.colors.border.normal
+            }
+
             Flickable {
                 id: settingsFlickable
                 objectName: "exportSettingsFlickable"
