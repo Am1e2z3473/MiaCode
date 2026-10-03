@@ -4,7 +4,8 @@
 
 .DESCRIPTION
     Provisions Qt 6.11 and later from the architecture-specific desktop
-    repository (<base>/qt6_6111/qt6_6111_msvc2022_64/Updates.xml). Reads the
+    repository for x64 (<base>/qt6_6111/qt6_6111_msvc2022_64/Updates.xml)
+    or the native ARM64 repository (<base>/qt6_6111/qt6_6111/Updates.xml). Reads the
     package metadata, downloads the archives of the base package plus the
     requested modules and extracts them into <OutputDir>/<version>/<archDir>.
 
@@ -97,7 +98,13 @@ $majorVersion = ($Version -split "\.")[0]
 # win64_mingw -> mingw, win64_msvc2022_64 -> msvc2022_64.
 $repoArchSuffix = $AqtArch -replace '^win(64|32)_', ''
 $desktopBase = "$BaseUrl/online/qtsdkrepository/$HostPlatform/desktop"
-$repositoryFolder = "qt$majorVersion`_$versionNoDots/qt$majorVersion`_${versionNoDots}_$repoArchSuffix"
+$repositoryVersion = "qt$majorVersion`_$versionNoDots"
+$repositoryArch = if ($HostPlatform -eq "windows_arm64") {
+    $repositoryVersion
+} else {
+    "${repositoryVersion}_$repoArchSuffix"
+}
+$repositoryFolder = "$repositoryVersion/$repositoryArch"
 $updatesUrl = "$desktopBase/$repositoryFolder/Updates.xml"
 Write-Host "Qt repository layout: $repositoryFolder"
 
