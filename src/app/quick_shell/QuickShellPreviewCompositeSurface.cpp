@@ -54,10 +54,8 @@ QuickShellPreviewCompositeSurface::QuickShellPreviewCompositeSurface(QObject* pa
     view_->setFormat(format);
     view_->setColor(QColor(QStringLiteral("#000000")));
     view_->setResizeMode(QQuickView::SizeRootObjectToView);
-    view_->setPersistentGraphics(true);
-    view_->setPersistentSceneGraph(true);
     // Occlusion / minimize transitions for the preview surface, plus a one-shot record of
-    // the two lines above: persistent graphics means hiding or minimizing this window does
+    // Qt's default persistence: persistent graphics means hiding or minimizing this window does
     // NOT release its GPU resources. On the reported 2 GB MX450 — shared with an NVENC
     // encoder and the root window — that is load-bearing context for reading the VRAM
     // gauge, so the log states it rather than leaving the reader to infer it.

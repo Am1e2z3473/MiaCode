@@ -322,23 +322,10 @@ int main(int argc, char* argv[])
         || miacode::debug_options::envFlagEnabled(
             "MIACODE_PREVIEW_FORCE_BASIC_RENDER_LOOP"
         );
-    const bool disableDontCreateNativeWidgetSiblings = miacode::debug_options::envFlagEnabled(
-        "MIACODE_PREVIEW_DISABLE_DONT_CREATE_NATIVE_WIDGET_SIBLINGS"
-    );
-    const bool dontCreateNativeWidgetSiblingsEnabled = !disableDontCreateNativeWidgetSiblings;
     const QString requestedRenderLoop = qEnvironmentVariable("QSG_RENDER_LOOP").trimmed();
     if (forceBasicRenderLoop && requestedRenderLoop.isEmpty()) {
         qputenv("QSG_RENDER_LOOP", QByteArrayLiteral("basic"));
     }
-#ifdef Q_OS_WIN
-    miacode::oplog::appendStartupBeaconLine("phase=before_set_qt_attributes");
-#endif
-    if (dontCreateNativeWidgetSiblingsEnabled) {
-        QCoreApplication::setAttribute(Qt::AA_DontCreateNativeWidgetSiblings);
-    }
-#ifdef Q_OS_WIN
-    miacode::oplog::appendStartupBeaconLine("phase=after_set_qt_attributes");
-#endif
 
     // Diagnostic: capture Qt's scene-graph render timings into our runtime log
     // when the user opts in. Has to happen before QGuiApplication construction
@@ -387,18 +374,13 @@ int main(int argc, char* argv[])
             miacode::debug_log::Channel::Runtime,
             QStringLiteral("startup/qt_config"),
             QString(
-                "qsg_full_disable=%1 force_basic_render_loop=%2 qsg_render_loop=%3 "
-                "dont_create_native_widget_siblings_default=1 "
-                "disable_dont_create_native_widget_siblings=%4 "
-                "effective_dont_create_native_widget_siblings=%5"
+                "qsg_full_disable=%1 force_basic_render_loop=%2 qsg_render_loop=%3"
             )
                 .arg(qsgFullDisable ? 1 : 0)
                 .arg(forceBasicRenderLoop ? 1 : 0)
                 .arg(qEnvironmentVariable("QSG_RENDER_LOOP").trimmed().isEmpty()
                          ? QStringLiteral("(default)")
                          : qEnvironmentVariable("QSG_RENDER_LOOP").trimmed())
-                .arg(disableDontCreateNativeWidgetSiblings ? 1 : 0)
-                .arg(dontCreateNativeWidgetSiblingsEnabled ? 1 : 0)
         );
 #ifdef Q_OS_WIN
         miacode::oplog::appendStartupBeaconLine("phase=after_first_runtime_log_append");
@@ -543,9 +525,8 @@ int main(int argc, char* argv[])
         miacode::debug_log::appendLine(
             miacode::debug_log::Channel::Runtime,
             QStringLiteral("startup/qt_config"),
-            QString("graphics_api=%1 dont_create_native_widget_siblings=%2 cli_export=%3 cli_export_worker=%4")
+            QString("graphics_api=%1 cli_export=%2 cli_export_worker=%3")
                 .arg(forceOpenGlGraphicsApi ? appliedGraphicsBackend : QStringLiteral("PlatformDefault"))
-                .arg(QCoreApplication::testAttribute(Qt::AA_DontCreateNativeWidgetSiblings) ? 1 : 0)
                 .arg(cliVideoExportRequested ? 1 : 0)
                 .arg(cliVideoExportWorkerRequested ? 1 : 0)
         );

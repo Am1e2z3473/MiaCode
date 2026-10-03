@@ -262,17 +262,9 @@ Still active:
 - `MIACODE_PREVIEW_VISUAL_LOOKAHEAD_VSYNCS` (default `1.0`; biases visual playhead forward by N display intervals to compensate for render→present pipeline latency, `0` disables, range `[0, 4]`)
 - `MIACODE_PREVIEW_QSG_RENDER_TIMING` (`1` to capture Qt scene-graph timings into the runtime log under `preview/qsg_timing` — diagnoses stutter that lives outside the offscreen renderer)
 - `MIACODE_TIMELINE_HOTPATH_DIAG`
-- `MIACODE_PREVIEW_DISABLE_DONT_CREATE_NATIVE_WIDGET_SIBLINGS`
 - `MIACODE_PREVIEW_DIAG_COMPARE_DUMP_FRAMES`
 - `MIACODE_PREVIEW_DIAG_COMPARE_DUMP_MAX_SAMPLES`
 - `MIACODE_PREVIEW_DIAG_COMPARE_DUMP_DIR`
-
-Startup default:
-
-- The embedded realtime preview now enables `Qt::AA_DontCreateNativeWidgetSiblings` by default before `QApplication` construction.
-- This is the current workaround for Windows black-screen regressions around `QQuickView` hosted through `QWidget::createWindowContainer()` when native dialogs or sibling native windows appear.
-- Use `MIACODE_PREVIEW_DISABLE_DONT_CREATE_NATIVE_WIDGET_SIBLINGS=1` only for regression A/B.
-- The old debug-only enable snippet `MIACODE_PREVIEW_DONT_CREATE_NATIVE_WIDGET_SIBLINGS=1` is now redundant because the workaround is already on by default.
 
 Retired from the main app:
 
@@ -412,11 +404,6 @@ Force export PBO on:
 
 - `set MIACODE_EXPORT_ENABLE_OFFSCREEN_PBO=1`
 - PBO readback is already on by default; this only forces the default back on after inherited env cleanup or an explicit `ENABLE=0`.
-
-Opt out of the default embedded-preview native-sibling workaround for regression A/B:
-
-- `set MIACODE_PREVIEW_DISABLE_DONT_CREATE_NATIVE_WIDGET_SIBLINGS=1`
-- `MiaCode.exe --debug`
 
 Enable the Windows fixed-FPS timer-resolution A/B path:
 

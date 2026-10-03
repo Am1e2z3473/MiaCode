@@ -117,8 +117,6 @@ Session::Session(miacode::ApplicationServices& services, QObject* parent)
     configureRuntimeDebugOutput();
     logStartupStage("configure_runtime_debug_output");
     quickShellStartupStageMediaLoadDeferred_ = true;
-    setProperty("miacode.dialog_parentless", true);
-    logStartupStage("dialog_parentless_property_ready");
 
     editor_ = std::make_unique<miacode::runtime::EditorHost>(*this, ui_, state_);
     documents_ = std::make_unique<miacode::runtime::DocumentSessionHost>(*this, ui_, state_);

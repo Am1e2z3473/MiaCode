@@ -113,16 +113,6 @@ find_package(Qt6 6.10 REQUIRED COMPONENTS Core Gui LinguistTools Multimedia Quic
 
 qt_policy(SET QTP0001 NEW)
 
-if (APPLE AND TARGET WrapOpenGL::WrapOpenGL)
-    find_library(MIACODE_AGL_FRAMEWORK NAMES AGL)
-    if (NOT MIACODE_AGL_FRAMEWORK)
-        # Xcode 27 SDK no longer ships AGL.framework, but Qt 6.8's
-        # WrapOpenGL helper still injects -framework AGL on macOS.
-        # QtGui already links AppKit/OpenGL, so drop the stale AGL edge.
-        set_property(TARGET WrapOpenGL::WrapOpenGL PROPERTY INTERFACE_LINK_LIBRARIES "")
-    endif()
-endif()
-
 # MultimediaQuickPrivate exposes the private QtMultimedia headers
 # (qhwvideobuffer_p.h / qvideotexturehelper_p.h) that QtAVPlayer's
 # QAVVideoFrame -> QVideoFrame bridge needs. The Windows, macOS, and Linux
