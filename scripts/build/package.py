@@ -143,23 +143,9 @@ def provision_windows_qt():
     aqt = spec["aqt"]
     suffix = re.sub(r"^win(64|32)_", "", aqt)
     desktop = f"https://download.qt.io/online/qtsdkrepository/{host}/desktop"
-    folders = [
-        f"qt6_{version_nodots}/qt6_{version_nodots}",
-        f"qt6_{version_nodots}/qt6_{version_nodots}_{suffix}",
-    ]
-    updates = None
-    folder = None
-    for candidate in folders:
-        url = f"{desktop}/{candidate}/Updates.xml"
-        try:
-            with urllib.request.urlopen(url, timeout=30) as response:
-                updates = response.read()
-            folder = candidate
-            break
-        except OSError:
-            continue
-    if updates is None:
-        raise RuntimeError(f"Qt metadata missing for {QT_VERSION} / {aqt}")
+    folder = f"qt6_{version_nodots}/qt6_{version_nodots}_{suffix}"
+    with urllib.request.urlopen(f"{desktop}/{folder}/Updates.xml", timeout=30) as response:
+        updates = response.read()
     print(f"Qt repository layout: {folder}")
     tree = ET.fromstring(updates)
     packages = []

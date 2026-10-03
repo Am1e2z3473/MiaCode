@@ -44,8 +44,8 @@ QString visibilityTransitionPayload(
 void installWindowVisibilityDiagnostics(QWindow* window, const QString& surface);
 
 // Record, once, that a surface keeps its graphics + scene-graph resources resident while
-// hidden. Worth stating explicitly in the log: QuickShellPreviewCompositeSurface sets
-// setPersistentGraphics(true) / setPersistentSceneGraph(true), so minimizing does NOT
+// hidden. Worth stating explicitly in the log: QuickShellPreviewCompositeSurface uses
+// Qt's default graphics and scene-graph persistence, so minimizing does NOT
 // release VRAM — which matters a great deal on a 2 GB card shared with an encoder.
 void logSurfaceGraphicsPersistence(
     const QString& surface, bool persistentGraphics, bool persistentSceneGraph);

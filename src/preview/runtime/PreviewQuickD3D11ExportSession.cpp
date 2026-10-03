@@ -401,8 +401,6 @@ bool PreviewQuickD3D11ExportSession::initialize(QString* errorMessage)
     renderControl_ = new QQuickRenderControl();
     quickWindow_ = new QQuickWindow(renderControl_);
     quickWindow_->setColor(Qt::transparent);
-    quickWindow_->setPersistentGraphics(true);
-    quickWindow_->setPersistentSceneGraph(true);
     quickWindow_->setGraphicsDevice(
         QQuickGraphicsDevice::fromDeviceAndContext(d3d_->device.Get(), d3d_->context.Get()));
 

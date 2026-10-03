@@ -204,8 +204,6 @@ bool PreviewQuickExportSession::initialize(
     renderControl_ = new QQuickRenderControl();
     quickWindow_ = new QQuickWindow(renderControl_);
     quickWindow_->setColor(Qt::transparent);
-    quickWindow_->setPersistentGraphics(true);
-    quickWindow_->setPersistentSceneGraph(true);
     quickWindow_->setGraphicsDevice(QQuickGraphicsDevice::fromOpenGLContext(context_));
 
     if (!renderControl_->initialize()) {

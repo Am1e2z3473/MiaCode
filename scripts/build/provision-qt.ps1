@@ -3,13 +3,10 @@
     Provisions Qt for Windows straight from the Qt download repository.
 
 .DESCRIPTION
-    Replaces the `aqt install-qt` step, which cannot handle Qt >= 6.11: upstream
-    moved the desktop repository from one flat folder per version
-    (<base>/qt6_6103/qt6_6103/Updates.xml) to one folder per architecture
-    (<base>/qt6_6111/qt6_6111_msvc2022_64/Updates.xml). This script probes both
-    layouts, reads the package metadata, downloads the archives of the base
-    package plus the requested modules and extracts them into
-    <OutputDir>/<version>/<archDir>.
+    Provisions Qt 6.11 and later from the architecture-specific desktop
+    repository (<base>/qt6_6111/qt6_6111_msvc2022_64/Updates.xml). Reads the
+    package metadata, downloads the archives of the base package plus the
+    requested modules and extracts them into <OutputDir>/<version>/<archDir>.
 
 .PARAMETER Version
     Qt version, e.g. 6.11.1.
@@ -88,24 +85,6 @@ function Get-Url {
     return ""
 }
 
-function Test-UrlExists {
-    param([string]$Url)
-
-    $curl = Get-Command curl.exe -ErrorAction SilentlyContinue
-    if ($null -ne $curl) {
-        # Range request keeps the probe to a byte; 206 (range honoured) and 200
-        # (range ignored) both mean the path exists.
-        $status = (& $curl.Source -s -o NUL -r 0-0 -w "%{http_code}" --max-time 30 $Url 2>$null)
-        return ($status -eq "200" -or $status -eq "206")
-    }
-    try {
-        $null = Invoke-WebRequest -Uri $Url -Method Head -UseBasicParsing
-        return $true
-    } catch {
-        return $false
-    }
-}
-
 $targetRoot = Join-Path (Join-Path $OutputDir $Version) $ArchDir
 if ((Test-QtRootValid $targetRoot) -and !$Force) {
     Write-Host "Qt $Version ($ArchDir) already present at $targetRoot"
@@ -118,27 +97,11 @@ $majorVersion = ($Version -split "\.")[0]
 # win64_mingw -> mingw, win64_msvc2022_64 -> msvc2022_64.
 $repoArchSuffix = $AqtArch -replace '^win(64|32)_', ''
 $desktopBase = "$BaseUrl/online/qtsdkrepository/$HostPlatform/desktop"
-# Qt < 6.11 keeps every architecture beside a flat version folder; Qt >= 6.11
-# uses one folder per architecture. Probe both and take whichever resolves.
-$layoutCandidates = @(
-    @{ Folder = "qt$majorVersion`_$versionNoDots/qt$majorVersion`_$versionNoDots" },
-    @{ Folder = "qt$majorVersion`_$versionNoDots/qt$majorVersion`_${versionNoDots}_$repoArchSuffix" }
-)
-$layout = $null
-foreach ($candidate in $layoutCandidates) {
-    $updatesUrl = "$desktopBase/$($candidate.Folder)/Updates.xml"
-    if (Test-UrlExists $updatesUrl) {
-        $layout = $candidate
-        $layout.UpdatesUrl = $updatesUrl
-        break
-    }
-}
-if ($null -eq $layout) {
-    throw "No Qt repository metadata found for $Version / $AqtArch under $desktopBase. Check the version, the architecture and network access."
-}
-Write-Host "Qt repository layout: $($layout.Folder)"
+$repositoryFolder = "qt$majorVersion`_$versionNoDots/qt$majorVersion`_${versionNoDots}_$repoArchSuffix"
+$updatesUrl = "$desktopBase/$repositoryFolder/Updates.xml"
+Write-Host "Qt repository layout: $repositoryFolder"
 
-$metadata = [xml](Get-Url -Url $layout.UpdatesUrl)
+$metadata = [xml](Get-Url -Url $updatesUrl)
 
 function Get-PackageArchives {
     param([xml]$Metadata, [string]$PackageName)
@@ -185,9 +148,9 @@ $downloadPlan = @()
 foreach ($packageName in $packageNames) {
     $archives = Get-PackageArchives -Metadata $metadata -PackageName $packageName
     if ($archives.Count -eq 0) {
-        throw "Package '$packageName' not found in $($layout.UpdatesUrl) (or it has no downloadable archives)."
+        throw "Package '$packageName' not found in $updatesUrl (or it has no downloadable archives)."
     }
-    $packageFolderUrl = "$desktopBase/$($layout.Folder)/$packageName"
+    $packageFolderUrl = "$desktopBase/$repositoryFolder/$packageName"
     foreach ($archive in $archives) {
         $entry = Resolve-ArchiveEntry -PackageFolderUrl $packageFolderUrl -ArchiveName $archive
         $entry.Package = $packageName
