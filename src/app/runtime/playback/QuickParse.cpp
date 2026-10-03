@@ -1,36 +1,10 @@
 ﻿#include "runtime/playback/PlaybackCoordinator.h"
-#include "runtime/Shared.h"
-#include "runtime/media/MediaJobsHost.h"
-
-#include "BracketScopeHighlighter.h"
-#include "QtPreviewSfxRuntime.h"
-#include "SimaiParser.h"
-#include "app/quick_shell/QuickShellPreviewCompositeSurface.h"
-#include "app/quick_shell/QuickShellPreviewSurfacePolicy.h"
-#include "common/ChartAssetPaths.h"
-#include "common/ChartClockCount.h"
-#include "common/CrashRecovery.h"
-#include "common/DebugLog.h"
-#include "common/ProcessDiagnostics.h"
-#include "common/DebugOptions.h"
-#include "common/PreviewInteractionConfig.h"
-#include "common/WaveformCache.h"
-#include "preview/runtime/PreviewRuntime.h"
-#include "preview/runtime/PreviewStageMediaHost.h"
-#include "core/scene/PreviewProgressStatsCache.h"
-#include "core/chart/transform/ChartBatchTransform.h"
-#include "core/chart/transform/ChartNormalization.h"
+#include "common/ContentDurationConfig.h"
 #include "timeline/quick/TimelineQuickStateBridge.h"
-#include "tools/muri/MuriAnalyzer.h"
-#include "tools/muri/MuriPanelEntries.h"
-#include "tools/muri/MuriStaticChecker.h"
-#include "tools/latency/LatencySandboxController.h"
-
-#include <QtCore>
-
 #include "runtime/playback/TimelineFlow.Internal.h"
 
-using namespace miacode::runtime::shared;
+#include <QElapsedTimer>
+
 using namespace miacode::runtime::preview_timeline_detail;
 
 void miacode::runtime::PlaybackCoordinator::refreshTimelineQuickModelFromCurrentText()
@@ -42,8 +16,16 @@ void miacode::runtime::PlaybackCoordinator::refreshTimelineQuickModelFromCurrent
     timer.start();
     state_.timelineQuickModel_.rebuildFromText(activeChartText(), parsedFirstSeconds(), currentTimingMetadata());
     invalidatePreviewFollowBindingCache();
-    if (state_.timelineQuickStateBridge_ != nullptr) {
-        state_.timelineQuickStateBridge_->setTimelineData(state_.timelineQuickModel_.snapshot());
+    const auto& snapshot = state_.timelineQuickModel_.snapshot();
+    if (state_.pendingDifficultySwitchPreviewRestore_
+        && state_.pendingDifficultySwitchPreviewRestoreDifficultyId_ == activeDifficultyId()) {
+        const double duration = miacode::content_duration::totalContentDurationSeconds(
+            snapshot.durationSeconds, state_.previewTrackDurationSeconds_);
+        const double restoredSecond = qBound(0.0, state_.pendingDifficultySwitchPreviewRestoreSecond_, duration);
+        repositionSilently(restoredSecond, "switch_timeline_snapshot");
+        state_.timelineQuickStateBridge_->replaceTimelineData(snapshot, restoredSecond, duration);
+    } else {
+        state_.timelineQuickStateBridge_->setTimelineData(snapshot);
     }
     if (state_.runtimeDebugOutputEnabled_) {
         appendTimelinePerfLog(

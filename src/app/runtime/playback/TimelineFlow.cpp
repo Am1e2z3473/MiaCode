@@ -62,7 +62,22 @@ miacode::runtime::PlaybackCoordinator::PlaybackCoordinator(
     , documents_(documents)
     , preview_(preview)
     , identity_(sessionGeneration)
-{}
+{
+    QObject::connect(&services_.analysis(), &miacode::AnalysisService::parseReady,
+                     &owner_, [this](int, quint64) {
+        if (identity_.active()) dispatchTimelineSlowRefresh();
+    });
+    QObject::connect(&services_.analysis(), &miacode::AnalysisService::analysisReady,
+                     &owner_, [this](int, quint64) {
+        if (identity_.active()) dispatchTimelineAnalysisRefresh();
+    });
+    QObject::connect(&services_.shellNotifications(), &miacode::ShellNotifications::presentationChanged,
+                     &owner_, [this]() {
+        if (!identity_.active()) return;
+        services_.analysis().setDiagnosticsDeferred(state_.playing_);
+        if (!state_.playing_) dispatchTimelineAnalysisRefresh();
+    });
+}
 
 bool miacode::runtime::PlaybackCoordinator::timelineTabIsForeground() const
 {
@@ -127,7 +142,6 @@ void miacode::runtime::PlaybackCoordinator::flushDeferredTimelineBridgeState()
 namespace {
 
 constexpr double kTimelineZeroSecondTolerance = 1e-6;
-constexpr int kTimelineAnalysisIdleDelayMs = 180;
 
 void appendTimelineInteractionLog(const QString& action, const QString& payload = QString())
 {
@@ -856,108 +870,70 @@ void miacode::runtime::PlaybackCoordinator::requestTimelineSlowRefresh()
 
 void miacode::runtime::PlaybackCoordinator::dispatchTimelineSlowRefresh()
 {
-    if (state_.timelineSlowWorkerRunning_ || state_.pendingTimelineSlowRefresh_.revision == 0) {
+    if (state_.pendingTimelineSlowRefresh_.revision == 0) return;
+    const TimelineSlowRefreshRequest request = state_.pendingTimelineSlowRefresh_;
+    const miacode::ParsedChartSnapshot& parsed = services_.analysis().parsedSnapshot();
+    if (!parsed.available || parsed.revision != services_.workspace().snapshot().revision
+        || parsed.difficultyId != request.difficultyId || parsed.chartText != request.chartText
+        || parsed.timingMetadata != request.timingMetadata || parsed.firstSeconds != request.firstSeconds) {
         return;
     }
-
-    const TimelineSlowRefreshRequest request = state_.pendingTimelineSlowRefresh_;
     state_.pendingTimelineSlowRefresh_ = TimelineSlowRefreshRequest();
-    state_.timelineSlowWorkerRunning_ = true;
-    state_.timelineSlowRunningRevision_ = request.revision;
-    QPointer<QObject> guard(&owner_);
-    QThreadPool* const pool = state_.timelineSlowRefreshPool_ != nullptr
-        ? state_.timelineSlowRefreshPool_
-        : QThreadPool::globalInstance();
-    pool->start([this, guard, request]() {
-        miacode::diag::MemoryStageScope memScope("preview/mem_stage", "slow_refresh_build");
-        SimaiParseResult parseResult;
-        TimelinePreviewRefreshState previewState;
-        {
-            // beta7 probe 2.1 — tight core bracket excludes the invokeMethod result COPY below,
-            // so (slow_refresh_build − slow_refresh_core) isolates the in-flight handoff cost.
-            miacode::diag::MemoryStageScope memScopeCore(
-                "preview/mem_stage", "slow_refresh_core");
-            parseResult = SimaiParser::parseForTimeline(
-                request.chartText,
-                request.timingMetadata);
-            previewState = buildTimelinePreviewRefreshState(parseResult, request.firstSeconds);
-        }
-        if (guard.isNull()) {
-            return;
-        }
-        miacode::diag::leak_gauge::noteInflightDispatch();
-        QMetaObject::invokeMethod(
-            guard.data(),
-            [this, guard, request, parseResult, previewState]() mutable {
-                miacode::diag::leak_gauge::noteInflightApplied();
-                if (guard.isNull()) {
-                    return;
-                }
-
-                state_.timelineSlowWorkerRunning_ = false;
-                if (request.revision != state_.timelineSlowRequestedRevision_
-                    || request.revision != state_.timelineRevision_
-                    || !hasActiveDifficulty()
-                    || state_.latencySandboxAuditionActive_
-                    || request.difficultyId != activeDifficultyId()
-                    || request.chartText != activeChartText()
-                    || request.timingMetadata != currentTimingMetadata()) {
-                    dispatchTimelineSlowRefresh();
-                    return;
-                }
-
-                state_.lastTimelineParseDifficultyId_ = request.difficultyId;
-                state_.lastTimelineParseChartText_ = request.chartText;
-                state_.lastTimelineParseTimingMetadata_ = request.timingMetadata;
-                state_.lastTimelineParseResult_ = parseResult;
-                state_.latestTimelineNoteMarkers_ = previewState.shiftedNoteMarkers;
-                state_.latestTimelineNoteMarkerSignature_ = previewState.noteMarkerSignature;
-                state_.latestTimelinePreviewRevision_ = request.revision;
-                state_.latestTimelinePreviewSnapshotReady_ = true;
-                if (!state_.playing_) {
-                    applyLatestTimelinePreviewStateToPausedPreview();
-                }
-                if (state_.pendingDifficultySwitchPreviewRestore_
-                    && state_.pendingDifficultySwitchPreviewRestoreRevision_ == request.revision
-                    && state_.pendingDifficultySwitchPreviewRestoreDifficultyId_ == request.difficultyId) {
-                    const double restoreSecond = qBound(
-                        0.0,
-                        state_.pendingDifficultySwitchPreviewRestoreSecond_,
-                        previewPlaybackEndSeconds());
-                    state_.pendingDifficultySwitchPreviewRestore_ = false;
-                    state_.pendingDifficultySwitchPreviewRestoreRevision_ = 0;
-                    state_.pendingDifficultySwitchPreviewRestoreDifficultyId_ = 0;
-                    state_.pendingDifficultySwitchPreviewRestoreSecond_ = 0.0;
-                    seekPreviewDiscreteToSecond(restoreSecond, false);
-                    deferTimelineCursorBridgeUpdate(restoreSecond, false);
-                }
-                if (state_.previewFollowEnabled_ && hasActiveDifficulty()) {
-                    const double followSecond = state_.playing_
-                        ? authoritativeAudioClockSecond()
-                        : state_.pauseSecond_;
-                    // Chart edits rebuild the timeline. Refresh the follow span
-                    // only — reveal would yank the editor off the caret when the
-                    // playhead and the caret cannot share one viewport.
-                    syncEditorCursorToPreviewSecond(
-                        qMax(0.0, followSecond),
-                        false,
-                        false);
-                }
-                scheduleTimelineAnalysisRefresh(request, parseResult, previewState);
-                if (state_.pendingPreviewPlaybackStart_
-                    && !state_.playing_
-                    && state_.pendingPreviewPlaybackRevision_ == request.revision
-                    && state_.pendingPreviewPlaybackDifficultyId_ == request.difficultyId) {
-                    const double pendingSecond = state_.pendingPreviewPlaybackSecond_;
-                    const bool resumeFromPause = state_.pendingPreviewPlaybackResumeFromPause_;
-                    state_.pendingPreviewPlaybackStart_ = false;
-                    startQtPreviewPlayback(pendingSecond, resumeFromPause);
-                }
-                dispatchTimelineSlowRefresh();
-            },
-            Qt::QueuedConnection
-        );
-    });
+    if (request.revision != state_.timelineSlowRequestedRevision_
+        || request.revision != state_.timelineRevision_ || !hasActiveDifficulty()
+        || state_.latencySandboxAuditionActive_ || request.difficultyId != activeDifficultyId()
+        || request.chartText != activeChartText() || request.timingMetadata != currentTimingMetadata()
+        || request.firstSeconds != parsedFirstSeconds()) {
+        return;
+    }
+    // Keep a shared value across consumer callbacks that may replace the workspace.
+    const SimaiParseResult parseResult = parsed.parseResult;
+    const TimelinePreviewRefreshState previewState = parsed.previewState;
+    state_.lastTimelineParseDifficultyId_ = request.difficultyId;
+    state_.lastTimelineParseChartText_ = request.chartText;
+    state_.lastTimelineParseTimingMetadata_ = request.timingMetadata;
+    state_.lastTimelineParseResult_ = parseResult;
+    state_.latestTimelineNoteMarkers_ = previewState.shiftedNoteMarkers;
+    state_.latestTimelineNoteMarkerSignature_ = previewState.noteMarkerSignature;
+    state_.latestTimelinePreviewRevision_ = request.revision;
+    state_.latestTimelinePreviewSnapshotReady_ = true;
+    if (!state_.playing_) {
+        applyLatestTimelinePreviewStateToPausedPreview();
+    }
+    if (state_.pendingDifficultySwitchPreviewRestore_
+        && state_.pendingDifficultySwitchPreviewRestoreDifficultyId_ == request.difficultyId) {
+        const double restoreSecond = qBound(
+            0.0,
+            state_.pendingDifficultySwitchPreviewRestoreSecond_,
+            previewPlaybackEndSeconds());
+        state_.pendingDifficultySwitchPreviewRestore_ = false;
+        state_.pendingDifficultySwitchPreviewRestoreDifficultyId_ = 0;
+        state_.pendingDifficultySwitchPreviewRestoreSecond_ = 0.0;
+        seekPreviewDiscreteToSecond(restoreSecond, false);
+        deferTimelineCursorBridgeUpdate(restoreSecond, false);
+    }
+    if (state_.previewFollowEnabled_ && hasActiveDifficulty()) {
+        const double followSecond = state_.playing_
+            ? authoritativeAudioClockSecond()
+            : state_.pauseSecond_;
+        // Chart edits rebuild the timeline. Refresh the follow span
+        // only — reveal would yank the editor off the caret when the
+        // playhead and the caret cannot share one viewport.
+        syncEditorCursorToPreviewSecond(
+            qMax(0.0, followSecond),
+            false,
+            false);
+    }
+    scheduleTimelineAnalysisRefresh(request);
+    if (state_.pendingPreviewPlaybackStart_
+        && !state_.playing_
+        && state_.pendingPreviewPlaybackRevision_ == request.revision
+        && state_.pendingPreviewPlaybackDifficultyId_ == request.difficultyId) {
+        const double pendingSecond = state_.pendingPreviewPlaybackSecond_;
+        const bool resumeFromPause = state_.pendingPreviewPlaybackResumeFromPause_;
+        state_.pendingPreviewPlaybackStart_ = false;
+        startQtPreviewPlayback(pendingSecond, resumeFromPause);
+    }
 }
 
 

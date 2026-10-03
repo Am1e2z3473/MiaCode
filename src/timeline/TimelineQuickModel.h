@@ -46,7 +46,8 @@ public:
 
     TimelineQuickModel() = default;
 
-    void clear();
+    // Release backing storage when the owning document closes.
+    void clear(bool releaseStorage = false);
     bool rebuildFromText(
         const QString& text,
         double firstSeconds,

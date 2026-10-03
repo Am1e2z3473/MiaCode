@@ -33,6 +33,13 @@ Rectangle {
     property int followDecorationEnd: 0
     property int followDecorationCursor: 0
     property int followLayoutTick: 0
+    readonly property rect followCaretRect: {
+        root.followLayoutTick
+        if (!root.followDecorationActive)
+            return Qt.rect(0, 0, 0, 0)
+        return sourceArea.positionToRectangle(
+            Math.max(0, Math.min(sourceArea.length, root.followDecorationCursor)))
+    }
     onNavigationVisibleChanged: {
         publishNavigationReadiness()
         scheduleEditorContext(false)
@@ -198,6 +205,7 @@ Rectangle {
             root.editorController.closeCompletion()
             root.beginProgrammaticSelection()
             sourceArea.syncingFromController = true
+            root.clearFollowProjection()
             sourceArea.text = controllerText
             if (editorTextStyle)
                 editorTextStyle.applyImmediately()
@@ -205,7 +213,13 @@ Rectangle {
             root.endProgrammaticSelection()
             sourceArea.historyText = controllerText
             updateCursorPosition()
+            Qt.callLater(root.refreshReplacedTextViewport)
         }
+    }
+
+    function refreshReplacedTextViewport() {
+        editorScroll.reconcileViewport()
+        editorTextStyle.invalidateRendering()
     }
     readonly property real codeLineHeight: sourceArea.cursorRectangle.height
     // 每个逻辑行顶部在文档坐标系中的 y。自动换行后行高不再固定，
@@ -364,13 +378,21 @@ Rectangle {
         bookmarkTitleDialog.open()
     }
 
+    function clearFollowProjection() {
+        root.followDecorationActive = false
+        decorationCenterTimer.stop()
+        root.followDecorationStart = 0
+        root.followDecorationEnd = 0
+        root.followDecorationCursor = 0
+    }
+
     function applyFollowProjection() {
         if (!root.syncController || !root.syncController.followActive
                 || root.syncController.followDifficultyId
                    !== root.documentSession.currentDifficultyId
                 || root.syncController.followRevision
                    !== root.documentSession.documentRevision) {
-            root.followDecorationActive = false
+            root.clearFollowProjection()
             return false
         }
         root.followDecorationStart = Math.max(
@@ -516,7 +538,7 @@ Rectangle {
             const flickable = editorScroll
             if (!flickable)
                 return
-            const rect = sourceArea.positionToRectangle(root.followDecorationCursor)
+            const rect = root.followCaretRect
             const top = sourceArea.y + rect.y
             const bottom = top + rect.height
             const centerDuringPlayback = root.syncController
@@ -1046,16 +1068,12 @@ Rectangle {
             // Preview follow caret. Distinct from the real caret so a paused
             // seek is visible without stealing the cursor.
             Rectangle {
-                readonly property rect caretRect: {
-                    root.followLayoutTick
-                    return sourceArea.positionToRectangle(root.followDecorationCursor)
-                }
                 visible: root.followDecorationActive
                     && (root.syncController.followPlaybackActive || !sourceArea.activeFocus)
-                x: caretRect.x
-                y: caretRect.y
+                x: root.followCaretRect.x
+                y: root.followCaretRect.y
                 width: 2
-                height: Math.max(caretRect.height, root.codeLineHeight)
+                height: Math.max(root.followCaretRect.height, root.codeLineHeight)
                 color: Theme.colors.accent.primary
             }
             onContentHeightChanged: root.bumpFollowLayout()

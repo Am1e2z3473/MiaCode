@@ -110,10 +110,7 @@
     void refreshTimelineMetadata();
     void requestTimelineSlowRefresh();
     void dispatchTimelineSlowRefresh();
-    void scheduleTimelineAnalysisRefresh(
-        const TimelineSlowRefreshRequest& request,
-        const SimaiParseResult& parseResult,
-        const TimelinePreviewRefreshState& previewState);
+    void scheduleTimelineAnalysisRefresh(const TimelineSlowRefreshRequest& request);
     bool scheduleTimelineAnalysisRefreshFromLatestPreviewState(int delayMs = -1);
     void requestTimelineAnalysisDispatch(int delayMs = -1);
     void dispatchTimelineAnalysisRefresh();

@@ -33,8 +33,12 @@ void applyInitialTimingMetadata(
 
 }  // namespace
 
-void TimelineQuickModel::clear()
+void TimelineQuickModel::clear(bool releaseStorage)
 {
+    if (releaseStorage) {
+        *this = TimelineQuickModel();
+        return;
+    }
     nextLineId_ = 1;
     nextEachGroupId_ = 0;
     lines_.clear();

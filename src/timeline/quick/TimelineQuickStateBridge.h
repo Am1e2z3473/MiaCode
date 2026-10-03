@@ -47,6 +47,7 @@ public:
 
     void clear();
     void setTimelineData(const TimelineRenderSnapshot& snapshot);
+    void replaceTimelineData(const TimelineRenderSnapshot& snapshot, double second, double durationSeconds);
     const TimelineRenderSnapshot& renderSnapshot() const;
     void setWaveformData(const std::shared_ptr<const miacode::waveform::WaveformData>& waveformData);
     std::shared_ptr<const miacode::waveform::WaveformData> waveformData() const;

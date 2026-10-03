@@ -128,8 +128,6 @@ public:
     // migration, but it no longer owns these values.
     struct TimelineState {
         TimelineQuickStateBridge* timelineQuickStateBridge_ = nullptr;
-        QThreadPool* timelineSlowRefreshPool_ = nullptr;
-        QThreadPool* timelineAnalysisPool_ = nullptr;
         bool timelineReady_ = false;
         quint64 deferredTimelineBridgeFlushGeneration_ = 0;
         bool pendingQuickTimelineCursorSync_ = false;
@@ -145,14 +143,10 @@ public:
         bool latestTimelinePreviewSnapshotReady_ = false;
         TimelineQuickModel timelineQuickModel_;
         TimelineSlowRefreshRequest pendingTimelineSlowRefresh_;
-        TimelineAnalysisRefreshRequest pendingTimelineAnalysisRefresh_;
+        TimelineSlowRefreshRequest pendingTimelineAnalysisRefresh_;
         quint64 timelineRevision_ = 0;
         quint64 timelineSlowRequestedRevision_ = 0;
-        quint64 timelineSlowRunningRevision_ = 0;
         quint64 timelineAnalysisRequestedRevision_ = 0;
-        quint64 timelineAnalysisRunningRevision_ = 0;
-        bool timelineSlowWorkerRunning_ = false;
-        bool timelineAnalysisWorkerRunning_ = false;
         quint64 waveformRefreshGeneration_ = 0;
         PreviewCanvasFrameRateMode timelineFrameRateMode_ = PreviewCanvasFrameRateMode::DisplayRefresh;
         bool timelineSyncEnabled_ = false;

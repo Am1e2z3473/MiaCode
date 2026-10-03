@@ -193,6 +193,21 @@ void TimelineQuickStateBridge::setTimelineData(const TimelineRenderSnapshot& sna
     emit renderStateChanged();
 }
 
+void TimelineQuickStateBridge::replaceTimelineData(
+    const TimelineRenderSnapshot& snapshot, double second, double durationSeconds)
+{
+    const double restoredSecond = qBound(0.0, second, qMax(0.0, durationSeconds));
+    const bool playheadValueChanged = !qFuzzyCompare(playheadSeconds_ + 1.0, restoredSecond + 1.0);
+    playheadSeconds_ = restoredSecond;
+    cursorSeconds_ = restoredSecond;
+    playbackEntrySeconds_ = restoredSecond;
+    playheadUpperLimitSeconds_ = durationSeconds > 0.0 ? durationSeconds : -1.0;
+    setTimelineData(snapshot);
+    if (playheadValueChanged) {
+        emit playheadChanged(playheadSeconds_);
+    }
+}
+
 const TimelineRenderSnapshot& TimelineQuickStateBridge::renderSnapshot() const
 {
     return snapshot_;
@@ -306,9 +321,6 @@ void TimelineQuickStateBridge::refreshLayoutMetrics()
     request.waveformBrightness = waveformBrightness_;
     request.measureLineBrightness = measureLineBrightness_;
     request.waveformPhaseCompensationSeconds = waveformPhaseCompensationSeconds_;
-    request.playbackEntrySeconds = playbackEntrySeconds_;
-    request.playheadSeconds = playheadSeconds_;
-    request.cursorSeconds = cursorSeconds_;
     request.playheadUpperLimitSeconds = playheadUpperLimitSeconds_;
     layoutMetrics_ = miacode::timeline::TimelineSceneStateBuilder::layoutMetrics(request);
     layoutMetricsValid_ = true;
@@ -621,7 +633,12 @@ void TimelineQuickStateBridge::setPlayheadUpperLimitSeconds(double second)
     if (!limitChanged && !playheadValueChanged) {
         return;
     }
-    bumpOverlayDynamicRevision();
+    if (limitChanged) {
+        refreshLayoutMetrics();
+        bumpAllRevisions();
+    } else {
+        bumpOverlayDynamicRevision();
+    }
     if (playheadValueChanged) {
         emit playheadChanged(playheadSeconds_);
     }

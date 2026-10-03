@@ -1009,7 +1009,7 @@ miacode::preview_gameplay::CenterDisplayMode PreviewRuntime::centerDisplayMode()
     return frameState_.render.centerDisplayMode;
 }
 
-void PreviewRuntime::reset()
+void PreviewRuntime::reset(bool releaseStorage)
 {
     appendHudStateDiagLine(
         QStringLiteral("reset"),
@@ -1020,7 +1020,11 @@ void PreviewRuntime::reset()
             .arg(frameState_.chartTitle.size())
             .arg(frameState_.render.showChartInfoHud ? 1 : 0));
     const auto presentationMode = frameState_.media.presentationMode;
-    frameState_.noteMarkers.clear();
+    if (releaseStorage) {
+        frameState_.noteMarkers = QVector<TimelineNoteMarker>();
+    } else {
+        frameState_.noteMarkers.clear();
+    }
     frameState_.progressStatsCache.reset();
     frameState_.muriAnalysisReport = MuriAnalysisReport();
     frameState_.playheadSeconds = 0.0;

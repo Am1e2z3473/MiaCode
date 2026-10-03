@@ -1,5 +1,7 @@
 #include "tools/muri/MuriRuntimeModelBuilder.h"
 
+#include "common/TaskCancellation.h"
+
 #include <algorithm>
 
 #include <QSet>
@@ -17,6 +19,7 @@ QHash<QString, MarkerSourceRef> buildMarkerSourceRefs(const QVector<TimelineNote
     refs.reserve(noteMarkers.size() * 2);
 
     for (int index = 0; index < noteMarkers.size(); ++index) {
+        miacode::task::CancellationScope::checkpoint();
         const TimelineNoteMarker& marker = noteMarkers.at(index);
         MarkerSourceRef ref;
         ref.order = marker.parseOrder >= 0 ? marker.parseOrder : index;
@@ -48,6 +51,7 @@ QVector<JudgeableSimpleNote> buildJudgeableSimpleNotes(
     notes.reserve(noteMarkers.size());
 
     for (const TimelineNoteMarker& marker : noteMarkers) {
+        miacode::task::CancellationScope::checkpoint();
         // Mine notes (simai `m`) are dodged by autoplay — no judge window,
         // no judge sprite/perfect-text/firework.
         if (marker.isMine || marker.trackMine) {
@@ -91,6 +95,7 @@ QVector<JudgeableSimpleNote> buildJudgeableSimpleNotes(
 
     QSet<QString> emittedHeadStarKeys;
     for (int markerIndex = 0; markerIndex < noteMarkers.size(); ++markerIndex) {
+        miacode::task::CancellationScope::checkpoint();
         const TimelineNoteMarker& marker = noteMarkers.at(markerIndex);
         if (!shouldCreateHeadStarJudgeNote(marker)) {
             continue;
@@ -139,6 +144,7 @@ QMap<int, QVector<int>> buildNoteExpiryBuckets(const QVector<JudgeableSimpleNote
 {
     QMap<int, QVector<int>> notesByExpiryTick;
     for (int index = 0; index < notes.size(); ++index) {
+        miacode::task::CancellationScope::checkpoint();
         notesByExpiryTick[notes.at(index).expiryTick].append(index);
     }
     return notesByExpiryTick;
@@ -151,6 +157,7 @@ QVector<RuntimeTouchGroup> buildRuntimeTouchGroups(
 {
     QMap<int, QVector<int>> touchMarkerIndicesByEachGroup;
     for (int markerIndex = 0; markerIndex < noteMarkers.size(); ++markerIndex) {
+        miacode::task::CancellationScope::checkpoint();
         const TimelineNoteMarker& marker = noteMarkers.at(markerIndex);
         if (marker.type == QLatin1String("touch") && marker.eachGroupId >= 0 && !marker.touchPad.isEmpty()) {
             touchMarkerIndicesByEachGroup[marker.eachGroupId].append(markerIndex);
@@ -159,8 +166,10 @@ QVector<RuntimeTouchGroup> buildRuntimeTouchGroups(
 
     QVector<RuntimeTouchGroup> groups;
     for (auto it = touchMarkerIndicesByEachGroup.begin(); it != touchMarkerIndicesByEachGroup.end(); ++it) {
+        miacode::task::CancellationScope::checkpoint();
         QVector<int> markerIndices = it.value();
         std::sort(markerIndices.begin(), markerIndices.end(), [&noteMarkers](int a, int b) {
+            miacode::task::CancellationScope::checkpoint();
             const TimelineNoteMarker& left = noteMarkers.at(a);
             const TimelineNoteMarker& right = noteMarkers.at(b);
             const int leftOrder = left.parseOrder >= 0 ? left.parseOrder : a;
@@ -174,16 +183,19 @@ QVector<RuntimeTouchGroup> buildRuntimeTouchGroups(
 
         QVector<int> parents(markerIndices.size());
         for (int i = 0; i < parents.size(); ++i) {
+            miacode::task::CancellationScope::checkpoint();
             parents[i] = i;
         }
 
         const auto findRoot = [&parents](int index) {
             int root = index;
             while (parents[root] != root) {
+                miacode::task::CancellationScope::checkpoint();
                 root = parents[root];
             }
             int cursor = index;
             while (parents[cursor] != root) {
+                miacode::task::CancellationScope::checkpoint();
                 const int parent = parents[cursor];
                 parents[cursor] = root;
                 cursor = parent;
@@ -192,8 +204,10 @@ QVector<RuntimeTouchGroup> buildRuntimeTouchGroups(
         };
 
         for (int left = 0; left < markerIndices.size(); ++left) {
+            miacode::task::CancellationScope::checkpoint();
             const TimelineNoteMarker& leftMarker = noteMarkers.at(markerIndices.at(left));
             for (int right = left + 1; right < markerIndices.size(); ++right) {
+                miacode::task::CancellationScope::checkpoint();
                 const TimelineNoteMarker& rightMarker = noteMarkers.at(markerIndices.at(right));
                 if (!touchPadsAreAdjacent(leftMarker.touchPad, rightMarker.touchPad)) {
                     continue;
@@ -206,6 +220,7 @@ QVector<RuntimeTouchGroup> buildRuntimeTouchGroups(
                 }
 
                 for (int cursor = 0; cursor < parents.size(); ++cursor) {
+                    miacode::task::CancellationScope::checkpoint();
                     if (parents[cursor] == rootRight) {
                         parents[cursor] = rootLeft;
                     }
@@ -216,6 +231,7 @@ QVector<RuntimeTouchGroup> buildRuntimeTouchGroups(
         QHash<int, QVector<int>> componentLocals;
         QVector<int> componentOrder;
         for (int localIndex = 0; localIndex < markerIndices.size(); ++localIndex) {
+            miacode::task::CancellationScope::checkpoint();
             const int root = findRoot(localIndex);
             if (!componentLocals.contains(root)) {
                 componentOrder.append(root);
@@ -224,6 +240,7 @@ QVector<RuntimeTouchGroup> buildRuntimeTouchGroups(
         }
 
         for (int root : componentOrder) {
+            miacode::task::CancellationScope::checkpoint();
             const QVector<int> locals = componentLocals.value(root);
             if (locals.size() <= 1) {
                 continue;
@@ -233,6 +250,7 @@ QVector<RuntimeTouchGroup> buildRuntimeTouchGroups(
             group.eachGroupId = it.key();
             group.allOnSlide = true;
             for (int localIndex : locals) {
+                miacode::task::CancellationScope::checkpoint();
                 const int markerIndex = markerIndices.at(localIndex);
                 const TimelineNoteMarker& marker = noteMarkers.at(markerIndex);
                 const QString markerKey = makeMarkerAnalysisKey(marker);
@@ -266,6 +284,7 @@ QVector<RuntimeTouchGroup> buildRuntimeTouchGroups(
             groups.append(group);
             if (touchGroupByChildNoteIndex != nullptr) {
                 for (int childNoteIndex : group.childNoteIndices) {
+                    miacode::task::CancellationScope::checkpoint();
                     touchGroupByChildNoteIndex->insert(childNoteIndex, groupIndex);
                 }
             }
@@ -291,6 +310,7 @@ QVector<RuntimeTopLevelNote> buildRuntimeTopLevelNotes(
     QMap<int, int> firstParseOrderByEachGroup;
 
     for (int noteIndex = 0; noteIndex < notes.size(); ++noteIndex) {
+        miacode::task::CancellationScope::checkpoint();
         const JudgeableSimpleNote& note = notes.at(noteIndex);
         const int eachGroupId = note.eachGroupId;
         if (eachGroupId < 0) {
@@ -316,6 +336,7 @@ QVector<RuntimeTopLevelNote> buildRuntimeTopLevelNotes(
     }
 
     for (int touchGroupIndex = 0; touchGroupIndex < touchGroups.size(); ++touchGroupIndex) {
+        miacode::task::CancellationScope::checkpoint();
         const RuntimeTouchGroup& group = touchGroups.at(touchGroupIndex);
         if (group.eachGroupId < 0) {
             continue;
@@ -332,17 +353,21 @@ QVector<RuntimeTopLevelNote> buildRuntimeTopLevelNotes(
 
     QVector<int> eachGroupIds = firstParseOrderByEachGroup.keys().toVector();
     std::sort(eachGroupIds.begin(), eachGroupIds.end(), [&firstParseOrderByEachGroup](int a, int b) {
+        miacode::task::CancellationScope::checkpoint();
         return firstParseOrderByEachGroup.value(a) < firstParseOrderByEachGroup.value(b);
     });
 
     QVector<RuntimeTopLevelNote> topLevelNotes;
     int sequenceOrder = 0;
     for (int eachGroupId : eachGroupIds) {
+        miacode::task::CancellationScope::checkpoint();
         QVector<int> nonTouchIndices = nonTouchNoteIndicesByEachGroup.value(eachGroupId);
         std::sort(nonTouchIndices.begin(), nonTouchIndices.end(), [&notes](int a, int b) {
+            miacode::task::CancellationScope::checkpoint();
             return notes.at(a).parseOrder < notes.at(b).parseOrder;
         });
         for (int noteIndex : nonTouchIndices) {
+            miacode::task::CancellationScope::checkpoint();
             RuntimeTopLevelNote topLevel;
             topLevel.sequenceOrder = sequenceOrder++;
             topLevel.simpleNoteIndex = noteIndex;
@@ -351,9 +376,11 @@ QVector<RuntimeTopLevelNote> buildRuntimeTopLevelNotes(
 
         QVector<TouchTopLevelEntry> touchEntries = touchEntriesByEachGroup.value(eachGroupId);
         std::sort(touchEntries.begin(), touchEntries.end(), [](const TouchTopLevelEntry& a, const TouchTopLevelEntry& b) {
+            miacode::task::CancellationScope::checkpoint();
             return a.firstParseOrder < b.firstParseOrder;
         });
         for (const TouchTopLevelEntry& entry : touchEntries) {
+            miacode::task::CancellationScope::checkpoint();
             RuntimeTopLevelNote topLevel;
             topLevel.sequenceOrder = sequenceOrder++;
             topLevel.simpleNoteIndex = entry.simpleNoteIndex;
@@ -364,6 +391,7 @@ QVector<RuntimeTopLevelNote> buildRuntimeTopLevelNotes(
 
     QVector<int> ungroupedNoteIndices;
     for (int noteIndex = 0; noteIndex < notes.size(); ++noteIndex) {
+        miacode::task::CancellationScope::checkpoint();
         const JudgeableSimpleNote& note = notes.at(noteIndex);
         if (note.eachGroupId >= 0) {
             continue;
@@ -374,9 +402,11 @@ QVector<RuntimeTopLevelNote> buildRuntimeTopLevelNotes(
         ungroupedNoteIndices.append(noteIndex);
     }
     std::sort(ungroupedNoteIndices.begin(), ungroupedNoteIndices.end(), [&notes](int a, int b) {
+        miacode::task::CancellationScope::checkpoint();
         return notes.at(a).parseOrder < notes.at(b).parseOrder;
     });
     for (int noteIndex : ungroupedNoteIndices) {
+        miacode::task::CancellationScope::checkpoint();
         RuntimeTopLevelNote topLevel;
         topLevel.sequenceOrder = sequenceOrder++;
         topLevel.simpleNoteIndex = noteIndex;

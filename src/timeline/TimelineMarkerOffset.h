@@ -1,5 +1,7 @@
 #pragma once
 
+#include "common/TaskCancellation.h"
+
 #include <QString>
 #include <QVector>
 #include <QtNumeric>
@@ -53,6 +55,7 @@ inline QVector<TimelineBeatMarker> shiftedBeatMarkers(
 {
     QVector<TimelineBeatMarker> shifted = beatMarkers;
     for (TimelineBeatMarker& marker : shifted) {
+        miacode::task::CancellationScope::checkpoint();
         marker.second = shiftedTimelineSecond(marker.second, offsetSeconds, handling);
     }
     return shifted;
@@ -67,6 +70,7 @@ inline QVector<TimelineNoteMarker> shiftedNoteMarkers(
 {
     QVector<TimelineNoteMarker> shifted = noteMarkers;
     for (TimelineNoteMarker& marker : shifted) {
+        miacode::task::CancellationScope::checkpoint();
         marker.second = shiftedTimelineSecond(marker.second, offsetSeconds, handling);
         if (marker.endSecond >= 0.0) {
             marker.endSecond = shiftedTimelineSecond(marker.endSecond, offsetSeconds, handling);
@@ -78,6 +82,7 @@ inline QVector<TimelineNoteMarker> shiftedNoteMarkers(
             marker.availableSecond = shiftedTimelineSecond(marker.availableSecond, offsetSeconds, handling);
         }
         for (double& shootSecond : marker.slideSegmentShootSeconds) {
+            miacode::task::CancellationScope::checkpoint();
             shootSecond = shiftedTimelineSecond(shootSecond, offsetSeconds, handling);
         }
     }

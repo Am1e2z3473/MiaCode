@@ -1,5 +1,7 @@
 #include "tools/muri/MuriStaticChecker.h"
 
+#include "common/TaskCancellation.h"
+
 #include <algorithm>
 
 #include <QSet>
@@ -24,6 +26,7 @@ QVector<MuriStaticReference> dedupeDenseOverlapReferences(const QVector<MuriStat
     keptOverlapCountBySecond.reserve(references.size());
 
     for (const MuriStaticReference& reference : references) {
+        miacode::task::CancellationScope::checkpoint();
         if (reference.kind != MuriKind::Overlap) {
             deduped.append(reference);
             continue;
@@ -164,6 +167,7 @@ QSet<QString> buildSlideKeysWithTapOnSlideHead(const QVector<TimelineNoteMarker>
     slideKeysByStart.reserve(noteMarkers.size());
 
     for (const TimelineNoteMarker& marker : noteMarkers) {
+        miacode::task::CancellationScope::checkpoint();
         if (!hasUsableSlideTraceTiming(marker)) {
             continue;
         }
@@ -174,6 +178,7 @@ QSet<QString> buildSlideKeysWithTapOnSlideHead(const QVector<TimelineNoteMarker>
     QSet<QString> slideKeys;
     slideKeys.reserve(noteMarkers.size());
     for (const TimelineNoteMarker& marker : noteMarkers) {
+        miacode::task::CancellationScope::checkpoint();
         const bool tapOnSlideHead = marker.type == QLatin1String("tap") && marker.slideHead;
         const bool syntheticHeadOnSlideHead =
             isSlideLike(marker) && marker.hasHeadStar && marker.slideHead;
@@ -183,6 +188,7 @@ QSet<QString> buildSlideKeysWithTapOnSlideHead(const QVector<TimelineNoteMarker>
         const QVector<QString> matchingSlideKeys = slideKeysByStart.value(
             slideStartLookupKey(marker.lane, marker.second));
         for (const QString& slideKey : matchingSlideKeys) {
+            miacode::task::CancellationScope::checkpoint();
             slideKeys.insert(slideKey);
         }
     }
@@ -322,6 +328,7 @@ QVector<StaticHeadStarTarget> buildStaticHeadStarTargets(const QVector<TimelineN
 
     QSet<QString> emittedKeys;
     for (const TimelineNoteMarker& marker : noteMarkers) {
+        miacode::task::CancellationScope::checkpoint();
         if (!shouldCreateHeadStarTarget(marker)) {
             continue;
         }
@@ -359,6 +366,7 @@ QVector<MuriStaticReference> buildStaticMuriReferences(
         QVector<TimelineNoteMarker> judgeableMarkers;
         judgeableMarkers.reserve(noteMarkers.size());
         for (const TimelineNoteMarker& marker : noteMarkers) {
+            miacode::task::CancellationScope::checkpoint();
             if (!isMineMarker(marker)) {
                 judgeableMarkers.append(marker);
             }
@@ -383,6 +391,7 @@ QVector<MuriStaticReference> buildStaticMuriReferences(
     nonSlideIndices.reserve(noteMarkers.size());
 
     for (int index = 0; index < noteMarkers.size(); ++index) {
+        miacode::task::CancellationScope::checkpoint();
         const TimelineNoteMarker& marker = noteMarkers.at(index);
         if (marker.type == QLatin1String("slide")) {
             slideIndices.append(index);
@@ -408,6 +417,7 @@ QVector<MuriStaticReference> buildStaticMuriReferences(
     };
 
     for (int slideIndex : slideIndices) {
+        miacode::task::CancellationScope::checkpoint();
         const TimelineNoteMarker& slide = noteMarkers.at(slideIndex);
         const double criticalSecond = slideCriticalSecondForMarker(slide);
         if (!hasUsableSlideTraceTiming(slide) || !qIsFinite(criticalSecond)) {
@@ -422,9 +432,11 @@ QVector<MuriStaticReference> buildStaticMuriReferences(
             qMin(slide.slideSegmentShootSeconds.size(), slide.slideSegmentDurations.size()));
         collideEntries.reserve(segmentCount * 8);
         for (int segmentIndex = 0; segmentIndex < segmentCount; ++segmentIndex) {
+            miacode::task::CancellationScope::checkpoint();
             const double shootSecond = slide.slideSegmentShootSeconds.at(segmentIndex);
             const double durationSecond = slide.slideSegmentDurations.at(segmentIndex);
             for (const MuriPadTimeEntry& entry : slide.slideSegmentPadEnterTimes.at(segmentIndex)) {
+                miacode::task::CancellationScope::checkpoint();
                 if (!entry.pad.startsWith(QLatin1Char('A'), Qt::CaseInsensitive)) {
                     continue;
                 }
@@ -440,6 +452,7 @@ QVector<MuriStaticReference> buildStaticMuriReferences(
         }
 
         for (int noteIndex : nonSlideIndices) {
+            miacode::task::CancellationScope::checkpoint();
             const TimelineNoteMarker& note = noteMarkers.at(noteIndex);
             const QString notePad = markerPadToken(note);
             if (notePad.isEmpty()) {
@@ -476,6 +489,7 @@ QVector<MuriStaticReference> buildStaticMuriReferences(
             }
 
             for (const CollideEntry& collide : collideEntries) {
+                miacode::task::CancellationScope::checkpoint();
                 if (notePad != collide.pad) {
                     continue;
                 }
@@ -510,6 +524,7 @@ QVector<MuriStaticReference> buildStaticMuriReferences(
         }
 
         for (const StaticHeadStarTarget& target : headStarTargets) {
+            miacode::task::CancellationScope::checkpoint();
             if (target.pad.isEmpty()) {
                 continue;
             }
@@ -541,6 +556,7 @@ QVector<MuriStaticReference> buildStaticMuriReferences(
             }
 
             for (const CollideEntry& collide : collideEntries) {
+                miacode::task::CancellationScope::checkpoint();
                 if (target.pad != collide.pad) {
                     continue;
                 }
@@ -576,6 +592,7 @@ QVector<MuriStaticReference> buildStaticMuriReferences(
     }
 
     for (int wifiIndex : wifiIndices) {
+        miacode::task::CancellationScope::checkpoint();
         const TimelineNoteMarker& wifi = noteMarkers.at(wifiIndex);
         const double criticalSecond = slideCriticalSecondForMarker(wifi);
         if (!hasUsableSlideTraceTiming(wifi) || !qIsFinite(criticalSecond)) {
@@ -594,6 +611,7 @@ QVector<MuriStaticReference> buildStaticMuriReferences(
         const double collideEndSecond = criticalSecond + normalizedCollideThresholdSeconds;
 
         for (int noteIndex : nonSlideIndices) {
+            miacode::task::CancellationScope::checkpoint();
             const TimelineNoteMarker& note = noteMarkers.at(noteIndex);
             if (!isTapMarker(note) && !isHoldMarker(note)) {
                 continue;
@@ -653,6 +671,7 @@ QVector<MuriStaticReference> buildStaticMuriReferences(
         }
 
         for (const StaticHeadStarTarget& target : headStarTargets) {
+            miacode::task::CancellationScope::checkpoint();
             if (target.second + kStaticTimeEpsilonSeconds < wifi.slideTraceSecond
                 || target.second > wifi.endSecond + normalizedCollideThresholdSeconds + kStaticTimeEpsilonSeconds) {
                 continue;
@@ -711,6 +730,7 @@ QVector<MuriStaticReference> buildStaticMuriReferences(
     QVector<StaticOverlapCandidate> overlapCandidates;
     overlapCandidates.reserve(nonSlideIndices.size() + headStarTargets.size());
     for (int noteIndex : nonSlideIndices) {
+        miacode::task::CancellationScope::checkpoint();
         const TimelineNoteMarker& note = noteMarkers.at(noteIndex);
         const QString pad = markerPadToken(note);
         if (pad.isEmpty()) {
@@ -741,6 +761,7 @@ QVector<MuriStaticReference> buildStaticMuriReferences(
     // overlap loop below then sees both heads and fires Overlap.
     QSet<QString> emittedOverlapHeadKeys;
     for (const TimelineNoteMarker& marker : noteMarkers) {
+        miacode::task::CancellationScope::checkpoint();
         if (!shouldCreateHeadStarTarget(marker)) {
             continue;
         }
@@ -778,8 +799,10 @@ QVector<MuriStaticReference> buildStaticMuriReferences(
     }
 
     for (int i = 0; i < overlapCandidates.size(); ++i) {
+        miacode::task::CancellationScope::checkpoint();
         const StaticOverlapCandidate& candidate = overlapCandidates.at(i);
         for (int j = 0; j < overlapCandidates.size(); ++j) {
+            miacode::task::CancellationScope::checkpoint();
             if (i == j) {
                 continue;
             }
@@ -827,6 +850,7 @@ QVector<MuriStaticReference> buildStaticMuriReferences(
     }
 
     std::sort(records.begin(), records.end(), [](const MuriStaticReference& a, const MuriStaticReference& b) {
+        miacode::task::CancellationScope::checkpoint();
         if (!qFuzzyCompare(a.affected.second + 1.0, b.affected.second + 1.0)) {
             return a.affected.second < b.affected.second;
         }

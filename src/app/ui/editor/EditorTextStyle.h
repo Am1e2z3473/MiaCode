@@ -38,6 +38,9 @@ public:
     // returned to QML. This is safe outside contentsChange and avoids showing
     // the document's default line height for the first rendered frame.
     Q_INVOKABLE void applyImmediately();
+    // Discard text nodes whose offsets belong to the outgoing document.
+    // Call after replacement layout and viewport reconciliation.
+    Q_INVOKABLE void invalidateRendering();
 
 signals:
     void textDocumentChanged();

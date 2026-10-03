@@ -37,8 +37,6 @@ static_assert(
         "RuntimeContext::TimelineState must own " #member ", not borrow it")
 
 MIACODE_TIMELINE_STORAGE_MOVED(timelineQuickStateBridge_);
-MIACODE_TIMELINE_STORAGE_MOVED(timelineSlowRefreshPool_);
-MIACODE_TIMELINE_STORAGE_MOVED(timelineAnalysisPool_);
 MIACODE_TIMELINE_STORAGE_MOVED(timelineReady_);
 MIACODE_TIMELINE_STORAGE_MOVED(deferredTimelineBridgeFlushGeneration_);
 MIACODE_TIMELINE_STORAGE_MOVED(pendingQuickTimelineCursorSync_);
@@ -57,11 +55,7 @@ MIACODE_TIMELINE_STORAGE_MOVED(pendingTimelineSlowRefresh_);
 MIACODE_TIMELINE_STORAGE_MOVED(pendingTimelineAnalysisRefresh_);
 MIACODE_TIMELINE_STORAGE_MOVED(timelineRevision_);
 MIACODE_TIMELINE_STORAGE_MOVED(timelineSlowRequestedRevision_);
-MIACODE_TIMELINE_STORAGE_MOVED(timelineSlowRunningRevision_);
 MIACODE_TIMELINE_STORAGE_MOVED(timelineAnalysisRequestedRevision_);
-MIACODE_TIMELINE_STORAGE_MOVED(timelineAnalysisRunningRevision_);
-MIACODE_TIMELINE_STORAGE_MOVED(timelineSlowWorkerRunning_);
-MIACODE_TIMELINE_STORAGE_MOVED(timelineAnalysisWorkerRunning_);
 MIACODE_TIMELINE_STORAGE_MOVED(waveformRefreshGeneration_);
 MIACODE_TIMELINE_STORAGE_MOVED(timelineFrameRateMode_);
 MIACODE_TIMELINE_STORAGE_MOVED(timelineSyncEnabled_);

@@ -74,6 +74,7 @@ Bootstrap::Bootstrap(const QIcon& appIcon, QObject* parent)
 
 Bootstrap::~Bootstrap()
 {
+    if (applicationServices_) applicationServices_->analysis().shutdown();
     delete coverWindow_.data();
     releaseRootWindowResources();
     engine_.reset();
@@ -320,6 +321,7 @@ void Bootstrap::beginAcceptedRootWindowShutdown(const QString& source)
         return;
     }
     acceptedRootWindowShutdownStarted_ = true;
+    if (applicationServices_) applicationServices_->analysis().shutdown();
     appendUiRuntimeLog(QStringLiteral("shutdown_begin"), source);
 
     if (qApp != nullptr) {
