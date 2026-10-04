@@ -14,24 +14,15 @@ Item {
     property int difficultyId: 0
     property string tooltip
     property bool active: false
-    property bool panelTab: false
-    property bool compact: false
-    property int labelFontSize: compact ? Theme.compactFontSize
-                                       : panelTab ? Theme.uiFontSize : Theme.secondaryFontSize
     property bool closable: false
-    property int count: -1
-    property color countColor: Theme.colors.accent.badge
     property real preferredTabWidth: 160
     readonly property bool hovered: tabButton.hovered || closeButton.hovered
 
     signal clicked()
     signal closeRequested()
 
-    implicitHeight: compact ? Theme.compactControlHeight
-                            : panelTab ? Theme.controlMinHeight : Theme.workspaceHeaderHeight
-    implicitWidth: panelTab
-        ? contentRow.implicitWidth + contentRow.anchors.leftMargin + contentRow.anchors.rightMargin
-        : preferredTabWidth
+    implicitHeight: Theme.workspaceHeaderHeight
+    implicitWidth: preferredTabWidth
 
     AbstractButton {
         id: tabButton
@@ -58,10 +49,8 @@ Item {
                 id: contentRow
 
                 anchors.fill: parent
-                anchors.leftMargin: root.compact ? Theme.compactTabContentPadding
-                                                  : root.panelTab ? 12 : 10
-                anchors.rightMargin: root.compact ? Theme.compactTabContentPadding
-                                                   : root.panelTab ? 12 : 5
+                anchors.leftMargin: 10
+                anchors.rightMargin: 5
                 spacing: 6
 
                 DifficultySwatch {
@@ -75,8 +64,7 @@ Item {
                 ControlsImpl.IconImage {
                     Layout.preferredWidth: 15
                     Layout.preferredHeight: 15
-                    visible: !root.panelTab
-                             && root.difficultyId <= 0
+                    visible: root.difficultyId <= 0
                              && root.iconSource.toString().length > 0
                     source: root.active && root.filledIconSource.toString().length > 0
                         ? root.filledIconSource : root.iconSource
@@ -87,44 +75,24 @@ Item {
                 Text {
                     id: label
 
-                    Layout.fillWidth: !root.panelTab
+                    Layout.fillWidth: true
                     text: root.text
                     elide: Text.ElideRight
                     color: root.active ? Theme.colors.text.active : Theme.colors.text.secondary
                     font.family: Theme.uiFont
-                    font.pixelSize: root.labelFontSize
+                    font.pixelSize: Theme.secondaryFontSize
                     horizontalAlignment: Text.AlignLeft
                     verticalAlignment: Text.AlignVCenter
                 }
 
                 Text {
                     Layout.preferredWidth: implicitWidth
-                    visible: !root.panelTab && root.secondaryText.length > 0
+                    visible: root.secondaryText.length > 0
                     text: root.secondaryText
                     color: Theme.colors.text.secondary
                     font.family: Theme.uiFont
                     font.pixelSize: Theme.secondaryFontSize
                     verticalAlignment: Text.AlignVCenter
-                }
-
-                Rectangle {
-                    implicitWidth: Math.max(implicitHeight, countLabel.implicitWidth + 8)
-                    implicitHeight: 16
-                    radius: height / 2
-                    visible: root.count > 0
-                    color: root.countColor
-
-                    Text {
-                        id: countLabel
-
-                        anchors.fill: parent
-                        text: root.count
-                        color: Theme.colors.text.onAccent
-                        font.family: Theme.uiFont
-                        font.pixelSize: 10
-                        horizontalAlignment: Text.AlignHCenter
-                        verticalAlignment: Text.AlignVCenter
-                    }
                 }
 
                 AbstractButton {
@@ -162,8 +130,8 @@ Item {
         }
 
         background: HoverChrome {
-            cornerRadius: root.compact ? Theme.compactControlRadius : Theme.controlRadius
-            stateColors: root.panelTab ? Theme.colors.popupState : Theme.colors.state
+            cornerRadius: Theme.controlRadius
+            stateColors: Theme.colors.state
             contentHeight: label.implicitHeight
             selected: root.active
             hovered: tabButton.hovered && !closeButton.hovered

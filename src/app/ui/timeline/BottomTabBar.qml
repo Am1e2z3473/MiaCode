@@ -26,7 +26,40 @@ Item {
         return { errors: errors, warnings: warnings }
     }
 
-    component AnalysisTab: TimelineTab {
+    component BottomTab: AppTabButton {
+        id: tab
+
+        property int count: -1
+        property color countColor: Theme.colors.accent.badge
+
+        compact: true
+        Layout.alignment: Qt.AlignVCenter
+        accessory: count > 0 ? badge : null
+        Accessible.description: count > 0 ? String(count) : ""
+
+        Component {
+            id: badge
+            Rectangle {
+                implicitWidth: Math.max(implicitHeight, countLabel.implicitWidth + 8)
+                implicitHeight: 16
+                radius: height / 2
+                color: tab.countColor
+
+                Text {
+                    id: countLabel
+                    anchors.fill: parent
+                    text: tab.count
+                    color: Theme.colors.text.onAccent
+                    font.family: Theme.uiFont
+                    font.pixelSize: 10
+                    horizontalAlignment: Text.AlignHCenter
+                    verticalAlignment: Text.AlignVCenter
+                }
+            }
+        }
+    }
+
+    component AnalysisTab: BottomTab {
         required property var issueRows
         readonly property var issueCounts: root.countIssues(issueRows)
         count: issueCounts.errors > 0 ? issueCounts.errors : issueCounts.warnings
@@ -34,52 +67,40 @@ Item {
             ? Theme.colors.danger.primary : Theme.colors.accent.badge
     }
 
-    component TimelineTab: AppTab {
-        panelTab: true
-        compact: true
-        labelFontSize: Theme.compactFontSize
-    }
-
     RowLayout {
         id: tabLayout
         anchors.fill: parent
         anchors.leftMargin: Theme.panelPadding - Theme.chromeInsetX
         anchors.rightMargin: Theme.panelPadding
-        spacing: 0
-        z: 1
+        spacing: 4
 
-        TimelineTab {
-            Layout.alignment: Qt.AlignVCenter
+        BottomTab {
             visible: root.timelineSession.timelineTabVisible
             text: root.timelineSession.timelineTabLabel
-            active: root.timelineSession.currentTabId === "timeline"
+            checked: root.timelineSession.currentTabId === "timeline"
             onClicked: root.timelineSession.setCurrentTabId("timeline")
         }
         AnalysisTab {
-            Layout.alignment: Qt.AlignVCenter
             visible: root.timelineSession.validationTabVisible
             text: root.timelineSession.validationTabLabel
-            Layout.leftMargin: 4
             issueRows: root.analysisSession.validationRows
-            active: root.timelineSession.currentTabId === "validation"
+            checked: root.timelineSession.currentTabId === "validation"
             onClicked: root.timelineSession.setCurrentTabId("validation")
         }
         AnalysisTab {
-            Layout.alignment: Qt.AlignVCenter
             visible: root.timelineSession.muriTabVisible
             text: root.timelineSession.muriTabLabel
-            Layout.leftMargin: 4
             issueRows: root.analysisSession.muriRows
-            active: root.timelineSession.currentTabId === "muri"
+            checked: root.timelineSession.currentTabId === "muri"
             onClicked: root.timelineSession.setCurrentTabId("muri")
         }
 
         Item { Layout.fillWidth: true }
 
         AppCheckBox {
+            Layout.alignment: Qt.AlignVCenter
             compact: true
             font.pixelSize: Theme.compactFontSize
-            Layout.alignment: Qt.AlignVCenter
             visible: root.timelineSession.currentTabId === "timeline"
             text: root.timelineSession.followCodeLabel
             checked: root.timelineSession.stateBridge

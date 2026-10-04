@@ -32,20 +32,6 @@ Rectangle {
         return tabs
     }
 
-    // A settings tab the current export mode does not offer would leave the tab
-    // body blank, so the two ends are kept in step: entering batch opens the
-    // batch tab (its output folder and chart folders gate the run, and nothing
-    // else advertises that they are required), and leaving batch falls back to
-    // the output tab instead of stranding the page on a tab that just vanished.
-    function normalizeSettingsTab() {
-        if (!root.session)
-            return
-        if (root.session.activeTab === "batch")
-            root.session.settingsTab = "batch"
-        else if (root.session.settingsTab === "batch")
-            root.session.settingsTab = "output"
-    }
-
     function fontIndexForPath(options, path) {
         if (!options)
             return 0
@@ -72,7 +58,7 @@ Rectangle {
         PreviewAppearancePages {
             width: appearanceLoader.width
             previewSettings: root.previewSettings
-            pageIndex: root.session && root.session.settingsTab === "gameplay"
+            currentIndex: root.session && root.session.settingsTab === "gameplay"
                        ? 1
                        : root.session && root.session.settingsTab === "skin" ? 2 : 0
         }
@@ -96,23 +82,13 @@ Rectangle {
             Layout.topMargin: 6
             spacing: 2
 
-            Row {
+            AppTabBar {
                 Layout.fillWidth: true
                 Layout.leftMargin: root.tabInset
-                Layout.preferredHeight: Theme.controlMinHeight
-                spacing: 4
-                AppTab {
-                    panelTab: true
-                    text: qsTrId("sidebar.export")
-                    active: root.session && root.session.activeTab === "export"
-                    onClicked: if (root.session) root.session.activeTab = "export"
-                }
-                AppTab {
-                    panelTab: true
-                    text: qsTrId("action.batch_export")
-                    active: root.session && root.session.activeTab === "batch"
-                    onClicked: if (root.session) root.session.activeTab = "batch"
-                }
+                tabs: [{ id: "export", label: qsTrId("sidebar.export") },
+                       { id: "batch", label: qsTrId("action.batch_export") }]
+                selectedId: root.session ? root.session.activeTab : "export"
+                onTabSelected: function(tabId) { if (root.session) root.session.activeTab = tabId }
             }
 
             Text {
@@ -127,24 +103,17 @@ Rectangle {
                 wrapMode: Text.WordWrap
             }
 
-            Row {
+            AppTabBar {
                 Layout.fillWidth: true
                 Layout.leftMargin: root.tabInset
-                Layout.preferredHeight: Theme.controlMinHeight
-                visible: root.session && !(root.session && root.session.unavailableReason)
-                spacing: 4
-                Repeater {
-                    model: root.settingsTabs
-                    delegate: AppTab {
-                        required property var modelData
-                        objectName: "exportSettingsTab_" + modelData.id
-                        panelTab: true
-                        text: modelData.label
-                        active: root.session && root.session.settingsTab === modelData.id
-                        onClicked: if (root.session) root.session.settingsTab = modelData.id
-                    }
-                }
+                visible: root.session && !root.session.unavailableReason
+                tabs: root.settingsTabs
+                selectedId: root.session ? root.session.settingsTab : "output"
+                buttonObjectNamePrefix: "exportSettingsTab_"
+                onTabSelected: function(tabId) { if (root.session) root.session.settingsTab = tabId }
             }
+
+            ButtonGroup { id: difficultyGroup }
 
             Flow {
                 id: difficultyRow
@@ -154,12 +123,12 @@ Rectangle {
                 spacing: 4
                 Repeater {
                     model: root.session ? root.session.difficulties : []
-                    delegate: AppTab {
+                    delegate: AppChoiceButton {
                         required property var modelData
-                        panelTab: true
+                        ButtonGroup.group: difficultyGroup
                         text: modelData.name
                         difficultyId: modelData.id
-                        active: root.session && root.session.selectedDifficultyId === modelData.id
+                        checked: root.session && root.session.selectedDifficultyId === modelData.id
                         onClicked: if (root.session) root.session.selectDifficulty(modelData.id)
                     }
                 }
@@ -191,17 +160,19 @@ Rectangle {
                         ? ScrollBar.AlwaysOn : ScrollBar.AsNeeded
                 }
 
-                ColumnLayout {
+                AppTabPages {
                     id: settingsBody
                     x: root.formInset
                     width: settingsFlickable.width - 2 * root.formInset
-                    spacing: Theme.panelPadding
+                    currentIndex: root.session && root.session.settingsTab === "batch" ? 0
+                                  : root.session && root.session.settingsTab === "output" ? 1
+                                  : root.session && root.session.settingsTab === "intro" ? 3 : 2
 
                     // Batch (only reachable while batch export is the active mode)
                     ColumnLayout {
                         objectName: "exportBatchSettingsPage"
-                        visible: root.session && root.session.activeTab === "batch"
-                                 && root.session.settingsTab === "batch"
+                        Layout.fillHeight: false
+                        Layout.alignment: Qt.AlignTop
                         spacing: 10
                         Layout.fillWidth: true
 
@@ -362,7 +333,8 @@ Rectangle {
 
                     // Output (single-export range lives on this tab)
                     ColumnLayout {
-                        visible: root.session && root.session.settingsTab === "output"
+                        Layout.fillHeight: false
+                        Layout.alignment: Qt.AlignTop
                         spacing: Theme.panelPadding
                         Layout.fillWidth: true
 
@@ -622,17 +594,16 @@ Rectangle {
                     Loader {
                         id: appearanceLoader
                         Layout.fillWidth: true
-                        active: root.session
-                                && (root.session.settingsTab === "video"
-                                    || root.session.settingsTab === "gameplay"
-                                    || root.session.settingsTab === "skin")
-                        visible: active
+                        Layout.fillHeight: false
+                        Layout.alignment: Qt.AlignTop
+                        active: !!root.session && StackLayout.isCurrentItem
                         sourceComponent: appearanceForm
                     }
 
                     // Intro
                     ColumnLayout {
-                        visible: root.session && root.session.settingsTab === "intro"
+                        Layout.fillHeight: false
+                        Layout.alignment: Qt.AlignTop
                         spacing: 10
                         Layout.fillWidth: true
 
@@ -877,14 +848,8 @@ Rectangle {
         }
     }
 
-    Component.onCompleted: root.normalizeSettingsTab()
-
     Connections {
         target: root.session
-
-        function onActiveTabChanged() {
-            root.normalizeSettingsTab()
-        }
 
         function onRangeChanged() {
             if (!exportRangeStartField.activeFocus)

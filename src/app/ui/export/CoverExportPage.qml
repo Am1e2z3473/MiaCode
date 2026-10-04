@@ -25,8 +25,6 @@ Rectangle {
     readonly property var session: root.coverSession
     signal closeRequested()
 
-    // 右栏分组。选中任意图层后都回到图层检查器，保证当前选择的属性可见。
-    property string inspectorTab: "canvas"
     property real canvasZoom: 1.0
 
     function setCanvasZoom(value) {
@@ -113,7 +111,7 @@ Rectangle {
 
     function showLayerInspector(key) {
         if (key)
-            root.inspectorTab = "layer"
+            inspectorTabs.setCurrentIndex(1)
     }
 
     function selectLayerFromUi(key) {
@@ -252,17 +250,19 @@ Rectangle {
             }
         }
 
+        ButtonGroup { id: difficultyGroup }
+
         Flow {
             Layout.fillWidth: true
             spacing: 4
             Repeater {
                 model: root.session ? root.session.difficulties : []
-                delegate: AppTab {
+                delegate: AppChoiceButton {
                     required property var modelData
-                    panelTab: true
+                    ButtonGroup.group: difficultyGroup
                     text: modelData.name
                     difficultyId: modelData.id
-                    active: root.session && root.session.selectedDifficultyId === modelData.id
+                    checked: root.session && root.session.selectedDifficultyId === modelData.id
                     onClicked: if (root.session) root.session.selectDifficulty(modelData.id)
                 }
             }
@@ -517,22 +517,11 @@ Rectangle {
                     anchors.margins: 10
                     spacing: 8
 
-                    Row {
+                    AppTabBar {
+                        id: inspectorTabs
                         Layout.fillWidth: true
-                        spacing: 4
-                        AppTab {
-                            panelTab: true
-                            text: qsTrId("cover.canvas")
-                            active: root.inspectorTab === "canvas"
-                            onClicked: root.inspectorTab = "canvas"
-                        }
-                        AppTab {
-                            objectName: "coverLayerTab"
-                            panelTab: true
-                            text: qsTrId("cover.layer")
-                            active: root.inspectorTab === "layer"
-                            onClicked: root.inspectorTab = "layer"
-                        }
+                        tabs: [{ id: "canvas", label: qsTrId("cover.canvas") },
+                               { id: "layer", label: qsTrId("cover.layer"), objectName: "coverLayerTab" }]
                     }
 
                     Rectangle {
@@ -550,15 +539,16 @@ Rectangle {
                         boundsBehavior: Flickable.StopAtBounds
                         ScrollBar.vertical: AppScrollBar {}
 
-                        ColumnLayout {
+                        AppTabPages {
                             id: inspector
                             width: parent.width
-                            spacing: 10
+                            currentIndex: inspectorTabs.currentIndex
 
                             // ---- 画板 ----
                             ColumnLayout {
                                 Layout.fillWidth: true
-                                visible: root.inspectorTab === "canvas"
+                                Layout.fillHeight: false
+                                Layout.alignment: Qt.AlignTop
                                 spacing: 10
 
                                 LabeledCombo {
@@ -657,7 +647,8 @@ Rectangle {
                             // ---- 图层 ----
                             ColumnLayout {
                                 Layout.fillWidth: true
-                                visible: root.inspectorTab === "layer"
+                                Layout.fillHeight: false
+                                Layout.alignment: Qt.AlignTop
                                 spacing: 10
 
                                 Text {

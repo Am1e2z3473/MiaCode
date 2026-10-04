@@ -146,6 +146,8 @@ Rectangle {
                     onClicked: root.latency.toggleAudition()
                 }
 
+                ButtonGroup { id: subdivisionGroup }
+
                 RowLayout {
                     Layout.fillWidth: true
                     spacing: 4
@@ -154,16 +156,16 @@ Rectangle {
                         text: qsTrId("qml.subdivision")
                         Layout.rightMargin: 4
                     }
-                    AppTab {
-                        panelTab: true
+                    AppChoiceButton {
+                        ButtonGroup.group: subdivisionGroup
                         text: "1/4"
-                        active: root.latency.subdivision === 4
+                        checked: root.latency.subdivision === 4
                         onClicked: root.latency.subdivision = 4
                     }
-                    AppTab {
-                        panelTab: true
+                    AppChoiceButton {
+                        ButtonGroup.group: subdivisionGroup
                         text: "1/8"
-                        active: root.latency.subdivision === 8
+                        checked: root.latency.subdivision === 8
                         onClicked: root.latency.subdivision = 8
                     }
                     Item { Layout.fillWidth: true }
