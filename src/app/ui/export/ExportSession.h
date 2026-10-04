@@ -84,6 +84,8 @@ class ExportSession final : public QObject
     Q_PROPERTY(double contentDurationSeconds READ contentDurationSeconds NOTIFY rangeChanged)
     Q_PROPERTY(double minimumExportRangeSeconds READ minimumExportRangeSeconds NOTIFY rangeChanged)
     Q_PROPERTY(bool fullRangeExport READ fullRangeExport NOTIFY rangeChanged)
+    Q_PROPERTY(bool rangePreviewAvailable READ rangePreviewAvailable NOTIFY rangePlaybackStateChanged)
+    Q_PROPERTY(bool rangePlaybackEnabled READ rangePlaybackEnabled WRITE setRangePlaybackEnabled NOTIFY rangePlaybackStateChanged)
 
     // Batch
     Q_PROPERTY(QStringList chartDirectories READ chartDirectories NOTIFY batchChanged)
@@ -101,6 +103,9 @@ public:
 
     QObject* uiRequests() { return uiRequests_; }
     bool pageSessionActive() const { return pageSessionActive_; }
+    bool rangePreviewAvailable() const { return pageSessionActive_ && activeTab_ == QLatin1String("export"); }
+    bool rangePlaybackEnabled() const { return rangePlaybackEnabled_; }
+    void setRangePlaybackEnabled(bool enabled);
     int selectedDifficultyId() const { return selectedDifficultyId_; }
     QString activeTab() const;
     QString settingsTab() const { return settingsTab_; }
@@ -236,12 +241,12 @@ signals:
     void introChanged();
     void introSoundOptionsChanged();
     void rangeChanged();
-    void selectionRangeApplied();
+    void rangePlaybackStateChanged();
+    void playbackRangeRequested(bool enabled, double startSecond, double endSecond);
     void batchChanged();
 
 private:
     void seedFromDifficulty(int difficultyId);
-    void applyPendingSelectionRangeExport();
     void rebuildDifficultyList();
     void syncAudition();
     void applyLivePreviewSettings();
@@ -281,6 +286,7 @@ private:
     }
     miacode::ShellNotifications* notifications_ = nullptr;
     bool pageSessionActive_ = false;
+    bool rangePlaybackEnabled_ = false;
     // Set while this session pushes its own task into the shared preview state, so the
     // echoed previewRenderSettingsChanged is not read back as someone else's write.
     bool pushingSharedSettings_ = false;

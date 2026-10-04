@@ -8,7 +8,7 @@ Item {
 
     required property var previewSession
     required property var preferences
-    required property var rangePreviewState
+    required property var exportSession
     property bool dataAvailable: true
     // True while the export page is up. The canvas menu hides there:
     // entering preview fullscreen on that page crashes the Intel iGPU D3D11
@@ -49,17 +49,17 @@ Item {
                       : 0
         return Math.min(0, bound)
     }
-    readonly property real selectedRangeStartSeconds: root.rangePreviewState.available
-        ? root.rangePreviewState.session.exportStartSeconds : 0
-    readonly property real selectedRangeEndSeconds: root.rangePreviewState.available
-        ? root.rangePreviewState.session.exportEndSeconds : 0
+    readonly property real selectedRangeStartSeconds: root.exportSession.rangePreviewAvailable
+        ? root.exportSession.exportStartSeconds : 0
+    readonly property real selectedRangeEndSeconds: root.exportSession.rangePreviewAvailable
+        ? root.exportSession.exportEndSeconds : 0
     readonly property real progressEndSeconds: root.dataAvailable
-        ? (root.rangePreviewState.available
-           ? root.rangePreviewState.session.contentDurationSeconds
+        ? (root.exportSession.rangePreviewAvailable
+           ? root.exportSession.contentDurationSeconds
            : root.previewSession.durationSeconds)
         : 0
     function boundedScrubSecond(second) {
-        if (!root.rangePreviewState.active || !root.rangePreviewState.available)
+        if (!root.exportSession.rangePlaybackEnabled || !root.exportSession.rangePreviewAvailable)
             return second
         const start = root.selectedRangeStartSeconds <= 0.000001
             ? root.lowerBoundSeconds : root.selectedRangeStartSeconds
@@ -119,11 +119,11 @@ Item {
         height: 24
         from: root.lowerBoundSeconds
         to: root.progressEndSeconds
-        rangeMarkersVisible: root.dataAvailable && root.rangePreviewState.available
+        rangeMarkersVisible: root.dataAvailable && root.exportSession.rangePreviewAvailable
         rangeStartValue: root.selectedRangeStartSeconds <= 0.000001
             ? progress.from : root.selectedRangeStartSeconds
         rangeEndValue: root.selectedRangeEndSeconds
-        rangeHighlightVisible: rangeMarkersVisible && root.rangePreviewState.active
+        rangeHighlightVisible: rangeMarkersVisible && root.exportSession.rangePlaybackEnabled
         live: true
         onPressedChanged: {
             if (pressed) {
@@ -190,45 +190,16 @@ Item {
             Layout.preferredWidth: implicitWidth
             Layout.preferredHeight: implicitHeight
             iconSource: Qt.resolvedUrl("icons/stop.svg")
-            filledIconSource: Qt.resolvedUrl("icons/stop-fill.svg")
-            active: root.rangePreviewState.armed
-            stateColors: root.rangePreviewState.armed
-                ? Theme.colors.dangerState : Theme.colors.buttonState
-            tooltip: root.rangePreviewState.armed
-                ? qsTrId("preview.range_exit")
-                : qsTrId("dialog.video_export.preview.stop")
-            onClicked: {
-                root.rangePreviewState.armed = false
-                root.previewSession.stop()
-            }
+            tooltip: qsTrId("preview.stop")
+            onClicked: root.previewSession.stop()
         }
         IconButton {
             id: playButton
             Layout.preferredWidth: implicitWidth
             Layout.preferredHeight: implicitHeight
             iconSource: Qt.resolvedUrl(root.previewSession.playing ? "icons/pause.svg" : "icons/play.svg")
-            filledIconSource: Qt.resolvedUrl(root.previewSession.playing
-                ? "icons/pause-fill.svg" : "icons/play-fill.svg")
-            active: root.rangePreviewState.armed
-            stateColors: root.rangePreviewState.armed
-                ? Theme.colors.accentState : Theme.colors.buttonState
-            tooltip: root.rangePreviewState.armed
-                ? (root.previewSession.playing
-                   ? qsTrId("preview.range_pause") : qsTrId("preview.range_play"))
-                : (root.previewSession.playing ? qsTrId("preview.pause") : qsTrId("preview.play"))
-            onClicked: {
-                if (root.previewSession.playing) {
-                    root.previewSession.playing = false
-                    return
-                }
-                if (root.rangePreviewState.armed) {
-                    root.previewSession.playing = false
-                    root.previewSession.positionSeconds = root.rangePreviewState.startSeconds
-                    root.previewSession.playing = true
-                    return
-                }
-                root.previewSession.playing = true
-            }
+            tooltip: root.previewSession.playing ? qsTrId("preview.pause") : qsTrId("preview.play")
+            onClicked: root.previewSession.playing = !root.previewSession.playing
         }
         Text {
             Layout.fillWidth: true
@@ -249,17 +220,17 @@ Item {
         IconButton {
             id: rangeModeButton
             objectName: "exportRangeModeButton"
-            visible: root.rangePreviewState.available
-            enabled: root.dataAvailable && root.rangePreviewState.available
-                     && root.rangePreviewState.session.exportEndSeconds
-                        > root.rangePreviewState.session.exportStartSeconds
+            visible: root.exportSession.rangePreviewAvailable
+            enabled: root.dataAvailable && root.exportSession.rangePreviewAvailable
+                     && root.exportSession.exportEndSeconds
+                        > root.exportSession.exportStartSeconds
             Layout.preferredWidth: implicitWidth
             Layout.preferredHeight: implicitHeight
             iconSource: Qt.resolvedUrl("icons/range-play.svg")
             filledIconSource: Qt.resolvedUrl("icons/range-play-active.svg")
-            active: root.rangePreviewState.active
+            active: root.exportSession.rangePlaybackEnabled
             tooltip: qsTrId("preview.range_mode")
-            onClicked: root.rangePreviewState.active = !root.rangePreviewState.active
+            onClicked: root.exportSession.rangePlaybackEnabled = !root.exportSession.rangePlaybackEnabled
         }
 
         AppDropDownButton {

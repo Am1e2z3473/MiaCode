@@ -1723,7 +1723,7 @@ Restore the backup from %1?</translation>
         <source>High Quality</source>
         <translation>High Quality</translation>
     </message>
-    <message id="dialog.video_export.preview.stop">
+    <message id="preview.stop">
         <source>Stop</source>
         <translation>Stop</translation>
     </message>
@@ -2941,21 +2941,9 @@ The file may be open in preview, a media player, File Explorer preview pane, or 
         <source>Play</source>
         <translation>Play</translation>
     </message>
-    <message id="preview.range_exit">
-        <source>Exit range preview</source>
-        <translation>Exit range preview</translation>
-    </message>
     <message id="preview.range_mode">
         <source>Range playback mode</source>
         <translation>Range playback mode</translation>
-    </message>
-    <message id="preview.range_pause">
-        <source>Pause range preview</source>
-        <translation>Pause range preview</translation>
-    </message>
-    <message id="preview.range_play">
-        <source>Play range preview</source>
-        <translation>Play range preview</translation>
     </message>
     <message id="qml.1">
         <source>%1%</source>
