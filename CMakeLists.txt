@@ -658,6 +658,7 @@ set(MIACODE_UI_QML_FILES
     src/app/ui/components/NavRow.qml
     src/app/ui/components/AppTextField.qml
     src/app/ui/components/AppTextArea.qml
+    src/app/ui/components/AppTextContextMenu.qml
     src/app/ui/components/AppButton.qml
     src/app/ui/components/AppSwitch.qml
     src/app/ui/components/AppComboBox.qml

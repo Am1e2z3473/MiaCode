@@ -9,6 +9,10 @@ TextField {
 
     property bool reservesPlainSpace: true
 
+    ContextMenu.menu: AppTextContextMenu {
+        editor: root
+    }
+
     font.family: Theme.uiFont
     font.pixelSize: Theme.uiFontSize
     color: Theme.colors.text.primary

@@ -8,6 +8,10 @@ TextArea {
 
     property bool reservesPlainSpace: true
 
+    ContextMenu.menu: AppTextContextMenu {
+        editor: root
+    }
+
     font: Theme.codeFont
     color: Theme.colors.text.editor
     placeholderTextColor: Theme.colors.text.secondary
