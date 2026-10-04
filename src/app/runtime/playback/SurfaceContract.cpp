@@ -87,12 +87,15 @@ void miacode::runtime::PlaybackCoordinator::setPlaybackRangeEnabled(
     }
     if (state_.playing_) {
         state_.qtPreviewPlaybackEndSecond_ = enabled ? endSecond : previewContentDurationSeconds();
-        if (enabled) {
-            const double currentSecond = authoritativeAudioClockSecond();
-            if (currentSecond + 1e-6 < rangePlaybackStartSeconds_
-                || currentSecond + 1e-6 >= rangePlaybackEndSeconds_) {
-                seekPreviewToSecond(rangePlaybackStartSeconds_, true);
-            }
+    }
+    if (enabled) {
+        const double currentSecond = state_.playing_
+            ? authoritativeAudioClockSecond() : state_.pauseSecond_;
+        const bool introInRange = rangePlaybackStartSeconds_ <= 1e-6
+            && state_.exportIntroRegionActive_;
+        if (!introInRange && (currentSecond + 1e-6 < rangePlaybackStartSeconds_
+                             || currentSecond + 1e-6 >= rangePlaybackEndSeconds_)) {
+            seekPreviewToSecond(rangePlaybackStartSeconds_, true);
         }
     }
 }

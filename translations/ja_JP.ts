@@ -1723,7 +1723,7 @@ Restore the backup from %1?</source>
         <source>High Quality</source>
         <translation>高品質</translation>
     </message>
-    <message id="dialog.video_export.preview.stop">
+    <message id="preview.stop">
         <source>Stop</source>
         <translation>停止</translation>
     </message>
@@ -2941,21 +2941,9 @@ The file may be open in preview, a media player, File Explorer preview pane, or 
         <source>Play</source>
         <translation>再生</translation>
     </message>
-    <message id="preview.range_exit">
-        <source>Exit range preview</source>
-        <translation>範囲プレビューを終了</translation>
-    </message>
     <message id="preview.range_mode">
         <source>Range playback mode</source>
         <translation>区間再生モード</translation>
-    </message>
-    <message id="preview.range_pause">
-        <source>Pause range preview</source>
-        <translation>範囲プレビューを一時停止</translation>
-    </message>
-    <message id="preview.range_play">
-        <source>Play range preview</source>
-        <translation>範囲プレビューを再生</translation>
     </message>
     <message id="qml.1">
         <source>%1%</source>

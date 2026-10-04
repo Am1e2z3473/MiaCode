@@ -24,7 +24,6 @@ Item {
     required property var editorController
     required property var editorSync
     required property var latency
-    property var rangePreviewState: rangePreviewStateObject
     property bool compact: false
     property real sidebarDragWidth: 0
     property bool sidebarResizing: false
@@ -57,42 +56,6 @@ Item {
         Math.max(1, workspaceSplit.width - (preview.visible ? Theme.splitDividerThickness : 0))
     signal openRequested()
     signal settingsRequested()
-
-    QtObject {
-        id: rangePreviewStateObject
-        readonly property var session: root.pages.exportSession
-        readonly property bool available: root.pages.activePageId === "export"
-            && !!session
-            && session.activeTab === "export"
-            && session.settingsTab === "output"
-        property bool active: false
-        onAvailableChanged: {
-            if (!available)
-                active = false
-        }
-        onActiveChanged: {
-            const enabled = active && available
-            root.previewSession.setPlaybackRangeEnabled(
-                enabled,
-                enabled ? session.exportStartSeconds : 0,
-                enabled ? session.exportEndSeconds : 0)
-        }
-    }
-
-    Connections {
-        target: root.pages.exportSession
-        function onSelectionRangeApplied() {
-            root.rangePreviewState.session.settingsTab = "output"
-            root.rangePreviewState.active = true
-        }
-        function onRangeChanged() {
-            if (root.rangePreviewState.active) {
-                const session = root.rangePreviewState.session
-                root.previewSession.setPlaybackRangeEnabled(true, session.exportStartSeconds,
-                                                            session.exportEndSeconds)
-            }
-        }
-    }
 
     function persistBottomPanelHeightRatio() {
         if (!root.bottomPanelEffectivelyVisible || centerSplit.height <= 0
@@ -352,7 +315,7 @@ Item {
                 surfaceActive: !fullscreenPreview.visible
                 previewSession: root.previewSession
                 preferences: root.preferences
-                rangePreviewState: root.rangePreviewState
+                exportSession: root.pages.exportSession
                 exportPageActive: root.exportVideoActive
                 latencyActive: root.viewState.latencyEditorActive
                                && root.pages.activePageId === "latency"
@@ -489,7 +452,7 @@ Item {
             anchors.bottom: parent.bottom
             previewSession: root.previewSession
             preferences: root.preferences
-            rangePreviewState: root.rangePreviewState
+            exportSession: root.pages.exportSession
             showCanvasMenuButton: false
         }
     }

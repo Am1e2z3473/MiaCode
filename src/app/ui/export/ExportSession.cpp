@@ -78,6 +78,23 @@ ExportSession::ExportSession(miacode::ShellNotifications& notifications,
             adoptPreviewRenderSettings();
         }
     });
+    connect(this, &ExportSession::rangeChanged, this, [this]() {
+        if (rangePlaybackEnabled_ && !hasPendingSelectionRangeExport_) {
+            emit playbackRangeRequested(true, exportStartSeconds(), exportEndSeconds());
+        }
+    });
+}
+
+void ExportSession::setRangePlaybackEnabled(bool enabled)
+{
+    enabled = enabled && rangePreviewAvailable();
+    if (rangePlaybackEnabled_ == enabled) {
+        return;
+    }
+    rangePlaybackEnabled_ = enabled;
+    emit playbackRangeRequested(enabled, enabled ? exportStartSeconds() : 0.0,
+                                enabled ? exportEndSeconds() : 0.0);
+    emit rangePlaybackStateChanged();
 }
 
 QString ExportSession::activeTab() const
@@ -332,6 +349,7 @@ void ExportSession::enter(int previousActiveDifficultyId)
     if (!pageSessionActive_) {
         pageSessionActive_ = true;
         emit pageSessionActiveChanged();
+        emit rangePlaybackStateChanged();
     }
     const int nextDifficultyId = resolveDefaultDifficultyId(previousActiveDifficultyId);
     if (selectedDifficultyId_ != nextDifficultyId) {
@@ -345,12 +363,8 @@ void ExportSession::enter(int previousActiveDifficultyId)
         if (!pageSessionActive_ || generation != pagePrepareGeneration_) {
             return;
         }
-        const bool selectionRangePending = hasPendingSelectionRangeExport_;
         seedFromDifficulty(selectedDifficultyId_);
         syncAudition();
-        if (selectionRangePending) {
-            emit selectionRangeApplied();
-        }
     });
     // Re-scan once per real page entry so imports made by another QML surface
     // are visible, while repeated property reads during this entry share the
@@ -365,12 +379,14 @@ void ExportSession::leave()
     if (!pageSessionActive_) {
         return;
     }
+    setRangePlaybackEnabled(false);
     ++pagePrepareGeneration_;
     if (!hasSeededTask_) {
         clearPendingSelectionRangeExport();
     }
     pageSessionActive_ = false;
     emit pageSessionActiveChanged();
+    emit rangePlaybackStateChanged();
     savePreferences();
     hasSeededTask_ = false;
     stopAudition();
@@ -379,6 +395,7 @@ void ExportSession::leave()
 
 void ExportSession::replaceDocument(int preferredDifficultyId)
 {
+    setRangePlaybackEnabled(false);
     ++pagePrepareGeneration_;
     stopAudition();
     clearPendingSelectionRangeExport();
@@ -447,12 +464,16 @@ void ExportSession::setActiveTab(const QString& tabId)
         return;
     }
     activeTab_ = next;
+    if (!rangePreviewAvailable()) {
+        setRangePlaybackEnabled(false);
+    }
     if (activeTab_ == QLatin1String("batch")) {
         setSettingsTab(QStringLiteral("batch"));
     } else if (settingsTab_ == QLatin1String("batch")) {
         setSettingsTab(QStringLiteral("output"));
     }
     emit activeTabChanged();
+    emit rangePlaybackStateChanged();
     if (pageSessionActive_) {
         syncAudition();
     }
@@ -572,9 +593,6 @@ void ExportSession::seedFromDifficulty(int difficultyId)
     emit introChanged();
     emit rangeChanged();
     emit batchChanged();
-    // Applied last: this may re-emit rangeChanged()/introChanged() with the
-    // requested range, overriding the full-range default just seeded above.
-    applyPendingSelectionRangeExport();
 }
 
 void ExportSession::syncAudition()
@@ -586,7 +604,21 @@ void ExportSession::syncAudition()
         stopAudition();
         return;
     }
+    const bool applySelectionRange = hasPendingSelectionRangeExport_;
+    if (applySelectionRange) {
+        setExportRangeSeconds(pendingRangeStartSeconds_, pendingRangeEndSeconds_);
+    }
     engine()->startAudition(selectedDifficultyId_, task_);
+    if (applySelectionRange) {
+        hasPendingSelectionRangeExport_ = false;
+        setSettingsTab(QStringLiteral("output"));
+    }
+    if (applySelectionRange && !rangePlaybackEnabled_) {
+        setRangePlaybackEnabled(true);
+    } else if (rangePlaybackEnabled_) {
+        // 安装试听场景会重设播放头边界；目标场景就绪后同步区间。
+        emit playbackRangeRequested(true, exportStartSeconds(), exportEndSeconds());
+    }
 }
 
 void ExportSession::applyLivePreviewSettings()
@@ -1006,11 +1038,11 @@ void ExportSession::setExportRangeSeconds(double start, double end)
     task_.exportStartSeconds = boundedStart;
     task_.contentDurationSeconds = qMax(0.0, boundedEnd - boundedStart);
     task_.fullRangeExport = miacode::video_export::isFullRangeVideoExport(task_.exportStartSeconds);
-    emit rangeChanged();
-    emit introChanged();
     if (task_.intro.enabled && previousFullRangeExport != task_.fullRangeExport && engine() != nullptr) {
         engine()->refreshIntroState();
     }
+    emit rangeChanged();
+    emit introChanged();
 }
 
 void ExportSession::requestSelectionRangeExport(double startSecond, double endSecond)
@@ -1021,16 +1053,6 @@ void ExportSession::requestSelectionRangeExport(double startSecond, double endSe
     hasPendingSelectionRangeExport_ = true;
     pendingRangeStartSeconds_ = startSecond;
     pendingRangeEndSeconds_ = endSecond;
-}
-
-void ExportSession::applyPendingSelectionRangeExport()
-{
-    if (!hasPendingSelectionRangeExport_) {
-        return;
-    }
-    hasPendingSelectionRangeExport_ = false;
-    setExportRangeSeconds(pendingRangeStartSeconds_, pendingRangeEndSeconds_);
-    emit selectionRangeApplied();
 }
 
 void ExportSession::clearPendingSelectionRangeExport()

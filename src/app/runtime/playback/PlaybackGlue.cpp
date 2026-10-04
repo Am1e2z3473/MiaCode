@@ -102,7 +102,12 @@ void miacode::runtime::PlaybackCoordinator::onStopPreview()
     // The latency page now reuses this exact transport (its synthesized test
     // chart is the preview source), so no special-casing is needed here.
     const quint64 opId = ++state_.previewInteractionSequence_;
-    const double returnSecond = qBound(0.0, state_.qtPreviewPlaybackReturnSecond_, previewDurationSeconds());
+    double returnSecond = qBound(0.0, state_.qtPreviewPlaybackReturnSecond_, previewDurationSeconds());
+    if (rangePlaybackEndSeconds_ > 0.0
+        && (returnSecond + 1e-6 < rangePlaybackStartSeconds_
+            || returnSecond + 1e-6 >= rangePlaybackEndSeconds_)) {
+        returnSecond = rangePlaybackStartSeconds_;
+    }
     const bool wasActive = state_.playing_ || state_.previewStartupSyncPending_ || state_.previewLateVideoStartPending_;
     appendPreviewInteractionLog(
         QStringLiteral("stop_request"),

@@ -219,6 +219,12 @@ Session::Session(miacode::ApplicationServices& services, QObject* parent)
         applicationServices_.exportEngineSlot(), applicationServices_.previewSurfaceSlot(),
         this);
     applicationServices_.setExportPageSession(ui_.qmlExportSession_);
+    connect(ui_.qmlExportSession_, &miacode::ui::ExportSession::playbackRangeRequested,
+            this, [this](bool enabled, double startSecond, double endSecond) {
+                if (auto* control = applicationServices_.playbackControl(); control != nullptr) {
+                    control->setPlaybackRangeEnabled(enabled, startSecond, endSecond);
+                }
+            });
     logStartupStage("runtime_pages_ready");
 
     scene_ = new PreviewRuntime(this);
