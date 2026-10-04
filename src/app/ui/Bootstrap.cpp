@@ -259,15 +259,12 @@ bool Bootstrap::start(const QString& startupOpenTarget)
         window->setVisible(false);
         windowChrome_->attach(window);
         appendUiRuntimeLog(QStringLiteral("window_chrome_attached"));
-        NativeWindowTheme::applyToWindow(window, windowChrome_->blurMaterialsEnabled());
-        // The native frame is applied, not bound: without re-applying it the
-        // titlebar keeps the palette it was born with while every QML surface
-        // and the QSG timeline follow the new theme. Same call, repeated.
+        // Appearance follows the palette; backdrop lifetime belongs to chrome.
         if (auto* settings = qobject_cast<WorkbenchSettings*>(applicationContext_->preferences());
             settings != nullptr) {
             QObject::connect(settings, &WorkbenchSettings::themeChanged, this, [this]() {
                 if (rootWindow_ != nullptr) {
-                    NativeWindowTheme::applyToWindow(rootWindow_, windowChrome_->blurMaterialsEnabled());
+                    windowChrome_->refreshNativeTheme();
                 }
             });
         }

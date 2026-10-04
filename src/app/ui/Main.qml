@@ -10,6 +10,7 @@ ApplicationWindow {
     property bool sourceEditorOverlayHeld: false
     readonly property bool playbackCommandsEnabled: mainView.chartEditorActive
     readonly property Item backdropSource: sceneContent
+    readonly property bool nativeMaterialActive: Theme.nativeMaterialActive
     readonly property real tooltipTopMargin: 6 + (
         Qt.platform.os === "osx" && window.visibility !== Window.FullScreen
         ? window.applicationContext.windowChrome.titleBarHeight : 0)

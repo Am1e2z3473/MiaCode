@@ -27,12 +27,7 @@ Row {
         // the shared source-to-key table.
         accessibleName: root.hostWindow.visibility === Window.Maximized
                         ? qsTrId("window.restore") : qsTrId("qml.maximize")
-        onClicked: {
-            if (root.hostWindow.visibility === Window.Maximized)
-                root.hostWindow.showNormal()
-            else
-                root.hostWindow.showMaximized()
-        }
+        onClicked: root.windowChrome.toggleMaximized()
     }
 
     CaptionButton {
@@ -51,6 +46,7 @@ Row {
 
         width: 46
         height: root.height
+        padding: 0
         hoverEnabled: true
         Accessible.name: accessibleName
 

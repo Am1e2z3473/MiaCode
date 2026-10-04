@@ -226,14 +226,20 @@ Item {
         anchors.fill: parent
         spacing: 0
 
-        Item {
+        Rectangle {
             id: chromeHost
+            readonly property bool sharedNativeMaterial: Qt.platform.os === "windows"
+                && Theme.nativeMaterialActive
+            color: sharedNativeMaterial
+                ? Theme.chromeSurfaceColor(Theme.colors.background.activityBar) : "transparent"
             width: parent.width
             height: titleBar.height
                     + (root.platform.nativeMenuBar ? 0 : mainToolBar.height)
 
             WindowTitleBar {
                 id: titleBar
+                color: chromeHost.sharedNativeMaterial ? "transparent"
+                    : Theme.chromeSurfaceColor(Theme.colors.background.titleBar)
                 width: parent.width
                 height: visible ? implicitHeight : 0
                 hostWindow: root.hostWindow
@@ -266,6 +272,8 @@ Item {
 
             MainToolBar {
                 id: mainToolBar
+                color: chromeHost.sharedNativeMaterial || integratedInTitleBar ? "transparent"
+                    : Theme.chromeSurfaceColor(Theme.colors.background.activityBar)
                 y: root.platform.nativeMenuBar
                    ? 0
                    : titleBar.height
@@ -273,6 +281,7 @@ Item {
                 width: parent.width
                 height: root.platform.nativeMenuBar ? titleBar.height : implicitHeight
                 hostWindow: root.hostWindow
+                windowChrome: root.applicationContext.windowChrome
                 integratedInTitleBar: root.platform.nativeMenuBar
                 titleBarLeadingInset: titleBar.leadingInset
                 sidebarActive: root.compact

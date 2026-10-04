@@ -30,11 +30,13 @@ Rectangle {
     readonly property bool useCaptionButtons: root.platform.captionButtons
     readonly property real brandContentPadding: Theme.chromePadding
     readonly property real brandLeadingMargin:
-        (root.leadingInset > 0 ? root.leadingInset : 10) - brandContentPadding
+        root.useEmbeddedMenu
+            ? (Theme.activityButtonSize - Theme.titleBarBrandIconSize) / 2 - brandContentPadding
+            : (root.leadingInset > 0 ? root.leadingInset : 10) - brandContentPadding
 
     implicitHeight: root.useNativeMenu && root.nativeHeight > 0
                     ? root.nativeHeight
-                    : 32
+                    : (root.useEmbeddedMenu ? Theme.windowChromeRowHeight : 32)
     color: Theme.chromeSurfaceColor(Theme.colors.background.titleBar)
 
     // 标题以窗口中心为轴，左右留白取菜单与窗口按钮所需空间的较大值。
@@ -77,6 +79,7 @@ Rectangle {
     WindowGestureArea {
         anchors.fill: parent
         hostWindow: root.hostWindow
+        windowChrome: root.windowChrome
         z: 0
     }
 
@@ -85,9 +88,7 @@ Rectangle {
         anchors.left: parent.left
         anchors.leftMargin: root.brandLeadingMargin
         anchors.verticalCenter: parent.verticalCenter
-        // Font ascent makes glyphs look high; nudge down for optical center.
-        anchors.verticalCenterOffset: 1
-        height: Theme.controlMinHeight
+        height: Math.min(Theme.controlMinHeight, root.height)
         leftPadding: root.brandContentPadding
         rightPadding: root.brandContentPadding
         topPadding: 0
@@ -226,6 +227,7 @@ Rectangle {
     WindowCaptionButtons {
         id: captionButtons
         anchors.right: parent.right
+        anchors.verticalCenter: parent.verticalCenter
         z: 2
         visible: root.useCaptionButtons
         width: root.useCaptionButtons ? implicitWidth : 0

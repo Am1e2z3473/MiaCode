@@ -50,6 +50,7 @@ void WindowChrome::applyMacOs(QWindow* window)
         return;
     }
 
+    refreshNativeTheme();
     configureNativeTitleBar(nativeWindow);
     if (window->windowState() == Qt::WindowFullScreen) {
         nativeWindow.toolbar.visible = NO;
