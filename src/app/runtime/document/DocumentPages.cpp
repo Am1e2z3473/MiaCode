@@ -19,6 +19,7 @@
 #include "core/chart/transform/ChartNormalization.h"
 #include "timeline/quick/TimelineQuickStateBridge.h"
 #include "app/ui/export/ExportSession.h"
+#include "tools/latency/LatencySandboxController.h"
 #include "tools/muri/MuriAnalyzer.h"
 #include "tools/muri/MuriPanelEntries.h"
 #include "tools/muri/MuriStaticChecker.h"
@@ -150,19 +151,14 @@ bool miacode::runtime::DocumentSessionHost::switchToLatencyField()
     state_.currentFieldDirty_ = false;
     updateDirtyState();
     session_.updateWindowTitle();
+    if (auto* sandbox = session_.latencySandboxController(); sandbox != nullptr) {
+        sandbox->setOnPage(true);
+    }
     return true;
 }
 
 bool miacode::runtime::DocumentSessionHost::switchToExportField()
 {
-    // This used to defer the switch one event-loop tick behind a busy spinner
-    // drawn over the "Export" sidebar row, because building the embedded video
-    // panel blocked the UI thread. Both halves of that are gone: the embedded
-    // panel was deleted with the Widgets export dialog, and the sidebar is QML —
-    // the spinner lived on the hidden widget list's viewport, so it could never
-    // reach a screen. What the deferral did keep doing was return true BEFORE
-    // the switch ran, which told the QML page host to show the export page even
-    // on a refused switch. Running it inline reports the real answer.
     performSwitchToExportField();
     return state_.activeOutlineKey_ == QLatin1String("export");
 }
@@ -174,14 +170,9 @@ void miacode::runtime::DocumentSessionHost::performSwitchToExportField()
     state_.exportPreviewEntrySeedSecond_ = qMax(0.0, state_.playing_
               ? session_.currentPreviewAuthoritativeAudioClockSecond()
               : state_.pauseSecond_);
-    // Navigating away always tears down the latency audition. onPageLeft() is
-    // idempotent (setOnPage(false) no-ops when not on the page), so it is NOT
-    // gated on activeOutlineKey_ == "latency": the sidebar click handler overwrites
-    // that key with the destination BEFORE calling this switch, so the old guard
-    // was always false and teardown (audio-level restore + flag clear) was silently
-    // skipped — the root cause of the SFX-volume leak into the normal preview.
-    // Same contract for the export page: every leave path tears down its
-    // embedded video panel (idempotent; a running export keeps rendering).
+    if (auto* sandbox = session_.latencySandboxController(); sandbox != nullptr) {
+        sandbox->setOnPage(false);
+    }
     if (ui_.qmlExportSession_ != nullptr) {
         ui_.qmlExportSession_->leave();
     }
@@ -205,14 +196,20 @@ void miacode::runtime::DocumentSessionHost::performSwitchToExportField()
 
 bool miacode::runtime::DocumentSessionHost::switchToMetadataField()
 {
-    // Navigating away always tears down the latency audition. onPageLeft() is
-    // idempotent (setOnPage(false) no-ops when not on the page), so it is NOT
-    // gated on activeOutlineKey_ == "latency": the sidebar click handler overwrites
-    // that key with the destination BEFORE calling this switch, so the old guard
-    // was always false and teardown (audio-level restore + flag clear) was silently
-    // skipped — the root cause of the SFX-volume leak into the normal preview.
-    // Same contract for the export page: every leave path tears down its
-    // embedded video panel (idempotent; a running export keeps rendering).
+    // 信息页沿用工作区的谱面预览源；延迟测试源在安装谱面前退出。
+    const int previewDifficultyId = session_.hasActiveDifficulty()
+        ? state_.activeDifficultyId_
+        : session_.applicationServices_.workspace().snapshot().activeDifficultyId;
+    if (!session_.hasActiveDifficulty()
+        && SimaiDocument::isDifficultyId(previewDifficultyId)
+        && session_.applicationServices_.workspace().document().difficulty(previewDifficultyId) != nullptr) {
+        if (!switchToDifficultyField(previewDifficultyId)) {
+            return false;
+        }
+    }
+    if (auto* sandbox = session_.latencySandboxController(); sandbox != nullptr) {
+        sandbox->setOnPage(false);
+    }
     if (ui_.qmlExportSession_ != nullptr) {
         ui_.qmlExportSession_->leave();
     }
@@ -222,7 +219,6 @@ bool miacode::runtime::DocumentSessionHost::switchToMetadataField()
     state_.pendingPreviewPlaybackRevision_ = 0;
     state_.pendingPreviewPlaybackDifficultyId_ = 0;
     state_.pendingPreviewPlaybackSecond_ = 0.0;
-    state_.activeDifficultyId_ = 0;
     state_.activeOutlineKey_ = "metadata";
     setChartBottomTabsMode(false);
     session_.clearValidationDecorations();
@@ -234,14 +230,9 @@ bool miacode::runtime::DocumentSessionHost::switchToMetadataField()
 
 bool miacode::runtime::DocumentSessionHost::switchToWelcomePage()
 {
-    // Navigating away always tears down the latency audition. onPageLeft() is
-    // idempotent (setOnPage(false) no-ops when not on the page), so it is NOT
-    // gated on activeOutlineKey_ == "latency": the sidebar click handler overwrites
-    // that key with the destination BEFORE calling this switch, so the old guard
-    // was always false and teardown (audio-level restore + flag clear) was silently
-    // skipped — the root cause of the SFX-volume leak into the normal preview.
-    // Same contract for the export page: every leave path tears down its
-    // embedded video panel (idempotent; a running export keeps rendering).
+    if (auto* sandbox = session_.latencySandboxController(); sandbox != nullptr) {
+        sandbox->setOnPage(false);
+    }
     if (ui_.qmlExportSession_ != nullptr) {
         ui_.qmlExportSession_->leave();
     }
@@ -263,6 +254,9 @@ bool miacode::runtime::DocumentSessionHost::switchToWelcomePage()
 
 bool miacode::runtime::DocumentSessionHost::clearEditorPresentation()
 {
+    if (auto* sandbox = session_.latencySandboxController(); sandbox != nullptr) {
+        sandbox->setOnPage(false);
+    }
     if (ui_.qmlExportSession_ != nullptr) {
         ui_.qmlExportSession_->leave();
     }
@@ -320,14 +314,9 @@ bool miacode::runtime::DocumentSessionHost::switchToDifficultyField(int difficul
               ? session_.currentPreviewAuthoritativeAudioClockSecond()
               : state_.pauseSecond_)
         : 0.0;
-    // Navigating away always tears down the latency audition. onPageLeft() is
-    // idempotent (setOnPage(false) no-ops when not on the page), so it is NOT
-    // gated on activeOutlineKey_ == "latency": the sidebar click handler overwrites
-    // that key with the destination BEFORE calling this switch, so the old guard
-    // was always false and teardown (audio-level restore + flag clear) was silently
-    // skipped — the root cause of the SFX-volume leak into the normal preview.
-    // Same contract for the export page: every leave path tears down its
-    // embedded video panel (idempotent; a running export keeps rendering).
+    if (auto* sandbox = session_.latencySandboxController(); sandbox != nullptr) {
+        sandbox->setOnPage(false);
+    }
     if (ui_.qmlExportSession_ != nullptr) {
         ui_.qmlExportSession_->leave();
     }

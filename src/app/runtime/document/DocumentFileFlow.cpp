@@ -17,6 +17,7 @@
 #include "common/ProjectPreferences.h"
 #include "common/WaveformCache.h"
 #include "app/services/PlaybackStateAuthority.h"
+#include "tools/latency/LatencySandboxController.h"
 #include "preview/runtime/PreviewRuntime.h"
 #include "preview/runtime/PreviewStageMediaHost.h"
 #include "core/scene/PreviewProgressStatsCache.h"
@@ -351,6 +352,9 @@ void miacode::runtime::DocumentSessionHost::resetWorkingPosition()
 {
     if (!state_.backendActive_) {
         return;
+    }
+    if (auto* sandbox = session_.latencySandboxController(); sandbox != nullptr) {
+        sandbox->setOnPage(false);
     }
     session_.resetWorkingPositionPending_ = true;
     state_.pendingDifficultySwitchPreviewRestore_ = false;

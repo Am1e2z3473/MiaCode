@@ -98,15 +98,6 @@ QObject* PageHost::exportSession() const
     return exportSessionSlot_ != nullptr ? *exportSessionSlot_ : nullptr;
 }
 
-void PageHost::markExportPageActive()
-{
-    if (activePageId_ == QLatin1String("export")) {
-        return;
-    }
-    activePageId_ = QStringLiteral("export");
-    emit activePageIdChanged();
-}
-
 void PageHost::rememberResumeDifficulty()
 {
     if (resumeEditorKeyExplicit_) {
@@ -140,44 +131,32 @@ bool PageHost::resumeChartOrMetadata()
     if (pages == nullptr) {
         return false;
     }
+    bool restored = false;
     if (resumeEditorKeyExplicit_ && resumeEditorKey_ == QLatin1String("latency")) {
-        if (!pages->enterLatencyPage()) {
-            return false;
+        restored = pages->enterLatencyPage();
+    } else if (resumeEditorKeyExplicit_ && resumeEditorKey_.isEmpty()) {
+        restored = pages->clearEditorPresentation();
+    } else {
+        const int difficultyId = resumeEditorKeyExplicit_ && resumeEditorKey_.startsWith(QStringLiteral("difficulty:"))
+            ? resumeEditorKey_.mid(QStringLiteral("difficulty:").size()).toInt()
+            : resumeDifficultyId_;
+        if (difficultyId > 0) {
+            if (document_ != nullptr) {
+                document_->selectDifficulty(difficultyId);
+            }
+            restored = pages->enterDifficultyPage(difficultyId);
         }
+        if (!restored) {
+            restored = !resumeEditorKeyExplicit_ || resumeEditorKey_ == QLatin1String("metadata")
+                ? pages->enterMetadataPage()
+                : pages->clearEditorPresentation();
+        }
+    }
+    if (restored) {
         resumeEditorKey_.clear();
         resumeEditorKeyExplicit_ = false;
         resumeDifficultyId_ = 0;
-        return true;
     }
-    if (resumeEditorKeyExplicit_ && resumeEditorKey_.isEmpty()) {
-        resumeEditorKey_.clear();
-        resumeEditorKeyExplicit_ = false;
-        return pages->clearEditorPresentation();
-    }
-    int difficultyId = resumeDifficultyId_;
-    if (resumeEditorKeyExplicit_ && resumeEditorKey_.startsWith(QStringLiteral("difficulty:"))) {
-        difficultyId = resumeEditorKey_.mid(QStringLiteral("difficulty:").size()).toInt();
-    }
-    if (difficultyId > 0) {
-        // The export session owns its selected difficulty independently from
-        // the document workspace. Restore the editor data source before
-        // restoring the runtime page, so the tab and editor text use one id.
-        if (document_ != nullptr) {
-            document_->selectDifficulty(difficultyId);
-        }
-    }
-    if (difficultyId > 0 && pages->enterDifficultyPage(difficultyId)) {
-        resumeEditorKey_.clear();
-        resumeEditorKeyExplicit_ = false;
-        resumeDifficultyId_ = 0;
-        return true;
-    }
-    const bool restored = !resumeEditorKeyExplicit_ || resumeEditorKey_ == QLatin1String("metadata")
-        ? pages->enterMetadataPage()
-        : pages->clearEditorPresentation();
-    resumeEditorKey_.clear();
-    resumeEditorKeyExplicit_ = false;
-    resumeDifficultyId_ = 0;
     return restored;
 }
 
@@ -233,7 +212,8 @@ bool PageHost::openVideoExportPage(const QString& tab)
         if (!router()->enterExportPage()) {
             return false;
         }
-        markExportPageActive();
+        activePageId_ = QStringLiteral("export");
+        emit activePageIdChanged();
         return true;
     });
 }
@@ -255,12 +235,8 @@ bool PageHost::openLatencyPage()
         return true;
     }
     return requestPageSwitch([this]() {
-        const bool leavingExportPage = activePageId_ == QLatin1String("export");
         if (router() == nullptr || !router()->enterLatencyPage()) {
             return false;
-        }
-        if (leavingExportPage && exportSessionObject() != nullptr) {
-            exportSessionObject()->leave();
         }
         // The editor tab owns the visible page; the active id tracks its
         // synthesized preview source.
@@ -282,9 +258,6 @@ bool PageHost::finishLeaveOverlay()
         return true;
     }
 
-    if (activePageId_ == QLatin1String("export") && exportSessionObject() != nullptr) {
-        exportSessionObject()->leave();
-    }
     const bool returnToLatency = resumeEditorKeyExplicit_
         && resumeEditorKey_ == QLatin1String("latency");
     if (!resumeChartOrMetadata()) {
