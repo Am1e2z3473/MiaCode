@@ -75,15 +75,6 @@ void WindowChrome::attach(QWindow* window)
     }
 
     window_ = window;
-    restoreWindowState();
-    const auto scheduleCapture = [this]() { stateCaptureTimer_.start(); };
-    connect(window, &QWindow::xChanged, this, scheduleCapture);
-    connect(window, &QWindow::yChanged, this, scheduleCapture);
-    connect(window, &QWindow::widthChanged, this, scheduleCapture);
-    connect(window, &QWindow::heightChanged, this, scheduleCapture);
-    connect(window, &QWindow::windowStateChanged, this, scheduleCapture);
-    connect(window, &QWindow::visibilityChanged, this, scheduleCapture);
-    connect(window, &QWindow::screenChanged, this, scheduleCapture);
 
 #ifdef Q_OS_WIN
     nativeHandle_ = window->winId();
@@ -122,6 +113,18 @@ void WindowChrome::attach(QWindow* window)
     Q_UNUSED(window);
     setTitleBarLeadingInset(0);
 #endif
+
+    // Restore client coordinates after the platform chrome establishes its
+    // frame margins, using the same coordinate space as captureWindowState.
+    restoreWindowState();
+    const auto scheduleCapture = [this]() { stateCaptureTimer_.start(); };
+    connect(window, &QWindow::xChanged, this, scheduleCapture);
+    connect(window, &QWindow::yChanged, this, scheduleCapture);
+    connect(window, &QWindow::widthChanged, this, scheduleCapture);
+    connect(window, &QWindow::heightChanged, this, scheduleCapture);
+    connect(window, &QWindow::windowStateChanged, this, scheduleCapture);
+    connect(window, &QWindow::visibilityChanged, this, scheduleCapture);
+    connect(window, &QWindow::screenChanged, this, scheduleCapture);
 }
 
 void WindowChrome::minimize()
@@ -130,7 +133,8 @@ void WindowChrome::minimize()
         return;
     }
     captureWindowState();
-    window_->showMinimized();
+    // Preserve the restore state when minimizing from maximized or fullscreen.
+    window_->setWindowStates(window_->windowStates() | Qt::WindowMinimized);
 }
 
 void WindowChrome::toggleMaximized()
