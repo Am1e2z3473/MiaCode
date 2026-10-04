@@ -50,7 +50,7 @@ Item {
 
     ActivityBar {
         id: activityBar
-        color: root.compact ? "transparent" : Theme.surfaceColor(Theme.colors.background.activityBar)
+        color: root.compact ? "transparent" : Theme.chromeSurfaceColor(Theme.colors.background.activityBar)
         anchors.left: parent.left
         anchors.top: parent.top
         anchors.bottom: parent.bottom

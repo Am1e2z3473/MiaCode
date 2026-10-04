@@ -54,10 +54,10 @@ COLORREF colorRefForDwm(const QColor& color)
     return RGB(color.red(), color.green(), color.blue());
 }
 
-void applyToNativeHandle(HWND hwnd, bool active, bool backdropEnabled, bool forceFrameRefresh)
+bool applyToNativeHandle(HWND hwnd, bool active, bool backdropEnabled, bool forceFrameRefresh)
 {
     if (hwnd == nullptr) {
-        return;
+        return false;
     }
 
     const BOOL darkMode = UiTheme::isDarkTheme() ? TRUE : FALSE;
@@ -83,13 +83,14 @@ void applyToNativeHandle(HWND hwnd, bool active, bool backdropEnabled, bool forc
     }
 
     const int backdropType = backdropEnabled ? kDwmsbtMainWindow : kDwmsbtNone;
-    if (!setDwmWindowAttribute(hwnd, kDwmwaSystemBackdropType, &backdropType, sizeof(backdropType))) {
+    bool backdropApplied = setDwmWindowAttribute(hwnd, kDwmwaSystemBackdropType, &backdropType, sizeof(backdropType));
+    if (!backdropApplied) {
         const BOOL micaEnabled = backdropEnabled ? TRUE : FALSE;
-        setDwmWindowAttribute(hwnd, kDwmwaMicaEffect, &micaEnabled, sizeof(micaEnabled));
+        backdropApplied = setDwmWindowAttribute(hwnd, kDwmwaMicaEffect, &micaEnabled, sizeof(micaEnabled));
     }
 
     if (!forceFrameRefresh) {
-        return;
+        return backdropEnabled && backdropApplied;
     }
     ::SetWindowPos(
         hwnd,
@@ -106,24 +107,25 @@ void applyToNativeHandle(HWND hwnd, bool active, bool backdropEnabled, bool forc
         nullptr,
         RDW_INVALIDATE | RDW_UPDATENOW | RDW_FRAME
     );
+    return backdropEnabled && backdropApplied;
 }
 
 #endif  // Q_OS_WIN
 
 }  // namespace
 
-void applyToWindow(QWindow* window, bool backdropEnabled)
+bool applyToWindow(QWindow* window, bool backdropEnabled)
 {
 #ifdef Q_OS_WIN
     if (window == nullptr) {
-        return;
+        return false;
     }
     const HWND hwnd = reinterpret_cast<HWND>(window->winId());
-    applyToNativeHandle(hwnd, window->isActive(), backdropEnabled, false);
+    return applyToNativeHandle(hwnd, window->isActive(), backdropEnabled, false);
 #elif defined(Q_OS_MACOS)
     Q_UNUSED(backdropEnabled);
     if (window == nullptr) {
-        return;
+        return false;
     }
     NativeWindowThemeMac::applyToNativeView(
         reinterpret_cast<void*>(window->winId()),
@@ -134,6 +136,7 @@ void applyToWindow(QWindow* window, bool backdropEnabled)
     Q_UNUSED(window);
     Q_UNUSED(backdropEnabled);
 #endif
+    return false;
 }
 
 }  // namespace NativeWindowTheme

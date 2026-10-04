@@ -36,6 +36,7 @@ class WorkbenchSettings final : public QObject
     Q_PROPERTY(QString darkThemeToken READ darkThemeToken NOTIFY themeChanged)
     Q_PROPERTY(QString activeThemeToken READ activeThemeToken NOTIFY themeChanged)
     Q_PROPERTY(bool darkTheme READ darkTheme NOTIFY themeChanged)
+    Q_PROPERTY(bool blurMaterialsEnabled READ blurMaterialsEnabled WRITE setBlurMaterialsEnabled NOTIFY blurMaterialsEnabledChanged)
     Q_PROPERTY(QFont codeFont READ codeFont NOTIFY editorSettingsChanged)
     Q_PROPERTY(int editorBlockSpacing READ editorBlockSpacing NOTIFY editorSettingsChanged)
     Q_PROPERTY(int fontSize READ fontSize WRITE setFontSize NOTIFY fontSizeChanged)
@@ -71,6 +72,8 @@ public:
     QString darkThemeToken() const;
     QString activeThemeToken() const;
     bool darkTheme() const;
+    bool blurMaterialsEnabled() const { return blurMaterialsEnabled_; }
+    void setBlurMaterialsEnabled(bool enabled);
     QFont codeFont() const;
     int editorBlockSpacing() const;
     int fontSize() const;
@@ -109,6 +112,7 @@ signals:
     void fontSizeChanged();
     void editorSettingsChanged();
     void themeChanged();
+    void blurMaterialsEnabledChanged();
 
 private:
     static constexpr int kSidebarMinimumContentWidth = 120;
@@ -119,6 +123,7 @@ private:
     static constexpr double kPreviewMaximumWidthRatio = 0.5;
 
     bool sidebarVisible_ = true;
+    bool blurMaterialsEnabled_ = true;
     int sidebarWidth_ = 190;
     bool bottomPanelVisible_ = true;
     double bottomPanelHeightRatio_ = 0.35;

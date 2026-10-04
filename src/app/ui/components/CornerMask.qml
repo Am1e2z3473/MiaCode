@@ -9,14 +9,30 @@ ShaderEffect {
 
     required property Item backgroundSource
     required property point backgroundOffset
+    required property Item panelItem
+    required property point panelOffset
     property real radius: Theme.workspaceRadius
     // This mask rounds the panel against the activity-bar strip, so its
     // restored pixels must use that strip's theme role.
     property color baseColor: Theme.colors.background.activityBar
     readonly property color surfaceColor: Theme.surfaceColor(baseColor)
+    readonly property real nativeMaterial: Theme.nativeMaterialActive ? 1.0 : 0.0
+    readonly property color nativeTintColor: Theme.chromeSurfaceColor(baseColor)
+    readonly property color panelBaseColor: Theme.colors.background.surface
+    // Replace only this corner-sized patch in the Quick surface. Its outside
+    // pixels retain alpha so the system material remains visible underneath.
+    blending: !Theme.nativeMaterialActive
     readonly property var source: ShaderEffectSource {
-        sourceItem: root.visible ? root.backgroundSource : null
+        sourceItem: root.visible && !Theme.nativeMaterialActive ? root.backgroundSource : null
         sourceRect: Qt.rect(root.backgroundOffset.x, root.backgroundOffset.y,
+                            root.width, root.height)
+        textureSize: Qt.size(Math.ceil(root.width * root.Screen.devicePixelRatio),
+                             Math.ceil(root.height * root.Screen.devicePixelRatio))
+        visible: false
+    }
+    readonly property var panelSource: ShaderEffectSource {
+        sourceItem: root.visible && Theme.nativeMaterialActive ? root.panelItem : null
+        sourceRect: Qt.rect(root.panelOffset.x, root.panelOffset.y,
                             root.width, root.height)
         textureSize: Qt.size(Math.ceil(root.width * root.Screen.devicePixelRatio),
                              Math.ceil(root.height * root.Screen.devicePixelRatio))

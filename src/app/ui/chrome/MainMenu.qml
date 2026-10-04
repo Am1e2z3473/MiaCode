@@ -181,7 +181,7 @@ Item {
 
         required property var menu
         required property int menuIndex
-        stateColors: Theme.colors.activityState
+        stateColors: Theme.chromeStateColors
 
         y: (root.height - height) / 2
         height: Theme.controlMinHeight
@@ -260,7 +260,7 @@ Item {
         }
         IconButton {
             id: moreButton
-            stateColors: Theme.colors.activityState
+            stateColors: Theme.chromeStateColors
             width: root.overflowButtonWidth
             y: (root.height - height) / 2
             height: Theme.controlMinHeight

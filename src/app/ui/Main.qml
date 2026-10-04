@@ -64,7 +64,10 @@ ApplicationWindow {
               : "")
     font.family: Theme.uiFont
     font.pixelSize: Theme.uiFontSize
-    color: Theme.colors.background.surface
+    color: Theme.nativeMaterialActive ? "transparent" : Theme.colors.background.surface
+    background: Rectangle {
+        color: window.color
+    }
     topPadding: 0
     leftPadding: 0
     rightPadding: 0
@@ -108,6 +111,12 @@ ApplicationWindow {
         value: window.applicationContext.appBackground
     }
 
+    Binding {
+        target: Theme
+        property: "windowChrome"
+        value: window.applicationContext.windowChrome
+    }
+
     // Two-phase close. The unsaved-changes prompt is a QML dialog, so the first
     // close attempt cannot be answered here — it is refused, the question is
     // asked, and the window closes itself once the answer comes back. Telling
@@ -141,7 +150,7 @@ ApplicationWindow {
     Rectangle {
         id: sceneContent
         anchors.fill: parent
-        color: Theme.colors.background.surface
+        color: window.color
 
         // Direct children establish paint order: wallpaper, UI, drag hint.
         Item {
@@ -176,9 +185,9 @@ ApplicationWindow {
                     return value.indexOf("top") >= 0 ? Image.AlignTop
                          : value.indexOf("bottom") >= 0 ? Image.AlignBottom : Image.AlignVCenter
                 }
-                layer.enabled: window.applicationContext.appBackground.blur > 0
+                layer.enabled: Theme.blurMaterialsEnabled && window.applicationContext.appBackground.blur > 0
                 layer.effect: MultiEffect {
-                    blurEnabled: true
+                    blurEnabled: Theme.blurMaterialsEnabled
                     blurMax: 64
                     blur: Math.min(1.0, window.applicationContext.appBackground.blur / 64.0)
                 }

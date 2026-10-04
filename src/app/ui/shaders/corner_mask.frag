@@ -8,8 +8,12 @@ layout(std140, binding = 0) uniform buf {
     float qt_Opacity;
     vec4 baseColor;
     vec4 surfaceColor;
+    float nativeMaterial;
+    vec4 nativeTintColor;
+    vec4 panelBaseColor;
 };
 layout(binding = 1) uniform sampler2D source;
+layout(binding = 2) uniform sampler2D panelSource;
 
 void main()
 {
@@ -21,5 +25,11 @@ void main()
     float edgeWidth = fwidth(distanceToCenter);
     float coverage = smoothstep(1.0 - edgeWidth * 0.5,
                                1.0 + edgeWidth * 0.5, distanceToCenter);
-    fragColor = backing * coverage * qt_Opacity;
+    if (nativeMaterial > 0.5) {
+        vec4 panel = texture(panelSource, qt_TexCoord0);
+        panel += panelBaseColor * (1.0 - panel.a);
+        fragColor = mix(panel, nativeTintColor, coverage) * qt_Opacity;
+    } else {
+        fragColor = backing * coverage * qt_Opacity;
+    }
 }

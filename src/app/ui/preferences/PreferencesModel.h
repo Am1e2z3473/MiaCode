@@ -36,6 +36,7 @@ public:
     Q_PROPERTY(QString lightThemeToken READ lightThemeToken WRITE setLightThemeToken NOTIFY interfaceChanged)
     Q_PROPERTY(QString darkThemeToken READ darkThemeToken WRITE setDarkThemeToken NOTIFY interfaceChanged)
     Q_PROPERTY(bool previewOnLeft READ previewOnLeft WRITE setPreviewOnLeft NOTIFY interfaceChanged)
+    Q_PROPERTY(bool blurMaterialsEnabled READ blurMaterialsEnabled WRITE setBlurMaterialsEnabled NOTIFY interfaceChanged)
 
     // Editor
     Q_PROPERTY(int editorFontSize READ editorFontSize WRITE setEditorFontSize NOTIFY editorChanged)
@@ -82,6 +83,8 @@ public:
     void setDarkThemeToken(const QString& token);
     bool previewOnLeft() const;
     void setPreviewOnLeft(bool onLeft);
+    bool blurMaterialsEnabled() const;
+    void setBlurMaterialsEnabled(bool enabled);
 
     int editorFontSize() const;
     void setEditorFontSize(int pointSize);

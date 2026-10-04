@@ -90,6 +90,9 @@ bool Bootstrap::start(const QString& startupOpenTarget)
     miacode::oplog::appendStartupBeaconLine("ui/start_enter");
     appendUiRuntimeLog(QStringLiteral("start_enter"));
     QQuickWindow::setTextRenderType(QQuickWindow::NativeTextRendering);
+#if defined(Q_OS_WIN) || defined(Q_OS_MACOS)
+    QQuickWindow::setDefaultAlphaBuffer(true);
+#endif
 
     applicationServices_ = std::make_unique<miacode::ApplicationServices>();
     connect(&miacode::LocaleService::instance(), &miacode::LocaleService::languageChanged,
@@ -142,6 +145,12 @@ bool Bootstrap::start(const QString& startupOpenTarget)
     ensurePreviewQuickTypesRegistered();
 
     windowChrome_ = std::make_unique<WindowChrome>(this);
+    if (auto* settings = qobject_cast<WorkbenchSettings*>(applicationContext_->preferences())) {
+        windowChrome_->setBlurMaterialsEnabled(settings->blurMaterialsEnabled());
+        connect(settings, &WorkbenchSettings::blurMaterialsEnabledChanged, this, [this, settings] {
+            windowChrome_->setBlurMaterialsEnabled(settings->blurMaterialsEnabled());
+        });
+    }
     applicationContext_->setWindowChrome(windowChrome_.get());
 
     QObject::connect(
@@ -250,7 +259,7 @@ bool Bootstrap::start(const QString& startupOpenTarget)
         window->setVisible(false);
         windowChrome_->attach(window);
         appendUiRuntimeLog(QStringLiteral("window_chrome_attached"));
-        NativeWindowTheme::applyToWindow(window);
+        NativeWindowTheme::applyToWindow(window, windowChrome_->blurMaterialsEnabled());
         // The native frame is applied, not bound: without re-applying it the
         // titlebar keeps the palette it was born with while every QML surface
         // and the QSG timeline follow the new theme. Same call, repeated.
@@ -258,7 +267,7 @@ bool Bootstrap::start(const QString& startupOpenTarget)
             settings != nullptr) {
             QObject::connect(settings, &WorkbenchSettings::themeChanged, this, [this]() {
                 if (rootWindow_ != nullptr) {
-                    NativeWindowTheme::applyToWindow(rootWindow_);
+                    NativeWindowTheme::applyToWindow(rootWindow_, windowChrome_->blurMaterialsEnabled());
                 }
             });
         }

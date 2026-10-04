@@ -51,6 +51,44 @@ void WindowChrome::applyMacOs(QWindow* window)
     }
 
     configureNativeTitleBar(nativeWindow);
+    if (window->windowState() == Qt::WindowFullScreen) {
+        nativeWindow.toolbar.visible = NO;
+    }
+
+    if (blurMaterialsEnabled_) {
+        // Qt identifies top-level windows by contentView identity. Place the
+        // material beside that view so visibility and geometry remain Qt-owned.
+        if (view.superview == nil) {
+            return;
+        }
+        NSVisualEffectView* material = (__bridge NSVisualEffectView*)macMaterialView_;
+        if (material == nil) {
+            material = [[NSVisualEffectView alloc] initWithFrame:view.frame];
+            material.material = NSVisualEffectMaterialSidebar;
+            material.blendingMode = NSVisualEffectBlendingModeBehindWindow;
+            material.state = NSVisualEffectStateFollowsWindowActiveState;
+            material.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
+
+#if __has_feature(objc_arc)
+            macMaterialView_ = (__bridge_retained void*)material;
+
+#else
+            macMaterialView_ = material;
+
+#endif
+        }
+        if (material.superview != view.superview) {
+            [material removeFromSuperview];
+            [view.superview addSubview:material positioned:NSWindowBelow relativeTo:view];
+        }
+        material.frame = view.frame;
+        nativeWindow.opaque = NO;
+        nativeWindow.backgroundColor = NSColor.clearColor;
+    } else {
+        releaseMacOsMaterial();
+        nativeWindow.opaque = YES;
+    }
+    setNativeMaterialAvailable(blurMaterialsEnabled_);
 
     NSView* contentView = nativeWindow.contentView;
     if (contentView == nil) {
@@ -134,6 +172,9 @@ void WindowChrome::observeMacOsFullScreen(QWindow* window)
                     nativeWindow.toolbar.visible = NO;
                     setTitleBarLeadingInset(0);
                     setTitleBarHeight(windowedTitleBarHeight_);
+                    if (!window_.isNull()) {
+                        applyMacOs(window_.data());
+                    }
                 }];
     id willExitObserver = [center
         addObserverForName:NSWindowWillExitFullScreenNotification
@@ -183,6 +224,23 @@ void WindowChrome::stopObservingMacOsFullScreen()
         [center removeObserver:observer];
         macDidExitFullScreenObserver_ = nullptr;
     }
+}
+
+void WindowChrome::releaseMacOsMaterial()
+{
+    if (macMaterialView_ == nullptr) {
+        return;
+    }
+#if __has_feature(objc_arc)
+    NSVisualEffectView* material = (__bridge_transfer NSVisualEffectView*)macMaterialView_;
+#else
+    NSVisualEffectView* material = static_cast<NSVisualEffectView*>(macMaterialView_);
+#endif
+    [material removeFromSuperview];
+#if !__has_feature(objc_arc)
+    [material release];
+#endif
+    macMaterialView_ = nullptr;
 }
 
 } // namespace miacode::ui

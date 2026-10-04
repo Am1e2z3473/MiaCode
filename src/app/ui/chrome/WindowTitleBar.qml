@@ -35,7 +35,7 @@ Rectangle {
     implicitHeight: root.useNativeMenu && root.nativeHeight > 0
                     ? root.nativeHeight
                     : 32
-    color: Theme.surfaceColor(Theme.colors.background.titleBar)
+    color: Theme.chromeSurfaceColor(Theme.colors.background.titleBar)
 
     // 标题以窗口中心为轴，左右留白取菜单与窗口按钮所需空间的较大值。
     readonly property real menuGap: 16
@@ -92,7 +92,7 @@ Rectangle {
         rightPadding: root.brandContentPadding
         topPadding: 0
         bottomPadding: 0
-        stateColors: Theme.colors.activityState
+        stateColors: Theme.chromeStateColors
         selected: brandMenu.active
         Accessible.name: "MiaCode"
         z: 2

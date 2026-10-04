@@ -114,7 +114,7 @@ Rectangle {
                 anchors.fill: parent
                 contentWidth: Theme.activityIconSize + 1
                 contentHeight: Theme.activityIconSize
-                stateColors: Theme.colors.activityState
+                stateColors: Theme.chromeStateColors
                 hovered: button.hovered
                 pressed: button.down
                 selected: button.selected

@@ -77,8 +77,8 @@ Row {
         background: Rectangle {
             color: button.isClose
                 ? (button.down ? "#B32617" : button.hovered ? "#C42B1C" : "transparent")
-                : (button.down ? Theme.overlayColor(Theme.colors.activityState.pressed)
-                               : button.hovered ? Theme.overlayColor(Theme.colors.activityState.hover)
+                : (button.down ? Theme.overlayColor(Theme.chromeStateColors.pressed)
+                               : button.hovered ? Theme.overlayColor(Theme.chromeStateColors.hover)
                                                 : "transparent")
         }
     }

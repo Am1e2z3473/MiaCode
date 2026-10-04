@@ -11,6 +11,7 @@ namespace NativeWindowTheme {
 // QWindow variant for QML / QQuickWindow top-levels. Unlike the widget
 // variant this does not force a frame recalc (preserves the historical
 // quick-shell behavior of plain attribute writes).
-void applyToWindow(QWindow* window, bool backdropEnabled = true);
+// Returns whether the requested native backdrop was accepted.
+bool applyToWindow(QWindow* window, bool backdropEnabled = true);
 
 }  // namespace NativeWindowTheme
