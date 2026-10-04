@@ -253,6 +253,15 @@ Item {
             onSettingsRequested: root.settingsRequested()
         }
 
+        // Keep the workspace opaque while native material shows through chrome.
+        Rectangle {
+            x: workspaceSplit.x
+            width: workspaceSplit.width
+            height: parent.height
+            visible: Theme.nativeMaterialActive
+            color: Theme.colors.background.surface
+        }
+
         SplitView {
             id: workspaceSplit
             orientation: Qt.Horizontal
@@ -363,6 +372,8 @@ Item {
             x: root.compact ? 0 : sidebar.activityBarWidth
             backgroundSource: root.backgroundSource
             backgroundOffset: Qt.point(root.backgroundOffset.x + x, root.backgroundOffset.y)
+            panelItem: !root.compact && root.viewState.sidebarVisible ? sidebar : workspaceSplit
+            panelOffset: Qt.point(x - panelItem.x, 0)
         }
 
         SplitHandle {

@@ -1131,6 +1131,10 @@ Failed: %2</translation>
         <source>Performance</source>
         <translation>Performance</translation>
     </message>
+    <message id="dialog.preferences.blur_materials">
+        <source>Blur materials</source>
+        <translation>Blur materials</translation>
+    </message>
     <message id="dialog.preferences.interface_layout">
         <source>Interface layout</source>
         <translation>Interface layout</translation>

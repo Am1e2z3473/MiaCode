@@ -19,6 +19,7 @@
 namespace miacode::ui {
 namespace {
 constexpr auto kUiSection = "ui";
+constexpr auto kBlurMaterialsEnabled = "blur_materials_enabled";
 constexpr auto kSidebarVisible = "sidebar_visible";
 constexpr auto kSidebarWidth = "sidebar_width";
 constexpr auto kBottomPanelVisible = "bottom_panel_visible";
@@ -84,6 +85,7 @@ WorkbenchSettings::WorkbenchSettings(QObject* parent)
 
     // 启动时读取并约束到界面可接受范围。无 json 键时回退到旧 QSettings，供 macOS 上已有记录迁入。
     const QJsonObject ui = loadUiObject();
+    blurMaterialsEnabled_ = ui.value(QLatin1String(kBlurMaterialsEnabled)).toBool(true);
     QSettings legacySettings;
     sidebarVisible_ = jsonBool(ui, kSidebarVisible, legacySettings, kLegacySidebarVisible, true);
     sidebarWidth_ = qBound(kSidebarMinimumContentWidth,
@@ -125,6 +127,16 @@ WorkbenchSettings::WorkbenchSettings(QObject* parent)
                 this, &WorkbenchSettings::reloadTheme);
     }
     reloadEditorSettings();
+}
+
+void WorkbenchSettings::setBlurMaterialsEnabled(bool enabled)
+{
+    if (blurMaterialsEnabled_ == enabled) {
+        return;
+    }
+    blurMaterialsEnabled_ = enabled;
+    storeUiValue(kBlurMaterialsEnabled, enabled);
+    emit blurMaterialsEnabledChanged();
 }
 
 QVariantMap WorkbenchSettings::aboutInfo() const

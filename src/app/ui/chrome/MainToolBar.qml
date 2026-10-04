@@ -32,10 +32,10 @@ Rectangle {
     implicitHeight: 32
     color: root.integratedInTitleBar
            ? "transparent"
-           : Theme.surfaceColor(Theme.colors.background.activityBar)
+           : Theme.chromeSurfaceColor(Theme.colors.background.activityBar)
 
     component ToolBarButton: IconButton {
-        stateColors: Theme.colors.activityState
+        stateColors: Theme.chromeStateColors
     }
 
     WindowGestureArea {

@@ -34,7 +34,12 @@ CoverExportWindow::CoverExportWindow(miacode::ExportEngine& exportEngine,
     }, Qt::QueuedConnection);
     connect(&preferences_, &WorkbenchSettings::themeChanged, this, [this] {
         if (window_) {
-            NativeWindowTheme::applyToWindow(window_);
+            NativeWindowTheme::applyToWindow(window_, preferences_.blurMaterialsEnabled());
+        }
+    });
+    connect(&preferences_, &WorkbenchSettings::blurMaterialsEnabledChanged, this, [this] {
+        if (window_) {
+            NativeWindowTheme::applyToWindow(window_, preferences_.blurMaterialsEnabled());
         }
     });
 }
@@ -84,7 +89,7 @@ bool CoverExportWindow::show(QQuickWindow* owner, int difficultyId)
     window_->setPosition(available.center() - QPoint(window_->width() / 2, window_->height() / 2));
     miacode::app::entry::bindHighPerformanceQuickGraphicsDevice(
         window_, QStringLiteral("cover_window"), /*preferVideoShareDevice=*/false);
-    NativeWindowTheme::applyToWindow(window_);
+    NativeWindowTheme::applyToWindow(window_, preferences_.blurMaterialsEnabled());
     session_.enter(difficultyId);
     window_->show();
     window_->requestActivate();

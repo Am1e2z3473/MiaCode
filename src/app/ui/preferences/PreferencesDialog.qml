@@ -317,6 +317,12 @@ AppDialog {
                     Item { Layout.fillWidth: true }
                 }
             }
+            AppSwitch {
+                objectName: "preferencesBlurMaterialsSwitch"
+                text: qsTrId("dialog.preferences.blur_materials")
+                checked: root.preferencesModel.blurMaterialsEnabled
+                onToggled: root.preferencesModel.blurMaterialsEnabled = checked
+            }
         }
 
         // ---- 背景 ----

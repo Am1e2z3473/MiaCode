@@ -1,4 +1,5 @@
 #include "chrome/WindowChrome.h"
+#include "chrome/NativeWindowTheme.h"
 #include "preferences/PreferenceDocument.h"
 #include "common/DebugLog.h"
 
@@ -30,6 +31,7 @@ WindowChrome::WindowChrome(QObject* parent)
 WindowChrome::~WindowChrome()
 {
     stopObservingMacOsFullScreen();
+    releaseMacOsMaterial();
     if (QCoreApplication::instance() != nullptr) {
         QCoreApplication::instance()->removeNativeEventFilter(this);
     }
@@ -53,6 +55,15 @@ void WindowChrome::setTitleBarHeight(qreal height)
     emit titleBarHeightChanged();
 }
 
+void WindowChrome::setNativeMaterialAvailable(bool available)
+{
+    if (nativeMaterialAvailable_ == available) {
+        return;
+    }
+    nativeMaterialAvailable_ = available;
+    emit nativeMaterialAvailableChanged();
+}
+
 void WindowChrome::attach(QWindow* window)
 {
     if (window == nullptr) {
@@ -74,6 +85,7 @@ void WindowChrome::attach(QWindow* window)
     nativeHandle_ = window->winId();
     const auto handle = reinterpret_cast<HWND>(nativeHandle_);
     QCoreApplication::instance()->installNativeEventFilter(this);
+    setNativeMaterialAvailable(NativeWindowTheme::applyToWindow(window, blurMaterialsEnabled_));
     extendDwmFrame();
 
     SetWindowPos(
@@ -115,6 +127,23 @@ void WindowChrome::minimize()
     captureWindowState();
     // Keep maximized/fullscreen bits so the native restore operation retains them.
     window_->setWindowStates(window_->windowStates() | Qt::WindowMinimized);
+}
+
+void WindowChrome::setBlurMaterialsEnabled(bool enabled)
+{
+    if (blurMaterialsEnabled_ == enabled) {
+        return;
+    }
+    blurMaterialsEnabled_ = enabled;
+    if (window_.isNull()) {
+        return;
+    }
+#ifdef Q_OS_WIN
+    setNativeMaterialAvailable(NativeWindowTheme::applyToWindow(window_.data(), enabled));
+    extendDwmFrame();
+#elif defined(Q_OS_MACOS)
+    applyMacOs(window_.data());
+#endif
 }
 
 void WindowChrome::restoreWindowState()
@@ -304,6 +333,7 @@ bool WindowChrome::nativeEventFilter(const QByteArray& eventType, void* message,
 
     if (nativeMessage->message == WM_ACTIVATE
         || nativeMessage->message == WM_DWMCOMPOSITIONCHANGED) {
+        setNativeMaterialAvailable(NativeWindowTheme::applyToWindow(window_.data(), blurMaterialsEnabled_));
         extendDwmFrame();
     }
 #else
@@ -322,7 +352,8 @@ void WindowChrome::extendDwmFrame() const
         return;
     }
 
-    const MARGINS margins{1, 1, 1, 1};
+    const int extent = nativeMaterialAvailable_ ? -1 : 1;
+    const MARGINS margins{extent, extent, extent, extent};
     DwmExtendFrameIntoClientArea(reinterpret_cast<HWND>(nativeHandle_), &margins);
 #endif
 }
@@ -339,6 +370,10 @@ void WindowChrome::observeMacOsFullScreen(QWindow* window)
 }
 
 void WindowChrome::stopObservingMacOsFullScreen()
+{
+}
+
+void WindowChrome::releaseMacOsMaterial()
 {
 }
 #endif

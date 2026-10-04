@@ -1131,6 +1131,10 @@ Failed: %2</source>
         <source>Performance</source>
         <translation>性能</translation>
     </message>
+    <message id="dialog.preferences.blur_materials">
+        <source>Blur materials</source>
+        <translation>ぼかしマテリアル</translation>
+    </message>
     <message id="dialog.preferences.interface_layout">
         <source>Interface layout</source>
         <translation>画面レイアウト</translation>

@@ -21,7 +21,7 @@ Item {
     Loader {
         id: backdrop
         anchors.fill: parent
-        active: root.popup !== null && root.popup.visible
+        active: Theme.blurMaterialsEnabled && root.popup !== null && root.popup.visible
                 && root.backdropSource !== null && root.width > 0 && root.height > 0
         sourceComponent: BackdropBlur {
             sourceItem: root.backdropSource
@@ -35,9 +35,10 @@ Item {
         id: card
         anchors.fill: parent
         radius: root.cornerRadius
-        color: backdrop.active || Theme.backgroundActive
-               ? root.tintColor
-               : Theme.overlayColor(Theme.colors.background.elevated, Theme.popupOpacity)
+        // Translucent tint belongs to the sampled material. A plain floating
+        // surface keeps its theme color opaque over both wallpaper and UI.
+        color: backdrop.active ? root.tintColor
+               : Qt.rgba(root.tintColor.r, root.tintColor.g, root.tintColor.b, 1.0)
     }
 
     layer.enabled: true

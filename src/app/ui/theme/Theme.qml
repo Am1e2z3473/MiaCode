@@ -5,9 +5,13 @@ import QtQuick
 QtObject {
     property var preferences: null
     property var appBackground: null
+    property var windowChrome: null
+    readonly property bool blurMaterialsEnabled: preferences ? preferences.blurMaterialsEnabled : true
     readonly property bool darkTheme: preferences ? preferences.darkTheme : true
     readonly property bool backgroundActive: appBackground
         && appBackground.enabled && appBackground.imageReadable
+    readonly property bool nativeMaterialActive: windowChrome
+        && blurMaterialsEnabled && windowChrome.nativeMaterialAvailable && !backgroundActive
 
     readonly property var darkColors: ({
         background: {
@@ -533,6 +537,20 @@ QtObject {
 
     // Fill alpha only: text/icons and popup transition opacity stay independent.
     readonly property real overlayOpacity: darkTheme ? 0.72 : 0.82
+    readonly property real nativeMaterialTintOpacity: darkTheme ? 0.70 : 0.55
+    readonly property color nativeMaterialTintColor: {
+        const c = Qt.color(colors.background.activityBar)
+        return darkTheme
+            ? Qt.rgba(Math.min(1, c.r + 14 / 255),
+                      Math.min(1, c.g + 15 / 255),
+                      Math.min(1, c.b + 16 / 255), c.a)
+            : c
+    }
+    readonly property var chromeStateColors: nativeMaterialActive && darkTheme ? ({
+        hover: chromeHighlightColor(0.12),
+        pressed: chromeHighlightColor(0.20),
+        selected: chromeHighlightColor(0.16)
+    }) : colors.activityState
     readonly property real popupOpacity: 0.96
     // Frosted menu material is independent of wallpaper visibility.
     readonly property real popupTintOpacity: 0.72
@@ -581,6 +599,18 @@ QtObject {
         const alpha = 1 - (1 - surfaceOpacity) * shade
         const scale = alpha > 0 ? surfaceOpacity / alpha : 0
         return Qt.rgba(c.r * scale, c.g * scale, c.b * scale, alpha)
+    }
+
+    function chromeSurfaceColor(baseColor) {
+        if (!nativeMaterialActive)
+            return surfaceColor(baseColor)
+        const c = darkTheme ? nativeMaterialTintColor : Qt.color(baseColor)
+        return Qt.rgba(c.r, c.g, c.b, c.a * nativeMaterialTintOpacity)
+    }
+
+    function chromeHighlightColor(amount) {
+        const c = Qt.color(colors.text.active)
+        return Qt.tint(nativeMaterialTintColor, Qt.rgba(c.r, c.g, c.b, amount))
     }
 
     // Shared UI geometry.

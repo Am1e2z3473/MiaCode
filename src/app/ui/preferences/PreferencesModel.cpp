@@ -29,6 +29,8 @@ PreferencesModel::PreferencesModel(miacode::PreferencesStore*& storeSlot,
     , storeSlot_(&storeSlot)
     , settings_(&settings)
 {
+    connect(&settings, &WorkbenchSettings::blurMaterialsEnabledChanged,
+            this, &PreferencesModel::interfaceChanged);
     connect(&miacode::LocaleService::instance(), &miacode::LocaleService::languageChanged,
             this, [this](const QString&) {
                 emit interfaceChanged();
@@ -153,6 +155,18 @@ void PreferencesModel::setPreviewOnLeft(bool onLeft)
     }
     store()->setWorkspacePanelsSwapped(onLeft, true);
     emit interfaceChanged();
+}
+
+bool PreferencesModel::blurMaterialsEnabled() const
+{
+    return settings_ == nullptr || settings_->blurMaterialsEnabled();
+}
+
+void PreferencesModel::setBlurMaterialsEnabled(bool enabled)
+{
+    if (settings_ != nullptr) {
+        settings_->setBlurMaterialsEnabled(enabled);
+    }
 }
 
 int PreferencesModel::editorFontSize() const
