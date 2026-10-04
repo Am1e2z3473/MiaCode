@@ -648,6 +648,10 @@ set(MIACODE_UI_QML_FILES
     src/app/ui/components/AppCheckBox.qml
     src/app/ui/components/AppDropDownButton.qml
     src/app/ui/components/AppTab.qml
+    src/app/ui/components/AppTabButton.qml
+    src/app/ui/components/AppTabBar.qml
+    src/app/ui/components/AppTabPages.qml
+    src/app/ui/components/AppChoiceButton.qml
     src/app/ui/components/DifficultySwatch.qml
     src/app/ui/components/PanelHeader.qml
     src/app/ui/components/SplitHandle.qml

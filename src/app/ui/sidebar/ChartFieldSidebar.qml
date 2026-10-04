@@ -37,6 +37,7 @@ Rectangle {
             x: 6
             y: 6
             width: parent.width - 12
+            spacing: 2
 
             NavRow {
                 width: parent.width

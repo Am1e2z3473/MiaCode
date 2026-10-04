@@ -5,16 +5,13 @@ import MiaCode.UI
 
 // Shared 视频 / 玩法 / 皮肤 form. Preview Settings and the export page both
 // host this and write the same PreviewSettingsModel.
-ColumnLayout {
+AppTabPages {
     id: root
 
     required property var previewSettings
-    property int pageIndex: 0
 
     readonly property var values: root.previewSettings ? root.previewSettings.values : ({})
     readonly property var labels: root.previewSettings ? root.previewSettings.labels : ({})
-
-    spacing: 10
 
     function put(key, value) {
         if (root.previewSettings)
@@ -50,7 +47,8 @@ ColumnLayout {
 
     ColumnLayout {
         Layout.fillWidth: true
-        visible: root.pageIndex === 0
+        Layout.fillHeight: false
+        Layout.alignment: Qt.AlignTop
         spacing: 10
 
         LabeledSlider {
@@ -120,7 +118,8 @@ ColumnLayout {
 
     ColumnLayout {
         Layout.fillWidth: true
-        visible: root.pageIndex === 1
+        Layout.fillHeight: false
+        Layout.alignment: Qt.AlignTop
         spacing: 10
 
         LabeledSlider {
@@ -193,7 +192,8 @@ ColumnLayout {
 
     ColumnLayout {
         Layout.fillWidth: true
-        visible: root.pageIndex === 2
+        Layout.fillHeight: false
+        Layout.alignment: Qt.AlignTop
         spacing: 10
 
         RowLayout {

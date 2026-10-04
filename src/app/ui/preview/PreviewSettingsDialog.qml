@@ -13,8 +13,6 @@ AppDialog {
 
     required property var previewSettings
 
-    property int activePage: 0
-
     title: qsTrId("action.video_settings")
     preferredWidth: 640
     preferredHeight: Theme.dialogHeight
@@ -26,23 +24,13 @@ AppDialog {
     body: ColumnLayout {
         spacing: 10
 
-        Row {
-            spacing: 4
-            Repeater {
-                model: root.previewSettings
-                       ? [root.previewSettings.videoGroupLabel,
-                          root.previewSettings.gameplayGroupLabel,
-                          root.previewSettings.skinGroupLabel]
-                       : []
-                delegate: AppTab {
-                    required property int index
-                    required property string modelData
-                    panelTab: true
-                    text: modelData
-                    active: root.activePage === index
-                    onClicked: root.activePage = index
-                }
-            }
+        AppTabBar {
+            id: settingsTabs
+            Layout.fillWidth: true
+            tabs: root.previewSettings
+                  ? [root.previewSettings.videoGroupLabel,
+                     root.previewSettings.gameplayGroupLabel,
+                     root.previewSettings.skinGroupLabel] : []
         }
 
         Rectangle {
@@ -54,7 +42,7 @@ AppDialog {
         PreviewAppearancePages {
             Layout.fillWidth: true
             previewSettings: root.previewSettings
-            pageIndex: root.activePage
+            currentIndex: settingsTabs.currentIndex
         }
     }
 
