@@ -67,7 +67,6 @@ private:
     bool finishLeaveOverlay();
     void rememberResumeDifficulty();
     bool resumeChartOrMetadata();
-    void markExportPageActive();
 
     miacode::ShellNotifications* notifications_ = nullptr;
     DocumentModel* document_ = nullptr;

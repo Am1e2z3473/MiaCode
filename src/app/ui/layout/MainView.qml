@@ -47,7 +47,6 @@ Item {
     readonly property real minimumHeight: chromeHost.height + statusBar.height
         + splitView.minimumHeight
     readonly property bool compact: width < minimumWidth + splitView.expandedSidebarWidth
-    property bool latencySceneActive: false
 
     ViewState { id: state }
 
@@ -140,23 +139,7 @@ Item {
     // projection in step with it even when a page is opened by a runtime signal
     // (for example, exporting a selection from the source editor).
     function syncSidebarViewToPage() {
-        if (root.pages.activePageId === "export"
-                || root.pages.activePageId === "cover")
-            state.activeSidebarView = "export"
-        else if (root.pages.activePageId === "")
-            state.activeSidebarView = "chart"
-    }
-
-    function syncLatencyScene() {
-        const active = root.documentSession.hasDocument
-            && root.pages.activePageId === "latency" && state.latencyEditorActive
-        if (active === root.latencySceneActive)
-            return
-        root.latencySceneActive = active
-        if (active)
-            root.latency.enter()
-        else
-            root.latency.leave()
+        state.activeSidebarView = root.pages.activePageId === "export" ? "export" : "chart"
     }
 
     function undo() {
@@ -458,7 +441,6 @@ Item {
             // replacement never leaves the editor with no tab at all.
             state.syncDifficultyEditors(root.documentSession.difficulties,
                                         root.documentSession.currentDifficultyId)
-            root.syncLatencyScene()
         }
 
         function onDifficultiesChanged() {
@@ -483,7 +465,6 @@ Item {
                 root.pages.openLatencyPage()
             else if (state.metadataEditorActive && root.pages.activePageId === "latency")
                 root.pages.activateMetadataPage()
-            root.syncLatencyScene()
         }
 
         function onDifficultyEditorActivationRequested(difficultyId) {
@@ -512,12 +493,12 @@ Item {
         target: root.pages
 
         function onLatencyPageActivated() {
+            root.latency.refreshFromDocument()
             state.openLatencyEditor()
         }
 
         function onActivePageIdChanged() {
             root.syncSidebarViewToPage()
-            root.syncLatencyScene()
         }
 
         function onOverlayPageLeft() {
