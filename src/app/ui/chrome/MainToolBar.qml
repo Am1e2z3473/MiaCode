@@ -6,6 +6,7 @@ Rectangle {
     id: root
 
     required property var hostWindow
+    required property var windowChrome
 
     signal toggleSidebarRequested()
     signal toggleBottomRequested()
@@ -29,35 +30,40 @@ Rectangle {
     readonly property real leadingActionsRight: leftActions.x + leftActions.width
     readonly property real trailingActionsWidth: width - rightActions.x
 
-    implicitHeight: 32
+    implicitHeight: root.integratedInTitleBar ? 32 : Theme.windowChromeRowHeight
     color: root.integratedInTitleBar
            ? "transparent"
            : Theme.chromeSurfaceColor(Theme.colors.background.activityBar)
 
     component ToolBarButton: IconButton {
+        height: root.integratedInTitleBar ? implicitHeight : root.height
+        anchors.verticalCenter: parent.verticalCenter
         stateColors: Theme.chromeStateColors
     }
 
     WindowGestureArea {
         anchors.fill: parent
         hostWindow: root.hostWindow
+        windowChrome: root.windowChrome
         visible: !root.integratedInTitleBar
         z: 0
     }
 
     Row {
         id: leftActions
+        height: root.height
         anchors.left: parent.left
         anchors.leftMargin: root.integratedInTitleBar
                             ? (root.titleBarLeadingInset > 0
                                ? root.titleBarLeadingInset
                                : Theme.chromePadding)
-                            : 8
+                            : (Theme.activityButtonSize - openButton.width) / 2
         anchors.verticalCenter: parent.verticalCenter
         spacing: 5
         z: 1
 
         ToolBarButton {
+            id: openButton
             iconSource: Qt.resolvedUrl("icons/folder-open.svg")
             tooltip: qsTrId("action.open")
             onClicked: root.openRequested()
@@ -84,6 +90,7 @@ Rectangle {
 
     Row {
         id: rightActions
+        height: root.height
         anchors.right: parent.right
         anchors.rightMargin: 8
         anchors.verticalCenter: parent.verticalCenter

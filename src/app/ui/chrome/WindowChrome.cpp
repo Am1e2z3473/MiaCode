@@ -7,6 +7,7 @@
 #include <QCoreApplication>
 #include <QGuiApplication>
 #include <QJsonObject>
+#include <QPlatformSurfaceEvent>
 #include <QPointer>
 #include <QScreen>
 #include <QWindow>
@@ -26,6 +27,9 @@ WindowChrome::WindowChrome(QObject* parent)
     stateCaptureTimer_.setSingleShot(true);
     stateCaptureTimer_.setInterval(0);
     connect(&stateCaptureTimer_, &QTimer::timeout, this, &WindowChrome::captureWindowState);
+    materialUpdateTimer_.setSingleShot(true);
+    materialUpdateTimer_.setInterval(0);
+    connect(&materialUpdateTimer_, &QTimer::timeout, this, &WindowChrome::refreshNativeMaterial);
 }
 
 WindowChrome::~WindowChrome()
@@ -84,9 +88,9 @@ void WindowChrome::attach(QWindow* window)
 #ifdef Q_OS_WIN
     nativeHandle_ = window->winId();
     const auto handle = reinterpret_cast<HWND>(nativeHandle_);
+    window->installEventFilter(this);
     QCoreApplication::instance()->installNativeEventFilter(this);
-    setNativeMaterialAvailable(NativeWindowTheme::applyToWindow(window, blurMaterialsEnabled_));
-    extendDwmFrame();
+    refreshNativeMaterial();
 
     SetWindowPos(
         handle,
@@ -98,6 +102,7 @@ void WindowChrome::attach(QWindow* window)
         SWP_FRAMECHANGED | SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
     setTitleBarLeadingInset(0);
 #elif defined(Q_OS_MACOS)
+    window->installEventFilter(this);
     applyMacOs(window);
     observeMacOsFullScreen(window);
     QObject::connect(
@@ -125,8 +130,19 @@ void WindowChrome::minimize()
         return;
     }
     captureWindowState();
-    // Keep maximized/fullscreen bits so the native restore operation retains them.
-    window_->setWindowStates(window_->windowStates() | Qt::WindowMinimized);
+    window_->showMinimized();
+}
+
+void WindowChrome::toggleMaximized()
+{
+    if (window_.isNull()) {
+        return;
+    }
+    if (window_->windowStates().testFlag(Qt::WindowMaximized)) {
+        window_->showNormal();
+    } else {
+        window_->showMaximized();
+    }
 }
 
 void WindowChrome::setBlurMaterialsEnabled(bool enabled)
@@ -138,12 +154,53 @@ void WindowChrome::setBlurMaterialsEnabled(bool enabled)
     if (window_.isNull()) {
         return;
     }
+    refreshNativeMaterial();
+}
+
+void WindowChrome::refreshNativeTheme()
+{
+    NativeWindowTheme::applyAppearanceToWindow(window_.data());
+}
+
+void WindowChrome::refreshNativeMaterial()
+{
+    if (window_.isNull()) {
+        return;
+    }
 #ifdef Q_OS_WIN
-    setNativeMaterialAvailable(NativeWindowTheme::applyToWindow(window_.data(), enabled));
-    extendDwmFrame();
+    nativeHandle_ = window_->winId();
+    const bool frameApplied = extendDwmFrame();
+    const bool backdropApplied = NativeWindowTheme::applyToWindow(
+        window_.data(), blurMaterialsEnabled_, NativeWindowTheme::BackdropMaterial::Acrylic);
+    setNativeMaterialAvailable(frameApplied && backdropApplied);
 #elif defined(Q_OS_MACOS)
     applyMacOs(window_.data());
 #endif
+}
+
+bool WindowChrome::eventFilter(QObject* watched, QEvent* event)
+{
+#if defined(Q_OS_WIN) || defined(Q_OS_MACOS)
+    if (watched == window_.data()) {
+        if (event->type() == QEvent::Show) {
+            // Apply after Qt has completed the native show operation.
+            materialUpdateTimer_.start();
+        } else if (event->type() == QEvent::PlatformSurface) {
+            const auto* surfaceEvent = static_cast<QPlatformSurfaceEvent*>(event);
+            if (surfaceEvent->surfaceEventType() == QPlatformSurfaceEvent::SurfaceCreated) {
+                materialUpdateTimer_.start();
+            } else {
+                materialUpdateTimer_.stop();
+#ifdef Q_OS_MACOS
+                releaseMacOsMaterial();
+#endif
+                nativeHandle_ = 0;
+                setNativeMaterialAvailable(false);
+            }
+        }
+    }
+#endif
+    return QObject::eventFilter(watched, event);
 }
 
 void WindowChrome::restoreWindowState()
@@ -271,12 +328,20 @@ bool WindowChrome::nativeEventFilter(const QByteArray& eventType, void* message,
         return false;
     }
 
+    if (nativeMessage->message == WM_NCACTIVATE) {
+        // Preserve native activation while the QML caption owns its pixels.
+        *result = DefWindowProcW(handle, WM_NCACTIVATE, nativeMessage->wParam, -1);
+        return true;
+    }
+
     if (nativeMessage->message == WM_NCCALCSIZE && nativeMessage->wParam == TRUE) {
-        if (IsZoomed(handle)) {
+        if (IsZoomed(handle) && !window_->windowStates().testFlag(Qt::WindowFullScreen)) {
             MONITORINFO monitorInfo{};
             monitorInfo.cbSize = sizeof(monitorInfo);
             const HMONITOR monitor = MonitorFromWindow(handle, MONITOR_DEFAULTTONEAREST);
             if (GetMonitorInfoW(monitor, &monitorInfo)) {
+                // QML owns the caption, so its client origin is the work-area
+                // origin rather than the native caption's client origin.
                 auto* parameters = reinterpret_cast<NCCALCSIZE_PARAMS*>(nativeMessage->lParam);
                 parameters->rgrc[0] = monitorInfo.rcWork;
             }
@@ -331,10 +396,9 @@ bool WindowChrome::nativeEventFilter(const QByteArray& eventType, void* message,
         return true;
     }
 
-    if (nativeMessage->message == WM_ACTIVATE
-        || nativeMessage->message == WM_DWMCOMPOSITIONCHANGED) {
-        setNativeMaterialAvailable(NativeWindowTheme::applyToWindow(window_.data(), blurMaterialsEnabled_));
-        extendDwmFrame();
+    if (nativeMessage->message == WM_DWMCOMPOSITIONCHANGED) {
+        // Qt also updates composition settings while handling this message.
+        materialUpdateTimer_.start();
     }
 #else
     Q_UNUSED(eventType);
@@ -345,16 +409,20 @@ bool WindowChrome::nativeEventFilter(const QByteArray& eventType, void* message,
     return false;
 }
 
-void WindowChrome::extendDwmFrame() const
+bool WindowChrome::extendDwmFrame() const
 {
 #ifdef Q_OS_WIN
     if (nativeHandle_ == 0) {
-        return;
+        return false;
     }
 
-    const int extent = nativeMaterialAvailable_ ? -1 : 1;
-    const MARGINS margins{extent, extent, extent, extent};
-    DwmExtendFrameIntoClientArea(reinterpret_cast<HWND>(nativeHandle_), &margins);
+    // The system backdrop covers the window independently of frame margins.
+    // Keep the native caption style for animations, with its painting outside
+    // the client area owned by QML. A full glass frame exposes DWM buttons.
+    const MARGINS margins{1, 1, 0, 1};
+    return SUCCEEDED(DwmExtendFrameIntoClientArea(reinterpret_cast<HWND>(nativeHandle_), &margins));
+#else
+    return false;
 #endif
 }
 

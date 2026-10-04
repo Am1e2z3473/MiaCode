@@ -34,7 +34,7 @@ CoverExportWindow::CoverExportWindow(miacode::ExportEngine& exportEngine,
     }, Qt::QueuedConnection);
     connect(&preferences_, &WorkbenchSettings::themeChanged, this, [this] {
         if (window_) {
-            NativeWindowTheme::applyToWindow(window_, preferences_.blurMaterialsEnabled());
+            NativeWindowTheme::applyAppearanceToWindow(window_);
         }
     });
     connect(&preferences_, &WorkbenchSettings::blurMaterialsEnabledChanged, this, [this] {

@@ -8,9 +8,10 @@
 #include <QTimer>
 
 class QWindow;
+class QEvent;
 
 // v2 WindowTitleBar chrome. Attach only from Bootstrap (never v1).
-// Windows: WM_NCCALCSIZE over the native caption.
+// Windows: native resize frame and system commands; QML owns the caption.
 // macOS: full-size content; native title text hidden; QWindow::title kept.
 // All platforms: root-window state transitions and persisted geometry.
 // titleBarLeadingInset: clearance past macOS traffic lights (0 elsewhere).
@@ -29,6 +30,7 @@ public:
 
     void attach(QWindow* window);
     Q_INVOKABLE void minimize();
+    Q_INVOKABLE void toggleMaximized();
     void saveWindowState();
     // Remeasure traffic-light clearance after native layout is ready.
     Q_INVOKABLE void refreshTitleBarMetrics();
@@ -37,6 +39,7 @@ public:
     bool nativeMaterialAvailable() const { return nativeMaterialAvailable_; }
     bool blurMaterialsEnabled() const { return blurMaterialsEnabled_; }
     void setBlurMaterialsEnabled(bool enabled);
+    void refreshNativeTheme();
 
     bool nativeEventFilter(const QByteArray& eventType, void* message, qintptr* result) override;
 
@@ -46,7 +49,9 @@ signals:
     void nativeMaterialAvailableChanged();
 
 private:
-    void extendDwmFrame() const;
+    bool eventFilter(QObject* watched, QEvent* event) override;
+    void refreshNativeMaterial();
+    bool extendDwmFrame() const;
     void applyMacOs(QWindow* window);
     void observeMacOsFullScreen(QWindow* window);
     void stopObservingMacOsFullScreen();
@@ -62,6 +67,7 @@ private:
     QString screenName_;
     bool maximized_ = false;
     QTimer stateCaptureTimer_;
+    QTimer materialUpdateTimer_;
     quintptr nativeHandle_ = 0;
     bool nativeMaterialAvailable_ = false;
     bool blurMaterialsEnabled_ = true;

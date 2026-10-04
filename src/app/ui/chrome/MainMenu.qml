@@ -184,7 +184,7 @@ Item {
         stateColors: Theme.chromeStateColors
 
         y: (root.height - height) / 2
-        height: Theme.controlMinHeight
+        height: Math.min(Theme.controlMinHeight, root.height)
         padding: 0
         leftPadding: 8
         rightPadding: 8
@@ -263,7 +263,7 @@ Item {
             stateColors: Theme.chromeStateColors
             width: root.overflowButtonWidth
             y: (root.height - height) / 2
-            height: Theme.controlMinHeight
+            height: Math.min(Theme.controlMinHeight, root.height)
             visible: root.visibleCount < 6
             iconSource: Qt.resolvedUrl("icons/more.svg")
             filledIconSource: Qt.resolvedUrl("icons/more-fill.svg")

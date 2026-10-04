@@ -7,6 +7,7 @@ Item {
     id: root
 
     required property var hostWindow
+    required property var windowChrome
 
     DragHandler {
         target: null
@@ -19,11 +20,6 @@ Item {
 
     TapHandler {
         acceptedButtons: Qt.LeftButton
-        onDoubleTapped: {
-            if (root.hostWindow.visibility === Window.Maximized)
-                root.hostWindow.showNormal()
-            else
-                root.hostWindow.showMaximized()
-        }
+        onDoubleTapped: root.windowChrome.toggleMaximized()
     }
 }

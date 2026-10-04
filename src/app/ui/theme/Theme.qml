@@ -537,8 +537,10 @@ QtObject {
 
     // Fill alpha only: text/icons and popup transition opacity stay independent.
     readonly property real overlayOpacity: darkTheme ? 0.72 : 0.82
-    readonly property real nativeMaterialTintOpacity: darkTheme ? 0.70 : 0.55
-    readonly property color nativeMaterialTintColor: {
+    readonly property real nativeMaterialTintOpacity: Qt.platform.os === "windows"
+        ? (darkTheme ? 0.88 : 0.80)
+        : (darkTheme ? 0.65 : 0.50)
+    readonly property color chromeHighlightBaseColor: {
         const c = Qt.color(colors.background.activityBar)
         return darkTheme
             ? Qt.rgba(Math.min(1, c.r + 14 / 255),
@@ -546,14 +548,14 @@ QtObject {
                       Math.min(1, c.b + 16 / 255), c.a)
             : c
     }
-    readonly property var chromeStateColors: nativeMaterialActive && darkTheme ? ({
+    readonly property var chromeStateColors: nativeMaterialActive ? ({
         hover: chromeHighlightColor(0.12),
         pressed: chromeHighlightColor(0.20),
         selected: chromeHighlightColor(0.16)
     }) : colors.activityState
     readonly property real popupOpacity: 0.96
     // Frosted menu material is independent of wallpaper visibility.
-    readonly property real popupTintOpacity: 0.72
+    readonly property real popupTintOpacity: 0.85
     readonly property int popupBlurRadius: 96
     readonly property real dialogTintOpacity: 0.94
     readonly property int dialogBlurRadius: 128
@@ -604,13 +606,13 @@ QtObject {
     function chromeSurfaceColor(baseColor) {
         if (!nativeMaterialActive)
             return surfaceColor(baseColor)
-        const c = darkTheme ? nativeMaterialTintColor : Qt.color(baseColor)
+        const c = Qt.color(activeThemeToken === "dark" ? "#0C0D0E" : baseColor)
         return Qt.rgba(c.r, c.g, c.b, c.a * nativeMaterialTintOpacity)
     }
 
     function chromeHighlightColor(amount) {
         const c = Qt.color(colors.text.active)
-        return Qt.tint(nativeMaterialTintColor, Qt.rgba(c.r, c.g, c.b, amount))
+        return Qt.tint(chromeHighlightBaseColor, Qt.rgba(c.r, c.g, c.b, amount))
     }
 
     // Shared UI geometry.
@@ -642,6 +644,7 @@ QtObject {
     // keep text off the highlight edge.
     readonly property int rowPaddingX: 10
     readonly property int titleBarBrandIconSize: 17
+    readonly property int windowChromeRowHeight: 30
     readonly property int workspaceHeaderHeight: 34
     // Visual baseline shared by the editor tabs and workspace side headings.
     readonly property int workspaceHeaderContentOffsetY: 2

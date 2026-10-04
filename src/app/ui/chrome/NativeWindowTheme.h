@@ -8,10 +8,18 @@ class QWindow;
 // platforms keep these helpers as no-ops.
 namespace NativeWindowTheme {
 
-// QWindow variant for QML / QQuickWindow top-levels. Unlike the widget
-// variant this does not force a frame recalc (preserves the historical
-// quick-shell behavior of plain attribute writes).
+enum class BackdropMaterial {
+    Mica,
+    Acrylic,
+};
+
+// Updates appearance without rebuilding the window's backdrop.
+void applyAppearanceToWindow(QWindow* window);
+
+// QWindow variant for QML / QQuickWindow top-levels. Frame geometry belongs
+// to the window chrome; this helper only sets appearance and backdrop.
 // Returns whether the requested native backdrop was accepted.
-bool applyToWindow(QWindow* window, bool backdropEnabled = true);
+bool applyToWindow(QWindow* window, bool backdropEnabled = true,
+                   BackdropMaterial material = BackdropMaterial::Mica);
 
 }  // namespace NativeWindowTheme
