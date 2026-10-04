@@ -5,7 +5,6 @@
 #include "runtime/Shared.h"
 #include "runtime/editor/EditorHost.h"
 
-#include "BracketScopeHighlighter.h"
 #include "QtPreviewSfxRuntime.h"
 #include "SimaiParser.h"
 #include "app/quick_shell/QuickShellPreviewCompositeSurface.h"

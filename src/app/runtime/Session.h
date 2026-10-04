@@ -63,7 +63,6 @@ namespace miacode::video_export {
 }
 class QJsonObject;
 class QThreadPool;
-class BracketScopeHighlighter;
 class PreviewRuntime;
 class PreviewStageMediaHost;
 struct IntroBannerSpec;

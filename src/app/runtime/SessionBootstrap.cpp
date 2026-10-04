@@ -14,7 +14,6 @@
 #include "runtime/validation/ValidationHost.h"
 #include "runtime/shell/ShellHost.h"
 
-#include "BracketScopeHighlighter.h"
 #include "audio/PreviewAudioDeviceWatcher.h"
 #include "QtPreviewSfxRuntime.h"
 #include "SimaiParser.h"

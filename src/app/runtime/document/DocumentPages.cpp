@@ -4,7 +4,6 @@
 
 #include "app/services/PlaybackStateAuthority.h"
 
-#include "BracketScopeHighlighter.h"
 #include "QtPreviewSfxRuntime.h"
 #include "SimaiParser.h"
 #include "app/quick_shell/QuickShellPreviewCompositeSurface.h"

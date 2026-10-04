@@ -3,7 +3,6 @@
 #include "runtime/playback/PlaybackCoordinator.h"
 #include "runtime/shell/ShellHost.h"
 
-#include "BracketScopeHighlighter.h"
 #include "QtPreviewSfxRuntime.h"
 #include "SimaiParser.h"
 #include "app/quick_shell/QuickShellPreviewCompositeSurface.h"

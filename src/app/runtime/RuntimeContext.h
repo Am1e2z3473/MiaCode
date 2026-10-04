@@ -23,7 +23,6 @@
 #include "timeline/TimelineSlowRefresh.h"
 #include "tools/video_export/VideoExportSnapshot.h"
 
-class BracketScopeHighlighter;
 class IntroBannerSpec;
 class PreviewAudioDeviceWatcher;
 class PreviewRuntime;

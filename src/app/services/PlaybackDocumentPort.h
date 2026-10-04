@@ -17,7 +17,7 @@ namespace miacode {
 // domain (written at document/DocumentFileFlow.cpp:748, read there and at
 // document/DocumentBridge.cpp:504) but still lives on Session — a leftover
 // from before the domain split. Two text-scanning specs
-// (QmlDocumentLifecycleContractSpec.cpp, QmlEditorControllerSpec.cpp) pin its
+// (QmlDocumentLifecycleContractSpec.cpp) pin its
 // literal spelling as a Session member, so moving the field is the document
 // domain's own cleanup and out of scope here. This port only adds a query
 // DocumentSessionHost can answer from the Session& it already holds.

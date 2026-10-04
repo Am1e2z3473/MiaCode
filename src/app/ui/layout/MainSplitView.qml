@@ -265,6 +265,7 @@ Item {
                         visible: !root.pages.overlayActive && !root.exportVideoActive
                         editorController: root.editorController
                         editorSync: root.editorSync
+                        analysisSession: root.analysisSession
                         viewState: root.viewState
                         documentSession: root.documentSession
                         commands: root.commands
