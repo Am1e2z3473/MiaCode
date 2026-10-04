@@ -6,7 +6,6 @@
 #include "app/services/ApplicationServices.h"
 #include "app/services/LatencyEngine.h"
 
-#include "BracketScopeHighlighter.h"
 #include "QtPreviewSfxRuntime.h"
 #include "SimaiParser.h"
 #include "MainEntrypoints.h"

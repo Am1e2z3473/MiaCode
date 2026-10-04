@@ -109,3 +109,23 @@ Spec 按领域登记于 `cmake/devtools/specs/`，清单见
 - `ffmpeg/trim/`：构建 Windows decode-only FFmpeg dev SDK 的裁剪工具链。
 - `assets/subset_hud_font.py`：HUD 字体子集生成，详见 `assets/README_font_subset.md`。
 - `assets/gen_same_lane_v_slides.py`：生成同轨 V 型 slide 参考数据。
+
+## ScintillaQuick 编辑器依赖
+
+`third_party/ScintillaQuick` 使用 Git submodule，固定提交
+`bfa6ae93315942b591878b0e709e1363bc07bfd6`，来源为
+[imakris/ScintillaQuick](https://github.com/imakris/ScintillaQuick)。检出仓库时执行：
+
+```sh
+git submodule update --init --recursive
+```
+
+顶层 CMake 通过 `add_subdirectory` 和 `ScintillaQuick::ScintillaQuick` 集成。
+依赖的示例、基准和测试构建开关关闭；应用使用 `MiaCode.UI` 中的
+`ScintillaEditor` 类型。BSD-2-Clause 许可及 Scintilla 许可随依赖保留。
+
+`ScintillaDocumentAdapter` 保留各难度的原生文档、撤销历史与视口，并转换
+服务层 UTF-16 位置和 Scintilla UTF-8 字节位置。`ScintillaDslStyler` 使用
+container styling、marker 和 indicator 表达语法、书签、诊断及播放位置。
+`ScintillaEditorBridge` 对接 DocumentModel、EditorSyncController 与 AnalysisModel，
+在 IME 预编辑期间保留服务层的已提交正文，导航携带难度、revision 与 sequence。

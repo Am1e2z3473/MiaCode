@@ -1,7 +1,6 @@
 #include "runtime/document/DocumentSessionHost.h"
 #include "runtime/Shared.h"
 
-#include "BracketScopeHighlighter.h"
 #include "common/CrashRecovery.h"
 #include "common/DebugLog.h"
 #include "preview/runtime/PreviewRuntime.h"

@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.21)
+cmake_minimum_required(VERSION 3.24)
 
 set(MIACODE_VERSION_MAJOR "2")
 set(MIACODE_VERSION_MINOR "0")
@@ -118,6 +118,14 @@ qt_policy(SET QTP0001 NEW)
 # QAVVideoFrame -> QVideoFrame bridge needs. The Windows, macOS, and Linux
 # QtAVPlayer preview backends use it (see the QtAVPlayer block below).
 find_package(Qt6 6.10 REQUIRED COMPONENTS MultimediaQuickPrivate)
+
+# Pinned ScintillaQuick sources are maintained as a Git submodule.
+set(SCINTILLAQUICK_BUILD_TESTS OFF CACHE BOOL "Build ScintillaQuick tests" FORCE)
+set(SCINTILLAQUICK_BUILD_EXAMPLES OFF CACHE BOOL "Build ScintillaQuick examples" FORCE)
+set(SCINTILLAQUICK_BUILD_BENCHMARKS OFF CACHE BOOL "Build ScintillaQuick benchmarks" FORCE)
+set(CMAKE_PROJECT_ScintillaQuick_INCLUDE "${CMAKE_CURRENT_SOURCE_DIR}/cmake/ScintillaQuickIntegration.cmake")
+add_subdirectory(third_party/ScintillaQuick)
+unset(CMAKE_PROJECT_ScintillaQuick_INCLUDE)
 
 add_executable(MiaCode WIN32 MACOSX_BUNDLE
     src/app/main.cpp
@@ -310,8 +318,6 @@ add_executable(MiaCode WIN32 MACOSX_BUNDLE
     src/editor/SimaiCompletionCatalog.cpp
     src/editor/SimaiTextEditPolicy.h
     src/editor/SimaiTextEditPolicy.cpp
-    src/editor/BracketScopeHighlighter.h
-    src/editor/BracketScopeHighlighter.cpp
     src/tools/latency/LatencyAnalysis.h
     src/tools/latency/LatencyAnalysis.cpp
     src/tools/latency/LatencyTestChartBuilder.h
@@ -714,7 +720,6 @@ set(MIACODE_UI_QML_FILES
     src/app/ui/editor/EditorPane.qml
     src/app/ui/editor/EditorTabBar.qml
     src/app/ui/editor/SourceEditor.qml
-    src/app/ui/editor/EditorPointerArea.qml
     src/app/ui/editor/CompletionPopup.qml
     src/app/ui/editor/NormalizeOptionsDialog.qml
     src/app/ui/editor/DesignerSlotsDialog.qml
@@ -727,7 +732,6 @@ set(MIACODE_UI_QML_FILES
     src/app/ui/latency/LatencyPage.qml
     src/app/ui/editor/FindReplaceBar.qml
     src/app/ui/editor/BookmarkList.qml
-    src/app/ui/editor/LineNumberGutter.qml
     src/app/ui/timeline/BottomPanel.qml
     src/app/ui/timeline/BottomTabBar.qml
     src/app/ui/timeline/TimelineZoomMenu.qml
@@ -829,14 +833,12 @@ foreach(pet_asset IN LISTS MIACODE_PET_ASSET_FILES)
     set_source_files_properties("${pet_asset}" PROPERTIES QT_RESOURCE_ALIAS "pet/minecraft/${pet_asset_name}")
 endforeach()
 
+target_link_libraries(MiaCode PRIVATE ScintillaQuick::ScintillaQuick)
+
 qt_add_qml_module(MiaCode
     URI MiaCode.UI
     VERSION 1.0
     SOURCES
-        src/app/ui/editor/SimaiSyntaxHighlighter.cpp
-        src/app/ui/editor/SimaiSyntaxHighlighter.h
-        src/app/ui/editor/EditorTextStyle.cpp
-        src/app/ui/editor/EditorTextStyle.h
         src/app/ui/ApplicationContext.cpp
         src/app/ui/ApplicationContext.h
         src/app/services/ImageResourceModel.cpp
@@ -869,10 +871,14 @@ qt_add_qml_module(MiaCode
         src/app/ui/layout/PageHost.h
         src/app/ui/editor/EditorController.cpp
         src/app/ui/editor/EditorController.h
+        src/app/ui/editor/ScintillaEditorBridge.cpp
+        src/app/ui/editor/ScintillaEditorBridge.h
+        src/app/ui/editor/ScintillaDocumentAdapter.cpp
+        src/app/ui/editor/ScintillaDocumentAdapter.h
+        src/app/ui/editor/ScintillaDslStyler.cpp
+        src/app/ui/editor/ScintillaDslStyler.h
         src/app/ui/chrome/ShortcutModel.cpp
         src/app/ui/chrome/ShortcutModel.h
-        src/app/ui/editor/EditorInputBridge.cpp
-        src/app/ui/editor/EditorInputBridge.h
         src/app/ui/export/ExportSession.cpp
         src/app/ui/export/ExportSession.h
         src/app/ui/export/CoverExportSession.cpp

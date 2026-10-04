@@ -300,41 +300,6 @@ miacode_add_spec(qml_document_replacement_sequence_spec
 target_compile_definitions(qml_document_replacement_sequence_spec PRIVATE
     "MIACODE_SOURCE_ROOT=\"${CMAKE_CURRENT_SOURCE_DIR}\"")
 
-miacode_add_spec(qml_editor_controller_spec
-    OWNER src/app/ui
-    CONTRACT qml-ui.qml-editor-controller
-    DOMAIN ui KIND integration RISK normal
-    EXECUTION ctest STATUS active PLATFORM all
-    SOURCES
-        src/tools/ui/QmlEditorControllerSpec.cpp
-        ${_miacode_chart_core}
-        src/app/services/ChartWorkspace.cpp
-        src/app/services/ChartWorkspace.h
-        src/app/ui/editor/EditorController.h
-        src/app/ui/editor/EditorController.cpp
-        src/app/ui/editor/SimaiSyntaxHighlighter.h
-        src/app/ui/editor/SimaiSyntaxHighlighter.cpp
-        src/app/ui/editor/EditorTextStyle.h
-        src/app/ui/editor/EditorTextStyle.cpp
-        src/app/ui/editor/EditorInputBridge.cpp
-        src/app/ui/editor/EditorInputBridge.h
-        ${_miacode_log_core}
-        src/editor/TouchPadAuthoringEdit.h
-        src/editor/TouchPadAuthoringEdit.cpp
-        src/core/chart/parser/SimaiCommentScan.h
-        src/core/chart/parser/SimaiCommentScan.cpp
-        src/editor/SimaiTextEditPolicy.h
-        src/editor/SimaiTextEditPolicy.cpp
-        src/editor/SimaiCompletionCatalog.h
-        src/editor/SimaiCompletionCatalog.cpp
-        src/editor/BookmarkCommentSyntax.h
-        src/editor/BookmarkCommentSyntax.cpp
-    LIBS Qt6::Core Qt6::Gui Qt6::Qml Qt6::Quick Qt6::QuickPrivate Qt6::QuickControls2 Qt6::Test
-    INCLUDES src src/app/ui src/editor src/app/ui
-)
-target_compile_definitions(qml_editor_controller_spec PRIVATE
-    "MIACODE_QML_SPEC_IMPORT_ROOT=\"${MIACODE_QML_SPEC_IMPORT_ROOT}\"")
-
 # Ratchet for docs/specs/ui/UI_BACKEND_SURFACE_ZH.md (stage 3.5, item 2).
 # Set-equality between the MainWindow surface src/app/ui actually reaches
 # and the inventory the doc lists, plus the friend grants and the recorded

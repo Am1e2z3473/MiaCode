@@ -5,7 +5,6 @@
 #include "runtime/document/DocumentSessionHost.h"
 #include "runtime/shell/ShellHost.h"
 
-#include "BracketScopeHighlighter.h"
 #include "editor/BookmarkCommentSyntax.h"
 #include "QtPreviewSfxRuntime.h"
 #include "SimaiParser.h"

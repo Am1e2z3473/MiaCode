@@ -5,18 +5,9 @@
 #include "editor/TouchPadAuthoringEdit.h"
 
 #include <QtGlobal>
-#include <QGuiApplication>
-#include <QClipboard>
-#include <QRegularExpression>
 
 namespace miacode::ui {
 namespace {
-
-// Per view. A step now costs the size of the edit that made it, not two copies
-// of the chart, so this is a "how far back would anyone reach" number rather
-// than a memory ceiling.
-constexpr int kMaxHistorySteps = 5000;
-
 
 miacode::editor::SimaiTextEditResult untouched(const QString& text, int anchor, int position)
 {
@@ -30,42 +21,6 @@ miacode::editor::SimaiTextEditResult untouched(const QString& text, int anchor, 
 bool commandModifier(Qt::KeyboardModifiers modifiers)
 {
     return modifiers & (Qt::ControlModifier | Qt::AltModifier | Qt::MetaModifier);
-}
-
-// The differing region between two whole-document snapshots, found by trimming
-// the shared prefix and suffix. Undo/redo replay a snapshot pair, but replaying
-// the whole document leaves the caret parked at a stale offset with nothing
-// selected — the user cannot see what the step did.
-struct TextDelta {
-    int start = 0;
-    int fromEnd = 0;
-    int toEnd = 0;
-};
-
-TextDelta computeTextDelta(const QString& from, const QString& to)
-{
-    TextDelta delta;
-    const int shorter = qMin(from.size(), to.size());
-    int prefix = 0;
-    while (prefix < shorter && from.at(prefix) == to.at(prefix)) ++prefix;
-    int suffix = 0;
-    while (suffix < shorter - prefix
-           && from.at(from.size() - 1 - suffix) == to.at(to.size() - 1 - suffix)) {
-        ++suffix;
-    }
-    delta.start = prefix;
-    delta.fromEnd = from.size() - suffix;
-    delta.toEnd = to.size() - suffix;
-    return delta;
-}
-
-QRegularExpression findExpression(const QString& needle, bool caseSensitive, bool wholeWord)
-{
-    const QString escaped = QRegularExpression::escape(needle);
-    const QString pattern = wholeWord ? QStringLiteral("\\b%1\\b").arg(escaped) : escaped;
-    return QRegularExpression(pattern, caseSensitive
-        ? QRegularExpression::NoPatternOption
-        : QRegularExpression::CaseInsensitiveOption);
 }
 
 } // namespace
@@ -152,27 +107,6 @@ miacode::editor::SimaiTextEditResult EditorController::processKey(
     return process(request);
 }
 
-miacode::editor::SimaiTextEditResult EditorController::processImeCommit(
-    const QString& text, int anchor, int position, const QString& committedText)
-{
-    if (committedText.isEmpty()) return untouched(text, anchor, position);
-    miacode::editor::SimaiTextEditRequest request;
-    request.text = text; request.anchor = anchor; request.position = position;
-    request.input = committedText; request.isImeCommit = true;
-    return process(request);
-}
-
-miacode::editor::SimaiTextEditResult EditorController::processPaste(
-    const QString& text, int anchor, int position, const QString& pastedText)
-{
-    miacode::editor::SimaiTextEditRequest request;
-    request.text = text; request.anchor = anchor; request.position = position;
-    request.input = pastedText;
-    request.halfWidthInputEnabled = false;
-    request.autoCompletionEnabled = false;
-    return process(request);
-}
-
 miacode::editor::SimaiTextEditResult EditorController::process(const miacode::editor::SimaiTextEditRequest& input)
 {
     auto request = input;
@@ -213,77 +147,22 @@ miacode::editor::SimaiTextEditResult EditorController::acceptCompletion(const QS
     return result;
 }
 
-EditorController::FindResult EditorController::find(
-    const QString& text, int anchor, int position, const QString& needle, bool caseSensitive,
-    bool wholeWord, bool backwards) const
+void EditorController::triggerCompletion(QChar glyph, const QString& text, int position, bool closingPresent)
 {
-    FindResult result;
-    if (needle.isEmpty()) return result;
-    const auto expression = findExpression(needle, caseSensitive, wholeWord);
-    const int cursor = qBound(0, backwards ? qMin(anchor, position) : qMax(anchor, position), text.size());
-    QRegularExpressionMatch match;
-    if (backwards) {
-        auto iterator = expression.globalMatch(text.left(cursor));
-        while (iterator.hasNext()) match = iterator.next();
-        if (!match.hasMatch()) {
-            iterator = expression.globalMatch(text);
-            while (iterator.hasNext()) match = iterator.next();
-        }
-    } else {
-        match = expression.match(text, cursor);
-        if (!match.hasMatch()) match = expression.match(text, 0);
-    }
-    if (!match.hasMatch()) return result;
-    result.found = true;
-    result.start = match.capturedStart();
-    result.end = match.capturedEnd();
-    return result;
-}
-
-miacode::editor::SimaiTextEditResult EditorController::replaceSelection(
-    const QString& text, int anchor, int position, const QString& needle, const QString& replacement,
-    bool caseSensitive, bool wholeWord) const
-{
-    auto result = untouched(text, anchor, position);
-    const int start = qBound(0, qMin(anchor, position), text.size());
-    const int end = qBound(start, qMax(anchor, position), text.size());
-    const auto expression = findExpression(needle, caseSensitive, wholeWord);
-    const auto match = expression.match(text.mid(start, end - start));
-    if (needle.isEmpty() || !match.hasMatch() || match.capturedStart() != 0 || match.capturedEnd() != end - start)
-        return result;
-    result.consumed = true;
-    result.transaction.hasEdit = result.transaction.undoGroup = true;
-    result.transaction.replacementStart = start;
-    result.transaction.replacementEnd = end;
-    result.transaction.replacementText = replacement;
-    result.transaction.text.replace(start, end - start, replacement);
-    result.transaction.anchor = result.transaction.position = start + replacement.size();
-    return result;
-}
-
-miacode::editor::SimaiTextEditResult EditorController::replaceAll(
-    const QString& text, const QString& needle, const QString& replacement, bool caseSensitive,
-    bool wholeWord) const
-{
-    auto result = untouched(text, 0, 0);
-    if (needle.isEmpty()) return result;
-    int count = 0;
-    auto matches = findExpression(needle, caseSensitive, wholeWord).globalMatch(text);
-    while (matches.hasNext()) {
-        matches.next();
-        ++count;
-    }
-    if (count == 0) return result;
-    QString replaced = text;
-    replaced.replace(findExpression(needle, caseSensitive, wholeWord), replacement);
-    result.consumed = true;
-    result.transaction.hasEdit = result.transaction.undoGroup = true;
-    result.transaction.replacementStart = 0;
-    result.transaction.replacementEnd = text.size();
-    result.transaction.replacementText = replaced;
-    result.transaction.text = replaced;
-    result.transaction.anchor = result.transaction.position = 0;
-    return result;
+    if (!autoCompletionEnabled_ || overwriteMode_ || completion_.active) return;
+    miacode::editor::SimaiCompletionSession completion;
+    if (miacode::editor::isBracketOpening(glyph)) {
+        completion.opening = glyph;
+        completion.candidates = miacode::editor::candidatesForOpening(glyph, wholeBpm_, text);
+    } else if (glyph == QLatin1Char('h')) {
+        if (position < text.size() && text.at(position) == QLatin1Char('[')) return;
+        completion.opening = QLatin1Char('[');
+        completion.candidates = miacode::editor::holdDurationCandidates();
+    } else return;
+    completion.startPosition = position;
+    completion.closingPresent = closingPresent;
+    completion.active = !completion.candidates.isEmpty();
+    setCompletion(completion);
 }
 
 void EditorController::setDocumentContext(int difficultyId, quint64 revision)
@@ -291,11 +170,6 @@ void EditorController::setDocumentContext(int difficultyId, quint64 revision)
     if (activeDifficultyId_ != difficultyId) closeCompletion();
     activeDifficultyId_ = difficultyId;
     documentRevision_ = revision;
-}
-
-bool EditorController::acceptsCaret(int difficultyId, quint64 revision, bool imeComposing) const
-{
-    return !imeComposing && difficultyId == activeDifficultyId_ && revision == documentRevision_;
 }
 
 void EditorController::setCompletion(const miacode::editor::SimaiCompletionSession& completion)
@@ -367,12 +241,6 @@ void EditorController::setUndoAvailability(bool canUndo, bool canRedo)
     emit undoAvailabilityChanged();
 }
 
-QString EditorController::clipboardText() const
-{
-    const QClipboard* clipboard = QGuiApplication::clipboard();
-    return clipboard != nullptr ? clipboard->text() : QString();
-}
-
 QVariantMap EditorController::toQmlTransaction(const miacode::editor::SimaiTextEditResult& result) const
 {
     const auto& tx = result.transaction;
@@ -384,21 +252,7 @@ QVariantMap EditorController::toQmlTransaction(const miacode::editor::SimaiTextE
             {QStringLiteral("anchor"), tx.anchor}, {QStringLiteral("position"), tx.position}};
 }
 QVariantMap EditorController::processKeyForQml(const QString& text, int anchor, int position, const QString& input, int key, int modifiers) { return toQmlTransaction(processKey(text, anchor, position, input, key, modifiers)); }
-QVariantMap EditorController::processImeCommitForQml(const QString& text, int anchor, int position, const QString& textInput) { return toQmlTransaction(processImeCommit(text, anchor, position, textInput)); }
-QVariantMap EditorController::processPasteForQml(const QString& text, int anchor, int position, const QString& pastedText) { return toQmlTransaction(processPaste(text, anchor, position, pastedText)); }
 QVariantMap EditorController::acceptCompletionForQml(const QString& text, int anchor, int position) { return toQmlTransaction(acceptCompletion(text, anchor, position)); }
-QVariantMap EditorController::findForQml(const QString& text, int anchor, int position, const QString& needle, bool caseSensitive, bool wholeWord, bool backwards) const
-{
-    const FindResult result = find(text, anchor, position, needle, caseSensitive, wholeWord, backwards);
-    return {{QStringLiteral("found"), result.found}, {QStringLiteral("start"), result.start}, {QStringLiteral("end"), result.end}};
-}
-QVariantMap EditorController::replaceSelectionForQml(const QString& text, int anchor, int position, const QString& needle, const QString& replacement, bool caseSensitive, bool wholeWord) const { return toQmlTransaction(replaceSelection(text, anchor, position, needle, replacement, caseSensitive, wholeWord)); }
-QVariantMap EditorController::replaceAllForQml(const QString& text, const QString& needle, const QString& replacement, bool caseSensitive, bool wholeWord) const { return toQmlTransaction(replaceAll(text, needle, replacement, caseSensitive, wholeWord)); }
-void EditorController::setDocumentContextForQml(int difficultyId, qulonglong revision) { setDocumentContext(difficultyId, revision); }
-bool EditorController::publishCaretForQml(int difficultyId, qulonglong revision, bool imeComposing)
-{
-    return acceptsCaret(difficultyId, revision, imeComposing);
-}
 QVariantList EditorController::bookmarksForQml(const QString& text) const
 {
     QVariantList result;
@@ -485,102 +339,6 @@ QVariantMap EditorController::touchPadAuthoringForQml(
     QVariantMap transaction = toQmlTransaction(result);
     transaction.insert(QStringLiteral("touchTokenStart"), plan.tokenStart);
     return transaction;
-}
-EditorController::QmlHistory& EditorController::activeHistory()
-{
-    return histories_[historyScopeId_];
-}
-
-void EditorController::publishAvailabilityForActiveScope()
-{
-    const auto found = histories_.constFind(historyScopeId_);
-    if (found == histories_.constEnd()) {
-        setUndoAvailability(false, false);
-        return;
-    }
-    setUndoAvailability(!found->undo.isEmpty(), !found->redo.isEmpty());
-}
-
-void EditorController::setHistoryScope(const QString& scopeId)
-{
-    if (historyScopeId_ == scopeId) {
-        return;
-    }
-    historyScopeId_ = scopeId;
-    // Switching views does not disturb any history; it only changes which one
-    // the undo action is looking at.
-    publishAvailabilityForActiveScope();
-}
-
-void EditorController::clearAllHistory()
-{
-    closeCompletion();
-    histories_.clear();
-    setUndoAvailability(false, false);
-}
-
-void EditorController::dropHistoryScope(const QString& scopeId)
-{
-    histories_.remove(scopeId);
-    if (scopeId == historyScopeId_) {
-        publishAvailabilityForActiveScope();
-    }
-}
-
-void EditorController::recordQmlTransaction(
-    const QString& before, const QString& after, int touchTokenStart)
-{
-    if (before == after) return;
-    const TextDelta delta = computeTextDelta(before, after);
-    QmlHistory& history = activeHistory();
-    history.undo.append({delta.start,
-                         before.mid(delta.start, delta.fromEnd - delta.start),
-                         after.mid(delta.start, delta.toEnd - delta.start),
-                         touchTokenStart});
-    // 每步保存修改区间内的原文和新文；达到历史上限后移除最早的记录。
-    if (history.undo.size() > kMaxHistorySteps) {
-        history.undo.remove(0, history.undo.size() - kMaxHistorySteps);
-    }
-    history.redo.clear();
-    setUndoAvailability(true, false);
-}
-QVariantMap EditorController::restoreTransaction(
-    int start, const QString& replaced, const QString& replacement, int touchTokenStart) const
-{
-    // The caret lands on the restored text and selects it, so the step is
-    // visible. Undoing an insertion restores nothing, which collapses the
-    // selection at the point the inserted text used to begin.
-    QVariantMap transaction{{QStringLiteral("consumed"), true},
-                            {QStringLiteral("hasEdit"), true},
-                            {QStringLiteral("replacementStart"), start},
-                            {QStringLiteral("replacementEnd"), start + replaced.size()},
-                            {QStringLiteral("replacementText"), replacement},
-                            {QStringLiteral("anchor"), start},
-                            {QStringLiteral("position"), start + replacement.size()}};
-    if (touchTokenStart >= 0) {
-        transaction.insert(QStringLiteral("touchTokenStart"), touchTokenStart);
-    }
-    return transaction;
-}
-QVariantMap EditorController::undoQmlTransaction()
-{
-    closeCompletion();
-    QmlHistory& history = activeHistory();
-    if (history.undo.isEmpty()) return {};
-    const auto entry = history.undo.takeLast();
-    history.redo.append(entry);
-    setUndoAvailability(!history.undo.isEmpty(), true);
-    return restoreTransaction(entry.start, entry.inserted, entry.removed, entry.touchTokenStart);
-}
-QVariantMap EditorController::redoQmlTransaction()
-{
-    closeCompletion();
-    QmlHistory& history = activeHistory();
-    if (history.redo.isEmpty()) return {};
-    const auto entry = history.redo.takeLast();
-    history.undo.append(entry);
-    setUndoAvailability(true, !history.redo.isEmpty());
-    return restoreTransaction(entry.start, entry.removed, entry.inserted, entry.touchTokenStart);
 }
 
 } // namespace miacode::ui

@@ -117,6 +117,13 @@ void openCompletion(SimaiTextEditResult* result, QChar opening, bool closingPres
 
 } // namespace
 
+QString normalizeSimaiInput(const QString& input)
+{
+    SimaiTextEditRequest request;
+    request.input = input;
+    return normalizedInput(request);
+}
+
 SimaiTextEditResult applySimaiTextEditPolicy(const SimaiTextEditRequest& request)
 {
     SimaiTextEditResult result = untouched(request);

@@ -1,603 +1,60 @@
 import QtQuick
 import QtQml.Models
 import QtQuick.Controls
-import QtQuick.Shapes
 import QtQuick.Window
 import MiaCode.UI
 
 Rectangle {
     id: root
-
     required property var viewState
     required property var documentSession
     required property var editorController
     required property var syncController
-    signal normalizeChartRequested()
-
+    required property var analysisSession
     property var preferences: null
-    // EditorPane must provide effective visibility (including its own host),
-    // so an editor retained behind an overlay cannot acknowledge navigation.
     property bool navigationVisible: false
-    property bool imeComposing: false
-    property int programmaticSelectionDepth: 0
-    property bool contextCaretPending: false
-    property double pendingNavigationSequence: 0
-    property bool pendingNavigationApplied: false
-    property var bookmarks: []
     property int pendingBookmarkLine: -1
-    property var selectionBeatSummary: ({ totalCommaCount: 0, parts: [], exact: true })
-    // Read-only projection of preview follow while paused or with 代码跟随 off.
-    // It paints where the playhead is; it must never move the real caret.
-    property bool followDecorationActive: false
-    property int followDecorationStart: 0
-    property int followDecorationEnd: 0
-    property int followDecorationCursor: 0
-    property int followLayoutTick: 0
-    readonly property rect followCaretRect: {
-        root.followLayoutTick
-        if (!root.followDecorationActive)
-            return Qt.rect(0, 0, 0, 0)
-        return sourceArea.positionToRectangle(
-            Math.max(0, Math.min(sourceArea.length, root.followDecorationCursor)))
-    }
-    onNavigationVisibleChanged: {
-        publishNavigationReadiness()
-        scheduleEditorContext(false)
-        applyFollowProjection()
-    }
-
-    function refreshSelectionBeatSummary() {
-        if (!root.preferences
-                || !root.preferences.editorSelectionBeatDisplay
-                || !root.documentSession || !root.documentSession.selectionBeatSummary
-                || !sourceArea) {
-            root.selectionBeatSummary = ({ totalCommaCount: 0, parts: [], exact: true })
-            return
-        }
-        root.selectionBeatSummary = root.documentSession.selectionBeatSummary(
-            sourceArea.text, sourceArea.selectionStart, sourceArea.selectionEnd)
-    }
-
+    signal normalizeChartRequested()
+    readonly property var bookmarks: sourceArea.bookmarks
+    readonly property bool canUndo: sourceArea.canUndo
+    readonly property bool canRedo: sourceArea.canRedo
+    readonly property bool canCut: !sourceArea.readonly && sourceArea.selectedText.length > 0
+    readonly property bool canCopy: sourceArea.selectedText.length > 0
+    readonly property bool canPaste: !sourceArea.readonly && sourceArea.canPaste
+    readonly property bool canTransform: canCut
+    readonly property bool canNormalize: !sourceArea.readonly && documentSession.currentDifficultyId > 0
+    readonly property var selectionBeatSummary: preferences && preferences.editorSelectionBeatDisplay
+        ? documentSession.selectionBeatSummary(sourceArea.text, sourceArea.selectionStart, sourceArea.selectionEnd)
+        : ({ totalCommaCount: 0, parts: [], exact: true })
     function beatSummaryDetail() {
-        const parts = root.selectionBeatSummary.parts || []
-        let values = []
-        for (let index = 0; index < parts.length; ++index)
-            values.push(parts[index].count + "/" + parts[index].denominator)
-        return values.join(" + ")
+        return (selectionBeatSummary.parts || []).map(part => part.count + "/" + part.denominator).join(" + ")
     }
-
     readonly property string selectionBeatStatusText: {
-        const total = Number(root.selectionBeatSummary.totalCommaCount || 0)
-        if (total <= 0)
-            return ""
-        const detail = root.beatSummaryDetail()
-        const value = (root.selectionBeatSummary.parts || []).length > 1
-            ? total + " (" + detail + ")" : detail
-        return qsTrId("document.selection_beats").arg(
-            root.selectionBeatSummary.exact ? value : "~ " + value)
+        const total = Number(selectionBeatSummary.totalCommaCount || 0)
+        if (total <= 0) return ""
+        const detail = beatSummaryDetail()
+        const value = (selectionBeatSummary.parts || []).length > 1 ? total + " (" + detail + ")" : detail
+        return qsTrId("document.selection_beats").arg(selectionBeatSummary.exact ? value : "~ " + value)
     }
-    readonly property string selectionBeatTooltipText: {
-        if (root.selectionBeatStatusText.length === 0)
-            return ""
-        return root.selectionBeatSummary.exact
-            ? root.beatSummaryDetail()
-            : qsTrId("document.selection_beats_inexact").arg(root.beatSummaryDetail())
-    }
-
-    function publishNavigationReadiness() {
-        if (!root.syncController || !root.documentSession)
-            return
-        root.syncController.setEditorReadiness(
-            root.documentSession.currentDifficultyId, root.documentSession.documentRevision,
-            root.navigationVisible)
-    }
-
-    function scheduleEditorContext(publishCaret) {
-        root.contextCaretPending = root.contextCaretPending
-            || (publishCaret && root.programmaticSelectionDepth === 0)
-        editorContextTimer.restart()
-    }
-
-    Timer {
-        id: editorContextTimer
-        interval: 0
-        repeat: false
-        onTriggered: {
-            if (!root.syncController || !root.documentSession)
-                return
-            const publishCaret = root.contextCaretPending
-                && root.editorController.publishCaretForQml(
-                    root.documentSession.currentDifficultyId,
-                    root.documentSession.documentRevision,
-                    root.imeComposing)
-            root.contextCaretPending = false
-            // Anchor and caret, not start and end: touch authoring writes at
-            // the caret, which is the start of a backward selection.
-            const caret = sourceArea.cursorPosition
-            root.syncController.setEditorContext(
-                root.documentSession.currentDifficultyId,
-                root.documentSession.documentRevision,
-                caret === sourceArea.selectionStart ? sourceArea.selectionEnd
-                                                    : sourceArea.selectionStart,
-                caret,
-                sourceArea.activeFocus, root.imeComposing,
-                root.viewState.editorCursorLine,
-                root.viewState.editorCursorColumn,
-                publishCaret)
-        }
-    }
-
-    Timer {
-        id: navigationAckTimer
-        interval: 0
-        repeat: false
-        onTriggered: {
-            if (root.syncController && root.pendingNavigationSequence > 0)
-                root.syncController.acknowledgeNavigation(
-                    root.pendingNavigationSequence, root.pendingNavigationApplied)
-            root.pendingNavigationSequence = 0
-            root.pendingNavigationApplied = false
-        }
-    }
-
-    function beginProgrammaticSelection() {
-        root.contextCaretPending = false
-        editorContextTimer.stop()
-        ++root.programmaticSelectionDepth
-    }
-
-    function endProgrammaticSelection() {
-        root.programmaticSelectionDepth = Math.max(0, root.programmaticSelectionDepth - 1)
-        root.scheduleEditorContext(false)
-    }
-
-    // Which view's undo history the editor is looking at. The controller keeps
-    // one per view, so switching difficulty changes the name and disturbs
-    // nothing — a history is only discarded when its tab closes or the whole
-    // document is replaced.
-    //
-    // A function, not a bound property, and this is the whole point. The
-    // session updates its state and then emits, in order: chartTextChanged
-    // first, currentDifficultyChanged after. A binding on currentDifficultyId
-    // is therefore still holding the OUTGOING difficulty at the moment the
-    // incoming text arrives — so naming the scope from a binding named the
-    // difficulty being left, and every edit typed afterwards was recorded into
-    // its history. Ctrl+Z in one difficulty then replayed another's edits.
-    // Reading the property directly gets the value that is already correct.
-    function currentHistoryScopeId() {
-        return "difficulty:" + root.documentSession.currentDifficultyId
-    }
-
-    property var appliedDocumentOpenGeneration: 0
-
-    function resetCaretToDocumentStart() {
-        if (!sourceArea || !editorScroll)
-            return
-        root.beginProgrammaticSelection()
-        sourceArea.cursorPosition = 0
-        if (sourceArea.selectionStart !== sourceArea.selectionEnd)
-            sourceArea.deselect()
-        root.endProgrammaticSelection()
-        editorScroll.allowScroll = true
-        editorScroll.userViewportY = 0
-        editorScroll.contentY = 0
-        editorScroll.allowScroll = false
-        root.updateCursorPosition()
-        root.applyFollowProjection()
-    }
-
-    function resetCaretIfDocumentOpened() {
-        if (!root.documentSession || !sourceArea || !editorScroll)
-            return
-        const generation = root.documentSession.documentOpenGeneration
-        if (generation === root.appliedDocumentOpenGeneration)
-            return
-        root.appliedDocumentOpenGeneration = generation
-        root.resetCaretToDocumentStart()
-    }
-
-    function syncTextFromController() {
-        const controllerText = root.documentSession.chartText
-        // Named before the text moves: the swap below must not be able to land
-        // a recording in the outgoing view's history.
-        root.editorController.setHistoryScope(root.currentHistoryScopeId())
-        if (sourceArea.text !== controllerText) {
-            root.editorController.closeCompletion()
-            root.beginProgrammaticSelection()
-            sourceArea.syncingFromController = true
-            root.clearFollowProjection()
-            sourceArea.text = controllerText
-            if (editorTextStyle)
-                editorTextStyle.applyImmediately()
-            sourceArea.syncingFromController = false
-            root.endProgrammaticSelection()
-            sourceArea.historyText = controllerText
-            updateCursorPosition()
-            Qt.callLater(root.refreshReplacedTextViewport)
-        }
-    }
-
-    function refreshReplacedTextViewport() {
-        editorScroll.reconcileViewport()
-        editorTextStyle.invalidateRendering()
-    }
-    readonly property real codeLineHeight: sourceArea.cursorRectangle.height
-    // 每个逻辑行顶部在文档坐标系中的 y。自动换行后行高不再固定，
-    // 当前行号与行号 gutter 都按真实行顶坐标定位。
-    property var lineTops: []
-    readonly property int activeLine: {
-        const tops = root.lineTops
-        const y = sourceArea.cursorRectangle.y - sourceArea.topPadding
-        let low = 0
-        let high = tops.length - 1
-        let result = 0
-        while (low <= high) {
-            const mid = (low + high) >> 1
-            if (tops[mid] <= y) {
-                result = mid
-                low = mid + 1
-            } else {
-                high = mid - 1
-            }
-        }
-        // lineTops 的下标从 0 开始，行号 gutter 的公开行号从 1 开始。
-        return result + 1
-    }
-
+    readonly property string selectionBeatTooltipText: selectionBeatStatusText.length === 0 ? ""
+        : selectionBeatSummary.exact ? beatSummaryDetail() : qsTrId("document.selection_beats_inexact").arg(beatSummaryDetail())
     color: Theme.surfaceColor(Theme.colors.background.surface)
     clip: true
-
-    readonly property bool canUndo: !sourceArea.readOnly && editorController.canUndo
-    readonly property bool canRedo: !sourceArea.readOnly && editorController.canRedo
-    readonly property bool canCut: !sourceArea.readOnly && sourceArea.selectedText.length > 0
-    readonly property bool canCopy: sourceArea.selectedText.length > 0
-    readonly property bool canPaste: !sourceArea.readOnly && sourceArea.canPaste
-    readonly property bool canTransform: canCut
-    readonly property bool canNormalize: !sourceArea.readOnly
-        && documentSession.currentDifficultyId > 0
-
-    function undo() {
-        // 先提交输入法文字，再从与当前正文一致的历史中取出撤销步骤。
-        Qt.inputMethod.commit()
-        applyHistoryTransaction(editorController.undoQmlTransaction())
-    }
-
-    function redo() {
-        Qt.inputMethod.commit()
-        applyHistoryTransaction(editorController.redoQmlTransaction())
-    }
-
-    // 撤销/重做 touch 点击输入时，预览回到该拍，与写入时的停靠位置一致。
-    function applyHistoryTransaction(transaction) {
-        if (applyEditorTransaction(transaction, true) && transaction.touchTokenStart !== undefined)
-            publishTouchPadPreviewAnchor(transaction.touchTokenStart)
-    }
-
-    function publishTouchPadPreviewAnchor(tokenStart) {
-        root.syncController.setTouchPadPreviewAnchor(
-            root.documentSession.currentDifficultyId, root.documentSession.documentRevision,
-            sourceArea.text, tokenStart)
-    }
-
-    function cut() {
-        sourceArea.cut()
-    }
-
-    function copy() {
-        sourceArea.copy()
-    }
-
-    function paste() {
-        return applyPastePayload(editorController.clipboardText())
-    }
-
-    function selectAll() {
-        sourceArea.selectAll()
-    }
-
-    function openFindReplace() {
-        findReplaceBar.show()
-    }
-
-    function selectCurrentLine() {
-        const start = sourceArea.text.lastIndexOf("\n", Math.max(0, sourceArea.cursorPosition - 1)) + 1
-        const endAt = sourceArea.text.indexOf("\n", sourceArea.cursorPosition)
-        sourceArea.select(start, endAt < 0 ? sourceArea.text.length : endAt)
-    }
-
-    function jumpToLine(line) {
-        const position = root.documentSession.chartPosition(Math.max(1, line), 1)
-        sourceArea.forceActiveFocus()
-        sourceArea.cursorPosition = position
-        centerCursorInView()
-    }
-
-    Timer {
-        id: cursorCenterTimer
-        interval: 0
-        repeat: false
-        onTriggered: {
-            if (!root.documentSession || !sourceArea)
-                return
-            const flickable = editorScroll
-            if (!flickable)
-                return
-            const target = sourceArea.y + sourceArea.cursorRectangle.y
-                + sourceArea.cursorRectangle.height / 2 - flickable.height / 2
-            flickable.allowScroll = true
-            flickable.contentY = flickable.clampViewportY(target)
-            flickable.allowScroll = false
-        }
-    }
-
-    function centerCursorInView() {
-        cursorCenterTimer.restart()
-    }
-
-    function beginUserViewportInteraction() {
-        root.syncController.beginPointerInteraction(
-            root.documentSession.currentDifficultyId,
-            root.documentSession.documentRevision)
-    }
-
-    function applyNavigation(sequence, difficultyId, revision, start, end, focusEditor, reveal) {
-        const accepted = root.navigationVisible
-            && difficultyId === root.documentSession.currentDifficultyId
-            && revision === root.documentSession.documentRevision
-            && start >= 0 && end >= start && end <= sourceArea.text.length
-        if (accepted) {
-            root.beginProgrammaticSelection()
-            sourceArea.select(start, end)
-            if (focusEditor)
-                sourceArea.forceActiveFocus()
-            root.endProgrammaticSelection()
-            if (reveal)
-                centerCursorInView()
-        }
-        root.pendingNavigationSequence = sequence
-        root.pendingNavigationApplied = accepted
-        navigationAckTimer.restart()
-    }
-
-    function createBookmarkAtLine(line) {
-        return applyEditorTransaction(editorController.createBookmarkForQml(
-            sourceArea.text, line, qsTrId("qml.bookmarks")))
-    }
-    function deleteBookmarkAtLine(line) {
-        return applyEditorTransaction(editorController.deleteBookmarkForQml(sourceArea.text, line))
-    }
-    function renameBookmarkAtLine(line, title) {
-        return applyEditorTransaction(editorController.renameBookmarkForQml(sourceArea.text, line, title))
-    }
-    function promptRenameBookmark(line) {
-        const bookmark = root.bookmarks.find(item => item.line === line)
-        if (!bookmark)
-            return
-        root.pendingBookmarkLine = line
-        bookmarkTitleField.text = bookmark.title
-        bookmarkTitleDialog.open()
-    }
-
-    function clearFollowProjection() {
-        root.followDecorationActive = false
-        decorationCenterTimer.stop()
-        root.followDecorationStart = 0
-        root.followDecorationEnd = 0
-        root.followDecorationCursor = 0
-    }
-
-    function applyFollowProjection() {
-        if (!root.syncController || !root.syncController.followActive
-                || root.syncController.followDifficultyId
-                   !== root.documentSession.currentDifficultyId
-                || root.syncController.followRevision
-                   !== root.documentSession.documentRevision) {
-            root.clearFollowProjection()
-            return false
-        }
-        root.followDecorationStart = Math.max(
-            0, Math.min(sourceArea.text.length, root.syncController.followStart))
-        root.followDecorationEnd = Math.max(
-            root.followDecorationStart,
-            Math.min(sourceArea.text.length, root.syncController.followEnd))
-        root.followDecorationCursor = Math.max(
-            0, Math.min(sourceArea.text.length, root.syncController.followCaret))
-        root.followDecorationActive = true
-        if (root.syncController.followReveal)
-            root.ensureFollowDecorationVisible()
-        return true
-    }
-
-    function bumpFollowLayout() {
-        root.followLayoutTick++
-        root.lineTops = highlighter.lineTopPositions()
-    }
-
-    function lineRangePath(ranges) {
-        const commands = []
-        const epsilon = Math.max(0.5, root.codeLineHeight / 8)
-        const cornerRadius = 3
-        let left = []
-        let right = []
-
-        function appendPoint(edge, x, y) {
-            const last = edge[edge.length - 1]
-            if (last && last.x === x && last.y === y)
-                return
-            const before = edge[edge.length - 2]
-            if (before && ((before.x === x && last.x === x)
-                        || (before.y === y && last.y === y))) {
-                edge[edge.length - 1] = { x, y }
-            } else {
-                edge.push({ x, y })
-            }
-        }
-
-        function closeContour() {
-            if (left.length === 0)
-                return
-            const points = right.concat(left.reverse())
-            for (let i = 0; i < points.length; ++i) {
-                const previous = points[(i + points.length - 1) % points.length]
-                const current = points[i]
-                const next = points[(i + 1) % points.length]
-                const dx1 = current.x - previous.x
-                const dy1 = current.y - previous.y
-                const dx2 = next.x - current.x
-                const dy2 = next.y - current.y
-                const length1 = Math.abs(dx1) + Math.abs(dy1)
-                const length2 = Math.abs(dx2) + Math.abs(dy2)
-                const radius = Math.min(cornerRadius, length1 / 2, length2 / 2)
-                const startX = current.x - dx1 / length1 * radius
-                const startY = current.y - dy1 / length1 * radius
-                const endX = current.x + dx2 / length2 * radius
-                const endY = current.y + dy2 / length2 * radius
-                const sweep = dx1 * dy2 - dy1 * dx2 > 0 ? 1 : 0
-                commands.push(`${i === 0 ? "M" : "L"} ${startX} ${startY}`,
-                    `A ${radius} ${radius} 0 0 ${sweep} ${endX} ${endY}`)
-            }
-            commands.push("Z")
-            left = []
-            right = []
-        }
-
-        let previous = null
-        for (const current of ranges) {
-            if (current.width <= 0 || current.height <= 0) {
-                closeContour()
-                previous = null
-                continue
-            }
-            const currentRight = current.x + current.width
-            if (previous) {
-                const overlapLeft = Math.max(previous.x, current.x)
-                const overlapRight = Math.min(previous.x + previous.width, currentRight)
-                if (current.lineIndex === previous.lineIndex + 1
-                        && overlapRight - overlapLeft > epsilon) {
-                    // Trace both ends of the gap: shrinking uses the upper line's
-                    // bottom; expanding uses the lower line's top.
-                    const gapTop = previous.y + previous.height
-                    appendPoint(left, overlapLeft, gapTop)
-                    appendPoint(left, overlapLeft, current.y)
-                    appendPoint(right, overlapRight, gapTop)
-                    appendPoint(right, overlapRight, current.y)
-                } else {
-                    closeContour()
-                }
-            }
-            appendPoint(left, current.x, current.y)
-            appendPoint(left, current.x, current.y + current.height)
-            appendPoint(right, currentRight, current.y)
-            appendPoint(right, currentRight, current.y + current.height)
-            previous = current
-        }
-        closeContour()
-        return commands.join(" ")
-    }
-
-    component RangeHighlight: Shape {
-        id: highlight
-        required property int rangeStart
-        required property int rangeEnd
-        required property color fillColor
-        property bool active: true
-        visible: active && rangeEnd > rangeStart
-        x: sourceArea.leftPadding
-        y: sourceArea.topPadding
-        z: -1
-        preferredRendererType: Shape.CurveRenderer
-        readonly property string outline: {
-            if (!visible)
-                return ""
-            root.followLayoutTick
-            sourceArea.text
-            const viewportTop = editorScroll.contentY - sourceArea.y - sourceArea.topPadding
-            return root.lineRangePath(highlighter.selectionLineRanges(
-                rangeStart, rangeEnd, viewportTop, viewportTop + editorScroll.height))
-        }
-
-        // One filled contour keeps shared row edges out of antialiasing and
-        // applies follow opacity once across the complete selection.
-        ShapePath {
-            fillColor: highlight.fillColor
-            strokeColor: "transparent"
-            PathSvg { path: highlight.outline }
-        }
-    }
-
-    // Playing follow keeps the visual caret centered, matching the editor's
-    // viewport contract. Paused reveal only brings an off-screen caret back
-    // into view. Neither path touches the real caret or selection.
-    Timer {
-        id: decorationCenterTimer
-        interval: 0
-        repeat: false
-        onTriggered: {
-            if (!root.followDecorationActive || !sourceArea)
-                return
-            const flickable = editorScroll
-            if (!flickable)
-                return
-            const rect = root.followCaretRect
-            const top = sourceArea.y + rect.y
-            const bottom = top + rect.height
-            const centerDuringPlayback = root.syncController
-                && root.syncController.followPlaybackActive
-            if (!centerDuringPlayback
-                    && top >= flickable.contentY
-                    && bottom <= flickable.contentY + flickable.height)
-                return
-            flickable.allowScroll = true
-            flickable.contentY = flickable.clampViewportY(
-                top + rect.height / 2 - flickable.height / 2)
-            flickable.allowScroll = false
-        }
-    }
-
-    function ensureFollowDecorationVisible() {
-        decorationCenterTimer.restart()
-    }
-
-    function collectBookmarks() {
-        return root.editorController.bookmarksForQml(sourceArea.text)
-    }
-
-    // v1 resolves a Ctrl/Command click through an event filter on the hidden
-    // widget viewport, so in v2 the click only ever moved the timeline cursor
-    // and the preview stayed where it was. TextArea has already placed the
-    // caret by the time the click completes, so the caret is the location —
-    // no separate hit-test, and it matches what the user sees.
-    function seekPreviewToCaret() {
-        if (sourceArea.selectedText.length > 0)
-            return false
-        return root.syncController.seekPreviewToEditorLocation(
-            root.documentSession.currentDifficultyId, root.documentSession.documentRevision,
-            root.viewState.editorCursorLine, root.viewState.editorCursorColumn)
-    }
-
-    // Context-menu-only entry point: the runtime resolves the selection to an
-    // export range and switches to the video export page itself, once it has
-    // seeded that range onto ExportSession — see requestSelectionRangeExport.
-    function exportSelectionRange() {
-        if (!root.syncController || !root.documentSession)
-            return
-        if (sourceArea.selectionStart === sourceArea.selectionEnd)
-            return
-        root.syncController.requestSelectionRangeExport(
-            root.documentSession.currentDifficultyId, root.documentSession.documentRevision,
-            sourceArea.selectionStart, sourceArea.selectionEnd)
-    }
-
-    function updateCursorPosition() {
-        const text = sourceArea.text
-        const pos = Math.max(0, Math.min(text.length, sourceArea.cursorPosition))
-        const before = text.substring(0, pos)
-        const lines = before.split("\n")
-        root.viewState.editorCursorLine = lines.length
-        root.viewState.editorCursorColumn = lines[lines.length - 1].length + 1
-    }
-
-    // Human-readable summary of what normalize will act on.
+    function undo() { sourceArea.undo() }
+    function redo() { sourceArea.redo() }
+    function cut() { sourceArea.cut() }
+    function copy() { sourceArea.copy() }
+    function paste() { sourceArea.paste() }
+    function selectAll() { sourceArea.selectAll() }
+    function selectCurrentLine() { sourceArea.selectCurrentLine() }
+    function jumpToLine(line) { sourceArea.jumpToLine(line) }
+    function centerCursorInView() { sourceArea.centerCursorInView() }
+    function openFindReplace() { findReplaceBar.show() }
+    function seekPreviewToCaret() { sourceArea.seekPreviewToCaret() }
+    function exportSelectionRange() { sourceArea.exportSelectionRange() }
+    function applyChartTransform(operation) { return sourceArea.applyChartTransform(operation) }
+    function applyNormalization(options) { return sourceArea.applyNormalization(options) }
+    function applyEditorTransaction(transaction) { return sourceArea.applyEditorTransaction(transaction) }
     function selectionDescription() {
         if (sourceArea.selectionStart === sourceArea.selectionEnd)
             return qsTrId("qml.normalize_the_entire_chart_source")
@@ -605,83 +62,25 @@ Rectangle {
         const endLine = sourceArea.text.substring(0, sourceArea.selectionEnd - 1).split("\n").length
         return qsTrId("qml.normalize_selected_lines_1_2").arg(startLine).arg(endLine)
     }
-
-    function applyNormalization(options) {
-        const transaction = root.documentSession.normalizeChartSelection(
-            sourceArea.text, sourceArea.selectionStart, sourceArea.selectionEnd, options)
-        if (!transaction.consumed || !transaction.hasEdit)
-            return false
-        return root.applyEditorTransaction(transaction, false)
+    function createBookmarkAtLine(line) { return sourceArea.createBookmarkAtLine(line, qsTrId("qml.bookmarks")) }
+    function deleteBookmarkAtLine(line) { return sourceArea.deleteBookmarkAtLine(line) }
+    function renameBookmarkAtLine(line, title) { return sourceArea.renameBookmarkAtLine(line, title) }
+    function promptRenameBookmark(line) {
+        const bookmark = bookmarks.find(item => item.line === line)
+        if (!bookmark) return
+        pendingBookmarkLine = line
+        bookmarkTitleField.text = bookmark.title
+        bookmarkTitleDialog.open()
     }
-
-    // 谱面变换 uses the same transaction path as normalization, so a mirror or a
-    // subdivision step lands on the undo stack as one step and the selection
-    // survives it. Returns false when there is nothing selected to act on.
-    function applyChartTransform(opId) {
-        const transaction = root.documentSession.transformChartSelection(
-            sourceArea.text, sourceArea.selectionStart, sourceArea.selectionEnd, opId)
-        if (!transaction.consumed || !transaction.hasEdit)
-            return false
-        return root.applyEditorTransaction(transaction, false)
+    function openContextMenuAt(x, y) {
+        sourceArea.forceActiveFocus()
+        const overlay = editorContextMenu.parent
+        const point = sourceArea.mapToItem(overlay, x, y)
+        const line = sourceArea.mapToItem(overlay, sourceArea.cursorRectangle)
+        editorContextMenu.prepareItems()
+        editorContextMenu.placeAt(point, line)
+        editorContextMenu.open()
     }
-
-    function applyEditorTransaction(transaction, centerCursor) {
-        if (!transaction.consumed)
-            return false
-        if (transaction.hasEdit) {
-            const before = sourceArea.text
-            sourceArea.syncingFromController = true
-            // TextEdit's mutation API keeps its native undo stack. A complete
-            // replacement remains one logical controller transaction rather
-            // than resetting the document by assigning `text`.
-            sourceArea.remove(transaction.replacementStart, transaction.replacementEnd)
-            sourceArea.insert(transaction.replacementStart, transaction.replacementText)
-            sourceArea.select(transaction.anchor, transaction.position)
-            sourceArea.syncingFromController = false
-            if (transaction.undoGroup)
-                root.editorController.recordQmlTransaction(
-                    before, sourceArea.text,
-                    transaction.touchTokenStart !== undefined ? transaction.touchTokenStart : -1)
-            sourceArea.historyText = sourceArea.text
-            root.documentSession.chartText = sourceArea.text
-        } else if (transaction.anchor !== sourceArea.selectionStart
-                   || transaction.position !== sourceArea.selectionEnd) {
-            // 跳过已有括号属于光标移动，正文和撤销历史保持原值。
-            sourceArea.select(transaction.anchor, transaction.position)
-        }
-        if (centerCursor)
-            root.centerCursorInView()
-        return true
-    }
-
-    function applyImeCommittedText(committedText) {
-        return applyEditorTransaction(editorController.processImeCommitForQml(
-            sourceArea.text, sourceArea.selectionStart, sourceArea.selectionEnd, committedText))
-    }
-
-    function applyPastePayload(pastedText) {
-        return applyEditorTransaction(editorController.processPasteForQml(
-            sourceArea.text, sourceArea.selectionStart, sourceArea.selectionEnd, pastedText))
-    }
-
-    LineNumberGutter {
-        id: lineNumberGutter
-        anchors.left: parent.left
-        anchors.top: parent.top
-        anchors.bottom: parent.bottom
-        lineCount: sourceArea.lineCount
-        activeLine: root.activeLine
-        contentY: editorScroll.contentY
-        lineTops: root.lineTops
-        topPadding: sourceArea.topPadding
-        rowHeight: root.codeLineHeight
-        bookmarkedLines: root.bookmarks
-        onJumpRequested: root.jumpToLine(line)
-        onCreateRequested: line => root.createBookmarkAtLine(line)
-        onDeleteRequested: line => root.deleteBookmarkAtLine(line)
-        onRenameRequested: line => root.promptRenameBookmark(line)
-    }
-
     AppDialog {
         id: bookmarkTitleDialog
 
@@ -877,509 +276,93 @@ Rectangle {
         }
     }
 
-    // Both context-menu routes end here: a right-click passes the hit point,
-    // and the keyboard route (Menu key / Shift+F10) passes the caret.
-    function openContextMenuAt(x, y, textPosition = -1) {
-        sourceArea.forceActiveFocus()
-        const overlay = editorContextMenu.parent
-        const point = sourceArea.mapToItem(overlay, x, y)
-        const hit = editorInputBridge.textHitPoint(x, y)
-        const position = textPosition >= 0 ? textPosition : sourceArea.positionAt(hit.x, hit.y)
-        const lineBounds = editorInputBridge.textLineBounds(position)
-        const localBounds = lineBounds.height > 0
-            ? lineBounds : sourceArea.positionToRectangle(position)
-        const line = sourceArea.mapToItem(overlay, localBounds)
-        editorContextMenu.prepareItems()
-        editorContextMenu.placeAt(point, line)
-        editorContextMenu.open()
-    }
-
-    function openContextMenuAtCaret() {
-        const caret = sourceArea.cursorRectangle
-        openContextMenuAt(caret.x, caret.y + caret.height, sourceArea.cursorPosition)
-    }
 
     FindReplaceBar {
         id: findReplaceBar
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.top: parent.top
-        z: 4
-        // The bar must operate the concrete TextArea, not its surrounding
-        // layout item; proxy methods below retain the one transaction owner.
+        editor: sourceArea
+    }
+    ScintillaEditor {
+        id: sourceArea
+        objectName: "sourceArea"
+        property bool reservesPlainSpace: true
+        anchors.left: parent.left
+        anchors.right: verticalBar.left
+        anchors.top: findReplaceBar.bottom
+        anchors.bottom: horizontalBar.top
+        documentSession: root.documentSession
+        controller: root.editorController
+        syncController: root.syncController
+        analysisSession: root.analysisSession
+        navigationVisible: root.navigationVisible
+        font: Theme.codeFont
+        blockSpacing: root.preferences ? root.preferences.editorBlockSpacing : 0
+        scrollPastEnd: root.preferences ? root.preferences.editorScrollPastEnd : true
+        palette: ({ text: Theme.colors.text.editor,
+                    background: Theme.surfaceColor(Theme.colors.background.surface),
+                    keyword: Theme.colors.syntax.keyword, duration: Theme.colors.syntax.duration,
+                    comment: Theme.colors.syntax.comment, error: Theme.colors.syntax.error,
+                    warning: Theme.colors.syntax.warning, follow: Theme.colors.state.followHighlight,
+                    currentLine: Theme.colors.state.focusLine, selection: Theme.colors.state.selectionHighlight })
+        onSelectionChanged: {
+            root.viewState.editorCursorLine = cursorLine
+            root.viewState.editorCursorColumn = cursorColumn
+        }
+        onActiveFocusChanged: {
+            root.Window.window.sourceEditorFocused = activeFocus
+            if (!activeFocus && !completionPopup.pointerInside)
+                root.editorController.closeCompletion()
+        }
+        onFindRequested: root.openFindReplace()
+        onContextMenuRequested: (x, y) => root.openContextMenuAt(x, y)
+        onBookmarkMenuRequested: (line, x, y) => {
+            root.pendingBookmarkLine = line
+            bookmarkMenu.popup(sourceArea, x, y)
+        }
+    }
+    AppScrollBar {
+        id: verticalBar
+        anchors.top: sourceArea.top
+        anchors.bottom: sourceArea.bottom
+        anchors.right: parent.right
+        orientation: Qt.Vertical
+        onPressedChanged: if (pressed) sourceArea.beginViewportInteraction()
+        size: sourceArea.vertical_scroll_page / Math.max(1, sourceArea.vertical_scroll_max + sourceArea.vertical_scroll_page)
+        position: sourceArea.vertical_scroll_value / Math.max(1, sourceArea.vertical_scroll_max + sourceArea.vertical_scroll_page)
+        onPositionChanged: if (pressed) sourceArea.scrollVertical(Math.round(position * (sourceArea.vertical_scroll_max + sourceArea.vertical_scroll_page)))
+    }
+    AppScrollBar {
+        id: horizontalBar
+        anchors.left: parent.left
+        anchors.right: verticalBar.left
+        anchors.bottom: parent.bottom
+        orientation: Qt.Horizontal
+        onPressedChanged: if (pressed) sourceArea.beginViewportInteraction()
+        size: sourceArea.horizontal_scroll_page / Math.max(1, sourceArea.horizontal_scroll_max + sourceArea.horizontal_scroll_page)
+        position: sourceArea.horizontal_scroll_value / Math.max(1, sourceArea.horizontal_scroll_max + sourceArea.horizontal_scroll_page)
+        onPositionChanged: if (pressed) sourceArea.scrollHorizontal(Math.round(position * (sourceArea.horizontal_scroll_max + sourceArea.horizontal_scroll_page)))
+    }
+    CompletionPopup {
+        id: completionPopup
         editor: sourceArea
         controller: root.editorController
+        editorScrollY: sourceArea.vertical_scroll_value
     }
-
-    Flickable {
-        id: editorScroll
-        anchors.left: parent.left
-        anchors.leftMargin: lineNumberGutter.width
-        anchors.right: parent.right
-        anchors.top: parent.top
-        anchors.bottom: parent.bottom
-        clip: true
-        flickableDirection: Flickable.VerticalFlick
-        // Left-button drag would steal the press TextArea needs to place the
-        // caret. Wheel and trackpad still flick, including overshoot.
-        acceptedButtons: Qt.NoButton
-        readonly property bool scrollPastEndEnabled:
-            root.preferences ? root.preferences.editorScrollPastEnd : true
-        // TextArea.flickable 在每次文本布局更新时写入自然内容高度。
-        // 尾部空间由 Flickable 的滚动边距持有，与文本尺寸更新各自独立。
-        contentHeight: sourceArea.implicitHeight
-        readonly property real finalLineTop: {
-            root.followLayoutTick
-            sourceArea.contentHeight
-            sourceArea.width
-            sourceArea.font
-            return sourceArea.positionToRectangle(sourceArea.length).y
-        }
-        // 使用末尾实际显示行的顶部，涵盖行距、字体和自动换行。
-        bottomMargin: scrollPastEndEnabled
-            ? Math.max(0, finalLineTop + height - contentHeight) : 0
-        readonly property real maximumViewportY:
-            Math.max(0, contentHeight + bottomMargin - height)
-        ScrollBar.vertical: AppScrollBar {
-            id: editorVScroll
-            onPressedChanged: {
-                if (pressed)
-                    root.beginUserViewportInteraction()
-                else
-                    Qt.callLater(editorScroll.reconcileViewport)
-            }
-        }
-        property real userViewportY: 0
-        property bool allowScroll: false
-        property bool applyingViewport: false
-        function clampViewportY(y) {
-            return Math.max(0, Math.min(y, maximumViewportY))
-        }
-        function reconcileViewport() {
-            if (moving || editorVScroll.pressed)
-                return
-            // 等本轮布局完成再收敛，保留重排过程中的原始视口位置。
-            const kept = clampViewportY(userViewportY)
-            applyingViewport = true
-            userViewportY = kept
-            contentY = kept
-            applyingViewport = false
-        }
-        onMaximumViewportYChanged: Qt.callLater(reconcileViewport)
-        onMovingChanged: {
-            if (moving)
-                root.beginUserViewportInteraction()
-            else
-                Qt.callLater(reconcileViewport)
-        }
-        onContentYChanged: {
-            if (applyingViewport)
-                return
-            if (allowScroll || moving || flicking || dragging || editorVScroll.pressed) {
-                userViewportY = contentY
-                return
-            }
-            const kept = clampViewportY(userViewportY)
-            if (contentY === kept)
-                return
-            applyingViewport = true
-            contentY = kept
-            applyingViewport = false
-        }
-        onWidthChanged: Qt.callLater(root.bumpFollowLayout)
-        onHeightChanged: Qt.callLater(root.bumpFollowLayout)
-
-        TextArea.flickable: TextArea {
-            id: sourceArea
-            objectName: "sourceArea"
-            ContextMenu.menu: null
-            // 接收系统上下文事件；鼠标与键盘入口负责打开自定义菜单。
-            ContextMenu.onRequested: position => {}
-            property bool reservesPlainSpace: true
-            property bool syncingFromController: false
-            property bool readyForUserEdits: false
-            property string historyText: ""
-            readonly property bool selectionHeld: editorPointer.selecting
-
-            wrapMode: TextArea.Wrap
-            width: editorScroll.width
-            // TextArea.flickable clips the text node to the viewport inset by
-            // padding (qquicktextarea.cpp updatePaintNode). Child highlights
-            // are not in that clip, so vertical padding shows as a text-only
-            // mask. Keep horizontal inset; match the gutter with topPadding 0.
-            leftPadding: 12
-            rightPadding: 12
-            topPadding: 0
-            bottomPadding: 0
-            color: Theme.colors.text.editor
-            // Native selection paints an opaque fill, then redraws glyphs in
-            // selectedTextColor, which wipes syntax colours. Keep the engine
-            // selection for copy/caret, and draw the line-highlight fill
-            // underneath the glyphs instead.
-            selectedTextColor: Qt.rgba(0, 0, 0, 0)
-            selectionColor: Qt.rgba(0, 0, 0, 0)
-            inputMethodHints: Qt.ImhNone
-            persistentSelection: true
-            selectByMouse: false
-            font: Theme.codeFont
-
-            background: null
-
-            Item {
-                visible: sourceArea.selectionStart === sourceArea.selectionEnd
-                z: -1
-                Repeater {
-                    model: {
-                        root.followLayoutTick
-                        sourceArea.text
-                        sourceArea.cursorPosition
-                        return highlighter.cursorBlockLines(sourceArea.cursorPosition)
-                    }
-                    delegate: Rectangle {
-                        required property var modelData
-                        x: sourceArea.leftPadding
-                        y: modelData.y + sourceArea.topPadding
-                        width: editorScroll.width - sourceArea.leftPadding
-                        height: modelData.height
-                        color: Theme.overlayColor(Theme.colors.state.focusLine)
-                    }
-                }
-            }
-
-            RangeHighlight {
-                id: selectionHighlight
-                rangeStart: Math.min(sourceArea.selectionStart, sourceArea.selectionEnd)
-                rangeEnd: Math.max(sourceArea.selectionStart, sourceArea.selectionEnd)
-                fillColor: Theme.overlayColor(Theme.colors.state.selectionHighlight)
-            }
-
-            // Same stacking band as the current-line / selection fills (z: -1,
-            // under glyphs). Declared after them so the playhead span stays
-            // visible when it shares a line with the caret (Z1).
-            RangeHighlight {
-                id: followHighlight
-                active: root.followDecorationActive
-                rangeStart: root.followDecorationStart
-                rangeEnd: root.followDecorationEnd
-                fillColor: Theme.colors.state.followHighlight
-                opacity: Theme.followHighlightOpacity
-            }
-
-            // Preview follow caret. Distinct from the real caret so a paused
-            // seek is visible without stealing the cursor.
-            Rectangle {
-                visible: root.followDecorationActive
-                    && (root.syncController.followPlaybackActive || !sourceArea.activeFocus)
-                x: root.followCaretRect.x
-                y: root.followCaretRect.y
-                width: 2
-                height: Math.max(root.followCaretRect.height, root.codeLineHeight)
-                color: Theme.colors.accent.primary
-            }
-            onContentHeightChanged: root.bumpFollowLayout()
-            onTextChanged: {
-                const before = historyText
-                const after = text
-                // 发布文档变化会同步触发重高亮；先推进快照，使重入通知看到当前正文。
-                historyText = after
-                root.bumpFollowLayout()
-                // Rehighlighting is a formatting pass over the same characters,
-                // but TextEdit still reports it as textChanged. Writing that
-                // back would push an identical document through the backend on
-                // every highlight, so only a real change is published.
-                if (readyForUserEdits && !syncingFromController && after !== before) {
-                    root.editorController.recordQmlTransaction(before, after)
-                    root.documentSession.chartText = after
-                }
-                root.updateCursorPosition()
-                root.bookmarks = root.collectBookmarks()
-                root.refreshSelectionBeatSummary()
-            }
-            onSelectionStartChanged: root.refreshSelectionBeatSummary()
-            onSelectionEndChanged: root.refreshSelectionBeatSummary()
-            onCursorPositionChanged: {
-                // 鼠标选择期间由指针组件决定滚动，词尾换行不推动视口。
-                editorScroll.allowScroll = !sourceArea.selectionHeld
-                root.updateCursorPosition()
-                root.scheduleEditorContext(root.programmaticSelectionDepth === 0)
-                if (!syncingFromController)
-                    root.editorController.updateCompletionForQml(text, cursorPosition)
-                Qt.callLater(() => {
-                    editorScroll.userViewportY = editorScroll.contentY
-                    editorScroll.allowScroll = false
-                })
-            }
-            onActiveFocusChanged: {
-                root.scheduleEditorContext(false)
-                root.Window.window.sourceEditorFocused = activeFocus
-                if (!activeFocus && !completionPopup.pointerInside)
-                    root.editorController.closeCompletion()
-            }
-            function applyEditorTransaction(transaction) {
-                return root.applyEditorTransaction(transaction)
-            }
-            function jumpToLine(line) {
-                root.jumpToLine(line)
-            }
-            function centerCursorInView() {
-                root.centerCursorInView()
-            }
-            // TextArea otherwise consumes completion keys before the QML
-            // controller can apply its transaction.
-            Keys.priority: Keys.BeforeItem
-            Keys.onPressed: function(event) {
-                if (event.key === Qt.Key_PageUp || event.key === Qt.Key_PageDown)
-                    root.beginUserViewportInteraction()
-                // A bare Ctrl arms touch authoring; Session's application
-                // filter tracks it window-wide, the editor has nothing to do.
-                if (event.key === Qt.Key_Control)
-                    return
-                if (event.matches(StandardKey.Find)) {
-                    root.openFindReplace()
-                    event.accepted = true
-                    return
-                }
-                if (event.key === Qt.Key_Menu
-                        || (event.key === Qt.Key_F10 && (event.modifiers & Qt.ShiftModifier))) {
-                    root.openContextMenuAtCaret()
-                    event.accepted = true
-                    return
-                }
-                if (event.matches(StandardKey.SelectAll)) {
-                    root.selectAll()
-                    event.accepted = true
-                    return
-                }
-                if (event.matches(StandardKey.Undo)) {
-                    root.undo()
-                    event.accepted = true
-                    return
-                }
-                if (event.matches(StandardKey.Redo)) {
-                    root.redo()
-                    event.accepted = true
-                    return
-                }
-                if (event.matches(StandardKey.Paste)) {
-                    if (root.applyPastePayload(root.editorController.clipboardText()))
-                        event.accepted = true
-                    return
-                }
-                const transaction = root.editorController.processKeyForQml(
-                    sourceArea.text, sourceArea.selectionStart, sourceArea.selectionEnd,
-                    event.text, event.key, event.modifiers)
-                if (root.applyEditorTransaction(transaction)) {
-                    event.accepted = true
-                    return
-                }
-                // The policy refused this key, but TextArea would still insert
-                // its literal character (Qt guards Ctrl, not Meta/Super), so a
-                // macOS 物理 Control+Z types "z" into the chart. Swallow it.
-                if (transaction.suppressFallbackInsert)
-                    event.accepted = true
-            }
-            Component.onCompleted: {
-                root.syncTextFromController()
-                readyForUserEdits = true
-                historyText = text
-                root.editorController.setDocumentContextForQml(
-                    root.documentSession.currentDifficultyId, root.documentSession.documentRevision)
-                editorTextStyle.applyImmediately()
-                root.updateCursorPosition()
-                root.bumpFollowLayout()
-            }
-
-            EditorTextStyle {
-                id: editorTextStyle
-                textDocument: sourceArea.textDocument
-                // Read the editor preference directly so initial document
-                // styling does not depend on Theme singleton binding timing.
-                blockSpacing: root.preferences ? root.preferences.editorBlockSpacing : 0
-            }
-
-            SimaiSyntaxHighlighter {
-                id: highlighter
-                textDocument: sourceArea.textDocument
-                keywordColor: Theme.colors.syntax.keyword
-                commentColor: Theme.colors.syntax.comment
-                durationColor: Theme.colors.syntax.duration
-                errorColor: Theme.colors.syntax.error
-                warningColor: Theme.colors.syntax.warning
-                diagnostics: root.documentSession.validationPending
-                    || root.documentSession.validationRevision !== root.documentSession.documentRevision
-                    ? [] : root.documentSession.syntaxIssues
-            }
-            cursorDelegate: Rectangle {
-                id: editorCaret
-                width: 2
-                color: Theme.colors.text.editor
-                visible: sourceArea.activeFocus && !sourceArea.readOnly
-                    && !root.syncController.followPlaybackActive
-
-                Connections {
-                    target: sourceArea
-                    function onCursorPositionChanged() {
-                        editorCaret.opacity = 1
-                    }
-                    function onSelectionHeldChanged() {
-                        if (sourceArea.selectionHeld)
-                            editorCaret.opacity = 1
-                    }
-                }
-
-                Timer {
-                    id: caretBlinkTimer
-                    running: editorCaret.visible && !sourceArea.selectionHeld && interval > 0
-                    repeat: true
-                    interval: Application.styleHints.cursorFlashTime / 2
-                    onTriggered: editorCaret.opacity = editorCaret.opacity > 0 ? 0 : 1
-                    onRunningChanged: editorCaret.opacity = 1
-                }
-            }
-
-            // 菜单持有焦点时，独立于 TextArea 的焦点光标显示实际插入位置。
-            Rectangle {
-                x: sourceArea.cursorRectangle.x
-                y: sourceArea.cursorRectangle.y
-                width: 2
-                height: sourceArea.cursorRectangle.height
-                color: Theme.colors.text.editor
-                visible: editorContextMenu.visible && !sourceArea.readOnly
-            }
-
-            CompletionPopup {
-                id: completionPopup
-                editor: sourceArea
-                controller: root.editorController
-                // The popup lives in the window overlay, so it cannot observe
-                // the editor scrolling underneath it on its own.
-                editorScrollY: editorScroll.contentY
-            }
-
-            Binding {
-                target: root.Window.window
-                property: "sourceEditorOverlayHeld"
-                value: completionPopup.pointerInside
-            }
-
-            EditorInputBridge {
-                id: editorInputBridge
-                target: sourceArea
-                imeInputDisabled: root.editorController.imeInputDisabled
-                textDocument: sourceArea.textDocument
-                onImeComposingChanged: root.imeComposing = composing
-                onImeCommitted: function(text) {
-                    root.applyImeCommittedText(text)
-                }
-            }
-
-            function acceptCompletionFromPopup() {
-                root.applyEditorTransaction(root.editorController.acceptCompletionForQml(
-                    sourceArea.text, sourceArea.selectionStart, sourceArea.selectionEnd))
-                sourceArea.forceActiveFocus()
-            }
-
-            EditorPointerArea {
-                id: editorPointer
-                objectName: "editorPointer"
-                anchors.fill: parent
-                editor: sourceArea
-                viewport: editorScroll
-                inputBridge: editorInputBridge
-                onInteractionStarted: root.beginUserViewportInteraction()
-                onContextMenuRequested: (x, y) => root.openContextMenuAt(x, y)
-                onSeekRequested: root.seekPreviewToCaret()
-            }
-        }
+    Binding {
+        target: root.Window.window
+        property: "sourceEditorOverlayHeld"
+        value: completionPopup.pointerInside
     }
-
+    AppMenu {
+        id: bookmarkMenu
+        AppMenuItem { text: qsTrId("qml.create_bookmark"); onTriggered: root.createBookmarkAtLine(root.pendingBookmarkLine) }
+        AppMenuItem { text: qsTrId("editor.bookmark.rename"); onTriggered: root.promptRenameBookmark(root.pendingBookmarkLine) }
+        AppMenuItem { text: qsTrId("editor.bookmark.delete"); onTriggered: root.deleteBookmarkAtLine(root.pendingBookmarkLine) }
+    }
     Connections {
         target: root.viewState
-        function onEditorClosed(key) { root.editorController.dropHistoryScope(key) }
-    }
-
-    Connections {
-        target: root.preferences
-        function onEditorSettingsChanged() { root.refreshSelectionBeatSummary() }
-    }
-
-    Connections {
-        target: root.documentSession
-        function onChartTextChanged() {
-            root.syncTextFromController()
-            root.documentSession.logEditorDocumentState(
-                "chart_text_changed", root.documentSession.currentDifficultyId,
-                root.documentSession.documentRevision, sourceArea.text.length)
-        }
-        function onDocumentReplaced() {
-            // A different chart is a different history, even when it happens to
-            // reuse the outgoing document's difficulty ids.
-            root.editorController.clearAllHistory()
-            root.syncTextFromController()
-            root.resetCaretIfDocumentOpened()
-            root.documentSession.logEditorDocumentState(
-                "document_replaced", root.documentSession.currentDifficultyId,
-                root.documentSession.documentRevision, sourceArea.text.length)
-        }
-        function onDocumentStateChanged() {
-            // Every commit re-asserts the scope. syncTextFromController already
-            // names it on the paths that move text; this covers the ones that
-            // change which difficulty is active without changing any text.
-            root.editorController.setHistoryScope(root.currentHistoryScopeId())
-            root.editorController.setDocumentContextForQml(
-                root.documentSession.currentDifficultyId, root.documentSession.documentRevision)
-            root.publishNavigationReadiness()
-            root.scheduleEditorContext(false)
-            root.applyFollowProjection()
-            root.resetCaretIfDocumentOpened()
-        }
-    }
-
-    Connections {
-        target: root.syncController
-        function onNavigationRequested(sequence, difficultyId, revision, start, end,
-                                       focusEditor, reveal) {
-            root.applyNavigation(sequence, difficultyId, revision, start, end,
-                                 focusEditor, reveal)
-        }
-        function onFollowChanged() {
-            root.applyFollowProjection()
-        }
-        function onTouchPadAuthoringRequested(pad, separator, difficultyId,
-                                               revision, anchor, position) {
-            // No focus check: the click that asked for this was on the preview,
-            // and the editor keeps its caret until it takes focus back below.
-            if (root.imeComposing
-                    || difficultyId !== root.documentSession.currentDifficultyId
-                    || revision !== root.documentSession.documentRevision)
-                return
-            root.beginProgrammaticSelection()
-            sourceArea.select(anchor, position)
-            root.endProgrammaticSelection()
-            const tx = root.editorController.touchPadAuthoringForQml(
-                sourceArea.text, anchor, position, pad, separator)
-            if (root.applyEditorTransaction(tx)) {
-                sourceArea.forceActiveFocus()
-                root.publishTouchPadPreviewAnchor(tx.touchTokenStart)
-            }
-        }
-    }
-
-    Component.onCompleted: {
-        publishNavigationReadiness()
-        scheduleEditorContext(false)
-        refreshSelectionBeatSummary()
-        applyFollowProjection()
-        Qt.callLater(root.bumpFollowLayout)
-    }
-    Component.onDestruction: {
-        if (root.syncController)
-            root.syncController.setEditorReadiness(-1, 0, false)
-    }
-
-    onImeComposingChanged: {
-        root.scheduleEditorContext(false)
-        if (root.imeComposing)
-            root.syncController.setTouchPadControlHold(false)
+        function onEditorClosed(key) { sourceArea.dropDocument(key) }
     }
 }

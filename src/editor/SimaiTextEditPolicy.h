@@ -61,6 +61,8 @@ struct SimaiTextEditResult {
     SimaiCompletionSession completion;
 };
 
+QString normalizeSimaiInput(const QString& input);
+
 SimaiTextEditResult applySimaiTextEditPolicy(const SimaiTextEditRequest& request);
 
 } // namespace miacode::editor

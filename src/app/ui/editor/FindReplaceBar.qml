@@ -6,7 +6,6 @@ Rectangle {
     id: root
 
     required property var editor
-    required property var controller
     property bool open: false
     property string query: ""
     property string replacement: ""
@@ -18,31 +17,21 @@ Rectangle {
     visible: height > 0
     color: Theme.overlayColor(Theme.colors.background.panel, Theme.popupOpacity)
 
-    function selectResult(result) {
-        if (result.found) {
-            editor.select(result.start, result.end)
-            editor.centerCursorInView()
-        }
+    function configureSearch() {
+        editor.configureSearch(query, replacement, caseSensitive, wholeWord)
     }
     function find(backwards) {
-        selectResult(controller.findForQml(editor.text, editor.selectionStart, editor.selectionEnd,
-                                           query, caseSensitive, wholeWord, backwards))
+        configureSearch()
+        if (backwards) editor.findPrevious()
+        else editor.findNext()
     }
     function replaceOne() {
-        const tx = controller.replaceSelectionForQml(editor.text, editor.selectionStart,
-                                                     editor.selectionEnd, query, replacement,
-                                                     caseSensitive, wholeWord)
-        if (tx.consumed)
-            editor.applyEditorTransaction(tx)
-        find(false)
+        configureSearch()
+        editor.replaceAndFind()
     }
     function replaceEverything() {
-        const tx = controller.replaceAllForQml(editor.text, query, replacement,
-                                               caseSensitive, wholeWord)
-        if (tx.consumed) {
-            editor.applyEditorTransaction(tx)
-            editor.centerCursorInView()
-        }
+        configureSearch()
+        editor.replaceAll()
     }
     function show() {
         open = true
