@@ -327,12 +327,8 @@ int main(int argc, char* argv[])
         qputenv("QSG_RENDER_LOOP", QByteArrayLiteral("basic"));
     }
 
-    // Diagnostic: capture Qt's scene-graph render timings into our runtime log
-    // when the user opts in. Has to happen before QGuiApplication construction
-    // because Qt reads QSG_RENDER_TIMING / QT_LOGGING_RULES once at startup
-    // and the categories are gated on those env vars. We append our category
-    // override to whatever the user already has rather than overwriting, so
-    // existing rule overrides keep working.
+    // Enable Qt scene-graph timing before application construction.
+    // Qt writes timing and other diagnostics through its standard message handler.
     if (miacode::debug_options::previewQsgRenderTimingEnabled()) {
         qputenv("QSG_RENDER_TIMING", QByteArrayLiteral("1"));
         const QByteArray existingRules = qgetenv("QT_LOGGING_RULES");
@@ -342,29 +338,6 @@ int main(int argc, char* argv[])
         }
         nextRules.append("qt.scenegraph.time.*=true");
         qputenv("QT_LOGGING_RULES", nextRules);
-
-        // Route the resulting qt.scenegraph.time.* messages to our log so they
-        // sit alongside renderer_perf / frame_pacing in the same file with
-        // matching timestamps. Pass everything else through to the prior
-        // handler (whatever Qt had installed before us) so we don't silence
-        // ordinary Qt warnings/criticals.
-        static QtMessageHandler s_priorMessageHandler = nullptr;
-        s_priorMessageHandler = qInstallMessageHandler(
-            [](QtMsgType type, const QMessageLogContext& ctx, const QString& msg) {
-                const char* category = ctx.category != nullptr ? ctx.category : "";
-                if (qstrncmp(category, "qt.scenegraph.time.", 19) == 0) {
-                    miacode::debug_log::appendLine(
-                        miacode::debug_log::Channel::Runtime,
-                        QStringLiteral("preview/qsg_timing"),
-                        QString("category=%1 msg=%2")
-                            .arg(QString::fromLatin1(category))
-                            .arg(msg));
-                    return;
-                }
-                if (s_priorMessageHandler != nullptr) {
-                    s_priorMessageHandler(type, ctx, msg);
-                }
-            });
     }
     if (miacode::debug_options::runtimeDebugOutputEnabled()) {
 #ifdef Q_OS_WIN

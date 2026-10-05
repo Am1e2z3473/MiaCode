@@ -46,7 +46,7 @@ function(miacode_scintillaquick_surface_background)
         }
     }
 
-    const auto editor_palette = property("palette").toMap();
+    const auto editor_palette = property("editorColors").toMap();
     const int active_line = send(SCI_LINEFROMPOSITION, send(SCI_GETCURRENTPOS));
     for (auto& margin : frame.margin_text_primitives) {
         if (margin.style_id == StyleLineNumber)
@@ -72,7 +72,8 @@ function(miacode_scintillaquick_surface_background)
     std::forward<Apply_update>(apply_update)(update_request);]=] patched_code "${patched_code}")
     string(REPLACE "        frame.indicator_primitives   = std::move(m_render_data->frame.indicator_primitives);" "" patched_code "${patched_code}")
     string(REPLACE "            request_scene_graph_update(true, true, false);\n            // `textChanged()`" [=[            const bool indicator_change = int(scn.modificationType) & SC_MOD_CHANGEINDICATOR;
-            request_scene_graph_update(!indicator_change, !indicator_change, false);
+            const bool text_change = int(scn.modificationType) & (SC_MOD_INSERTTEXT | SC_MOD_DELETETEXT);
+            request_scene_graph_update(!indicator_change, text_change, false);
             // `textChanged()`]=] patched_code "${patched_code}")
     # Layout is resolved before MiaCode restores its viewport and applies navigation.
     set(layout_original [=[void ScintillaQuick_item::updatePolish()

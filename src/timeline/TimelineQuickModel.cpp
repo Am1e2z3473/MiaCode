@@ -42,6 +42,7 @@ void TimelineQuickModel::clear(bool releaseStorage)
     nextLineId_ = 1;
     nextEachGroupId_ = 0;
     lines_.clear();
+    sourceText_.clear();
     snapshot_.lines.clear();
     snapshot_.measureLineSeconds.clear();
     snapshot_.measureLineMeterNumerators.clear();
@@ -70,7 +71,28 @@ bool TimelineQuickModel::rebuildFromText(
     if (lines.isEmpty()) {
         lines.append(QString());
     }
-    return rebuildFromLineTexts(lines, firstSeconds, timingMetadata);
+    const bool rebuilt = rebuildFromLineTexts(lines, firstSeconds, timingMetadata);
+    sourceText_ = text;
+    firstSeconds_ = firstSeconds;
+    timingMetadata_ = timingMetadata;
+    return rebuilt;
+}
+
+bool TimelineQuickModel::updateFromText(const QString& text, double firstSeconds,
+    const miacode::simai::SimaiTimingMetadata& timingMetadata)
+{
+    if (lines_.isEmpty() || firstSeconds_ != firstSeconds || timingMetadata_ != timingMetadata)
+        return rebuildFromText(text, firstSeconds, timingMetadata);
+    if (sourceText_ == text) return false;
+    int begin = 0;
+    const int commonLength = qMin(sourceText_.size(), text.size());
+    while (begin < commonLength && sourceText_[begin] == text[begin]) ++begin;
+    int oldEnd = sourceText_.size(), newEnd = text.size();
+    while (oldEnd > begin && newEnd > begin && sourceText_[oldEnd - 1] == text[newEnd - 1]) {
+        --oldEnd;
+        --newEnd;
+    }
+    return applyTextChange(text, begin, oldEnd - begin, newEnd - begin, firstSeconds, timingMetadata);
 }
 
 bool TimelineQuickModel::rebuildFromDocument(
@@ -184,6 +206,9 @@ bool TimelineQuickModel::applyTextChange(
     rebuildAnchorLineIndices();
     rebuildFollowSelectionSpans();
     rebuildSnapshotDuration();
+    sourceText_ = text;
+    firstSeconds_ = firstSeconds;
+    timingMetadata_ = timingMetadata;
     return true;
 }
 

@@ -655,11 +655,8 @@ void miacode::runtime::PlaybackCoordinator::scheduleTimelineRefresh()
     if (!hasActiveDifficulty() || state_.latencySandboxAuditionActive_) {
         return;
     }
+    if (state_.timelineQuickStateBridge_ != nullptr && !refreshTimelineQuickModelFromCurrentText()) return;
     ++state_.timelineRevision_;
-
-    if (state_.timelineQuickStateBridge_ != nullptr) {
-        refreshTimelineQuickModelFromCurrentText();
-    }
     requestTimelineSlowRefresh();
 }
 

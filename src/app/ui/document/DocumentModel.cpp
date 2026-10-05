@@ -280,13 +280,13 @@ QString DocumentModel::chartText() const
 
 void DocumentModel::setChartText(const QString& value)
 {
-    if (workspace_ == nullptr) return;
+    if (workspace_ == nullptr || chartText() == value) return;
     if (!runWorkspaceMutation([&] {
             return workspace_->replaceActiveDifficultyChart(value).accepted;
         })) {
         return;
     }
-    publishWorkspaceCommit(WorkspaceCommitKind::Incremental);
+    publishWorkspaceCommit(WorkspaceCommitKind::ChartText);
 }
 
 QString DocumentModel::metadataTitle() const
@@ -1691,6 +1691,7 @@ void DocumentModel::logEditorDocumentState(const QString& reason, int difficulty
 
 QVariantList DocumentModel::bookmarksForDifficulty(int difficultyId) const
 {
+    if (bookmarkCache_.contains(difficultyId)) return bookmarkCache_.value(difficultyId);
     QVariantList bookmarks;
     if (workspace_ == nullptr) return bookmarks;
     const SimaiDifficultyData* difficulty = workspace_->document().difficulty(difficultyId);
@@ -1708,7 +1709,18 @@ QVariantList DocumentModel::bookmarksForDifficulty(int difficultyId) const
             {QStringLiteral("title"), bookmark->title},
         });
     }
+    bookmarkCache_.insert(difficultyId, bookmarks);
     return bookmarks;
+}
+
+void DocumentModel::setEditorBookmarks(int difficultyId, const QVariantList& bookmarks)
+{
+    const bool changed = bookmarkCache_.value(difficultyId) != bookmarks;
+    bookmarkCache_.insert(difficultyId, bookmarks);
+    if (changed) {
+        ++bookmarkGeneration_;
+        emit bookmarksChanged();
+    }
 }
 
 void DocumentModel::navigateToBookmark(int difficultyId, int line)
@@ -1750,7 +1762,7 @@ void DocumentModel::publishWorkspaceCommit(
     if (replacement) {
         ++documentGeneration_;
     }
-    refreshUnifiedDesignerState();
+    if (kind != WorkspaceCommitKind::ChartText) refreshUnifiedDesignerState();
     emitDocumentStateChanged(kind);
     if (replacement) emit documentReplaced();
 }
@@ -1758,7 +1770,9 @@ void DocumentModel::publishWorkspaceCommit(
 void DocumentModel::emitDocumentStateChanged(WorkspaceCommitKind kind)
 {
     refreshDocumentState();
-    if (kind != WorkspaceCommitKind::SavePoint) {
+    if (kind == WorkspaceCommitKind::ChartText) emit chartTextChanged();
+    if (kind != WorkspaceCommitKind::SavePoint && kind != WorkspaceCommitKind::ChartText) {
+        bookmarkCache_.clear();
         emit chartTextChanged();
         emit metadataChanged();
         emit unifiedDesignerEnabledChanged();
@@ -1968,6 +1982,8 @@ miacode::editor::SimaiTextEditResult DocumentModel::transformChartSelection(
 QVariantMap DocumentModel::selectionBeatSummary(
     const QString& text, int anchor, int position) const
 {
+    if (anchor == position) return {{QStringLiteral("totalCommaCount"), 0},
+        {QStringLiteral("parts"), QVariantList{}}, {QStringLiteral("exact"), true}};
     selectionBeatIndex_.setText(text);
     const auto summary = selectionBeatIndex_.summarize(anchor, position);
     QVariantList parts;

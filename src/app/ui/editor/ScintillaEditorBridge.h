@@ -27,7 +27,7 @@ class ScintillaEditorBridge : public ScintillaQuick_item
     Q_PROPERTY(bool navigationVisible READ navigationVisible WRITE setNavigationVisible NOTIFY bindingsChanged)
     // The hosting QML surface owns the theme fill, including wallpaper opacity.
     Q_PROPERTY(QColor sceneBackgroundColor READ sceneBackgroundColor CONSTANT)
-    Q_PROPERTY(QVariantMap palette READ palette WRITE setPalette NOTIFY paletteChanged)
+    Q_PROPERTY(QVariantMap editorColors READ editorColors WRITE setEditorColors NOTIFY editorColorsChanged)
     Q_PROPERTY(int blockSpacing READ blockSpacing WRITE setBlockSpacing NOTIFY appearanceChanged)
     Q_PROPERTY(bool autoWrap READ autoWrap WRITE setAutoWrap NOTIFY appearanceChanged)
     Q_PROPERTY(bool scrollPastEnd READ scrollPastEnd WRITE setScrollPastEnd NOTIFY appearanceChanged)
@@ -62,8 +62,8 @@ public:
     void setAnalysisSession(AnalysisModel* value);
     bool navigationVisible() const { return navigationVisible_; }
     void setNavigationVisible(bool value);
-    QVariantMap palette() const { return palette_; }
-    void setPalette(const QVariantMap& value);
+    QVariantMap editorColors() const { return palette_; }
+    void setEditorColors(const QVariantMap& value);
     int blockSpacing() const { return blockSpacing_; }
     void setBlockSpacing(int value);
     bool autoWrap() const { return autoWrap_; }
@@ -113,7 +113,7 @@ public:
     Q_INVOKABLE bool deleteBookmarkAtLine(int line);
 signals:
     void bindingsChanged();
-    void paletteChanged();
+    void editorColorsChanged();
     void appearanceChanged();
     void layoutChanged();
     void scenePositionChanged();
@@ -171,6 +171,7 @@ private:
     QRectF cursorRectangle_;
     QRectF anchorRectangle_;
     QRectF followCursorRectangle_;
+    int followCaretPosition_ = 0;
     struct ViewportAnchor {
         int position = 0;
         qreal y = 0;
@@ -190,6 +191,7 @@ private:
     };
     std::optional<NavigationRequest> pendingNavigation_;
     qulonglong generation_ = 0;
+    qulonglong synchronizedRevision_ = ~qulonglong(0);
     bool ready_ = false;
     bool synchronizing_ = false;
     bool programmatic_ = false;

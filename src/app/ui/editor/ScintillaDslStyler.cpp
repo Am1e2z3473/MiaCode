@@ -78,17 +78,17 @@ void ScintillaDslStyler::setAppearance(const QFont& font, const QVariantMap& pal
     editor_.send(SCI_INDICSETFORE, muriIndicator, color(palette, "error"));
     editor_.send(SCI_INDICSETFORE, followIndicator, color(palette, "follow"));
     editor_.send(SCI_INDICSETALPHA, followIndicator, qRound(palette.value(QStringLiteral("followOpacity")).toDouble() * 255));
-    reset();
-    style();
 }
 void ScintillaDslStyler::reset()
 {
     lines_.clear();
     bookmarks_.clear();
     dirtyLine_ = 0;
+    dirtyThrough_ = document_.lineCount() - 1;
     validation_.clear();
     muri_.clear();
     followActive_ = false;
+    validationDirty_ = muriDirty_ = true;
     editor_.send(SCI_MARKERDELETEALL, bookmarkMarker);
     for (int indicator : {errorIndicator, warningIndicator, muriIndicator, followIndicator}) {
         editor_.send(SCI_SETINDICATORCURRENT, indicator);
@@ -98,6 +98,7 @@ void ScintillaDslStyler::reset()
 void ScintillaDslStyler::invalidate(int line, int linesAdded)
 {
     dirtyLine_ = qMin(dirtyLine_, line);
+    dirtyThrough_ = qMax(line + qMax(0, linesAdded), dirtyThrough_ + linesAdded);
     if (linesAdded) {
         QMap<int, QString> shifted;
         for (auto it = bookmarks_.cbegin(); it != bookmarks_.cend(); ++it) {
@@ -107,11 +108,8 @@ void ScintillaDslStyler::invalidate(int line, int linesAdded)
         }
         bookmarks_ = std::move(shifted);
     }
-    if (followActive_) {
-        editor_.send(SCI_SETINDICATORCURRENT, followIndicator);
-        editor_.send(SCI_INDICATORCLEARRANGE, 0, editor_.send(SCI_GETLENGTH));
-        followActive_ = false;
-    }
+    validationDirty_ = muriDirty_ = true;
+    followStart_ = -1;
     if (line < lines_.size()) {
         if (linesAdded > 0) lines_.insert(line + 1, linesAdded, LineState{});
         else if (linesAdded < 0) lines_.remove(line + 1, qMin(-linesAdded, int(lines_.size()) - line - 1));
@@ -126,6 +124,9 @@ void ScintillaDslStyler::style()
         const int end = line + 1 < document_.lineCount() ? document_.lineStart(line + 1) : document_.text().size();
         const QStringView source = QStringView(document_.text()).mid(begin, end - begin);
         const QByteArray text = source.toUtf8();
+        auto& cached = lines_[line];
+        if (line > dirtyThrough_ && cached.valid && cached.text == text && cached.inputStack == stack) break;
+        const QByteArray inputStack = stack;
         QByteArray styles(text.size(), 0);
         bool comment = false;
         for (int i = 0; i < text.size(); ++i) {
@@ -154,8 +155,6 @@ void ScintillaDslStyler::style()
         }
         const auto bookmark = miacode::editor::parseBookmarkComment(source.toString());
         const QString title = bookmark && !bookmark->control ? bookmark->title : QString{};
-        auto& cached = lines_[line];
-        const bool same = cached.valid && cached.text == text && cached.stack == stack;
         if (!cached.valid || cached.bookmark != title) {
             editor_.send(SCI_MARKERDELETE, line, bookmarkMarker);
             bookmarks_.remove(line);
@@ -164,12 +163,14 @@ void ScintillaDslStyler::style()
                 bookmarks_.insert(line, title);
             }
         }
-        cached = {text, stack, title, true};
-        if (same && (line + 1 == lines_.size() || lines_[line + 1].valid)) break;
+        cached = {text, stack, title, true, inputStack};
         editor_.send(SCI_STARTSTYLING, document_.bytePosition(begin));
         editor_.sends(SCI_SETSTYLINGEX, styles.size(), styles.constData());
     }
+    // Cached suffix styles remain valid after propagation reaches an unchanged input state.
+    editor_.send(SCI_STARTSTYLING, editor_.send(SCI_GETLENGTH));
     dirtyLine_ = document_.lineCount();
+    dirtyThrough_ = -1;
 }
 QVariantList ScintillaDslStyler::bookmarks() const
 {
@@ -185,38 +186,35 @@ void ScintillaDslStyler::fill(int indicator, int start, int end)
     editor_.send(SCI_SETINDICATORCURRENT, indicator);
     editor_.send(SCI_INDICATORFILLRANGE, first, last - first);
 }
-void ScintillaDslStyler::diagnostics(const QVariantList& validation, const QVariantList& muri)
+void ScintillaDslStyler::diagnostics(const QVariantList& rows, bool isMuri)
 {
-    if (validation_ == validation && muri_ == muri) return;
-    validation_ = validation;
-    muri_ = muri;
-    for (int indicator : {errorIndicator, warningIndicator, muriIndicator}) {
+    auto& cached = isMuri ? muri_ : validation_;
+    auto& dirty = isMuri ? muriDirty_ : validationDirty_;
+    if (!dirty && cached == rows) return;
+    cached = rows;
+    dirty = false;
+    for (int indicator : isMuri ? QList<int>{muriIndicator} : QList<int>{errorIndicator, warningIndicator}) {
         editor_.send(SCI_SETINDICATORCURRENT, indicator);
         editor_.send(SCI_INDICATORCLEARRANGE, 0, editor_.send(SCI_GETLENGTH));
     }
-    auto decorate = [this](const QVariantList& rows, bool isMuri) {
-        for (const auto& value : rows) {
-            const auto row = value.toMap();
-            const int line = row.value(QStringLiteral("line")).toInt() - 1;
-            if (line < 0 || line >= editor_.send(SCI_GETLINECOUNT)) continue;
-            const int lineStart = document_.utf16Position(editor_.send(SCI_POSITIONFROMLINE, line));
-            const int lineEnd = document_.utf16Position(editor_.send(SCI_GETLINEENDPOSITION, line));
-            const int start = qBound(lineStart, lineStart + qMax(0, row.value(QStringLiteral("column")).toInt() - 1), lineEnd);
-            const int end = qBound(start, lineStart + qMax(row.value(QStringLiteral("endColumn")).toInt(), row.value(QStringLiteral("column")).toInt()), lineEnd);
-            const int indicator = isMuri ? muriIndicator : row.value(QStringLiteral("severity")) == QStringLiteral("warning") ? warningIndicator : errorIndicator;
-            fill(indicator, start, end);
-        }
-    };
-    decorate(validation, false);
-    decorate(muri, true);
+    for (const auto& value : rows) {
+        const auto row = value.toMap();
+        const int line = row.value(QStringLiteral("line")).toInt() - 1;
+        if (line < 0 || line >= editor_.send(SCI_GETLINECOUNT)) continue;
+        const int lineStart = document_.utf16Position(editor_.send(SCI_POSITIONFROMLINE, line));
+        const int lineEnd = document_.utf16Position(editor_.send(SCI_GETLINEENDPOSITION, line));
+        const int start = qBound(lineStart, lineStart + qMax(0, row.value(QStringLiteral("column")).toInt() - 1), lineEnd);
+        const int end = qBound(start, lineStart + qMax(row.value(QStringLiteral("endColumn")).toInt(), row.value(QStringLiteral("column")).toInt()), lineEnd);
+        const int indicator = isMuri ? muriIndicator : row.value(QStringLiteral("severity")) == QStringLiteral("warning") ? warningIndicator : errorIndicator;
+        fill(indicator, start, end);
+    }
 }
 void ScintillaDslStyler::follow(bool active, int start, int end)
 {
     if (active == followActive_ && (!active || (start == followStart_ && end == followEnd_))) return;
     editor_.send(SCI_SETINDICATORCURRENT, followIndicator);
     if (followActive_) {
-        const int first = document_.bytePosition(followStart_);
-        editor_.send(SCI_INDICATORCLEARRANGE, first, document_.bytePosition(followEnd_) - first);
+        editor_.send(SCI_INDICATORCLEARRANGE, 0, editor_.send(SCI_GETLENGTH));
     }
     if (active) fill(followIndicator, start, end);
     followActive_ = active;
