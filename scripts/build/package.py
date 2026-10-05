@@ -268,7 +268,7 @@ def provision_windows_ffmpeg():
         download(url, archive)
         extract_archive(archive, extracted)
         include = next(path for path in extracted.rglob("libavcodec") if path.parent.name == "include")
-        src = include.parent
+        src = include.parent.parent
         if sdk.exists():
             shutil.rmtree(sdk)
         shutil.copytree(src / "include", sdk / "include")
