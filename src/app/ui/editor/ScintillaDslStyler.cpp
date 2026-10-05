@@ -81,7 +81,7 @@ void ScintillaDslStyler::setAppearance(const QFont& font, const QVariantMap& pal
 }
 void ScintillaDslStyler::reset()
 {
-    lines_.clear();
+    lines_ = QVector<LineState>();
     bookmarks_.clear();
     dirtyLine_ = 0;
     dirtyThrough_ = document_.lineCount() - 1;

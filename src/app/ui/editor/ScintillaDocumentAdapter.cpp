@@ -85,6 +85,10 @@ void ScintillaDocumentAdapter::drop(const QString& scope)
     editor_.send(SCI_RELEASEDOCUMENT, 0, it->pointer);
     documents_.erase(it);
     if (scope_ == scope) {
+        editor_.send(SCI_SETDOCPOINTER, 0, 0);
+        editor_.send(SCI_SETCODEPAGE, SC_CP_UTF8);
+        editor_.send(SCI_ALLOCATELINECHARACTERINDEX, SC_LINECHARACTERINDEX_UTF16);
+        text_.clear();
         scope_.clear();
         viewportPending_ = false;
     }
@@ -92,6 +96,10 @@ void ScintillaDocumentAdapter::drop(const QString& scope)
 
 void ScintillaDocumentAdapter::clear()
 {
+    editor_.send(SCI_SETDOCPOINTER, 0, 0);
+    editor_.send(SCI_SETCODEPAGE, SC_CP_UTF8);
+    editor_.send(SCI_ALLOCATELINECHARACTERINDEX, SC_LINECHARACTERINDEX_UTF16);
+    text_.clear();
     for (const auto& document : std::as_const(documents_))
         editor_.send(SCI_RELEASEDOCUMENT, 0, document.pointer);
     documents_.clear();
