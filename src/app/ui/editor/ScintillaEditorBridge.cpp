@@ -235,6 +235,7 @@ void ScintillaEditorBridge::setNavigationVisible(bool value)
     if (navigationVisible_ == value) return;
     preserveViewport();
     navigationVisible_ = value;
+    if (value) synchronizeDocument();
     if (!value) {
         pendingNavigation_.reset();
         if (controller_) controller_->closeCompletion();
