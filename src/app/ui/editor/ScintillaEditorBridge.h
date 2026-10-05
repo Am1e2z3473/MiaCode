@@ -164,8 +164,12 @@ private:
     QRectF cursorRectangle_;
     QRectF anchorRectangle_;
     QRectF followCursorRectangle_;
-    qreal viewportY_ = 0;
-    std::optional<qreal> viewportToRestore_;
+    struct ViewportAnchor {
+        int position = 0;
+        qreal y = 0;
+    };
+    ViewportAnchor viewportAnchor_;
+    std::optional<ViewportAnchor> viewportToRestore_;
     QVector<QMetaObject::Connection> sceneConnections_;
     struct NavigationRequest {
         qulonglong sequence;

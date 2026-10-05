@@ -83,9 +83,14 @@ void ScintillaEditorBridge::updatePolish()
         viewportToRestore_.reset();
         ScintillaQuick_item::updatePolish();
     } else if (viewportToRestore_) {
-        const qreal y = *viewportToRestore_;
+        const auto anchor = *viewportToRestore_;
         viewportToRestore_.reset();
-        scrollVertical(qRound(y / send(SCI_TEXTHEIGHT, 0)));
+        const int position = qBound(0, anchor.position, int(send(SCI_GETLENGTH)));
+        send(SCI_ENSUREVISIBLE, send(SCI_LINEFROMPOSITION, position));
+        const int lineHeight = send(SCI_TEXTHEIGHT, 0);
+        const qreal targetY = qBound(qreal(0), anchor.y, qMax(qreal(0), height() - lineHeight));
+        const qreal positionY = send(SCI_POINTYFROMPOSITION, 0, position);
+        scrollVertical(int(send(SCI_GETFIRSTVISIBLELINE)) + qRound((positionY - targetY) / lineHeight));
         ScintillaQuick_item::updatePolish();
     }
 
@@ -109,7 +114,15 @@ void ScintillaEditorBridge::updatePolish()
         }
     }
     publishLayout();
-    viewportY_ = qreal(send(SCI_GETFIRSTVISIBLELINE)) * lineHeight_;
+    if (cursorRectangle_.top() >= 0 && cursorRectangle_.bottom() <= height()) {
+        viewportAnchor_ = {int(send(SCI_GETCURRENTPOS)), cursorRectangle_.y()};
+    } else {
+        int textLeft = send(SCI_GETMARGINLEFT);
+        for (int margin = 0; margin < send(SCI_GETMARGINS); ++margin)
+            textLeft += send(SCI_GETMARGINWIDTHN, margin);
+        const int position = send(SCI_POSITIONFROMPOINT, textLeft, 0);
+        viewportAnchor_ = {position, qreal(send(SCI_POINTYFROMPOSITION, 0, position))};
+    }
     document_.captureViewport();
     if (navigation && syncController_)
         syncController_->acknowledgeNavigation(navigation->sequence, applied);
@@ -117,7 +130,7 @@ void ScintillaEditorBridge::updatePolish()
 
 void ScintillaEditorBridge::preserveViewport()
 {
-    if (ready_ && !viewportToRestore_) viewportToRestore_ = viewportY_;
+    if (ready_ && !viewportToRestore_) viewportToRestore_ = viewportAnchor_;
 }
 
 void ScintillaEditorBridge::geometryChange(const QRectF& newGeometry, const QRectF& oldGeometry)
