@@ -1,5 +1,8 @@
 #include "editor/ScintillaDslStyler.h"
 #include <QColor>
+#include <QGuiApplication>
+#include <QScreen>
+#include <QQuickWindow>
 
 namespace miacode::ui {
 namespace {
@@ -7,30 +10,30 @@ constexpr int errorIndicator = 8;
 constexpr int warningIndicator = 9;
 constexpr int muriIndicator = 10;
 constexpr int followIndicator = 11;
-constexpr int followCaretIndicator = 12;
 constexpr int bookmarkMarker = 1;
-constexpr int followMarker = 2;
 int color(const QVariantMap& palette, const char* key) { return scintillaquick::rgb_from_color(palette.value(QLatin1String(key)).value<QColor>()); }
 }
 ScintillaDslStyler::ScintillaDslStyler(ScintillaQuick_item& editor, ScintillaDocumentAdapter& document)
     : editor_(editor), document_(document)
 {
     editor_.send(SCI_SETILEXER, 0, 0);
-    editor_.set_auto_line_number_margin(0);
+    editor_.set_auto_line_number_margin(0, 12);
     editor_.send(SCI_SETMARGINTYPEN, 1, SC_MARGIN_SYMBOL);
     editor_.send(SCI_SETMARGINMASKN, 1, (1 << bookmarkMarker));
-    editor_.send(SCI_SETMARGINWIDTHN, 1, 16);
+    editor_.send(SCI_SETMARGINWIDTHN, 1, 6);
+    editor_.send(SCI_SETMARGINLEFT, 0, 6);
+    editor_.send(SCI_SETMARGINRIGHT, 0, 12);
     editor_.send(SCI_SETMARGINSENSITIVEN, 1, 1);
-    editor_.send(SCI_MARKERDEFINE, bookmarkMarker, SC_MARK_BOOKMARK);
-    editor_.send(SCI_MARKERDEFINE, followMarker, SC_MARK_BACKGROUND);
+    editor_.send(SCI_MARKERDEFINE, bookmarkMarker, SC_MARK_LEFTRECT);
     for (int indicator : {errorIndicator, warningIndicator, muriIndicator})
         editor_.send(SCI_INDICSETSTYLE, indicator, INDIC_SQUIGGLE);
     editor_.send(SCI_INDICSETSTYLE, followIndicator, INDIC_ROUNDBOX);
     editor_.send(SCI_INDICSETUNDER, followIndicator, 1);
-    editor_.send(SCI_INDICSETALPHA, followIndicator, 70);
-    editor_.send(SCI_INDICSETSTYLE, followCaretIndicator, INDIC_POINT);
+    editor_.send(SCI_INDICSETOUTLINEALPHA, followIndicator, 0);
+    editor_.send(SCI_SETSELECTIONLAYER, SC_LAYER_UNDER_TEXT);
     editor_.send(SCI_SETCARETLINEVISIBLE, 1);
-    editor_.send(SCI_SETCARETLINEBACKALPHA, 40);
+    editor_.send(SCI_SETCARETLINELAYER, SC_LAYER_UNDER_TEXT);
+    editor_.send(SCI_SETCARETWIDTH, 2);
     editor_.send(SCI_SETWRAPMODE, SC_WRAP_WORD);
 }
 void ScintillaDslStyler::setPalette(const QVariantMap& palette)
@@ -41,20 +44,42 @@ void ScintillaDslStyler::setPalette(const QVariantMap& palette)
     editor_.send(SCI_STYLESETFORE, 1, color(palette, "keyword"));
     editor_.send(SCI_STYLESETFORE, 2, color(palette, "duration"));
     editor_.send(SCI_STYLESETFORE, 3, color(palette, "comment"));
-    editor_.send(SCI_STYLESETFORE, STYLE_LINENUMBER, color(palette, "comment"));
+    editor_.send(SCI_STYLESETFORE, STYLE_LINENUMBER, color(palette, "lineNumber"));
+    editor_.send(SCI_STYLESETBACK, STYLE_LINENUMBER, color(palette, "background"));
+    editor_.send(SCI_SETFOLDMARGINCOLOUR, 1, color(palette, "background"));
+    editor_.send(SCI_SETFOLDMARGINHICOLOUR, 1, color(palette, "background"));
     editor_.send(SCI_SETCARETFORE, color(palette, "text"));
-    editor_.send(SCI_SETCARETLINEBACK, color(palette, "currentLine"));
-    editor_.send(SCI_SETSELBACK, 1, color(palette, "selection"));
-    editor_.send(SCI_SETSELALPHA, 100);
-    editor_.send(SCI_MARKERSETBACK, bookmarkMarker, color(palette, "keyword"));
-    editor_.send(SCI_MARKERSETBACK, followMarker, color(palette, "follow"));
-    editor_.send(SCI_MARKERSETALPHA, followMarker, 70);
+    auto rgba = [&palette](const char* key) {
+        const QColor value = palette.value(QLatin1String(key)).value<QColor>();
+        return quint32(scintillaquick::rgb_from_color(value)) | (quint32(value.alpha()) << 24);
+    };
+    editor_.send(SCI_SETELEMENTCOLOUR, SC_ELEMENT_CARET_LINE_BACK, rgba("currentLine"));
+    for (int element : {SC_ELEMENT_SELECTION_BACK, SC_ELEMENT_SELECTION_INACTIVE_BACK})
+        editor_.send(SCI_SETELEMENTCOLOUR, element, rgba("selection"));
+    for (int element : {SC_ELEMENT_SELECTION_TEXT, SC_ELEMENT_SELECTION_INACTIVE_TEXT})
+        editor_.send(SCI_RESETELEMENTCOLOUR, element);
+    editor_.send(SCI_MARKERSETFORE, bookmarkMarker, color(palette, "accent"));
+    editor_.send(SCI_MARKERSETBACK, bookmarkMarker, color(palette, "accent"));
     editor_.send(SCI_INDICSETFORE, errorIndicator, color(palette, "error"));
     editor_.send(SCI_INDICSETFORE, warningIndicator, color(palette, "warning"));
     editor_.send(SCI_INDICSETFORE, muriIndicator, color(palette, "error"));
     editor_.send(SCI_INDICSETFORE, followIndicator, color(palette, "follow"));
-    editor_.send(SCI_INDICSETFORE, followCaretIndicator, color(palette, "keyword"));
+    editor_.send(SCI_INDICSETALPHA, followIndicator, qRound(palette.value(QStringLiteral("followOpacity")).toDouble() * 255));
     style();
+}
+void ScintillaDslStyler::setFont(const QFont& font)
+{
+    const QByteArray family = font.family().toUtf8();
+    const QScreen* screen = editor_.window() ? editor_.window()->screen() : QGuiApplication::primaryScreen();
+    const qreal pointSize = font.pointSizeF() > 0 ? font.pointSizeF()
+        : font.pixelSize() * 72.0 / screen->logicalDotsPerInchY();
+    for (int style : {0, 1, 2, 3, STYLE_DEFAULT, STYLE_LINENUMBER}) {
+        editor_.sends(SCI_STYLESETFONT, style, family.constData());
+        editor_.send(SCI_STYLESETSIZEFRACTIONAL, style, qRound(pointSize * SC_FONT_SIZE_MULTIPLIER));
+        editor_.send(SCI_STYLESETWEIGHT, style, int(font.weight()));
+        editor_.send(SCI_STYLESETITALIC, style, font.italic());
+        editor_.send(SCI_STYLESETUNDERLINE, style, font.underline());
+    }
 }
 void ScintillaDslStyler::style()
 {
@@ -126,14 +151,9 @@ void ScintillaDslStyler::bookmarks(const QVariantList& bookmarks)
 }
 void ScintillaDslStyler::follow(bool active, int start, int end, int caret)
 {
-    for (int indicator : {followIndicator, followCaretIndicator}) {
-        editor_.send(SCI_SETINDICATORCURRENT, indicator);
-        editor_.send(SCI_INDICATORCLEARRANGE, 0, editor_.send(SCI_GETLENGTH));
-    }
-    editor_.send(SCI_MARKERDELETEALL, followMarker);
-    if (!active) return;
-    fill(followIndicator, start, end);
-    fill(followCaretIndicator, caret, caret + 1);
-    editor_.send(SCI_MARKERADD, editor_.send(SCI_LINEFROMPOSITION, document_.bytePosition(caret)), followMarker);
+    Q_UNUSED(caret);
+    editor_.send(SCI_SETINDICATORCURRENT, followIndicator);
+    editor_.send(SCI_INDICATORCLEARRANGE, 0, editor_.send(SCI_GETLENGTH));
+    if (active) fill(followIndicator, start, end);
 }
 }
