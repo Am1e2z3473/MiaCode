@@ -453,9 +453,9 @@ void miacode::runtime::DocumentSessionHost::loadDocument()
     emit session_.documentReplaced();
 }
 
-void miacode::runtime::DocumentSessionHost::clearTimelineAndPreview(bool preservePresentation)
+void miacode::runtime::DocumentSessionHost::clearTimelineAndPreview(bool preservePresentation, bool releaseStorage)
 {
-    const bool releaseStorage = !session_.applicationServices_.workspace().snapshot().hasDocument;
+    releaseStorage |= !session_.applicationServices_.workspace().snapshot().hasDocument;
     state_.timelineQuickModel_.clear(releaseStorage);
     state_.pendingTimelineSlowRefresh_ = TimelineSlowRefreshRequest();
     state_.pendingTimelineAnalysisRefresh_ = TimelineSlowRefreshRequest();

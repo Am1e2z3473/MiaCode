@@ -128,7 +128,7 @@ public:
     void loadDocument();
     void syncRuntimeFromWorkspace();
     void resetWorkingPosition();
-    void clearTimelineAndPreview(bool preservePresentation = false);
+    void clearTimelineAndPreview(bool preservePresentation = false, bool releaseStorage = false);
     void rebuildAutosaveMetadata(const QString& autosaveDirectoryPath) const;
 
     QString sourceText() const override;

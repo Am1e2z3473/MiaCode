@@ -564,8 +564,17 @@ void ScintillaEditorBridge::acceptCompletionFromPopup()
 }
 void ScintillaEditorBridge::dropDocument(const QString& key)
 {
+    QScopedValueRollback guard(synchronizing_, true);
+    const bool current = document_.scope() == key;
     document_.drop(key);
     touchUndoAnchors_.removeIf([&key](auto it) { return it.value().scope == key; });
+    if (current) {
+        styler_.reset();
+        bookmarks_.clear();
+        emit bookmarksChanged();
+        emit selectionChanged();
+        emit availabilityChanged();
+    }
 }
 void ScintillaEditorBridge::configureSearch(const QString& query, const QString& replacement, bool matchCase, bool wholeWord)
 {
