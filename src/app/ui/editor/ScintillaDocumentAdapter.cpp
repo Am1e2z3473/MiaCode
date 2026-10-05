@@ -11,8 +11,32 @@ void ScintillaDocumentAdapter::saveViewport()
     if (it == documents_.end()) return;
     it->anchor = editor_.send(SCI_GETANCHOR);
     it->caret = editor_.send(SCI_GETCURRENTPOS);
-    it->firstLine = editor_.send(SCI_GETFIRSTVISIBLELINE);
     it->xOffset = editor_.send(SCI_GETXOFFSET);
+}
+
+void ScintillaDocumentAdapter::captureViewport()
+{
+    auto it = documents_.find(scope_);
+    if (it == documents_.end()) return;
+    int x = editor_.send(SCI_GETMARGINLEFT);
+    for (int margin = 0; margin < editor_.send(SCI_GETMARGINS); ++margin)
+        x += editor_.send(SCI_GETMARGINWIDTHN, margin);
+    it->topPosition = editor_.send(SCI_POSITIONFROMPOINT, x, 0);
+    saveViewport();
+}
+
+bool ScintillaDocumentAdapter::restoreViewport()
+{
+    if (!viewportPending_) return false;
+    viewportPending_ = false;
+    const auto& document = documents_[scope_];
+    const int position = qBound(0, document.topPosition, int(editor_.send(SCI_GETLENGTH)));
+    editor_.send(SCI_ENSUREVISIBLE, editor_.send(SCI_LINEFROMPOSITION, position));
+    const int row = editor_.send(SCI_GETFIRSTVISIBLELINE)
+        + editor_.send(SCI_POINTYFROMPOSITION, 0, position) / editor_.send(SCI_TEXTHEIGHT, 0);
+    editor_.scrollVertical(row);
+    editor_.send(SCI_SETXOFFSET, document.xOffset);
+    return true;
 }
 
 void ScintillaDocumentAdapter::activate(const QString& scope, const QString& text)
@@ -34,10 +58,11 @@ void ScintillaDocumentAdapter::activate(const QString& scope, const QString& tex
             editor_.send(SCI_EMPTYUNDOBUFFER);
             refresh();
         }
-        editor_.send(SCI_SETSEL, document.anchor, document.caret);
-        editor_.send(SCI_SETFIRSTVISIBLELINE, document.firstLine);
-        editor_.send(SCI_SETXOFFSET, document.xOffset);
+        const int length = editor_.send(SCI_GETLENGTH);
+        editor_.send(SCI_SETSELECTION, qBound(0, document.caret, length), qBound(0, document.anchor, length));
+        viewportPending_ = true;
     } else if (text_ != text) {
+        saveViewport();
         // External DSL transforms and source replacements join native history.
         editor_.send(SCI_BEGINUNDOACTION);
         editor_.send(SCI_SETTARGETSTART, 0);
@@ -46,6 +71,7 @@ void ScintillaDocumentAdapter::activate(const QString& scope, const QString& tex
         editor_.sends(SCI_REPLACETARGET, replacement.size(), replacement.constData());
         editor_.send(SCI_ENDUNDOACTION);
         refresh();
+        viewportPending_ = true;
     }
 }
 
@@ -55,7 +81,10 @@ void ScintillaDocumentAdapter::drop(const QString& scope)
     if (it == documents_.end()) return;
     editor_.send(SCI_RELEASEDOCUMENT, 0, it->pointer);
     documents_.erase(it);
-    if (scope_ == scope) scope_.clear();
+    if (scope_ == scope) {
+        scope_.clear();
+        viewportPending_ = false;
+    }
 }
 
 void ScintillaDocumentAdapter::clear()
@@ -64,6 +93,7 @@ void ScintillaDocumentAdapter::clear()
         editor_.send(SCI_RELEASEDOCUMENT, 0, document.pointer);
     documents_.clear();
     scope_.clear();
+    viewportPending_ = false;
 }
 
 void ScintillaDocumentAdapter::refresh()

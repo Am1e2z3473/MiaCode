@@ -35,8 +35,17 @@ ScintillaDslStyler::ScintillaDslStyler(ScintillaQuick_item& editor, ScintillaDoc
     editor_.send(SCI_SETCARETWIDTH, 2);
     editor_.send(SCI_SETWRAPMODE, SC_WRAP_WORD);
 }
-void ScintillaDslStyler::setPalette(const QVariantMap& palette)
+void ScintillaDslStyler::setAppearance(const QFont& font, const QVariantMap& palette)
 {
+    const QByteArray family = font.family().toUtf8();
+    const QScreen* screen = editor_.window() ? editor_.window()->screen() : QGuiApplication::primaryScreen();
+    const qreal pointSize = font.pointSizeF() > 0 ? font.pointSizeF()
+        : font.pixelSize() * 72.0 / screen->logicalDotsPerInchY();
+    editor_.sends(SCI_STYLESETFONT, STYLE_DEFAULT, family.constData());
+    editor_.send(SCI_STYLESETSIZEFRACTIONAL, STYLE_DEFAULT, qRound(pointSize * SC_FONT_SIZE_MULTIPLIER));
+    editor_.send(SCI_STYLESETWEIGHT, STYLE_DEFAULT, int(font.weight()));
+    editor_.send(SCI_STYLESETITALIC, STYLE_DEFAULT, font.italic());
+    editor_.send(SCI_STYLESETUNDERLINE, STYLE_DEFAULT, font.underline());
     editor_.send(SCI_STYLESETFORE, STYLE_DEFAULT, color(palette, "text"));
     editor_.send(SCI_STYLESETBACK, STYLE_DEFAULT, color(palette, "background"));
     editor_.send(SCI_STYLECLEARALL);
@@ -52,7 +61,10 @@ void ScintillaDslStyler::setPalette(const QVariantMap& palette)
         const QColor value = palette.value(QLatin1String(key)).value<QColor>();
         return quint32(scintillaquick::rgb_from_color(value)) | (quint32(value.alpha()) << 24);
     };
-    editor_.send(SCI_SETELEMENTCOLOUR, SC_ELEMENT_CARET_LINE_BACK, rgba("currentLine"));
+    if (editor_.send(SCI_GETSELECTIONEMPTY))
+        editor_.send(SCI_SETELEMENTCOLOUR, SC_ELEMENT_CARET_LINE_BACK, rgba("currentLine"));
+    else
+        editor_.send(SCI_RESETELEMENTCOLOUR, SC_ELEMENT_CARET_LINE_BACK);
     for (int element : {SC_ELEMENT_SELECTION_BACK, SC_ELEMENT_SELECTION_INACTIVE_BACK})
         editor_.send(SCI_SETELEMENTCOLOUR, element, rgba("selection"));
     for (int element : {SC_ELEMENT_SELECTION_TEXT, SC_ELEMENT_SELECTION_INACTIVE_TEXT})
@@ -65,20 +77,6 @@ void ScintillaDslStyler::setPalette(const QVariantMap& palette)
     editor_.send(SCI_INDICSETFORE, followIndicator, color(palette, "follow"));
     editor_.send(SCI_INDICSETALPHA, followIndicator, qRound(palette.value(QStringLiteral("followOpacity")).toDouble() * 255));
     style();
-}
-void ScintillaDslStyler::setFont(const QFont& font)
-{
-    const QByteArray family = font.family().toUtf8();
-    const QScreen* screen = editor_.window() ? editor_.window()->screen() : QGuiApplication::primaryScreen();
-    const qreal pointSize = font.pointSizeF() > 0 ? font.pointSizeF()
-        : font.pixelSize() * 72.0 / screen->logicalDotsPerInchY();
-    for (int style : {0, 1, 2, 3, STYLE_DEFAULT, STYLE_LINENUMBER}) {
-        editor_.sends(SCI_STYLESETFONT, style, family.constData());
-        editor_.send(SCI_STYLESETSIZEFRACTIONAL, style, qRound(pointSize * SC_FONT_SIZE_MULTIPLIER));
-        editor_.send(SCI_STYLESETWEIGHT, style, int(font.weight()));
-        editor_.send(SCI_STYLESETITALIC, style, font.italic());
-        editor_.send(SCI_STYLESETUNDERLINE, style, font.underline());
-    }
 }
 void ScintillaDslStyler::style()
 {
