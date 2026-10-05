@@ -54,19 +54,6 @@ function(miacode_scintillaquick_surface_background)
                 ? QStringLiteral("text") : QStringLiteral("lineNumber")).value<QColor>();
     }
 
-    // MiaCode's playhead range shares the selection contour renderer. Keep
-    // the indicator capture as the layout source, including overlay updates.
-    for (const auto& indicator : frame.indicator_primitives) {
-        if (indicator.indicator_number == 11) {
-            Scintilla::Internal::Selection_primitive highlight;
-            highlight.rect = indicator.line_rect;
-            highlight.color = indicator.color;
-            highlight.color.setAlpha(indicator.fill_alpha);
-            highlight.layer = Scintilla::Layer::UnderText;
-            frame.selection_primitives.push_back(highlight);
-        }
-    }
-
     m_render_data->captured_caret_primitives = frame.caret_primitives;]=])
     string(FIND "${item_code}" "${original}" match)
     if(match EQUAL -1)
@@ -87,12 +74,51 @@ function(miacode_scintillaquick_surface_background)
     string(REPLACE "            request_scene_graph_update(true, true, false);\n            // `textChanged()`" [=[            const bool indicator_change = int(scn.modificationType) & SC_MOD_CHANGEINDICATOR;
             request_scene_graph_update(!indicator_change, !indicator_change, false);
             // `textChanged()`]=] patched_code "${patched_code}")
+    # Layout is resolved before MiaCode restores its viewport and applies navigation.
+    set(layout_original [=[void ScintillaQuick_item::updatePolish()
+{
+    if (m_properties_sync_pending) {
+        syncQuickViewProperties();
+    }]=])
+    set(layout_replacement [=[void ScintillaQuick_item::prepareLayout()
+{
+    m_core->process_idle_work();
+    if (m_properties_sync_pending) syncQuickViewProperties();
+    m_core->prepare_layout();
+    if (m_properties_sync_pending) syncQuickViewProperties();
+}
+
+void ScintillaQuick_item::updatePolish()
+{
+    prepareLayout();
+    captureFrame();
+}
+
+void ScintillaQuick_item::captureFrame()
+{]=])
+    string(REPLACE "${layout_original}" "${layout_replacement}" patched_code "${patched_code}")
+    string(REPLACE "    m_core->process_idle_work();\n\n    if (!m_render_data->static_content_dirty"
+        "    if (!m_render_data->static_content_dirty" patched_code "${patched_code}")
+    set(generated_include "${CMAKE_CURRENT_BINARY_DIR}/miacode_include")
+    file(READ "${CMAKE_CURRENT_SOURCE_DIR}/include/scintillaquick/scintillaquick_item.h" item_header)
+    string(REPLACE "    void updatePolish() override;" "    void prepareLayout();\n    void captureFrame();\n    void updatePolish() override;" item_header "${item_header}")
+    file(CONFIGURE OUTPUT "${generated_include}/scintillaquick/scintillaquick_item.h" CONTENT "${item_header}" @ONLY)
+    file(READ "${CMAKE_CURRENT_SOURCE_DIR}/src/core/scintillaquick_core.h" core_header)
+    string(REPLACE "public:\n" "public:\n    void prepare_layout() { RefreshStyleData(); WrapLines(WrapScope::wsVisible); }\n" core_header "${core_header}")
+    file(CONFIGURE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/scintillaquick_core.h" CONTENT "${core_header}" @ONLY)
+    file(READ "${CMAKE_CURRENT_SOURCE_DIR}/src/core/scintillaquick_core.cpp" core_code)
+    file(CONFIGURE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/miacode_scintillaquick_core.cpp" CONTENT "${core_code}" @ONLY)
+    target_include_directories(ScintillaQuick BEFORE PUBLIC "$<BUILD_INTERFACE:${generated_include}>")
     set(patched_source "${CMAKE_CURRENT_BINARY_DIR}/miacode_scintillaquick_item.cpp")
     file(CONFIGURE OUTPUT "${patched_source}" CONTENT "${patched_code}" @ONLY)
     get_target_property(sources ScintillaQuick SOURCES)
-    list(REMOVE_ITEM sources src/public/scintillaquick_item.cpp)
+    list(REMOVE_ITEM sources src/public/scintillaquick_item.cpp src/core/scintillaquick_core.cpp
+        src/core/scintillaquick_core.h include/scintillaquick/scintillaquick_item.h)
     set_property(TARGET ScintillaQuick PROPERTY SOURCES "${sources}")
-    target_sources(ScintillaQuick PRIVATE "${patched_source}")
+    target_sources(ScintillaQuick PRIVATE "${patched_source}"
+        "${CMAKE_CURRENT_BINARY_DIR}/miacode_scintillaquick_core.cpp"
+        "${CMAKE_CURRENT_BINARY_DIR}/scintillaquick_core.h"
+        "${generated_include}/scintillaquick/scintillaquick_item.h")
 endfunction()
 cmake_language(DEFER CALL miacode_scintillaquick_surface_background)
 
@@ -138,6 +164,38 @@ function(miacode_scintillaquick_highlight_layers)
     string(REPLACE "${gutter_code}" "" renderer_code "${renderer_code}")
     string(REPLACE "        const qreal static_dpr = window->effectiveDevicePixelRatio();"
         "${gutter_code}\n        const qreal static_dpr = window->effectiveDevicePixelRatio();" renderer_code "${renderer_code}")
+    # Dedicated captured ranges update fixed contour nodes beneath glyphs.
+    string(PREPEND renderer_code "#include \"editor/ScintillaSelectionRenderer.h\"\n")
+    string(REPLACE "        for (size_t layer = 0; layer < m_selection_groups.size(); ++layer) {"
+        "        for (size_t layer = 0; layer < m_selection_groups.size(); ++layer) {\n            if (layer == 1) continue;" renderer_code "${renderer_code}")
+    set(highlight_code [=[        QVector<QRectF> selection_rectangles, follow_rectangles;
+        QColor selection_color, follow_color;
+        for (const auto& selection : frame.selection_primitives) {
+            if (selection.layer == Layer::UnderText && !selection.rect.isEmpty()) {
+                selection_rectangles.append(selection.rect);
+                selection_color = selection.color;
+            }
+        }
+        for (const auto& indicator : frame.indicator_primitives) {
+            if (indicator.indicator_number == 11 && !indicator.line_rect.isEmpty()) {
+                follow_rectangles.append(indicator.line_rect);
+                follow_color = indicator.color;
+                follow_color.setAlpha(indicator.fill_alpha);
+            }
+        }
+        miacode::ui::synchronizeScintillaHighlight(m_highlight_nodes[0], m_selection_groups[1],
+            window, selection_rectangles, selection_color);
+        miacode::ui::synchronizeScintillaHighlight(m_highlight_nodes[1], m_selection_groups[1],
+            window, follow_rectangles, follow_color);
+
+]=])
+    string(REPLACE "        // Caret rectangles from frame" "${highlight_code}        // Caret rectangles from frame" renderer_code "${renderer_code}")
+    string(REPLACE "    std::array<QSGNode*, 3> m_selection_groups{};"
+        "    std::array<QSGNode*, 3> m_selection_groups{};\n    std::array<QSGNode*, 2> m_highlight_nodes{};" renderer_code "${renderer_code}")
+    target_sources(ScintillaQuick PRIVATE
+        "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/../src/app/ui/editor/ScintillaSelectionRenderer.cpp"
+        "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/../src/app/ui/editor/ScintillaSelectionRenderer.h")
+    target_include_directories(ScintillaQuick PRIVATE "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/../src/app/ui")
     set(patched_source "${CMAKE_CURRENT_BINARY_DIR}/miacode_scintillaquick_scene_graph_renderer.cpp")
     file(CONFIGURE OUTPUT "${patched_source}" CONTENT "${renderer_code}" @ONLY)
     get_target_property(sources ScintillaQuick SOURCES)

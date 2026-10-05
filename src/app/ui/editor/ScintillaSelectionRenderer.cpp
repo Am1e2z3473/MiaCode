@@ -5,7 +5,7 @@
 #include <QPainterPath>
 #include <QQuickWindow>
 #include <QSGImageNode>
-#include <QSGRectangleNode>
+#include <QSGTransformNode>
 #include <algorithm>
 #include <cmath>
 
@@ -77,25 +77,42 @@ QPainterPath selectionOutline(const QVector<QRectF>& rows)
     return path;
 }
 
-class RoundedSelectionNode final : public QSGNode
+class RoundedSelectionNode final : public QSGTransformNode
 {
 public:
-    explicit RoundedSelectionNode(int range) : range_(range) {}
-    int range() const { return range_; }
-    void synchronize(QQuickWindow* window, const QVector<QRectF>& rows, const QColor& color)
+    void synchronize(QQuickWindow* window, const QVector<QRectF>& rectangles, const QColor& color)
     {
+        const QPointF origin = rectangles.isEmpty() ? QPointF{} : rectangles.front().topLeft();
+        if (origin != origin_) {
+            origin_ = origin;
+            QMatrix4x4 translation;
+            translation.translate(origin.x(), origin.y());
+            setMatrix(translation);
+        }
+        QVector<QRectF> localRectangles;
+        localRectangles.reserve(rectangles.size());
+        for (const auto& rectangle : rectangles) localRectangles.append(rectangle.translated(-origin));
         const qreal dpr = window->effectiveDevicePixelRatio();
-        if (rows == rows_ && color == color_ && dpr == dpr_) return;
-        rows_ = rows;
+        if (localRectangles == rectangles_ && color == color_ && dpr == dpr_) return;
+        rectangles_ = localRectangles;
         color_ = color;
         dpr_ = dpr;
-        if (rows.isEmpty()) {
+        if (localRectangles.isEmpty()) {
             if (image_) {
                 removeChildNode(image_);
                 delete image_;
                 image_ = nullptr;
             }
             return;
+        }
+        std::sort(localRectangles.begin(), localRectangles.end(), [](const QRectF& a, const QRectF& b) {
+            return a.top() == b.top() ? a.left() < b.left() : a.top() < b.top();
+        });
+        QVector<QRectF> rows;
+        for (const auto& rectangle : std::as_const(localRectangles)) {
+            if (!rows.isEmpty() && rows.back().top() == rectangle.top() && rows.back().height() == rectangle.height()
+                && rectangle.left() <= rows.back().right()) rows.back() = rows.back().united(rectangle);
+            else rows.append(rectangle);
         }
         const QPainterPath outline = selectionOutline(rows);
         const QRectF bounds = outline.boundingRect().adjusted(-1, -1, 1, 1);
@@ -111,65 +128,27 @@ public:
             image_ = window->createImageNode();
             image_->setOwnsTexture(true);
             image_->setFiltering(QSGTexture::Linear);
-            image_->setTexture(window->createTextureFromImage(image));
-            image_->setRect(bounds);
             appendChildNode(image_);
-        } else image_->setTexture(window->createTextureFromImage(image));
+        }
+        image_->setTexture(window->createTextureFromImage(image));
         image_->setRect(bounds);
     }
 private:
-    int range_;
     QSGImageNode* image_ = nullptr;
-    QVector<QRectF> rows_;
+    QPointF origin_;
+    QVector<QRectF> rectangles_;
     QColor color_;
     qreal dpr_ = 0;
 };
-
-struct SelectionLayer {
-    QSGNode* parent = nullptr;
-    QVector<QRectF> rectangles;
-    RoundedSelectionNode* contour = nullptr;
-};
-
-void collectSelectionLayers(QSGNode* parent, const QColor& color, int range, QVector<SelectionLayer>& layers)
-{
-    SelectionLayer layer;
-    layer.parent = parent;
-    for (auto* child = parent->firstChild(); child; child = child->nextSibling()) {
-        if (auto* contour = dynamic_cast<RoundedSelectionNode*>(child)) {
-            if (contour->range() == range) layer.contour = contour;
-        } else if (auto* rectangle = dynamic_cast<QSGRectangleNode*>(child); rectangle && rectangle->color().rgba() == color.rgba()) {
-            if (!rectangle->rect().isEmpty()) layer.rectangles.append(rectangle->rect());
-            rectangle->setColor(Qt::transparent);
-        } else collectSelectionLayers(child, color, range, layers);
-    }
-    if (layer.contour || !layer.rectangles.isEmpty()) layers.append(layer);
-}
 }
 
-void renderRoundedScintillaHighlights(QSGNode* root, QQuickWindow* window, const QVector<QColor>& colors)
+void synchronizeScintillaHighlight(QSGNode*& node, QSGNode* parent, QQuickWindow* window,
+                                   const QVector<QRectF>& rectangles, const QColor& color)
 {
-    if (!root || !window) return;
-    for (int range = 0; range < colors.size(); ++range) {
-    const auto& color = colors[range];
-    QVector<SelectionLayer> layers;
-    collectSelectionLayers(root, color, range, layers);
-    for (auto& layer : layers) {
-        std::sort(layer.rectangles.begin(), layer.rectangles.end(), [](const QRectF& a, const QRectF& b) {
-            return a.top() == b.top() ? a.left() < b.left() : a.top() < b.top();
-        });
-        QVector<QRectF> rows;
-        for (const auto& rectangle : std::as_const(layer.rectangles)) {
-            if (!rows.isEmpty() && rows.back().top() == rectangle.top() && rows.back().height() == rectangle.height()
-                && rectangle.left() <= rows.back().right()) rows.back() = rows.back().united(rectangle);
-            else rows.append(rectangle);
-        }
-        if (!layer.contour) {
-            layer.contour = new RoundedSelectionNode(range);
-        } else layer.parent->removeChildNode(layer.contour);
-        layer.parent->appendChildNode(layer.contour);
-        layer.contour->synchronize(window, rows, color);
+    if (!node) {
+        node = new RoundedSelectionNode;
+        parent->appendChildNode(node);
     }
-    }
+    static_cast<RoundedSelectionNode*>(node)->synchronize(window, rectangles, color);
 }
 }

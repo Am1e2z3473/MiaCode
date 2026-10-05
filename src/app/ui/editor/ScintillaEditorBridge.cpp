@@ -1,6 +1,5 @@
 #include "editor/ScintillaEditorBridge.h"
 #include "editor/SimaiCompletionCatalog.h"
-#include "editor/ScintillaSelectionRenderer.h"
 #include <QClipboard>
 #include <QGuiApplication>
 #include <QInputMethod>
@@ -70,15 +69,6 @@ ScintillaEditorBridge::~ScintillaEditorBridge()
 {
     if (syncController_) syncController_->setEditorReadiness(-1, 0, false);
 }
-QSGNode* ScintillaEditorBridge::updatePaintNode(QSGNode* oldNode, UpdatePaintNodeData* data)
-{
-    QSGNode* root = ScintillaQuick_item::updatePaintNode(oldNode, data);
-    QColor follow = palette_.value(QStringLiteral("follow")).value<QColor>();
-    follow.setAlpha(qRound(palette_.value(QStringLiteral("followOpacity")).toDouble() * 255));
-    renderRoundedScintillaHighlights(root, window(),
-        {palette_.value(QStringLiteral("selection")).value<QColor>(), follow});
-    return root;
-}
 void ScintillaEditorBridge::componentComplete()
 {
     ScintillaQuick_item::componentComplete();
@@ -88,10 +78,9 @@ void ScintillaEditorBridge::componentComplete()
 }
 void ScintillaEditorBridge::updatePolish()
 {
-    ScintillaQuick_item::updatePolish();
+    prepareLayout();
     if (document_.restoreViewport()) {
         viewportToRestore_.reset();
-        ScintillaQuick_item::updatePolish();
     } else if (viewportToRestore_) {
         const auto anchor = *viewportToRestore_;
         viewportToRestore_.reset();
@@ -101,7 +90,6 @@ void ScintillaEditorBridge::updatePolish()
         const qreal targetY = qBound(qreal(0), anchor.y, qMax(qreal(0), height() - lineHeight));
         const qreal positionY = send(SCI_POINTYFROMPOSITION, 0, position);
         scrollVertical(int(send(SCI_GETFIRSTVISIBLELINE)) + qRound((positionY - targetY) / lineHeight));
-        ScintillaQuick_item::updatePolish();
     }
 
     const auto navigation = pendingNavigation_;
@@ -119,10 +107,10 @@ void ScintillaEditorBridge::updatePolish()
             select(request.start, request.end);
             if (request.focus) forceActiveFocus();
             if (request.reveal) revealPosition(request.end, true);
-            ScintillaQuick_item::updatePolish();
             publishContext(false);
         }
     }
+    captureFrame();
     publishLayout();
     if (cursorRectangle_.top() >= 0 && cursorRectangle_.bottom() <= height()) {
         viewportAnchor_ = {int(send(SCI_GETCURRENTPOS)), cursorRectangle_.y()};
