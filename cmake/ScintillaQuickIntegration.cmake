@@ -46,6 +46,14 @@ function(miacode_scintillaquick_surface_background)
         }
     }
 
+    const auto editor_palette = property("palette").toMap();
+    const int active_line = send(SCI_LINEFROMPOSITION, send(SCI_GETCURRENTPOS));
+    for (auto& margin : frame.margin_text_primitives) {
+        if (margin.style_id == StyleLineNumber)
+            margin.foreground = editor_palette.value(margin.document_line == active_line
+                ? QStringLiteral("text") : QStringLiteral("lineNumber")).value<QColor>();
+    }
+
     // MiaCode's playhead range shares the selection contour renderer. Keep
     // the indicator capture as the layout source, including overlay updates.
     for (const auto& indicator : frame.indicator_primitives) {
@@ -120,6 +128,16 @@ function(miacode_scintillaquick_highlight_layers)
     string(REPLACE "${indicator_code}" "" renderer_code "${renderer_code}")
     string(REPLACE "        const qreal static_dpr = window->effectiveDevicePixelRatio();"
         "${indicator_code}        const qreal static_dpr = window->effectiveDevicePixelRatio();" renderer_code "${renderer_code}")
+    # Refresh captured line-number colours during caret and selection updates.
+    string(FIND "${renderer_code}" "            // Gutter text from frame margin text primitives" gutter_begin)
+    string(FIND "${renderer_code}" "                    node->update_from_margin_text(window, margin, frame.margin_rect);" gutter_update)
+    string(SUBSTRING "${renderer_code}" ${gutter_update} -1 gutter_tail)
+    string(FIND "${gutter_tail}" "                });" gutter_close)
+    math(EXPR gutter_length "${gutter_update} - ${gutter_begin} + ${gutter_close} + 19")
+    string(SUBSTRING "${renderer_code}" ${gutter_begin} ${gutter_length} gutter_code)
+    string(REPLACE "${gutter_code}" "" renderer_code "${renderer_code}")
+    string(REPLACE "        const qreal static_dpr = window->effectiveDevicePixelRatio();"
+        "${gutter_code}\n        const qreal static_dpr = window->effectiveDevicePixelRatio();" renderer_code "${renderer_code}")
     set(patched_source "${CMAKE_CURRENT_BINARY_DIR}/miacode_scintillaquick_scene_graph_renderer.cpp")
     file(CONFIGURE OUTPUT "${patched_source}" CONTENT "${renderer_code}" @ONLY)
     get_target_property(sources ScintillaQuick SOURCES)

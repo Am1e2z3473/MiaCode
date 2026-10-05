@@ -608,6 +608,19 @@ void ScintillaEditorBridge::keyPressEvent(QKeyEvent* event)
 void ScintillaEditorBridge::mousePressEvent(QMouseEvent* event)
 {
     beginUserInteraction();
+    if (event->button() == Qt::RightButton) {
+        int gutterWidth = 0;
+        for (int margin = 0; margin < send(SCI_GETMARGINS); ++margin)
+            gutterWidth += send(SCI_GETMARGINWIDTHN, margin);
+        if (event->position().x() >= 0 && event->position().x() < gutterWidth) {
+            const int position = send(SCI_POSITIONFROMPOINT, gutterWidth + send(SCI_GETMARGINLEFT), qRound(event->position().y()));
+            const int line = send(SCI_LINEFROMPOSITION, position) + 1;
+            forceActiveFocus();
+            emit bookmarkMenuRequested(line, event->position().x(), event->position().y());
+            event->accept();
+            return;
+        }
+    }
     ScintillaQuick_item::mousePressEvent(event);
     if (event->button() == Qt::RightButton) {
         emit selectionChanged();
