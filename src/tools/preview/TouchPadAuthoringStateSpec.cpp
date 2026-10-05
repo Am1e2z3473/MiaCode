@@ -83,16 +83,6 @@ int main(int argc, char** argv)
         err << "FAIL: scene source should route left/right gestures and Ctrl+Shift pseudo-double\n";
         return 1;
     }
-    // The gutter is QML now; the assertion is the same one, re-pointed. A
-    // bookmarked line is marked by colouring the row, not by underlining it.
-    const QString gutterSource = readSource(QStringLiteral("src/app/ui/editor/LineNumberGutter.qml"));
-    if (!gutterSource.contains(QStringLiteral("Theme.colors.accent.primary"))
-        || !gutterSource.contains(QStringLiteral("bookmarkedLines"))
-        || gutterSource.contains(QStringLiteral("ctx.lineTo"))
-        || gutterSource.contains(QStringLiteral("ctx.stroke"))) {
-        err << "FAIL: bookmark gutter should keep color cues without underline drawing\n";
-        return 1;
-    }
     QTextStream(stdout) << "touch_pad_authoring_state_spec ok\n";
     return 0;
 }

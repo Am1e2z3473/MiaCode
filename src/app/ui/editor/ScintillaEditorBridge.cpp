@@ -290,6 +290,14 @@ QRectF ScintillaEditorBridge::textPositionRectangle(int position) const
 {
     return positionToRectangle(position);
 }
+QRectF ScintillaEditorBridge::lineRectangle(int line) const
+{
+    return positionToRectangle(document_.lineStart(qBound(0, line - 1, document_.lineCount() - 1)));
+}
+int ScintillaEditorBridge::lineAtPosition(int position) const
+{
+    return document_.lineAt(qBound(0, position, int(document_.text().size()))) + 1;
+}
 QRectF ScintillaEditorBridge::followCursorRectangle() const
 {
     return followCursorRectangle_;
@@ -336,7 +344,7 @@ void ScintillaEditorBridge::synchronizeDocument()
     }
     document_.activate(scope, documentSession_->chartText());
     if (identityChanged) styler_.reset();
-    if (controller_) controller_->setDocumentContext(documentSession_->currentDifficultyId(), documentSession_->documentRevision());
+    if (controller_) controller_->setDifficulty(documentSession_->currentDifficultyId());
     refreshDecorations();
     publishContext(false);
     emit selectionChanged();
@@ -348,12 +356,12 @@ void ScintillaEditorBridge::textMutated()
     if (documentSession_) {
         QScopedValueRollback guard(synchronizing_, true);
         documentSession_->setChartText(document_.text());
-        if (controller_) controller_->setDocumentContext(documentSession_->currentDifficultyId(), documentSession_->documentRevision());
+        if (controller_) controller_->setDifficulty(documentSession_->currentDifficultyId());
     }
     refreshDecorations();
     publishContext(!programmatic_);
     if (controller_) {
-        controller_->updateCompletionForQml(document_.text(), cursorPosition());
+        controller_->updateCompletion(document_.text(), cursorPosition());
     }
     emit selectionChanged();
     emit availabilityChanged();
@@ -405,7 +413,7 @@ void ScintillaEditorBridge::refreshSelection(bool userCaret)
     if (!synchronizing_ && !handlingIme_) {
         publishContext(userCaret);
         if (controller_ && userCaret)
-            controller_->updateCompletionForQml(document_.text(), cursorPosition());
+            controller_->updateCompletion(document_.text(), cursorPosition());
     }
 }
 void ScintillaEditorBridge::revealPosition(int utf16, bool center)
@@ -441,10 +449,10 @@ void ScintillaEditorBridge::touchAuthoring(const QString& pad, QChar separator, 
     if (!documentSession_ || !controller_ || imeComposing_ || difficulty != documentSession_->currentDifficultyId()
         || revision != documentSession_->documentRevision()) return;
     QScopedValueRollback guard(programmatic_, true);
-    const auto tx = controller_->touchPadAuthoringForQml(document_.text(), anchor, position, pad, separator);
+    const auto tx = controller_->touchPadAuthoring(document_.text(), anchor, position, pad, separator);
     if (applyEditorTransaction(tx)) {
         forceActiveFocus();
-        syncController_->setTouchPadPreviewAnchor(difficulty, documentSession_->documentRevision(), document_.text(), tx.value(QStringLiteral("touchTokenStart")).toInt());
+        publishTouchAnchor(tx.transaction.touchTokenStart);
     }
 }
 void ScintillaEditorBridge::undo()
@@ -461,10 +469,17 @@ void ScintillaEditorBridge::redo()
     send(SCI_REDO);
     publishTouchUndoAnchor();
 }
+void ScintillaEditorBridge::publishTouchAnchor(int position)
+{
+    const int bounded = qBound(0, position, int(document_.text().size()));
+    const int line = document_.lineAt(bounded);
+    syncController_->setTouchPadPreviewAnchor(documentSession_->currentDifficultyId(),
+        documentSession_->documentRevision(), line + 1, bounded - document_.lineStart(line) + 1);
+}
 void ScintillaEditorBridge::publishTouchUndoAnchor()
 {
     if (pendingTouchAnchor_ >= 0 && documentSession_ && syncController_)
-        syncController_->setTouchPadPreviewAnchor(documentSession_->currentDifficultyId(), documentSession_->documentRevision(), document_.text(), pendingTouchAnchor_);
+        publishTouchAnchor(pendingTouchAnchor_);
     pendingTouchAnchor_ = -1;
 }
 void ScintillaEditorBridge::cut() { send(SCI_CUT); }
@@ -489,34 +504,41 @@ void ScintillaEditorBridge::jumpToLine(int line)
     forceActiveFocus();
 }
 void ScintillaEditorBridge::centerCursorInView() { revealPosition(cursorPosition(), true); }
-bool ScintillaEditorBridge::applyEditorTransaction(const QVariantMap& tx)
+bool ScintillaEditorBridge::applyEditorTransaction(const miacode::editor::SimaiTextEditResult& result)
 {
-    if (!tx.value(QStringLiteral("consumed")).toBool()) return false;
-    {
+    if (!result.error.isEmpty() && documentSession_) {
+        qWarning().noquote() << "MiaCode editor:" << result.error;
+    }
+    if (!result.consumed) return false;
+    const auto& tx = result.transaction;
+    const bool caretChanged = tx.anchor != document_.utf16Position(send(SCI_GETANCHOR))
+        || tx.position != cursorPosition();
+    if (tx.hasEdit || caretChanged) {
         QScopedValueRollback guard(synchronizing_, true);
-        if (tx.value(QStringLiteral("hasEdit")).toBool()) {
+        if (tx.hasEdit) {
             send(SCI_BEGINUNDOACTION);
-            send(SCI_SETTARGETSTART, document_.bytePosition(tx.value(QStringLiteral("replacementStart")).toInt()));
-            send(SCI_SETTARGETEND, document_.bytePosition(tx.value(QStringLiteral("replacementEnd")).toInt()));
-            const QByteArray replacement = tx.value(QStringLiteral("replacementText")).toString().toUtf8();
+            send(SCI_SETTARGETSTART, document_.bytePosition(tx.replacementStart));
+            send(SCI_SETTARGETEND, document_.bytePosition(tx.replacementEnd));
+            const QByteArray replacement = tx.replacementText.toUtf8();
             sends(SCI_REPLACETARGET, replacement.size(), replacement.constData());
-            if (tx.contains(QStringLiteral("touchTokenStart"))) {
+            if (tx.touchTokenStart >= 0) {
                 const int token = nextTouchToken_++;
-                touchUndoAnchors_.insert(token, {document_.scope(), tx.value(QStringLiteral("touchTokenStart")).toInt()});
+                touchUndoAnchors_.insert(token, {document_.scope(), tx.touchTokenStart});
                 send(SCI_ADDUNDOACTION, token, 0);
             }
             send(SCI_ENDUNDOACTION);
-                }
-        select(tx.value(QStringLiteral("anchor")).toInt(), tx.value(QStringLiteral("position")).toInt());
+        }
+        select(tx.anchor, tx.position);
         send(SCI_SCROLLCARET);
     }
-    textMutated();
+    if (tx.hasEdit) textMutated();
+    else if (caretChanged) publishContext(!programmatic_);
     return true;
 }
 void ScintillaEditorBridge::acceptCompletionFromPopup()
 {
     if (!controller_) return;
-    applyEditorTransaction(controller_->acceptCompletionForQml(document_.text(), document_.utf16Position(send(SCI_GETANCHOR)), cursorPosition()));
+    applyEditorTransaction(controller_->acceptCompletion(document_.text(), document_.utf16Position(send(SCI_GETANCHOR)), cursorPosition()));
     forceActiveFocus();
 }
 void ScintillaEditorBridge::dropDocument(const QString& key)
@@ -547,9 +569,27 @@ bool ScintillaEditorBridge::applyChartTransform(const QString& operation)
 {
     return documentSession_ && applyEditorTransaction(documentSession_->transformChartSelection(document_.text(), selectionStart(), selectionEnd(), operation));
 }
-bool ScintillaEditorBridge::createBookmarkAtLine(int line, const QString& title) { return controller_ && applyEditorTransaction(controller_->createBookmarkForQml(document_.text(), line, title)); }
-bool ScintillaEditorBridge::renameBookmarkAtLine(int line, const QString& title) { return controller_ && applyEditorTransaction(controller_->renameBookmarkForQml(document_.text(), line, title)); }
-bool ScintillaEditorBridge::deleteBookmarkAtLine(int line) { return controller_ && applyEditorTransaction(controller_->deleteBookmarkForQml(document_.text(), line)); }
+bool ScintillaEditorBridge::createBookmarkAtLine(int line, const QString& title)
+{
+    if (!controller_ || line < 1 || line > document_.lineCount()) return false;
+    const int start = document_.lineStart(line - 1);
+    const int end = document_.utf16Position(send(SCI_GETLINEENDPOSITION, line - 1));
+    return applyEditorTransaction(controller_->createBookmark(document_.text().mid(start, end - start), start, title));
+}
+bool ScintillaEditorBridge::renameBookmarkAtLine(int line, const QString& title)
+{
+    if (!controller_ || line < 1 || line > document_.lineCount()) return false;
+    const int start = document_.lineStart(line - 1);
+    const int end = document_.utf16Position(send(SCI_GETLINEENDPOSITION, line - 1));
+    return applyEditorTransaction(controller_->renameBookmark(document_.text().mid(start, end - start), start, title));
+}
+bool ScintillaEditorBridge::deleteBookmarkAtLine(int line)
+{
+    if (!controller_ || line < 1 || line > document_.lineCount()) return false;
+    const int start = document_.lineStart(line - 1);
+    const int end = document_.utf16Position(send(SCI_GETLINEENDPOSITION, line - 1));
+    return applyEditorTransaction(controller_->deleteBookmark(document_.text().mid(start, end - start), start));
+}
 void ScintillaEditorBridge::beginUserInteraction()
 {
     viewportToRestore_.reset();
@@ -586,8 +626,8 @@ void ScintillaEditorBridge::keyPressEvent(QKeyEvent* event)
             (event->key() == Qt::Key_Up || event->key() == Qt::Key_Down || event->key() == Qt::Key_Escape
              || event->key() == Qt::Key_Return || event->key() == Qt::Key_Enter || event->key() == Qt::Key_Tab);
         if (completionKey || smartGlyph || convert || event->key() == Qt::Key_Backspace) {
-            const auto tx = controller_->processKeyForQml(document_.text(), document_.utf16Position(send(SCI_GETANCHOR)), cursorPosition(), input, event->key(), int(event->modifiers()));
-            if (applyEditorTransaction(tx) || tx.value(QStringLiteral("suppressFallbackInsert")).toBool()) { event->accept(); return; }
+            const auto tx = controller_->processKey(document_.text(), document_.utf16Position(send(SCI_GETANCHOR)), cursorPosition(), input, event->key(), int(event->modifiers()));
+            if (applyEditorTransaction(tx) || tx.suppressFallbackInsert) { event->accept(); return; }
         }
     }
     ScintillaQuick_item::keyPressEvent(event);

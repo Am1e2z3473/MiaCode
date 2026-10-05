@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QObject>
+#include "editor/SimaiTextEditPolicy.h"
 #include "core/chart/selection/ChartSelectionBeatSummary.h"
 #include <QImage>
 
@@ -202,22 +203,10 @@ public:
     Q_INVOKABLE bool applyDesignerSlots(const QVariantList& slotValues, bool unified,
                                       const QString& canonicalName);
 
-    // Normalizes the selected range (or the whole text when nothing is
-    // selected) and returns the result as a value: { ok, changed, text,
-    // selectionStart, selectionEnd, error }. It does NOT commit — the editor
-    // applies it as one of its own transactions so undo covers it.
-    Q_INVOKABLE QVariantMap normalizeChartSelection(
+    // The editor applies DSL replacements through its native undo history.
+    miacode::editor::SimaiTextEditResult normalizeChartSelection(
         const QString& text, int anchor, int position, const QVariantMap& options) const;
-
-    // Applies one of the 谱面变换 commands to the selected range, returned as an
-    // editor transaction the same way normalizeChartSelection is. `opId` is the
-    // ShortcutRegistry id ("transform.mirror_lr", …), so the shortcut table,
-    // the menu and this dispatch all name the operation identically.
-    //
-    // These used to be MainWindow methods that read the hidden Widgets editor's
-    // cursor. Nothing ever carried the QML selection into that widget, so in v2
-    // every one of them found an empty selection and did nothing.
-    Q_INVOKABLE QVariantMap transformChartSelection(
+    miacode::editor::SimaiTextEditResult transformChartSelection(
         const QString& text, int anchor, int position, const QString& opId) const;
     mutable miacode::chart_selection::ChartSelectionBeatIndex selectionBeatIndex_;
     Q_INVOKABLE QVariantMap selectionBeatSummary(
@@ -313,6 +302,10 @@ private:
     miacode::ui::DocumentValidationProjection validationSnapshot_;
     miacode::ui::DocumentPresentationState presentationState_;
     quint64 documentRevision_ = 0;
+    mutable quint64 positionIndexRevision_ = ~quint64(0);
+    mutable quint64 positionIndexGeneration_ = ~quint64(0);
+    mutable int positionIndexDifficulty_ = -1;
+    mutable QVector<int> positionLineStarts_;
     qulonglong documentGeneration_ = 0;
     qulonglong bookmarkGeneration_ = 0;
     bool unifiedDesignerEnabled_ = false;

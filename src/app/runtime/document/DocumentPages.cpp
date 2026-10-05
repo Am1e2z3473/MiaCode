@@ -337,9 +337,6 @@ bool miacode::runtime::DocumentSessionHost::switchToDifficultyField(int difficul
         || state_.activeOutlineKey_ == QLatin1String("latency")) {
         state_.activeOutlineKey_ = QStringLiteral("chart");
     }
-    if (session_.editor_ != nullptr) {
-        session_.editor_->syncBookmarksFromEditorText();
-    }
     const double previousPreviewTrackDurationSeconds = state_.previewTrackDurationSeconds_;
     const std::shared_ptr<const miacode::waveform::WaveformData> previousWaveformData =
         state_.timelineQuickStateBridge_ != nullptr ? state_.timelineQuickStateBridge_->waveformData() : nullptr;

@@ -19,16 +19,6 @@ public:
     void applyEditorOverwriteModeEnabled(bool enabled, bool persistPreference);
     void applyEditorAutoCompletionEnabled(bool enabled, bool persistPreference);
     void applyEditorImeInputDisabled(bool disabled, bool persistPreference);
-    // Jump to the bookmark's line without leaving a persistent sidebar marker.
-    // Creates a bookmark by inserting a visible `|| [label]` comment on `line`.
-    // No-op when the line already has a bookmark (it is revealed instead).
-    // When beginRenameInSidebar is set, the sidebar starts inline rename.
-    // Explicit user rename: rewrites the line's `|| [label]` prefix in the
-    // editor text. An empty name removes an existing explicit label and falls
-    // back to automatic naming.
-    void syncBookmarksFromEditorText(int changePosition = -1, int charsRemoved = 0, int charsAdded = 0);
-    // Rebuilds the derived sidebar index after a document is assigned.
-    void adoptBookmarksForLoadedDocument();
     QString resolveProjectRenderStateFilePath() const;
     void loadProjectRenderState();
     void saveProjectRenderState() const;

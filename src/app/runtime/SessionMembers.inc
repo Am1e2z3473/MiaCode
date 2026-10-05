@@ -142,7 +142,6 @@
         QString pendingAbnormalExitBackupRestorePath_;
         QString pendingAbnormalExitBackupRestoreChartPath_;
         bool pendingAbnormalExitBackupRestoreScheduled_ = false;
-        QVector<EditorBookmark> editorBookmarks_;
         // Set true while LatencySandboxController has hot-swapped the
         // timeline noteMarkers + audio settings for a sandbox audition.
         // Gates code paths that otherwise refresh from the real chart.
@@ -562,7 +561,6 @@
     QString& pendingAbnormalExitBackupRestorePath_ = state_.pendingAbnormalExitBackupRestorePath_;
     QString& pendingAbnormalExitBackupRestoreChartPath_ = state_.pendingAbnormalExitBackupRestoreChartPath_;
     bool& pendingAbnormalExitBackupRestoreScheduled_ = state_.pendingAbnormalExitBackupRestoreScheduled_;
-    QVector<EditorBookmark>& editorBookmarks_ = state_.editorBookmarks_;
     int& lastTimelineParseDifficultyId_ = state_.lastTimelineParseDifficultyId_;
     QString& lastTimelineParseChartText_ = state_.lastTimelineParseChartText_;
     miacode::simai::SimaiTimingMetadata& lastTimelineParseTimingMetadata_ = state_.lastTimelineParseTimingMetadata_;

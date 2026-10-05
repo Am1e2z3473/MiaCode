@@ -61,8 +61,8 @@ Rectangle {
     function selectionDescription() {
         if (sourceArea.selectionStart === sourceArea.selectionEnd)
             return qsTrId("qml.normalize_the_entire_chart_source")
-        const startLine = sourceArea.text.substring(0, sourceArea.selectionStart).split("\n").length
-        const endLine = sourceArea.text.substring(0, sourceArea.selectionEnd - 1).split("\n").length
+        const startLine = sourceArea.lineAtPosition(sourceArea.selectionStart)
+        const endLine = sourceArea.lineAtPosition(sourceArea.selectionEnd - 1)
         return qsTrId("qml.normalize_selected_lines_1_2").arg(startLine).arg(endLine)
     }
     function createBookmarkAtLine(line) { return sourceArea.createBookmarkAtLine(line, qsTrId("qml.bookmarks")) }
@@ -86,6 +86,10 @@ Rectangle {
         editorContextMenu.open()
     }
     function updateMenuPlacement() {
+        if (editorContextMenu.visible || bookmarkMenu.visible)
+            Qt.callLater(root.placeMenus)
+    }
+    function placeMenus() {
         if (editorContextMenu.visible) editorContextMenu.updatePlacement()
         if (bookmarkMenu.visible) bookmarkMenu.updatePlacement()
     }
@@ -281,7 +285,7 @@ Rectangle {
                             delegate: AppMenuItem {
                                 required property var modelData
                                 text: qsTrId(modelData.labelKey)
-                                onTriggered: root.applyChartTransform(modelData.id)
+                                onTriggered: editorContextMenu.triggerOperation(modelData.id)
                             }
                             onObjectAdded: (index, item) => transformMoreMenu.insertItem(index, item)
                             onObjectRemoved: (index, item) => transformMoreMenu.removeItem(item)
@@ -292,7 +296,7 @@ Rectangle {
                             delegate: AppMenuItem {
                                 required property var modelData
                                 text: qsTrId(modelData.labelKey)
-                                onTriggered: root.applyChartTransform(modelData.id)
+                                onTriggered: editorContextMenu.triggerOperation(modelData.id)
                             }
                             onObjectAdded: (index, item) => transformMoreMenu.insertItem(
                                 transformMoreMenu.subdivisionRows.length + 1 + index, item)
@@ -456,8 +460,7 @@ Rectangle {
                 && contextGeneration === root.documentSession.documentOpenGeneration
         }
         function updatePlacement() {
-            const position = root.documentSession.chartPosition(root.pendingBookmarkLine, 1)
-            const line = sourceArea.textPositionRectangle(position)
+            const line = sourceArea.lineRectangle(root.pendingBookmarkLine)
             const point = sourceArea.mapToItem(parent, 16, line.y)
             x = Math.max(0, Math.min(point.x, parent.width - width))
             y = Math.max(0, Math.min(point.y, parent.height - height))
