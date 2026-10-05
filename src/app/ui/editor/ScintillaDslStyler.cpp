@@ -32,6 +32,7 @@ ScintillaDslStyler::ScintillaDslStyler(ScintillaQuick_item& editor, ScintillaDoc
     editor_.send(SCI_INDICSETOUTLINEALPHA, followIndicator, 0);
     editor_.send(SCI_SETSELECTIONLAYER, SC_LAYER_UNDER_TEXT);
     editor_.send(SCI_SETCARETLINELAYER, SC_LAYER_UNDER_TEXT);
+    editor_.send(SCI_SETCARETLINEVISIBLEALWAYS, 1);
     editor_.send(SCI_SETCARETWIDTH, 2);
     editor_.send(SCI_SETWRAPMODE, SC_WRAP_WORD);
 }
