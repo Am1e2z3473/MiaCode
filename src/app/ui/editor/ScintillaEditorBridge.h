@@ -29,6 +29,7 @@ class ScintillaEditorBridge : public ScintillaQuick_item
     Q_PROPERTY(QColor sceneBackgroundColor READ sceneBackgroundColor CONSTANT)
     Q_PROPERTY(QVariantMap palette READ palette WRITE setPalette NOTIFY paletteChanged)
     Q_PROPERTY(int blockSpacing READ blockSpacing WRITE setBlockSpacing NOTIFY appearanceChanged)
+    Q_PROPERTY(bool autoWrap READ autoWrap WRITE setAutoWrap NOTIFY appearanceChanged)
     Q_PROPERTY(bool scrollPastEnd READ scrollPastEnd WRITE setScrollPastEnd NOTIFY appearanceChanged)
     Q_PROPERTY(QFont effectiveFont READ effectiveFont NOTIFY layoutChanged)
     Q_PROPERTY(int lineHeight READ lineHeight NOTIFY layoutChanged)
@@ -65,6 +66,8 @@ public:
     void setPalette(const QVariantMap& value);
     int blockSpacing() const { return blockSpacing_; }
     void setBlockSpacing(int value);
+    bool autoWrap() const { return autoWrap_; }
+    void setAutoWrap(bool value);
     bool scrollPastEnd() const { return scrollPastEnd_; }
     void setScrollPastEnd(bool value);
     QFont effectiveFont() const { return effectiveFont_; }
@@ -195,6 +198,7 @@ private:
     int reportedCaret_ = -1;
     qreal wheelRemainder_ = 0;
     int blockSpacing_ = 0;
+    bool autoWrap_ = true;
     bool scrollPastEnd_ = true;
     struct TouchUndoAnchor {
         QString scope;

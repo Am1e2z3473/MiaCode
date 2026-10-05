@@ -331,7 +331,7 @@ Rectangle {
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.top: findReplaceBar.bottom
-        anchors.bottom: parent.bottom
+        anchors.bottom: horizontalBar.top
         documentSession: root.documentSession
         controller: root.editorController
         syncController: root.syncController
@@ -342,6 +342,7 @@ Rectangle {
             cursorShape: Qt.IBeamCursor
         }
         blockSpacing: root.preferences ? root.preferences.editorBlockSpacing : 0
+        autoWrap: root.preferences ? root.preferences.editorAutoWrap : true
         scrollPastEnd: root.preferences ? root.preferences.editorScrollPastEnd : true
         palette: ({ text: Theme.colors.text.editor,
                     background: Theme.surfaceColor(Theme.colors.background.surface),
@@ -408,6 +409,21 @@ Rectangle {
         size: sourceArea.vertical_scroll_page / Math.max(1, sourceArea.vertical_scroll_max + sourceArea.vertical_scroll_page)
         position: sourceArea.vertical_scroll_value / Math.max(1, sourceArea.vertical_scroll_max + sourceArea.vertical_scroll_page)
         onPositionChanged: if (pressed) sourceArea.scrollVertical(Math.round(position * (sourceArea.vertical_scroll_max + sourceArea.vertical_scroll_page)))
+    }
+    AppScrollBar {
+        id: horizontalBar
+        anchors.left: sourceArea.left
+        anchors.right: verticalBar.left
+        anchors.bottom: parent.bottom
+        orientation: Qt.Horizontal
+        visible: !sourceArea.autoWrap && sourceArea.horizontal_scroll_max > 0
+        height: visible ? implicitHeight : 0
+        hoverEnabled: true
+        active: hovered || pressed || sourceArea.activeFocus
+        onPressedChanged: if (pressed) sourceArea.beginViewportInteraction()
+        size: sourceArea.horizontal_scroll_page / Math.max(1, sourceArea.horizontal_scroll_max + sourceArea.horizontal_scroll_page)
+        position: sourceArea.horizontal_scroll_value / Math.max(1, sourceArea.horizontal_scroll_max + sourceArea.horizontal_scroll_page)
+        onPositionChanged: if (pressed) sourceArea.scrollHorizontal(Math.round(position * (sourceArea.horizontal_scroll_max + sourceArea.horizontal_scroll_page)))
     }
     CompletionPopup {
         id: completionPopup

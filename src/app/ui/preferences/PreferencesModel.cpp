@@ -279,6 +279,17 @@ void PreferencesModel::setEditorImeDisabled(bool disabled)
     emit editorChanged();
 }
 
+bool PreferencesModel::editorAutoWrap() const
+{
+    return settings_ != nullptr && settings_->editorAutoWrap();
+}
+void PreferencesModel::setEditorAutoWrap(bool enabled)
+{
+    if (settings_ == nullptr || enabled == editorAutoWrap()) return;
+    settings_->setEditorAutoWrap(enabled);
+    emit editorChanged();
+}
+
 bool PreferencesModel::editorScrollPastEnd() const
 {
     return settings_ != nullptr && settings_->editorScrollPastEnd();

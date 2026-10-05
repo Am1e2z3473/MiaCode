@@ -44,6 +44,7 @@ class WorkbenchSettings final : public QObject
     Q_PROPERTY(bool editorOverwriteModeEnabled READ editorOverwriteModeEnabled NOTIFY editorSettingsChanged)
     Q_PROPERTY(bool editorAutoCompletionEnabled READ editorAutoCompletionEnabled NOTIFY editorSettingsChanged)
     Q_PROPERTY(bool editorImeInputDisabled READ editorImeInputDisabled NOTIFY editorSettingsChanged)
+    Q_PROPERTY(bool editorAutoWrap READ editorAutoWrap WRITE setEditorAutoWrap NOTIFY editorSettingsChanged)
     Q_PROPERTY(bool editorScrollPastEnd READ editorScrollPastEnd WRITE setEditorScrollPastEnd NOTIFY editorSettingsChanged)
     Q_PROPERTY(bool editorSelectionBeatDisplay READ editorSelectionBeatDisplay WRITE setEditorSelectionBeatDisplay NOTIFY editorSettingsChanged)
 
@@ -81,6 +82,8 @@ public:
     bool editorOverwriteModeEnabled() const;
     bool editorAutoCompletionEnabled() const;
     bool editorImeInputDisabled() const;
+    bool editorAutoWrap() const;
+    void setEditorAutoWrap(bool enabled);
     bool editorScrollPastEnd() const;
     bool editorSelectionBeatDisplay() const;
 
@@ -138,6 +141,7 @@ private:
     bool editorOverwriteModeEnabled_ = false;
     bool editorAutoCompletionEnabled_ = true;
     bool editorImeInputDisabled_ = true;
+    bool editorAutoWrap_ = true;
     bool editorScrollPastEnd_ = true;
     bool editorSelectionBeatDisplay_ = true;
     bool darkTheme_ = true;

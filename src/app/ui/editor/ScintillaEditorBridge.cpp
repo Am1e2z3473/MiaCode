@@ -264,6 +264,17 @@ void ScintillaEditorBridge::setBlockSpacing(int value)
     send(SCI_SETEXTRADESCENT, blockSpacing_ - blockSpacing_ / 2);
     emit appearanceChanged();
 }
+void ScintillaEditorBridge::setAutoWrap(bool value)
+{
+    if (autoWrap_ == value) return;
+    preserveViewport();
+    autoWrap_ = value;
+    send(SCI_SETWRAPMODE, value ? SC_WRAP_WORD : SC_WRAP_NONE);
+    send(SCI_SETHSCROLLBAR, !value);
+    send(SCI_SETSCROLLWIDTHTRACKING, !value);
+    if (value) send(SCI_SETXOFFSET, 0);
+    emit appearanceChanged();
+}
 void ScintillaEditorBridge::setScrollPastEnd(bool value)
 {
     preserveViewport();
@@ -614,6 +625,18 @@ void ScintillaEditorBridge::mouseReleaseEvent(QMouseEvent* event)
 void ScintillaEditorBridge::wheelEvent(QWheelEvent* event)
 {
     beginUserInteraction();
+    const bool shift = event->modifiers().testFlag(Qt::ShiftModifier);
+    if (!autoWrap_ && (shift || std::abs(event->pixelDelta().x()) > std::abs(event->pixelDelta().y())
+        || std::abs(event->angleDelta().x()) > std::abs(event->angleDelta().y()))) {
+        const int pixels = shift ? event->pixelDelta().y() : event->pixelDelta().x();
+        const int angle = shift ? event->angleDelta().y() : event->angleDelta().x();
+        const qreal delta = pixels ? pixels : qreal(angle) / 120
+            * send(SCI_TEXTWIDTH, STYLE_DEFAULT, reinterpret_cast<sptr_t>("M"))
+            * QGuiApplication::styleHints()->wheelScrollLines();
+        scrollHorizontal(int(send(SCI_GETXOFFSET)) - qRound(delta));
+        event->accept();
+        return;
+    }
     if (event->phase() == Qt::ScrollBegin) wheelRemainder_ = 0;
     if (!event->pixelDelta().isNull()
         && (event->phase() != Qt::NoScrollPhase || event->angleDelta().isNull())) {

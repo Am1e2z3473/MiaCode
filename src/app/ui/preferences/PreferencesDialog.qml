@@ -451,6 +451,12 @@ AppDialog {
                     onPicked: function(value) { root.preferencesModel.editorInputHandlingMode = value }
                 }
                 AppSwitch {
+                    objectName: "preferencesAutoWrapSwitch"
+                    text: qsTrId("preferences.editor_auto_wrap")
+                    checked: root.preferencesModel.editorAutoWrap
+                    onToggled: root.preferencesModel.editorAutoWrap = checked
+                }
+                AppSwitch {
                     objectName: "preferencesAutoCompletionSwitch"
                     text: qsTrId("preferences.auto_completion")
                     checked: root.preferencesModel.editorAutoCompletion
