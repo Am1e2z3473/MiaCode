@@ -32,6 +32,8 @@ class ScintillaEditorBridge : public ScintillaQuick_item
     Q_PROPERTY(int selectionEnd READ selectionEnd NOTIFY selectionChanged)
     Q_PROPERTY(QString selectedText READ selectedText NOTIFY selectionChanged)
     Q_PROPERTY(QRectF cursorRectangle READ cursorRectangle NOTIFY cursorRectangleChanged)
+    Q_PROPERTY(QRectF followCursorRectangle READ followCursorRectangle NOTIFY followVisualChanged)
+    Q_PROPERTY(bool followCaretVisible READ followCaretVisible NOTIFY followVisualChanged)
     Q_PROPERTY(int cursorLine READ cursorLine NOTIFY selectionChanged)
     Q_PROPERTY(int cursorColumn READ cursorColumn NOTIFY selectionChanged)
     Q_PROPERTY(bool canUndo READ canUndo NOTIFY availabilityChanged)
@@ -64,6 +66,8 @@ public:
     int selectionEnd() const;
     QString selectedText() const;
     QRectF cursorRectangle() const;
+    QRectF followCursorRectangle() const;
+    bool followCaretVisible() const;
     int cursorLine() const;
     int cursorColumn() const;
     bool canUndo() const { return send(SCI_CANUNDO); }
@@ -100,6 +104,7 @@ signals:
     void appearanceChanged();
     void selectionChanged();
     void cursorRectangleChanged();
+    void followVisualChanged();
     void availabilityChanged();
     void bookmarksChanged();
     void imeComposingChanged();
@@ -108,6 +113,7 @@ signals:
     void bookmarkMenuRequested(int line, qreal x, qreal y);
 protected:
     void componentComplete() override;
+    QSGNode* updatePaintNode(QSGNode* oldNode, UpdatePaintNodeData* data) override;
     void keyPressEvent(QKeyEvent* event) override;
     void mousePressEvent(QMouseEvent* event) override;
     void mouseReleaseEvent(QMouseEvent* event) override;

@@ -877,6 +877,8 @@ qt_add_qml_module(MiaCode
         src/app/ui/editor/ScintillaDocumentAdapter.h
         src/app/ui/editor/ScintillaDslStyler.cpp
         src/app/ui/editor/ScintillaDslStyler.h
+        src/app/ui/editor/ScintillaSelectionRenderer.cpp
+        src/app/ui/editor/ScintillaSelectionRenderer.h
         src/app/ui/chrome/ShortcutModel.cpp
         src/app/ui/chrome/ShortcutModel.h
         src/app/ui/export/ExportSession.cpp

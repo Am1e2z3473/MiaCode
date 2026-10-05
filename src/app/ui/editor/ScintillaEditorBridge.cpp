@@ -1,5 +1,6 @@
 #include "editor/ScintillaEditorBridge.h"
 #include "editor/SimaiCompletionCatalog.h"
+#include "editor/ScintillaSelectionRenderer.h"
 #include <QClipboard>
 #include <QGuiApplication>
 #include <QInputMethod>
@@ -31,7 +32,10 @@ ScintillaEditorBridge::ScintillaEditorBridge(QQuickItem* parent)
         emit cursorRectangleChanged();
         emit availabilityChanged();
     });
-    connect(this, &QQuickItem::activeFocusChanged, this, [this] { publishContext(false); });
+    connect(this, &QQuickItem::activeFocusChanged, this, [this] { publishContext(false); emit followVisualChanged(); });
+    connect(this, &ScintillaQuick_item::fontChanged, this, [this] { styler_.setFont(property("font").value<QFont>()); });
+    connect(this, &ScintillaEditorBridge::cursorRectangleChanged, this, &ScintillaEditorBridge::followVisualChanged);
+    connect(this, &ScintillaQuick_item::resized, this, &ScintillaEditorBridge::followVisualChanged);
     connect(this, &ScintillaQuick_item::vertical_scroll_value_changed, this, &ScintillaEditorBridge::cursorRectangleChanged);
     connect(this, &ScintillaQuick_item::horizontal_scroll_value_changed, this, &ScintillaEditorBridge::cursorRectangleChanged);
     connect(this, &ScintillaQuick_item::notificationReceived, this, [this](const ScintillaQuick_notification& notification) {
@@ -50,6 +54,12 @@ ScintillaEditorBridge::ScintillaEditorBridge(QQuickItem* parent)
 ScintillaEditorBridge::~ScintillaEditorBridge()
 {
     if (syncController_) syncController_->setEditorReadiness(-1, 0, false);
+}
+QSGNode* ScintillaEditorBridge::updatePaintNode(QSGNode* oldNode, UpdatePaintNodeData* data)
+{
+    QSGNode* root = ScintillaQuick_item::updatePaintNode(oldNode, data);
+    renderRoundedScintillaSelection(root, window(), palette_.value(QStringLiteral("selection")).value<QColor>());
+    return root;
 }
 void ScintillaEditorBridge::componentComplete()
 {
@@ -118,6 +128,7 @@ void ScintillaEditorBridge::setPalette(const QVariantMap& value)
 {
     palette_ = value;
     styler_.setPalette(value);
+    styler_.setFont(property("font").value<QFont>());
     emit paletteChanged();
 }
 void ScintillaEditorBridge::setBlockSpacing(int value)
@@ -145,6 +156,17 @@ QRectF ScintillaEditorBridge::positionToRectangle(int position) const
                   send(SCI_TEXTHEIGHT, send(SCI_LINEFROMPOSITION, byte)));
 }
 QRectF ScintillaEditorBridge::cursorRectangle() const { return positionToRectangle(cursorPosition()); }
+QRectF ScintillaEditorBridge::followCursorRectangle() const
+{
+    return syncController_ ? positionToRectangle(syncController_->followCaret()) : QRectF{};
+}
+bool ScintillaEditorBridge::followCaretVisible() const
+{
+    return documentSession_ && syncController_ && syncController_->followActive()
+        && syncController_->followDifficultyId() == documentSession_->currentDifficultyId()
+        && syncController_->followRevision() == documentSession_->documentRevision()
+        && (syncController_->followPlaybackActive() || !hasActiveFocus());
+}
 int ScintillaEditorBridge::cursorLine() const { return send(SCI_LINEFROMPOSITION, send(SCI_GETCURRENTPOS)) + 1; }
 int ScintillaEditorBridge::cursorColumn() const
 {
@@ -251,6 +273,8 @@ void ScintillaEditorBridge::applyFollow()
         && syncController_->followRevision() == documentSession_->documentRevision();
     styler_.follow(active, active ? syncController_->followStart() : 0,
                   active ? syncController_->followEnd() : 0, active ? syncController_->followCaret() : 0);
+    send(SCI_SETCARETSTYLE, active && syncController_->followPlaybackActive() ? CARETSTYLE_INVISIBLE : CARETSTYLE_LINE);
+    emit followVisualChanged();
     if (active && navigationVisible_ && syncController_->followReveal())
         revealPosition(syncController_->followCaret(), syncController_->followPlaybackActive());
 }

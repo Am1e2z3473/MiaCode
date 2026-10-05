@@ -302,10 +302,21 @@ Rectangle {
         scrollPastEnd: root.preferences ? root.preferences.editorScrollPastEnd : true
         palette: ({ text: Theme.colors.text.editor,
                     background: Theme.surfaceColor(Theme.colors.background.surface),
+                    lineNumber: Theme.colors.text.lineNumber, accent: Theme.colors.accent.primary,
+                    followOpacity: Theme.followHighlightOpacity,
                     keyword: Theme.colors.syntax.keyword, duration: Theme.colors.syntax.duration,
                     comment: Theme.colors.syntax.comment, error: Theme.colors.syntax.error,
                     warning: Theme.colors.syntax.warning, follow: Theme.colors.state.followHighlight,
-                    currentLine: Theme.colors.state.focusLine, selection: Theme.colors.state.selectionHighlight })
+                    currentLine: Theme.overlayColor(Theme.colors.state.focusLine),
+                    selection: Theme.overlayColor(Theme.colors.state.selectionHighlight) })
+        Rectangle {
+            x: sourceArea.followCursorRectangle.x
+            y: sourceArea.followCursorRectangle.y
+            width: 2
+            height: sourceArea.followCursorRectangle.height
+            color: Theme.colors.accent.primary
+            visible: sourceArea.followCaretVisible
+        }
         onSelectionChanged: {
             root.viewState.editorCursorLine = cursorLine
             root.viewState.editorCursorColumn = cursorColumn
