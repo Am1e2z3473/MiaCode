@@ -9,6 +9,8 @@
 #include <QMouseEvent>
 #include <QWheelEvent>
 #include <QScopedValueRollback>
+#include <QStyleHints>
+#include <cmath>
 
 namespace miacode::ui {
 using miacode::editor::normalizeSimaiInput;
@@ -20,20 +22,13 @@ ScintillaEditorBridge::ScintillaEditorBridge(QQuickItem* parent)
     send(SCI_SETHSCROLLBAR, false);
     connect(this, &ScintillaQuick_item::textChanged, this, &ScintillaEditorBridge::textMutated);
     connect(this, &ScintillaQuick_item::cursorPositionChanged, this, [this] {
-        emit selectionChanged();
-        emit cursorRectangleChanged();
-        if (!synchronizing_ && !handlingIme_) {
-            publishContext(!programmatic_);
-            if (controller_ && !programmatic_)
-                controller_->updateCompletionForQml(document_.text(), cursorPosition());
-        }
+        refreshSelection(!programmatic_);
     });
     connect(this, &ScintillaQuick_item::updateUi, this, [this](Scintilla::Update) {
-        emit selectionChanged();
+        refreshSelection(!programmatic_);
         emit cursorRectangleChanged();
         emit availabilityChanged();
-        // Match the workspace contract: selection owns the highlight while
-        // nonempty; the current-line fill belongs to an insertion caret.
+        // 选区使用选择高亮；插入光标所在行使用当前行背景。
         const bool showLine = send(SCI_GETSELECTIONEMPTY);
         if (bool(send(SCI_GETCARETLINEVISIBLE)) != showLine) {
             if (showLine) {
@@ -46,17 +41,21 @@ ScintillaEditorBridge::ScintillaEditorBridge(QQuickItem* parent)
     connect(this, &QQuickItem::activeFocusChanged, this, [this] { publishContext(false); emit followVisualChanged(); });
     connect(this, &ScintillaQuick_item::fontChanged, this, [this] { styler_.setFont(property("font").value<QFont>()); });
     connect(this, &ScintillaEditorBridge::cursorRectangleChanged, this, &ScintillaEditorBridge::followVisualChanged);
-    connect(this, &ScintillaQuick_item::resized, this, &ScintillaEditorBridge::followVisualChanged);
+    connect(this, &ScintillaQuick_item::resized, this, [this] {
+        emit cursorRectangleChanged();
+        applyFollow(true);
+    });
     connect(this, &ScintillaQuick_item::vertical_scroll_value_changed, this, &ScintillaEditorBridge::cursorRectangleChanged);
     connect(this, &ScintillaQuick_item::horizontal_scroll_value_changed, this, &ScintillaEditorBridge::cursorRectangleChanged);
     connect(this, &ScintillaQuick_item::notificationReceived, this, [this](const ScintillaQuick_notification& notification) {
         if ((int(notification.modificationType) & SC_MOD_CONTAINER) && touchUndoAnchors_.contains(notification.token))
-            pendingTouchAnchor_ = touchUndoAnchors_.value(notification.token);
+            pendingTouchAnchor_ = touchUndoAnchors_.value(notification.token).position;
     });
     connect(this, &ScintillaQuick_item::styleNeeded, this, [this](Scintilla::Position) { if (ready_) styler_.style(); });
     connect(QGuiApplication::clipboard(), &QClipboard::dataChanged, this, &ScintillaEditorBridge::availabilityChanged);
     connect(this, &ScintillaQuick_item::marginClicked, this, [this](Scintilla::Position position, Scintilla::KeyMod, int margin) {
         if (margin != 1) return;
+        beginUserInteraction();
         const int line = send(SCI_LINEFROMPOSITION, position) + 1;
         const QRectF rect = positionToRectangle(document_.utf16Position(position));
         emit bookmarkMenuRequested(line, 16, rect.y());
@@ -112,7 +111,7 @@ void ScintillaEditorBridge::setSyncController(miacode::EditorSyncController* val
     syncController_ = value;
     if (value) {
         connect(value, &miacode::EditorSyncController::navigationRequested, this, &ScintillaEditorBridge::navigate);
-        connect(value, &miacode::EditorSyncController::followChanged, this, &ScintillaEditorBridge::applyFollow);
+        connect(value, &miacode::EditorSyncController::followChanged, this, [this] { applyFollow(true); });
         connect(value, &miacode::EditorSyncController::touchPadAuthoringRequested, this, &ScintillaEditorBridge::touchAuthoring);
     }
     publishContext(false);
@@ -132,7 +131,7 @@ void ScintillaEditorBridge::setNavigationVisible(bool value)
     if (navigationVisible_ == value) return;
     navigationVisible_ = value;
     publishContext(false);
-    applyFollow();
+    applyFollow(true);
     emit bindingsChanged();
 }
 void ScintillaEditorBridge::setPalette(const QVariantMap& value)
@@ -205,6 +204,10 @@ void ScintillaEditorBridge::synchronizeDocument()
         touchUndoAnchors_.clear();
         generation_ = generation;
     }
+    if (identityChanged) {
+        reportedAnchor_ = reportedCaret_ = -1;
+        wheelRemainder_ = 0;
+    }
     document_.activate(scope, documentSession_->chartText());
     if (controller_) controller_->setDocumentContext(documentSession_->currentDifficultyId(), documentSession_->documentRevision());
     refreshDecorations();
@@ -225,7 +228,6 @@ void ScintillaEditorBridge::textMutated()
     refreshDecorations();
     publishContext(!programmatic_);
     if (controller_) {
-        controller_->setUndoAvailability(canUndo(), canRedo());
         controller_->updateCompletionForQml(document_.text(), cursorPosition());
     }
     emit selectionChanged();
@@ -268,25 +270,40 @@ void ScintillaEditorBridge::publishContext(bool userCaret)
                                       hasActiveFocus(), imeComposing_, cursorLine(), cursorColumn(),
                                       userCaret && !imeComposing_ && !programmatic_ && !synchronizing_);
 }
+void ScintillaEditorBridge::refreshSelection(bool userCaret)
+{
+    const int anchor = send(SCI_GETANCHOR);
+    const int caret = send(SCI_GETCURRENTPOS);
+    if (anchor == reportedAnchor_ && caret == reportedCaret_) return;
+    reportedAnchor_ = anchor;
+    reportedCaret_ = caret;
+    emit selectionChanged();
+    emit cursorRectangleChanged();
+    if (!synchronizing_ && !handlingIme_) {
+        publishContext(userCaret);
+        if (controller_ && userCaret)
+            controller_->updateCompletionForQml(document_.text(), cursorPosition());
+    }
+}
 void ScintillaEditorBridge::revealPosition(int utf16, bool center)
 {
-    const int line = send(SCI_LINEFROMPOSITION, document_.bytePosition(utf16));
-    const int visible = send(SCI_VISIBLEFROMDOCLINE, line);
+    // Scintilla 的文本坐标包含换行后的子行，用该坐标定位目标显示行。
+    const QRectF rect = positionToRectangle(utf16);
+    if (!center && rect.top() >= 0 && rect.bottom() <= height()) return;
     const int first = send(SCI_GETFIRSTVISIBLELINE);
-    const int page = qMax(1, int(send(SCI_LINESONSCREEN)));
-    if (center || visible < first || visible >= first + page)
-        send(SCI_SETFIRSTVISIBLELINE, qMax(0, visible - page / 2));
+    const qreal displacement = rect.center().y() - height() / 2;
+    scrollVertical(first + qRound(displacement / qMax(1.0, rect.height())));
 }
-void ScintillaEditorBridge::applyFollow()
+void ScintillaEditorBridge::applyFollow(bool reveal)
 {
     const bool active = documentSession_ && syncController_ && syncController_->followActive()
         && syncController_->followDifficultyId() == documentSession_->currentDifficultyId()
         && syncController_->followRevision() == documentSession_->documentRevision();
     styler_.follow(active, active ? syncController_->followStart() : 0,
-                  active ? syncController_->followEnd() : 0, active ? syncController_->followCaret() : 0);
+                  active ? syncController_->followEnd() : 0);
     send(SCI_SETCARETSTYLE, active && syncController_->followPlaybackActive() ? CARETSTYLE_INVISIBLE : CARETSTYLE_LINE);
     emit followVisualChanged();
-    if (active && navigationVisible_ && syncController_->followReveal())
+    if (reveal && active && navigationVisible_ && syncController_->followReveal())
         revealPosition(syncController_->followCaret(), syncController_->followPlaybackActive());
 }
 void ScintillaEditorBridge::navigate(qulonglong sequence, int difficulty, qulonglong revision, int start, int end, bool focus, bool reveal)
@@ -337,13 +354,11 @@ void ScintillaEditorBridge::publishTouchUndoAnchor()
 void ScintillaEditorBridge::cut() { send(SCI_CUT); }
 void ScintillaEditorBridge::copy() { send(SCI_COPY); }
 void ScintillaEditorBridge::paste() { send(SCI_PASTE); }
-void ScintillaEditorBridge::selectAll() { send(SCI_SELECTALL); publishContext(true); }
+void ScintillaEditorBridge::selectAll() { send(SCI_SELECTALL); refreshSelection(true); }
 void ScintillaEditorBridge::select(int anchor, int position)
 {
     send(SCI_SETSEL, document_.bytePosition(anchor), document_.bytePosition(position));
-    emit selectionChanged();
-    emit cursorRectangleChanged();
-    publishContext(!programmatic_);
+    refreshSelection(!programmatic_);
 }
 void ScintillaEditorBridge::selectCurrentLine()
 {
@@ -371,7 +386,7 @@ bool ScintillaEditorBridge::applyEditorTransaction(const QVariantMap& tx)
             sends(SCI_REPLACETARGET, replacement.size(), replacement.constData());
             if (tx.contains(QStringLiteral("touchTokenStart"))) {
                 const int token = nextTouchToken_++;
-                touchUndoAnchors_.insert(token, tx.value(QStringLiteral("touchTokenStart")).toInt());
+                touchUndoAnchors_.insert(token, {document_.scope(), tx.value(QStringLiteral("touchTokenStart")).toInt()});
                 send(SCI_ADDUNDOACTION, token, 0);
             }
             send(SCI_ENDUNDOACTION);
@@ -388,7 +403,11 @@ void ScintillaEditorBridge::acceptCompletionFromPopup()
     applyEditorTransaction(controller_->acceptCompletionForQml(document_.text(), document_.utf16Position(send(SCI_GETANCHOR)), cursorPosition()));
     forceActiveFocus();
 }
-void ScintillaEditorBridge::dropDocument(const QString& key) { document_.drop(key); }
+void ScintillaEditorBridge::dropDocument(const QString& key)
+{
+    document_.drop(key);
+    touchUndoAnchors_.removeIf([&key](auto it) { return it.value().scope == key; });
+}
 void ScintillaEditorBridge::configureSearch(const QString& query, const QString& replacement, bool matchCase, bool wholeWord)
 {
     setFindText(query); setReplacementText(replacement);
@@ -449,7 +468,7 @@ void ScintillaEditorBridge::keyPressEvent(QKeyEvent* event)
         }
     }
     ScintillaQuick_item::keyPressEvent(event);
-    publishContext(true);
+    refreshSelection(true);
 }
 void ScintillaEditorBridge::mousePressEvent(QMouseEvent* event)
 {
@@ -460,18 +479,33 @@ void ScintillaEditorBridge::mousePressEvent(QMouseEvent* event)
         emit cursorRectangleChanged();
         emit contextMenuRequested(event->position().x(), event->position().y());
     }
-    publishContext(true);
+    refreshSelection(!programmatic_);
 }
 void ScintillaEditorBridge::mouseReleaseEvent(QMouseEvent* event)
 {
     ScintillaQuick_item::mouseReleaseEvent(event);
-    publishContext(true);
+    refreshSelection(!programmatic_);
     if (event->button() == Qt::LeftButton && (event->modifiers() & (Qt::ControlModifier | Qt::MetaModifier))) seekPreviewToCaret();
 }
 void ScintillaEditorBridge::wheelEvent(QWheelEvent* event)
 {
     beginUserInteraction();
-    ScintillaQuick_item::wheelEvent(event);
+    if (event->modifiers().testFlag(Qt::ControlModifier)) {
+        ScintillaQuick_item::wheelEvent(event);
+        return;
+    }
+    if (event->phase() == Qt::ScrollBegin) wheelRemainder_ = 0;
+    if (!event->pixelDelta().isNull()
+        && (event->phase() != Qt::NoScrollPhase || event->angleDelta().isNull())) {
+        wheelRemainder_ -= qreal(event->pixelDelta().y()) / qMax(1, int(send(SCI_TEXTHEIGHT, 0)));
+    } else {
+        wheelRemainder_ -= qreal(event->angleDelta().y()) / 120 * QGuiApplication::styleHints()->wheelScrollLines();
+    }
+    const int rows = int(std::trunc(wheelRemainder_));
+    wheelRemainder_ -= rows;
+    if (rows != 0) scrollVertical(int(send(SCI_GETFIRSTVISIBLELINE)) + rows);
+    if (event->phase() == Qt::ScrollEnd) wheelRemainder_ = 0;
+    event->accept();
 }
 void ScintillaEditorBridge::inputMethodEvent(QInputMethodEvent* event)
 {

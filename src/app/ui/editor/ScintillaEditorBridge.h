@@ -88,19 +88,16 @@ public:
     Q_INVOKABLE void select(int anchor, int position);
     Q_INVOKABLE void selectCurrentLine();
     Q_INVOKABLE void jumpToLine(int line);
-    Q_INVOKABLE void centerCursorInView();
     Q_INVOKABLE bool applyEditorTransaction(const QVariantMap& transaction);
     Q_INVOKABLE void acceptCompletionFromPopup();
     Q_INVOKABLE void dropDocument(const QString& key);
     Q_INVOKABLE void configureSearch(const QString& query, const QString& replacement, bool matchCase, bool wholeWord);
-    Q_INVOKABLE void seekPreviewToCaret();
     Q_INVOKABLE void exportSelectionRange();
     Q_INVOKABLE bool applyNormalization(const QVariantMap& options);
     Q_INVOKABLE bool applyChartTransform(const QString& operation);
     Q_INVOKABLE bool createBookmarkAtLine(int line, const QString& title);
     Q_INVOKABLE bool renameBookmarkAtLine(int line, const QString& title);
     Q_INVOKABLE bool deleteBookmarkAtLine(int line);
-    Q_INVOKABLE QRectF positionToRectangle(int position) const;
 signals:
     void bindingsChanged();
     void paletteChanged();
@@ -123,13 +120,17 @@ protected:
     void wheelEvent(QWheelEvent* event) override;
     void inputMethodEvent(QInputMethodEvent* event) override;
 private:
+    void centerCursorInView();
+    void seekPreviewToCaret();
+    QRectF positionToRectangle(int position) const;
     void synchronizeDocument();
     void textMutated();
     void refreshDecorations();
     void refreshDiagnostics();
     void refreshSettings();
     void publishContext(bool userCaret);
-    void applyFollow();
+    void applyFollow(bool reveal = false);
+    void refreshSelection(bool userCaret);
     void revealPosition(int utf16, bool center);
     void navigate(qulonglong sequence, int difficulty, qulonglong revision, int start, int end, bool focus, bool reveal);
     void touchAuthoring(const QString& pad, QChar separator, int difficulty, qulonglong revision, int anchor, int position);
@@ -150,9 +151,16 @@ private:
     bool imeComposing_ = false;
     bool handlingIme_ = false;
     bool navigationVisible_ = false;
+    int reportedAnchor_ = -1;
+    int reportedCaret_ = -1;
+    qreal wheelRemainder_ = 0;
     int blockSpacing_ = 0;
     bool scrollPastEnd_ = true;
-    QHash<int, int> touchUndoAnchors_;
+    struct TouchUndoAnchor {
+        QString scope;
+        int position;
+    };
+    QHash<int, TouchUndoAnchor> touchUndoAnchors_;
     int nextTouchToken_ = 1;
     int pendingTouchAnchor_ = -1;
 };

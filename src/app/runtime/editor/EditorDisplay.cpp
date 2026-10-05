@@ -67,10 +67,6 @@ bool isControlBookmarkComment(const QString& text)
 struct BookmarkLabelParts {
     QString normalizedComment;
     QString explicitLabel;
-    QString bodyAfterExplicitLabel;
-    int labelStartInRawComment = -1;
-    int labelEndInRawComment = -1;
-    int afterLabelInRawComment = -1;
     bool hasExplicitLabel = false;
 };
 
@@ -89,15 +85,7 @@ BookmarkLabelParts parseBookmarkLabelParts(const QString& rawComment)
             if (!label.isEmpty()) {
                 parts.hasExplicitLabel = true;
                 parts.explicitLabel = label;
-                parts.labelStartInRawComment = firstContent + 1;
-                parts.labelEndInRawComment = close;
-                parts.afterLabelInRawComment = close + 1;
-                while (parts.afterLabelInRawComment < rawComment.size()
-                       && rawComment.at(parts.afterLabelInRawComment).isSpace()) {
-                    ++parts.afterLabelInRawComment;
-                }
-                parts.bodyAfterExplicitLabel =
-                    normalizedBookmarkCommentText(rawComment.mid(parts.afterLabelInRawComment));
+
             }
         }
     }
@@ -131,11 +119,6 @@ QString defaultBookmarkNameFromComment(const QString& text)
 QString fallbackBookmarkNameForLine(int line)
 {
     return qtTrId("editor.l_1").arg(qMax(1, line));
-}
-
-QString defaultExplicitBookmarkLabel()
-{
-    return qtTrId("editor.new_bookmark");
 }
 
 struct BookmarkCommentCandidate {
@@ -232,53 +215,7 @@ QVector<Session::EditorBookmark> derivedBookmarksForChart(
     return bookmarks;
 }
 
-QTextBlock blockForOneBasedLine(QTextDocument* document, int line)
-{
-    if (document == nullptr || line <= 0) {
-        return QTextBlock();
-    }
-    return document->findBlockByNumber(line - 1);
 }
-
-struct LineBookmarkCommentInfo {
-    int marker = -1;
-    int rawCommentStart = -1;
-    int labelStart = -1;
-    int labelEnd = -1;
-    int afterLabel = -1;
-    bool hasMarker = false;
-    bool isBookmark = false;
-    bool hasExplicitLabel = false;
-    QString normalizedComment;
-};
-
-LineBookmarkCommentInfo inspectLineBookmarkComment(const QString& lineText)
-{
-    LineBookmarkCommentInfo info;
-    info.marker = lineText.indexOf(QStringLiteral("||"));
-    info.hasMarker = miacode::editor::isBookmarkCommentMarker(lineText, info.marker);
-    if (!info.hasMarker) {
-        return info;
-    }
-    info.rawCommentStart = info.marker + 2;
-    const QString rawComment = lineText.mid(info.rawCommentStart);
-    const BookmarkLabelParts labelParts = parseBookmarkLabelParts(rawComment);
-    info.normalizedComment = labelParts.normalizedComment;
-    info.isBookmark = !isControlBookmarkComment(info.normalizedComment);
-    info.hasExplicitLabel = labelParts.hasExplicitLabel;
-    if (labelParts.hasExplicitLabel) {
-        info.labelStart = info.rawCommentStart + labelParts.labelStartInRawComment;
-        info.labelEnd = info.rawCommentStart + labelParts.labelEndInRawComment;
-        info.afterLabel = info.rawCommentStart + labelParts.afterLabelInRawComment;
-    }
-    return info;
-}
-
-bool lineIsStandaloneComment(const QString& lineText, const LineBookmarkCommentInfo& info)
-{
-    return info.isBookmark && lineText.left(info.marker).trimmed().isEmpty();
-}
-}  // namespace
 
 miacode::runtime::EditorHost::EditorHost(
     Session& session,

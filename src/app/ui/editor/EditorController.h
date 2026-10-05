@@ -21,8 +21,6 @@ class EditorController final : public QObject
     Q_PROPERTY(bool completionActive READ completionActive NOTIFY completionChanged)
     Q_PROPERTY(QStringList completionCandidates READ completionCandidates NOTIFY completionChanged)
     Q_PROPERTY(int completionIndex READ completionIndex NOTIFY completionChanged)
-    Q_PROPERTY(bool canUndo READ canUndo NOTIFY undoAvailabilityChanged)
-    Q_PROPERTY(bool canRedo READ canRedo NOTIFY undoAvailabilityChanged)
 
 public:
     explicit EditorController(QObject* parent = nullptr);
@@ -35,8 +33,6 @@ public:
     bool completionActive() const;
     QStringList completionCandidates() const;
     int completionIndex() const;
-    bool canUndo() const;
-    bool canRedo() const;
 
     void setHalfWidthInputEnabled(bool enabled);
     void setOverwriteMode(bool enabled);
@@ -64,12 +60,10 @@ public:
     Q_INVOKABLE void moveCompletionSelection(int delta);
     Q_INVOKABLE void selectCompletionIndex(int index);
     Q_INVOKABLE void closeCompletion();
-    Q_INVOKABLE void setUndoAvailability(bool canUndo, bool canRedo);
 
 signals:
     void settingsChanged();
     void completionChanged();
-    void undoAvailabilityChanged();
 
 private:
     miacode::editor::SimaiTextEditResult process(const miacode::editor::SimaiTextEditRequest& request);
@@ -84,8 +78,6 @@ private:
     miacode::editor::SimaiCompletionSession completion_;
     QStringList visibleCandidates_;
     int completionIndex_ = -1;
-    bool canUndo_ = false;
-    bool canRedo_ = false;
     int activeDifficultyId_ = -1;
     quint64 documentRevision_ = 0;
 };
