@@ -34,8 +34,6 @@ QString EditorController::wholeBpm() const { return wholeBpm_; }
 bool EditorController::completionActive() const { return completion_.active; }
 QStringList EditorController::completionCandidates() const { return visibleCandidates_; }
 int EditorController::completionIndex() const { return completionIndex_; }
-bool EditorController::canUndo() const { return canUndo_; }
-bool EditorController::canRedo() const { return canRedo_; }
 
 void EditorController::setHalfWidthInputEnabled(bool enabled)
 {
@@ -231,14 +229,6 @@ void EditorController::closeCompletion()
     visibleCandidates_.clear();
     completionIndex_ = -1;
     emit completionChanged();
-}
-
-void EditorController::setUndoAvailability(bool canUndo, bool canRedo)
-{
-    if (canUndo_ == canUndo && canRedo_ == canRedo) return;
-    canUndo_ = canUndo;
-    canRedo_ = canRedo;
-    emit undoAvailabilityChanged();
 }
 
 QVariantMap EditorController::toQmlTransaction(const miacode::editor::SimaiTextEditResult& result) const

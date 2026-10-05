@@ -48,13 +48,10 @@ Rectangle {
     function selectAll() { sourceArea.selectAll() }
     function selectCurrentLine() { sourceArea.selectCurrentLine() }
     function jumpToLine(line) { sourceArea.jumpToLine(line) }
-    function centerCursorInView() { sourceArea.centerCursorInView() }
     function openFindReplace() { findReplaceBar.show() }
-    function seekPreviewToCaret() { sourceArea.seekPreviewToCaret() }
     function exportSelectionRange() { sourceArea.exportSelectionRange() }
     function applyChartTransform(operation) { return sourceArea.applyChartTransform(operation) }
     function applyNormalization(options) { return sourceArea.applyNormalization(options) }
-    function applyEditorTransaction(transaction) { return sourceArea.applyEditorTransaction(transaction) }
     function selectionDescription() {
         if (sourceArea.selectionStart === sourceArea.selectionEnd)
             return qsTrId("qml.normalize_the_entire_chart_source")
@@ -101,13 +98,22 @@ Rectangle {
     AppMenu {
         id: editorContextMenu
         objectName: "editorContextMenu"
+        modal: true
+        dim: false
         property string pendingOperation: ""
+        property int contextDifficulty: -1
+        property double contextRevision: 0
+        property double contextGeneration: 0
         onClosed: {
             const operation = pendingOperation
             pendingOperation = ""
-            sourceArea.forceActiveFocus()
-            if (operation.length > 0)
+            if (operation.length > 0 && root.navigationVisible
+                    && contextDifficulty === root.documentSession.currentDifficultyId
+                    && contextRevision === root.documentSession.documentRevision
+                    && contextGeneration === root.documentSession.documentOpenGeneration) {
+                sourceArea.forceActiveFocus()
                 executeOperation(operation)
+            }
         }
         parent: Overlay.overlay
 
@@ -158,6 +164,10 @@ Rectangle {
         property bool canNormalize: false
 
         function prepareItems() {
+            pendingOperation = ""
+            contextDifficulty = root.documentSession.currentDifficultyId
+            contextRevision = root.documentSession.documentRevision
+            contextGeneration = root.documentSession.documentOpenGeneration
             const selected = root.canCopy
             const transform = root.canTransform
             const normalize = root.canNormalize
@@ -351,7 +361,12 @@ Rectangle {
         onContextMenuRequested: (x, y) => root.openContextMenuAt(x, y)
         onBookmarkMenuRequested: (line, x, y) => {
             root.pendingBookmarkLine = line
-            bookmarkMenu.popup(sourceArea, x, y)
+            bookmarkMenu.contextDifficulty = root.documentSession.currentDifficultyId
+            bookmarkMenu.contextRevision = root.documentSession.documentRevision
+            bookmarkMenu.contextGeneration = root.documentSession.documentOpenGeneration
+            // Native margin handling finishes by focusing the item. Open the
+            // popup after that event so its keyboard focus stays with the menu.
+            Qt.callLater(() => bookmarkMenu.popup(sourceArea, x, y))
         }
     }
     AppScrollBar {
@@ -360,6 +375,8 @@ Rectangle {
         anchors.bottom: sourceArea.bottom
         anchors.right: parent.right
         orientation: Qt.Vertical
+        hoverEnabled: true
+        active: hovered || pressed || sourceArea.activeFocus
         onPressedChanged: if (pressed) sourceArea.beginViewportInteraction()
         size: sourceArea.vertical_scroll_page / Math.max(1, sourceArea.vertical_scroll_max + sourceArea.vertical_scroll_page)
         position: sourceArea.vertical_scroll_value / Math.max(1, sourceArea.vertical_scroll_max + sourceArea.vertical_scroll_page)
@@ -383,9 +400,28 @@ Rectangle {
     }
     AppMenu {
         id: bookmarkMenu
-        AppMenuItem { text: qsTrId("qml.create_bookmark"); onTriggered: root.createBookmarkAtLine(root.pendingBookmarkLine) }
-        AppMenuItem { text: qsTrId("editor.bookmark.rename"); onTriggered: root.promptRenameBookmark(root.pendingBookmarkLine) }
-        AppMenuItem { text: qsTrId("editor.bookmark.delete"); onTriggered: root.deleteBookmarkAtLine(root.pendingBookmarkLine) }
+        modal: true
+        dim: false
+        property string pendingOperation: ""
+        property int contextDifficulty: -1
+        property double contextRevision: 0
+        property double contextGeneration: 0
+        onClosed: {
+            const operation = pendingOperation
+            pendingOperation = ""
+            if (operation.length === 0 || !root.navigationVisible
+                    || contextDifficulty !== root.documentSession.currentDifficultyId
+                    || contextRevision !== root.documentSession.documentRevision
+                    || contextGeneration !== root.documentSession.documentOpenGeneration)
+                return
+            sourceArea.forceActiveFocus()
+            if (operation === "create") root.createBookmarkAtLine(root.pendingBookmarkLine)
+            else if (operation === "rename") root.promptRenameBookmark(root.pendingBookmarkLine)
+            else root.deleteBookmarkAtLine(root.pendingBookmarkLine)
+        }
+        AppMenuItem { text: qsTrId("qml.create_bookmark"); onTriggered: bookmarkMenu.pendingOperation = "create" }
+        AppMenuItem { text: qsTrId("editor.bookmark.rename"); onTriggered: bookmarkMenu.pendingOperation = "rename" }
+        AppMenuItem { text: qsTrId("editor.bookmark.delete"); onTriggered: bookmarkMenu.pendingOperation = "delete" }
     }
     Connections {
         target: root.viewState

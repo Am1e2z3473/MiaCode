@@ -31,7 +31,6 @@ ScintillaDslStyler::ScintillaDslStyler(ScintillaQuick_item& editor, ScintillaDoc
     editor_.send(SCI_INDICSETUNDER, followIndicator, 1);
     editor_.send(SCI_INDICSETOUTLINEALPHA, followIndicator, 0);
     editor_.send(SCI_SETSELECTIONLAYER, SC_LAYER_UNDER_TEXT);
-    editor_.send(SCI_SETCARETLINEVISIBLE, 1);
     editor_.send(SCI_SETCARETLINELAYER, SC_LAYER_UNDER_TEXT);
     editor_.send(SCI_SETCARETWIDTH, 2);
     editor_.send(SCI_SETWRAPMODE, SC_WRAP_WORD);
@@ -149,9 +148,8 @@ void ScintillaDslStyler::bookmarks(const QVariantList& bookmarks)
     for (const auto& value : bookmarks)
         editor_.send(SCI_MARKERADD, value.toMap().value(QStringLiteral("line")).toInt() - 1, bookmarkMarker);
 }
-void ScintillaDslStyler::follow(bool active, int start, int end, int caret)
+void ScintillaDslStyler::follow(bool active, int start, int end)
 {
-    Q_UNUSED(caret);
     editor_.send(SCI_SETINDICATORCURRENT, followIndicator);
     editor_.send(SCI_INDICATORCLEARRANGE, 0, editor_.send(SCI_GETLENGTH));
     if (active) fill(followIndicator, start, end);

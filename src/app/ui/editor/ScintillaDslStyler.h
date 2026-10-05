@@ -12,7 +12,7 @@ public:
     void style();
     void diagnostics(const QVariantList& validation, const QVariantList& muri);
     void bookmarks(const QVariantList& bookmarks);
-    void follow(bool active, int start, int end, int caret);
+    void follow(bool active, int start, int end);
 private:
     void fill(int indicator, int start, int end);
     ScintillaQuick_item& editor_;

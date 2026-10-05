@@ -145,8 +145,7 @@ void collectSelectionLayers(QSGNode* parent, const QColor& color, QVector<Select
 void renderRoundedScintillaSelection(QSGNode* root, QQuickWindow* window, const QColor& color)
 {
     if (!root || !window) return;
-    // Consume the public QSGRectangleNode geometry produced for the configured
-    // selection colour; no dependency on private node indices or layout math.
+    // 使用指定选区颜色对应的公开 QSGRectangleNode 几何绘制圆角。
     QVector<SelectionLayer> layers;
     collectSelectionLayers(root, color, layers);
     for (auto& layer : layers) {
