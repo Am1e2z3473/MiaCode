@@ -449,6 +449,7 @@ Rectangle {
         property int contextDifficulty: -1
         property double contextRevision: 0
         property double contextGeneration: 0
+        readonly property bool hasBookmark: root.bookmarks.some(item => item.line === root.pendingBookmarkLine)
         function matchesDocument() {
             return contextDifficulty === root.documentSession.currentDifficultyId
                 && contextRevision === root.documentSession.documentRevision
@@ -470,13 +471,21 @@ Rectangle {
                     || contextGeneration !== root.documentSession.documentOpenGeneration)
                 return
             sourceArea.forceActiveFocus()
-            if (operation === "create") root.createBookmarkAtLine(root.pendingBookmarkLine)
+            if (operation === "jump") root.jumpToLine(root.pendingBookmarkLine)
+            else if (operation === "create") root.createBookmarkAtLine(root.pendingBookmarkLine)
             else if (operation === "rename") root.promptRenameBookmark(root.pendingBookmarkLine)
             else root.deleteBookmarkAtLine(root.pendingBookmarkLine)
         }
-        AppMenuItem { text: qsTrId("qml.create_bookmark"); onTriggered: bookmarkMenu.pendingOperation = "create" }
-        AppMenuItem { text: qsTrId("editor.bookmark.rename"); onTriggered: bookmarkMenu.pendingOperation = "rename" }
-        AppMenuItem { text: qsTrId("editor.bookmark.delete"); onTriggered: bookmarkMenu.pendingOperation = "delete" }
+        AppMenuItem { text: qsTrId("qml.jump_to_this_line"); onTriggered: bookmarkMenu.pendingOperation = "jump" }
+        AppMenuItem {
+            text: bookmarkMenu.hasBookmark ? qsTrId("editor.bookmark.delete") : qsTrId("qml.create_bookmark")
+            onTriggered: bookmarkMenu.pendingOperation = bookmarkMenu.hasBookmark ? "delete" : "create"
+        }
+        AppMenuItem {
+            text: qsTrId("editor.bookmark.rename")
+            enabled: bookmarkMenu.hasBookmark
+            onTriggered: bookmarkMenu.pendingOperation = "rename"
+        }
     }
     Connections {
         target: root.viewState
