@@ -7,14 +7,15 @@
 
 using namespace miacode::runtime::preview_timeline_detail;
 
-void miacode::runtime::PlaybackCoordinator::refreshTimelineQuickModelFromCurrentText()
+bool miacode::runtime::PlaybackCoordinator::refreshTimelineQuickModelFromCurrentText()
 {
     if (state_.timelineQuickStateBridge_ == nullptr || !hasActiveDifficulty()) {
-        return;
+        return false;
     }
     QElapsedTimer timer;
     timer.start();
-    state_.timelineQuickModel_.rebuildFromText(activeChartText(), parsedFirstSeconds(), currentTimingMetadata());
+    if (!state_.timelineQuickModel_.updateFromText(activeChartText(), parsedFirstSeconds(), currentTimingMetadata()))
+        return false;
     invalidatePreviewFollowBindingCache();
     const auto& snapshot = state_.timelineQuickModel_.snapshot();
     if (state_.pendingDifficultySwitchPreviewRestore_
@@ -30,10 +31,11 @@ void miacode::runtime::PlaybackCoordinator::refreshTimelineQuickModelFromCurrent
     if (state_.runtimeDebugOutputEnabled_) {
         appendTimelinePerfLog(
             QStringLiteral("edit/quick_timeline_perf"),
-            QStringLiteral("mode=full revision=%1 lines=%2 elapsed_ms=%3")
-                .arg(state_.timelineRevision_)
+            QStringLiteral("mode=update revision=%1 lines=%2 elapsed_ms=%3")
+                .arg(state_.timelineRevision_ + 1)
                 .arg(state_.timelineQuickModel_.snapshot().lines.size())
                 .arg(timer.nsecsElapsed() / 1000000.0, 0, 'f', 3)
         );
     }
+    return true;
 }

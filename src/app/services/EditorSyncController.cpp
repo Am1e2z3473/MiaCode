@@ -211,16 +211,12 @@ bool EditorSyncController::beginPointerInteraction(int difficultyId, qulonglong 
 }
 
 bool EditorSyncController::setTouchPadPreviewAnchor(
-    int difficultyId, qulonglong revision, const QString& text, int tokenStart)
+    int difficultyId, qulonglong revision, int line, int column)
 {
     if (!readinessAccepts(difficultyId, revision)) {
         return false;
     }
-    const int position = qBound(0, tokenStart, text.size());
-    const int newline = text.lastIndexOf(QLatin1Char('\n'), qMax(0, position - 1));
-    const int line = text.left(position).count(QLatin1Char('\n')) + 1;
-    const int column = position - newline;
-    pendingTouchPadPreviewAnchor_ = {difficultyId, revision, line, column};
+    pendingTouchPadPreviewAnchor_ = {difficultyId, revision, qMax(1, line), qMax(1, column)};
     touchPadPreviewAnchorPending_ = true;
     scheduleTouchPadPreviewAnchorDelivery();
     return true;

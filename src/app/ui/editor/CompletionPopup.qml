@@ -11,18 +11,13 @@ AppDropdownPanel {
 
     required property var editor
     required property var controller
-    // The overlay never learns that the editor scrolled, and mapToItem does not
-    // re-evaluate on its own when an ancestor moves, so the host feeds the
-    // scroll offset in and the anchor is recomputed for every input that can
-    // move the caret on screen.
-    property real editorScrollY: 0
     readonly property bool pointerInside: popupHover.hovered
 
     parent: Overlay.overlay
     modal: false
     focus: false
     closePolicy: Popup.NoAutoClose
-    visible: controller.completionActive && controller.completionCandidates.length > 0
+    visible: editor.navigationVisible && controller.completionActive && controller.completionCandidates.length > 0
 
     readonly property real maximumHeight: 260
     property real candidatesWidth: 0
@@ -60,7 +55,6 @@ AppDropdownPanel {
 
     onWidthChanged: root.updateAnchor()
     onHeightChanged: root.updateAnchor()
-    onEditorScrollYChanged: root.updateAnchor()
     onVisibleChanged: {
         if (root.visible) {
             root.recomputeCandidateWidth()
@@ -72,12 +66,12 @@ AppDropdownPanel {
         target: root.editor
         enabled: root.visible
         function onCursorRectangleChanged() { root.updateAnchor() }
-        // The editor itself moves and resizes when panels are dragged, and
-        // mapToItem does not re-evaluate for that either.
-        function onXChanged() { root.updateAnchor() }
-        function onYChanged() { root.updateAnchor() }
-        function onWidthChanged() { root.updateAnchor() }
-        function onHeightChanged() { root.updateAnchor() }
+        function onLayoutChanged() {
+            root.recomputeCandidateWidth()
+            root.updateAnchor()
+            candidateList.positionViewAtIndex(root.controller.completionIndex, ListView.Contain)
+        }
+        function onScenePositionChanged() { root.updateAnchor() }
     }
 
     Connections {
@@ -111,7 +105,7 @@ AppDropdownPanel {
 
         TextMetrics {
             id: candidateMetrics
-            font: Theme.codeFont
+            font: root.editor.effectiveFont
         }
 
         delegate: ChromeRow {
@@ -127,10 +121,11 @@ AppDropdownPanel {
             required property int index
 
             width: candidateList.width
-            implicitHeight: 26
+            implicitHeight: Math.max(Theme.controlMinHeight, root.editor.lineHeight,
+                                     implicitContentHeight + 2 * (Theme.chromePadding + Theme.chromeInsetY))
             highlighted: candidateRow.index === root.controller.completionIndex
             text: candidateRow.modelData
-            labelFont: Theme.codeFont
+            labelFont: root.editor.effectiveFont
 
             onClicked: {
                 root.controller.selectCompletionIndex(candidateRow.index)

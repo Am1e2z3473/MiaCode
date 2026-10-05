@@ -4,18 +4,6 @@
 
 #include <QtCore>
 
-namespace {
-QString legacyProjectRenderStateFilePath(const QString& currentFilePath)
-{
-    if (currentFilePath.isEmpty()) {
-        return QString();
-    }
-    const QDir projectDir(QFileInfo(currentFilePath).absolutePath());
-    return projectDir.filePath(QStringLiteral(".miacode_render_settings.json"));
-}
-
-}  // namespace
-
 QString miacode::runtime::EditorHost::resolveProjectRenderStateFilePath() const
 {
     const QString projectDataDirectoryPath =
@@ -31,10 +19,8 @@ void miacode::runtime::EditorHost::loadProjectRenderState()
     state_.projectLastOpenedDifficultyId_ = 0;
 
     const QString path = resolveProjectRenderStateFilePath();
-    const QString legacyPath = legacyProjectRenderStateFilePath(state_.currentFilePath_);
-    const QString loadPath = QFileInfo::exists(path) ? path : legacyPath;
-    if (!loadPath.isEmpty()) {
-        QFile file(loadPath);
+    if (!path.isEmpty()) {
+        QFile file(path);
         if (file.exists() && file.open(QIODevice::ReadOnly | QIODevice::Text)) {
             QJsonParseError parseError;
             const QJsonDocument doc = QJsonDocument::fromJson(file.readAll(), &parseError);
@@ -47,12 +33,6 @@ void miacode::runtime::EditorHost::loadProjectRenderState()
             }
         }
     }
-}
-
-void miacode::runtime::EditorHost::adoptBookmarksForLoadedDocument()
-{
-    state_.editorBookmarks_.clear();
-    syncBookmarksFromEditorText();
 }
 
 void miacode::runtime::EditorHost::saveProjectRenderState() const
@@ -83,10 +63,6 @@ void miacode::runtime::EditorHost::saveProjectRenderState() const
         return;
     }
 
-    const QString legacyPath = legacyProjectRenderStateFilePath(state_.currentFilePath_);
-    if (!legacyPath.isEmpty() && legacyPath != path) {
-        QFile::remove(legacyPath);
-    }
 }
 
 void miacode::runtime::EditorHost::removeProjectRenderState() const
@@ -96,10 +72,6 @@ void miacode::runtime::EditorHost::removeProjectRenderState() const
         return;
     }
     QFile::remove(path);
-    const QString legacyPath = legacyProjectRenderStateFilePath(state_.currentFilePath_);
-    if (!legacyPath.isEmpty() && legacyPath != path) {
-        QFile::remove(legacyPath);
-    }
 }
 
 QString Session::resolveProjectRenderStateFilePath() const

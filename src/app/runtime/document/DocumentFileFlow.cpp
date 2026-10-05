@@ -4,7 +4,6 @@
 #include "app/services/UiRequestService.h"
 #include "runtime/Shared.h"
 
-#include "BracketScopeHighlighter.h"
 #include "QtPreviewSfxRuntime.h"
 #include "SimaiParser.h"
 #include "app/quick_shell/QuickShellPreviewCompositeSurface.h"
@@ -361,7 +360,7 @@ void miacode::runtime::DocumentSessionHost::resetWorkingPosition()
     state_.pendingDifficultySwitchPreviewRestoreDifficultyId_ = 0;
     state_.pendingDifficultySwitchPreviewRestoreSecond_ = 0.0;
     session_.setTouchPadAuthoringAnchor(-1.0, -1.0);
-    clearTimelineAndPreview();
+    clearTimelineAndPreview(false, true);
     if (auto* authority = session_.applicationServices_.playbackStateAuthority(); authority != nullptr) {
         authority->repositionSilently(0.0, "reset_working_position");
     }

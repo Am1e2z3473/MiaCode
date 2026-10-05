@@ -120,7 +120,7 @@ bool verifyLocationPublishersShareTheGate(QTextStream& err)
 
     bool ok = require(!controller.beginPointerInteraction(kDifficulty, kRevision + 1)
                           && !controller.setTouchPadPreviewAnchor(kDifficulty, kRevision + 1,
-                                                                  QStringLiteral("1,2,"), 2)
+                                                                  1, 3)
                           && !controller.seekPreviewToEditorLocation(kDifficulty, kRevision + 1, 1, 1),
                       QStringLiteral("pointer, touch anchor, and preview seek all refuse a stale revision"), err);
 
@@ -129,7 +129,7 @@ bool verifyLocationPublishersShareTheGate(QTextStream& err)
     ok = ok
         && require(controller.seekPreviewToEditorLocation(kDifficulty, kRevision, 4, 9)
                        && controller.setTouchPadPreviewAnchor(kDifficulty, kRevision,
-                                                              QStringLiteral("1,2,\n3,4,"), 6),
+                                                              2, 2),
                    QStringLiteral("the same calls are accepted on the ready identity"), err);
     flush();
     ok = ok

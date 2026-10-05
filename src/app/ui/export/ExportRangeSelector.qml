@@ -61,10 +61,6 @@ Item {
             ? previewSession.lowerBoundSeconds : second
     }
 
-    function seekToSelectedStart() {
-        previewSession.positionSeconds = previewSecondForRangeSecond(startSeconds)
-    }
-
     function beginDrag(target, second) {
         draggingTarget = target
         dragStartSeconds = startSeconds

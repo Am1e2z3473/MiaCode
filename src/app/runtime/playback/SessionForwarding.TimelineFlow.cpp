@@ -120,11 +120,6 @@ void Session::refreshTimelineMetadata()
     playback_->refreshTimelineMetadata();
 }
 
-void Session::refreshTimelineQuickModelFromCurrentText()
-{
-    playback_->refreshTimelineQuickModelFromCurrentText();
-}
-
 void Session::applyLatestTimelinePreviewStateToPausedPreview()
 {
     playback_->applyLatestTimelinePreviewStateToPausedPreview();

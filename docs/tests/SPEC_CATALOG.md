@@ -102,7 +102,6 @@ Owners name production modules; kinds describe the checked boundary, not runtime
 | `src/tools/ui/QmlDocumentLifecycleContractSpec.cpp` | `qml_document_lifecycle_contract_spec` | `src/app/ui` | `qml-ui.qml-document-lifecycle-contract` | ui | source-contract | normal | all | ctest | active |
 | `src/tools/ui/QmlDocumentProjectionSpec.cpp` | `qml_document_projection_spec` | `src/app/ui` | `qml-ui.qml-document-projection` | ui | behavior | normal | all | ctest | active |
 | `src/tools/ui/QmlDocumentReplacementSequenceSpec.cpp` | `qml_document_replacement_sequence_spec` | `src/app/ui` | `qml-ui.qml-document-replacement-sequence` | ui | integration | normal | all | ctest | active |
-| `src/tools/ui/QmlEditorControllerSpec.cpp` | `qml_editor_controller_spec` | `src/app/ui` | `qml-ui.qml-editor-controller` | ui | integration | normal | all | ctest | active |
 | `src/tools/ui/QmlExportFontContractSpec.cpp` | `qml_export_font_contract_spec` | `src/app/ui` | `qml-ui.qml-export-font-contract` | ui | source-contract | normal | all | ctest | active |
 | `src/tools/ui/QmlExportIntroSoundContractSpec.cpp` | `qml_export_intro_sound_contract_spec` | `src/app/ui` | `qml-ui.qml-export-intro-sound-contract` | ui | source-contract | normal | all | ctest | active |
 | `src/tools/ui/QmlExportVideoPageSpec.cpp` | `qml_export_video_page_spec` | `src/app/ui` | `qml-ui.qml-export-video-page` | ui | integration | normal | all | ctest | active |
