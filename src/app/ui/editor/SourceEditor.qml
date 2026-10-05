@@ -24,13 +24,15 @@ Rectangle {
     readonly property var bookmarks: sourceArea.bookmarks
     readonly property bool canUndo: sourceArea.canUndo
     readonly property bool canRedo: sourceArea.canRedo
-    readonly property bool canCut: !sourceArea.readonly && sourceArea.selectedText.length > 0
-    readonly property bool canCopy: sourceArea.selectedText.length > 0
+    readonly property bool canCut: !sourceArea.readonly && sourceArea.selectionStart !== sourceArea.selectionEnd
+    readonly property bool canCopy: sourceArea.selectionStart !== sourceArea.selectionEnd
     readonly property bool canPaste: !sourceArea.readonly && sourceArea.canPaste
     readonly property bool canTransform: canCut
     readonly property bool canNormalize: !sourceArea.readonly && documentSession.currentDifficultyId > 0
     readonly property var selectionBeatSummary: preferences && preferences.editorSelectionBeatDisplay
-        ? documentSession.selectionBeatSummary(sourceArea.text, sourceArea.selectionStart, sourceArea.selectionEnd)
+        ? (sourceArea.selectionStart !== sourceArea.selectionEnd
+            ? documentSession.selectionBeatSummary(sourceArea.text, sourceArea.selectionStart, sourceArea.selectionEnd)
+            : ({ totalCommaCount: 0, parts: [], exact: true }))
         : ({ totalCommaCount: 0, parts: [], exact: true })
     function beatSummaryDetail() {
         return (selectionBeatSummary.parts || []).map(part => part.count + "/" + part.denominator).join(" + ")
@@ -348,7 +350,7 @@ Rectangle {
         blockSpacing: root.preferences ? root.preferences.editorBlockSpacing : 0
         autoWrap: root.preferences ? root.preferences.editorAutoWrap : true
         scrollPastEnd: root.preferences ? root.preferences.editorScrollPastEnd : true
-        palette: ({ text: Theme.colors.text.editor,
+        editorColors: ({ text: Theme.colors.text.editor,
                     background: Theme.surfaceColor(Theme.colors.background.surface),
                     lineNumber: Theme.colors.text.lineNumber, accent: Theme.colors.accent.primary,
                     followOpacity: Theme.followHighlightOpacity,

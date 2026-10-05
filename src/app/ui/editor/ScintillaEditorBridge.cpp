@@ -46,7 +46,13 @@ ScintillaEditorBridge::ScintillaEditorBridge(QQuickItem* parent)
     connect(this, &ScintillaQuick_item::notificationReceived, this, [this](const ScintillaQuick_notification& notification) {
         const int flags = int(notification.modificationType);
         if (notification.code == Scintilla::Notification::Modified && (flags & (SC_MOD_INSERTTEXT | SC_MOD_DELETETEXT))) {
-            const int line = document_.lineAt(document_.utf16Position(notification.position));
+            const int position = document_.utf16Position(notification.position);
+            const int line = document_.lineAt(position);
+            const int removed = flags & SC_MOD_DELETETEXT
+                ? document_.utf16Position(notification.position + notification.length) - position : 0;
+            const int added = flags & SC_MOD_INSERTTEXT ? QString::fromUtf8(notification.text).size() : 0;
+            if (styler_.following() && followCaretPosition_ >= position)
+                followCaretPosition_ = qMax(position, followCaretPosition_ - removed) + added;
             document_.applyChange(notification.position, flags & SC_MOD_DELETETEXT ? notification.length : 0,
                                   flags & SC_MOD_INSERTTEXT ? notification.text : QByteArray{});
             styler_.invalidate(line, notification.linesAdded);
@@ -163,7 +169,7 @@ void ScintillaEditorBridge::publishLayout()
 
     const QRectF cursor = positionToRectangle(cursorPosition());
     const QRectF anchor = positionToRectangle(document_.utf16Position(send(SCI_GETANCHOR)));
-    const QRectF follow = syncController_ ? positionToRectangle(syncController_->followCaret()) : QRectF{};
+    const QRectF follow = styler_.following() ? positionToRectangle(followCaretPosition_) : QRectF{};
     const bool cursorChanged = cursorRectangle_ != cursor;
     const bool anchorChanged = anchorRectangle_ != anchor;
     const bool followChanged = followCursorRectangle_ != follow;
@@ -238,11 +244,12 @@ void ScintillaEditorBridge::setNavigationVisible(bool value)
     request_scene_graph_update(true, true, false);
     emit bindingsChanged();
 }
-void ScintillaEditorBridge::setPalette(const QVariantMap& value)
+void ScintillaEditorBridge::setEditorColors(const QVariantMap& value)
 {
+    if (palette_ == value) return;
     palette_ = value;
     styler_.setAppearance(property("font").value<QFont>(), value);
-    emit paletteChanged();
+    emit editorColorsChanged();
 }
 void ScintillaEditorBridge::setBlockSpacing(int value)
 {
@@ -306,7 +313,7 @@ bool ScintillaEditorBridge::followCaretVisible() const
 {
     return documentSession_ && syncController_ && syncController_->followActive()
         && syncController_->followDifficultyId() == documentSession_->currentDifficultyId()
-        && syncController_->followRevision() == documentSession_->documentRevision()
+        && styler_.following()
         && (syncController_->followPlaybackActive() || !hasActiveFocus());
 }
 int ScintillaEditorBridge::cursorLine() const { return send(SCI_LINEFROMPOSITION, send(SCI_GETCURRENTPOS)) + 1; }
@@ -321,6 +328,7 @@ void ScintillaEditorBridge::synchronizeDocument()
     const auto generation = documentSession_->documentOpenGeneration();
     const QString scope = QStringLiteral("difficulty:%1").arg(documentSession_->currentDifficultyId());
     const bool identityChanged = generation_ != generation || scope != document_.scope();
+    if (!identityChanged && synchronizedRevision_ == documentSession_->documentRevision()) return;
     if (controller_ && (identityChanged || document_.text() != documentSession_->chartText()))
         controller_->closeCompletion();
     if (imeComposing_ && !identityChanged) { refreshDiagnostics(); return; }
@@ -343,6 +351,7 @@ void ScintillaEditorBridge::synchronizeDocument()
         wheelRemainder_ = 0;
     }
     document_.activate(scope, documentSession_->chartText());
+    synchronizedRevision_ = documentSession_->documentRevision();
     if (identityChanged) styler_.reset();
     if (controller_) controller_->setDifficulty(documentSession_->currentDifficultyId());
     refreshDecorations();
@@ -356,6 +365,7 @@ void ScintillaEditorBridge::textMutated()
     if (documentSession_) {
         QScopedValueRollback guard(synchronizing_, true);
         documentSession_->setChartText(document_.text());
+        synchronizedRevision_ = documentSession_->documentRevision();
         if (controller_) controller_->setDifficulty(documentSession_->currentDifficultyId());
     }
     refreshDecorations();
@@ -369,22 +379,28 @@ void ScintillaEditorBridge::textMutated()
 void ScintillaEditorBridge::refreshDecorations()
 {
     styler_.style();
-    bookmarks_ = styler_.bookmarks();
+    const auto bookmarks = styler_.bookmarks();
+    if (documentSession_) documentSession_->setEditorBookmarks(documentSession_->currentDifficultyId(), bookmarks);
+    if (bookmarks_ != bookmarks) {
+        bookmarks_ = bookmarks;
+        emit bookmarksChanged();
+    }
     refreshDiagnostics();
     applyFollow();
-    emit bookmarksChanged();
 }
 void ScintillaEditorBridge::refreshDiagnostics()
 {
-    QVariantList validation, muri;
     if (documentSession_ && !documentSession_->validationPending()
         && documentSession_->validationRevision() == documentSession_->documentRevision())
-        validation = documentSession_->syntaxIssues();
-    if (documentSession_ && analysisSession_ && !analysisSession_->pending() && analysisSession_->available()
-        && analysisSession_->difficultyId() == documentSession_->currentDifficultyId()
-        && analysisSession_->revision() == documentSession_->documentRevision())
-        muri = analysisSession_->muriRows();
-    styler_.diagnostics(validation, muri);
+        styler_.diagnostics(documentSession_->syntaxIssues(), false);
+    if (!analysisSession_) styler_.diagnostics({}, true);
+    else if (!analysisSession_->pending()) {
+        if (documentSession_ && analysisSession_->available()
+            && analysisSession_->difficultyId() == documentSession_->currentDifficultyId()
+            && analysisSession_->revision() == documentSession_->documentRevision())
+            styler_.diagnostics(analysisSession_->muriRows(), true);
+        else if (!analysisSession_->available()) styler_.diagnostics({}, true);
+    }
 }
 void ScintillaEditorBridge::refreshSettings()
 {
@@ -428,12 +444,17 @@ void ScintillaEditorBridge::revealPosition(int utf16, bool center)
 }
 void ScintillaEditorBridge::applyFollow(bool reveal)
 {
+    if (styler_.following() && documentSession_ && syncController_ && syncController_->followActive()
+        && syncController_->followDifficultyId() == documentSession_->currentDifficultyId()
+        && syncController_->followRevision() < documentSession_->documentRevision()) return;
     const bool active = documentSession_ && syncController_ && syncController_->followActive()
         && syncController_->followDifficultyId() == documentSession_->currentDifficultyId()
         && syncController_->followRevision() == documentSession_->documentRevision();
+    if (active) followCaretPosition_ = syncController_->followCaret();
     styler_.follow(active, active ? syncController_->followStart() : 0,
                   active ? syncController_->followEnd() : 0);
-    send(SCI_SETCARETSTYLE, active && syncController_->followPlaybackActive() ? CARETSTYLE_INVISIBLE : CARETSTYLE_LINE);
+    const int caretStyle = active && syncController_->followPlaybackActive() ? CARETSTYLE_INVISIBLE : CARETSTYLE_LINE;
+    if (send(SCI_GETCARETSTYLE) != caretStyle) send(SCI_SETCARETSTYLE, caretStyle);
     emit followVisualChanged();
     if (reveal && active && navigationVisible_ && syncController_->followReveal())
         revealPosition(syncController_->followCaret(), syncController_->followPlaybackActive());

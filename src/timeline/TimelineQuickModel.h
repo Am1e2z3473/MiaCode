@@ -48,6 +48,8 @@ public:
 
     // Release backing storage when the owning document closes.
     void clear(bool releaseStorage = false);
+    bool updateFromText(const QString& text, double firstSeconds,
+        const miacode::simai::SimaiTimingMetadata& timingMetadata);
     bool rebuildFromText(
         const QString& text,
         double firstSeconds,
@@ -198,6 +200,9 @@ private:
     int nextLineId_ = 1;
     int nextEachGroupId_ = 0;
     QVector<LineState> lines_;
+    QString sourceText_;
+    double firstSeconds_ = 0.0;
+    miacode::simai::SimaiTimingMetadata timingMetadata_;
     TimelineRenderSnapshot snapshot_;
     QVector<AbsoluteCursorAnchor> cursorAnchorsBySecond_;
     QVector<PreviewFollowBinding> previewFollowBindings_;

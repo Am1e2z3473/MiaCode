@@ -91,6 +91,7 @@ public:
 
     QString chartText() const;
     void setChartText(const QString& value);
+    void setEditorBookmarks(int difficultyId, const QVariantList& bookmarks);
     QString metadataTitle() const;
     QString metadataArtist() const;
     QString metadataFirst() const;
@@ -250,6 +251,7 @@ signals:
 private:
     enum class WorkspaceCommitKind {
         Incremental,
+        ChartText,
         DifficultySelection,
         Structure,
         SourceReplacement,
@@ -302,6 +304,7 @@ private:
     miacode::ui::DocumentValidationProjection validationSnapshot_;
     miacode::ui::DocumentPresentationState presentationState_;
     quint64 documentRevision_ = 0;
+    mutable QHash<int, QVariantList> bookmarkCache_;
     mutable quint64 positionIndexRevision_ = ~quint64(0);
     mutable quint64 positionIndexGeneration_ = ~quint64(0);
     mutable int positionIndexDifficulty_ = -1;
