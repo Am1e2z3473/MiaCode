@@ -35,6 +35,7 @@ class ScintillaEditorBridge : public ScintillaQuick_item
     Q_PROPERTY(int cursorPosition READ cursorPosition WRITE setCursorPosition NOTIFY selectionChanged)
     Q_PROPERTY(int selectionStart READ selectionStart NOTIFY selectionChanged)
     Q_PROPERTY(int selectionEnd READ selectionEnd NOTIFY selectionChanged)
+    Q_PROPERTY(QString text READ editorText NOTIFY textChanged)
     Q_PROPERTY(QString selectedText READ selectedText NOTIFY selectionChanged)
     Q_PROPERTY(QRectF cursorRectangle READ cursorRectangle NOTIFY cursorRectangleChanged)
     Q_PROPERTY(QRectF followCursorRectangle READ followCursorRectangle NOTIFY followVisualChanged)
@@ -73,6 +74,7 @@ public:
     int selectionStart() const;
     int selectionEnd() const;
     QString selectedText() const;
+    QString editorText() const { return document_.text(); }
     QRectF cursorRectangle() const;
     QRectF followCursorRectangle() const;
     bool followCaretVisible() const;

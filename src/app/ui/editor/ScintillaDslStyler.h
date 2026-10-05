@@ -1,5 +1,6 @@
 #pragma once
 #include <QVariantMap>
+#include <QMap>
 #include "editor/ScintillaDocumentAdapter.h"
 
 namespace miacode::ui {
@@ -9,10 +10,19 @@ public:
     ScintillaDslStyler(ScintillaQuick_item& editor, ScintillaDocumentAdapter& document);
     void setAppearance(const QFont& font, const QVariantMap& palette);
     void style();
+    void reset();
+    void invalidate(int line, int linesAdded);
     void diagnostics(const QVariantList& validation, const QVariantList& muri);
-    void bookmarks(const QVariantList& bookmarks);
+    QVariantList bookmarks() const;
     void follow(bool active, int start, int end);
 private:
+    struct LineState { QByteArray text; QByteArray stack; QString bookmark; bool valid = false; };
+    QVector<LineState> lines_;
+    QMap<int, QString> bookmarks_;
+    int dirtyLine_ = 0;
+    QVariantList validation_, muri_;
+    bool followActive_ = false;
+    int followStart_ = 0, followEnd_ = 0;
     void fill(int indicator, int start, int end);
     ScintillaQuick_item& editor_;
     ScintillaDocumentAdapter& document_;

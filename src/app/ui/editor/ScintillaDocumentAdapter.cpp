@@ -98,28 +98,54 @@ void ScintillaDocumentAdapter::clear()
 
 void ScintillaDocumentAdapter::refresh()
 {
-    text_ = editor_.property("text").toString();
-    bytes_.resize(text_.size() + 1);
-    int byte = 0;
-    for (int i = 0; i < text_.size(); ++i) {
-        bytes_[i] = byte;
-        const QChar ch = text_[i];
-        if (ch.isHighSurrogate() && i + 1 < text_.size() && text_[i + 1].isLowSurrogate()) {
-            bytes_[++i] = byte;
-            byte += 4;
-        } else {
-            byte += ch.unicode() < 0x80 ? 1 : ch.unicode() < 0x800 ? 2 : 3;
-        }
+    const int length = editor_.send(SCI_GETLENGTH);
+    QByteArray buffer(length + 1, Qt::Uninitialized);
+    editor_.send(SCI_GETTEXT, buffer.size(), reinterpret_cast<sptr_t>(buffer.data()));
+    text_ = QString::fromUtf8(buffer.constData(), length);
+    utf16Lines_ = {0};
+    byteLines_ = {0};
+    const QByteArray bytes = text_.toUtf8();
+    for (int i = 0; i < text_.size(); ++i)
+        if (text_[i] == QLatin1Char('\n')) utf16Lines_.append(i + 1);
+    for (int i = 0; i < bytes.size(); ++i)
+        if (bytes[i] == '\n') byteLines_.append(i + 1);
+}
+int ScintillaDocumentAdapter::lineAt(int position) const
+{
+    return int(std::upper_bound(utf16Lines_.cbegin(), utf16Lines_.cend(), position) - utf16Lines_.cbegin()) - 1;
+}
+void ScintillaDocumentAdapter::applyChange(int position, int deletedBytes, const QByteArray& inserted)
+{
+    const int begin = utf16Position(position);
+    const int end = utf16Position(position + deletedBytes);
+    const QString replacement = QString::fromUtf8(inserted);
+    const int first = int(std::upper_bound(byteLines_.cbegin(), byteLines_.cend(), position) - byteLines_.cbegin());
+    const int last = int(std::upper_bound(byteLines_.cbegin(), byteLines_.cend(), position + deletedBytes) - byteLines_.cbegin());
+    utf16Lines_.remove(first, last - first);
+    byteLines_.remove(first, last - first);
+    for (int i = first; i < byteLines_.size(); ++i) {
+        byteLines_[i] += inserted.size() - deletedBytes;
+        utf16Lines_[i] += replacement.size() - (end - begin);
     }
-    bytes_[text_.size()] = byte;
+    int line = first;
+    for (int i = 0; i < replacement.size(); ++i)
+        if (replacement[i] == QLatin1Char('\n')) utf16Lines_.insert(line++, begin + i + 1);
+    line = first;
+    for (int i = 0; i < inserted.size(); ++i)
+        if (inserted[i] == '\n') byteLines_.insert(line++, position + i + 1);
+    text_.replace(begin, end - begin, replacement);
 }
 int ScintillaDocumentAdapter::bytePosition(int utf16) const
 {
-    return bytes_[qBound(0, utf16, int(text_.size()))];
+    utf16 = qBound(0, utf16, int(text_.size()));
+    const int line = lineAt(utf16);
+    return byteLines_[line] + QStringView(text_).mid(utf16Lines_[line], utf16 - utf16Lines_[line]).toUtf8().size();
 }
 int ScintillaDocumentAdapter::utf16Position(int byte) const
 {
-    const auto it = std::lower_bound(bytes_.cbegin(), bytes_.cend(), qBound(0, byte, bytes_.constLast()));
-    return int(it - bytes_.cbegin());
+    const int line = int(std::upper_bound(byteLines_.cbegin(), byteLines_.cend(), byte) - byteLines_.cbegin()) - 1;
+    const int end = line + 1 < utf16Lines_.size() ? utf16Lines_[line + 1] : text_.size();
+    const QByteArray bytes = QStringView(text_).mid(utf16Lines_[line], end - utf16Lines_[line]).toUtf8();
+    return utf16Lines_[line] + QString::fromUtf8(bytes.constData(), qBound(0, byte - byteLines_[line], int(bytes.size()))).size();
 }
 }

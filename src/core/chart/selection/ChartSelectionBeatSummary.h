@@ -19,6 +19,18 @@ struct ChartSelectionBeatSummary {
     bool exact = true;
 };
 
+class ChartSelectionBeatIndex
+{
+public:
+    void setText(const QString& text);
+    ChartSelectionBeatSummary summarize(int begin, int end) const;
+private:
+    QString text_;
+    QByteArray content_;
+    struct Comma { int position; int denominator; };
+    QVector<Comma> commas_;
+};
+
 ChartSelectionBeatSummary summarizeChartSelectionBeats(
     const QString& text, int selectionStart, int selectionEnd);
 

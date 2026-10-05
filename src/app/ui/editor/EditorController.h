@@ -49,7 +49,6 @@ public:
     Q_INVOKABLE QVariantMap processKeyForQml(
         const QString& text, int anchor, int position, const QString& input, int key, int modifiers);
     Q_INVOKABLE QVariantMap acceptCompletionForQml(const QString& text, int anchor, int position);
-    Q_INVOKABLE QVariantList bookmarksForQml(const QString& text) const;
     Q_INVOKABLE QVariantMap createBookmarkForQml(const QString& text, int line, const QString& title) const;
     Q_INVOKABLE QVariantMap renameBookmarkForQml(const QString& text, int line, const QString& title) const;
     Q_INVOKABLE QVariantMap deleteBookmarkForQml(const QString& text, int line) const;

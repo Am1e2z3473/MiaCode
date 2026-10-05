@@ -17,6 +17,10 @@ public:
     void clear();
     void drop(const QString& scope);
     void refresh();
+    void applyChange(int position, int deletedBytes, const QByteArray& inserted);
+    int lineCount() const { return utf16Lines_.size(); }
+    int lineStart(int line) const { return utf16Lines_[line]; }
+    int lineAt(int position) const;
     void captureViewport();
     bool restoreViewport();
     int bytePosition(int utf16) const;
@@ -37,7 +41,8 @@ private:
     QHash<QString, Document> documents_;
     QString scope_;
     QString text_;
-    QVector<int> bytes_;
+    QVector<int> utf16Lines_;
+    QVector<int> byteLines_;
     bool viewportPending_ = false;
 };
 }

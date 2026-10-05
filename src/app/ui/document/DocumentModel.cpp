@@ -1967,8 +1967,8 @@ QVariantMap DocumentModel::transformChartSelection(
 QVariantMap DocumentModel::selectionBeatSummary(
     const QString& text, int anchor, int position) const
 {
-    const miacode::chart_selection::ChartSelectionBeatSummary summary =
-        miacode::chart_selection::summarizeChartSelectionBeats(text, anchor, position);
+    selectionBeatIndex_.setText(text);
+    const auto summary = selectionBeatIndex_.summarize(anchor, position);
     QVariantList parts;
     for (const miacode::chart_selection::ChartSelectionBeatPart& part : summary.parts) {
         parts.append(QVariantMap{
