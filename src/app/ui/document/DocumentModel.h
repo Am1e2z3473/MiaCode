@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QObject>
+#include "core/chart/selection/ChartSelectionBeatSummary.h"
 #include <QImage>
 
 #include <functional>
@@ -218,6 +219,7 @@ public:
     // every one of them found an empty selection and did nothing.
     Q_INVOKABLE QVariantMap transformChartSelection(
         const QString& text, int anchor, int position, const QString& opId) const;
+    mutable miacode::chart_selection::ChartSelectionBeatIndex selectionBeatIndex_;
     Q_INVOKABLE QVariantMap selectionBeatSummary(
         const QString& text, int anchor, int position) const;
     Q_INVOKABLE QStringList chartTransformIds() const;

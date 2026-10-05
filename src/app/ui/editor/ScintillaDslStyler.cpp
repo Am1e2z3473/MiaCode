@@ -1,5 +1,6 @@
 #include "editor/ScintillaDslStyler.h"
 #include <QColor>
+#include "editor/BookmarkCommentSyntax.h"
 #include <QGuiApplication>
 #include <QScreen>
 #include <QQuickWindow>
@@ -77,40 +78,105 @@ void ScintillaDslStyler::setAppearance(const QFont& font, const QVariantMap& pal
     editor_.send(SCI_INDICSETFORE, muriIndicator, color(palette, "error"));
     editor_.send(SCI_INDICSETFORE, followIndicator, color(palette, "follow"));
     editor_.send(SCI_INDICSETALPHA, followIndicator, qRound(palette.value(QStringLiteral("followOpacity")).toDouble() * 255));
+    reset();
     style();
+}
+void ScintillaDslStyler::reset()
+{
+    lines_.clear();
+    bookmarks_.clear();
+    dirtyLine_ = 0;
+    validation_.clear();
+    muri_.clear();
+    followActive_ = false;
+    editor_.send(SCI_MARKERDELETEALL, bookmarkMarker);
+    for (int indicator : {errorIndicator, warningIndicator, muriIndicator, followIndicator}) {
+        editor_.send(SCI_SETINDICATORCURRENT, indicator);
+        editor_.send(SCI_INDICATORCLEARRANGE, 0, editor_.send(SCI_GETLENGTH));
+    }
+}
+void ScintillaDslStyler::invalidate(int line, int linesAdded)
+{
+    dirtyLine_ = qMin(dirtyLine_, line);
+    if (linesAdded) {
+        QMap<int, QString> shifted;
+        for (auto it = bookmarks_.cbegin(); it != bookmarks_.cend(); ++it) {
+            if (it.key() <= line) shifted.insert(it.key(), it.value());
+            else if (linesAdded > 0 || it.key() > line - linesAdded)
+                shifted.insert(it.key() + linesAdded, it.value());
+        }
+        bookmarks_ = std::move(shifted);
+    }
+    if (followActive_) {
+        editor_.send(SCI_SETINDICATORCURRENT, followIndicator);
+        editor_.send(SCI_INDICATORCLEARRANGE, 0, editor_.send(SCI_GETLENGTH));
+        followActive_ = false;
+    }
+    if (line < lines_.size()) {
+        if (linesAdded > 0) lines_.insert(line + 1, linesAdded, LineState{});
+        else if (linesAdded < 0) lines_.remove(line + 1, qMin(-linesAdded, int(lines_.size()) - line - 1));
+    }
 }
 void ScintillaDslStyler::style()
 {
-    const QByteArray text = document_.text().toUtf8();
-    QByteArray styles(text.size(), 0);
-    QByteArray stack;
-    bool comment = false;
-    for (int i = 0; i < text.size(); ++i) {
-        const char ch = text[i];
-        if (ch == '\n' || ch == '\r') comment = false;
-        if (ch == '|' && i + 1 < text.size() && text[i + 1] == '|') comment = true;
-        if (comment) { styles[i] = 3; continue; }
-        styles[i] = stack.isEmpty() ? 0 : stack.back() == ']' ? 2 : 1;
-        if (ch == '<' && text.mid(i + 1, 3) == "HS*") {
-            const int close = text.indexOf('>', i + 1);
-            const int newline = text.indexOf('\n', i + 1);
-            if (close >= 0 && (newline < 0 || close < newline)) {
-                for (; i <= close; ++i) styles[i] = 1;
-                --i;
-                continue;
+    lines_.resize(document_.lineCount());
+    QByteArray stack = dirtyLine_ > 0 ? lines_[dirtyLine_ - 1].stack : QByteArray{};
+    for (int line = dirtyLine_; line < document_.lineCount(); ++line) {
+        const int begin = document_.lineStart(line);
+        const int end = line + 1 < document_.lineCount() ? document_.lineStart(line + 1) : document_.text().size();
+        const QStringView source = QStringView(document_.text()).mid(begin, end - begin);
+        const QByteArray text = source.toUtf8();
+        QByteArray styles(text.size(), 0);
+        bool comment = false;
+        for (int i = 0; i < text.size(); ++i) {
+            const char ch = text[i];
+            if (ch == '\n' || ch == '\r') comment = false;
+            if (ch == '|' && i + 1 < text.size() && text[i + 1] == '|') comment = true;
+            if (comment) { styles[i] = 3; continue; }
+            styles[i] = stack.isEmpty() ? 0 : stack.back() == ']' ? 2 : 1;
+            if (ch == '<' && text.mid(i + 1, 3) == "HS*") {
+                const int close = text.indexOf('>', i + 1);
+                const int newline = text.indexOf('\n', i + 1);
+                if (close >= 0 && (newline < 0 || close < newline)) {
+                    for (; i <= close; ++i) styles[i] = 1;
+                    --i;
+                    continue;
+                }
+            }
+            if (ch == '(' || ch == '{' || ch == '[') {
+                stack.append(ch == '(' ? ')' : ch == '{' ? '}' : ']');
+                styles[i] = ch == '[' ? 2 : 1;
+            } else if (ch == ')' || ch == '}' || ch == ']') {
+                styles[i] = ch == ']' ? 2 : 1;
+                const int matching = stack.lastIndexOf(ch);
+                if (matching >= 0) stack.truncate(matching);
             }
         }
-        if (ch == '(' || ch == '{' || ch == '[') {
-            stack.append(ch == '(' ? ')' : ch == '{' ? '}' : ']');
-            styles[i] = ch == '[' ? 2 : 1;
-        } else if (ch == ')' || ch == '}' || ch == ']') {
-            styles[i] = ch == ']' ? 2 : 1;
-            const int matching = stack.lastIndexOf(ch);
-            if (matching >= 0) stack.truncate(matching);
+        const auto bookmark = miacode::editor::parseBookmarkComment(source.toString());
+        const QString title = bookmark && !bookmark->control ? bookmark->title : QString{};
+        auto& cached = lines_[line];
+        const bool same = cached.valid && cached.text == text && cached.stack == stack;
+        if (!cached.valid || cached.bookmark != title) {
+            editor_.send(SCI_MARKERDELETE, line, bookmarkMarker);
+            bookmarks_.remove(line);
+            if (!title.isNull()) {
+                editor_.send(SCI_MARKERADD, line, bookmarkMarker);
+                bookmarks_.insert(line, title);
+            }
         }
+        cached = {text, stack, title, true};
+        if (same && (line + 1 == lines_.size() || lines_[line + 1].valid)) break;
+        editor_.send(SCI_STARTSTYLING, document_.bytePosition(begin));
+        editor_.sends(SCI_SETSTYLINGEX, styles.size(), styles.constData());
     }
-    editor_.send(SCI_STARTSTYLING, 0);
-    editor_.sends(SCI_SETSTYLINGEX, styles.size(), styles.constData());
+    dirtyLine_ = document_.lineCount();
+}
+QVariantList ScintillaDslStyler::bookmarks() const
+{
+    QVariantList result;
+    for (auto it = bookmarks_.cbegin(); it != bookmarks_.cend(); ++it)
+        result.append(QVariantMap{{QStringLiteral("line"), it.key() + 1}, {QStringLiteral("title"), it.value()}});
+    return result;
 }
 void ScintillaDslStyler::fill(int indicator, int start, int end)
 {
@@ -121,6 +187,9 @@ void ScintillaDslStyler::fill(int indicator, int start, int end)
 }
 void ScintillaDslStyler::diagnostics(const QVariantList& validation, const QVariantList& muri)
 {
+    if (validation_ == validation && muri_ == muri) return;
+    validation_ = validation;
+    muri_ = muri;
     for (int indicator : {errorIndicator, warningIndicator, muriIndicator}) {
         editor_.send(SCI_SETINDICATORCURRENT, indicator);
         editor_.send(SCI_INDICATORCLEARRANGE, 0, editor_.send(SCI_GETLENGTH));
@@ -141,16 +210,17 @@ void ScintillaDslStyler::diagnostics(const QVariantList& validation, const QVari
     decorate(validation, false);
     decorate(muri, true);
 }
-void ScintillaDslStyler::bookmarks(const QVariantList& bookmarks)
-{
-    editor_.send(SCI_MARKERDELETEALL, bookmarkMarker);
-    for (const auto& value : bookmarks)
-        editor_.send(SCI_MARKERADD, value.toMap().value(QStringLiteral("line")).toInt() - 1, bookmarkMarker);
-}
 void ScintillaDslStyler::follow(bool active, int start, int end)
 {
+    if (active == followActive_ && (!active || (start == followStart_ && end == followEnd_))) return;
     editor_.send(SCI_SETINDICATORCURRENT, followIndicator);
-    editor_.send(SCI_INDICATORCLEARRANGE, 0, editor_.send(SCI_GETLENGTH));
+    if (followActive_) {
+        const int first = document_.bytePosition(followStart_);
+        editor_.send(SCI_INDICATORCLEARRANGE, first, document_.bytePosition(followEnd_) - first);
+    }
     if (active) fill(followIndicator, start, end);
+    followActive_ = active;
+    followStart_ = start;
+    followEnd_ = end;
 }
 }

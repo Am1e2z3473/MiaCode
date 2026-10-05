@@ -45,6 +45,13 @@ ScintillaEditorBridge::ScintillaEditorBridge(QQuickItem* parent)
         styler_.setAppearance(property("font").value<QFont>(), palette_);
     });
     connect(this, &ScintillaQuick_item::notificationReceived, this, [this](const ScintillaQuick_notification& notification) {
+        const int flags = int(notification.modificationType);
+        if (notification.code == Scintilla::Notification::Modified && (flags & (SC_MOD_INSERTTEXT | SC_MOD_DELETETEXT))) {
+            const int line = document_.lineAt(document_.utf16Position(notification.position));
+            document_.applyChange(notification.position, flags & SC_MOD_DELETETEXT ? notification.length : 0,
+                                  flags & SC_MOD_INSERTTEXT ? notification.text : QByteArray{});
+            styler_.invalidate(line, notification.linesAdded);
+        }
         if ((int(notification.modificationType) & SC_MOD_CONTAINER) && touchUndoAnchors_.contains(notification.token))
             pendingTouchAnchor_ = touchUndoAnchors_.value(notification.token).position;
     });
@@ -329,6 +336,7 @@ void ScintillaEditorBridge::synchronizeDocument()
         wheelRemainder_ = 0;
     }
     document_.activate(scope, documentSession_->chartText());
+    if (identityChanged) styler_.reset();
     if (controller_) controller_->setDocumentContext(documentSession_->currentDifficultyId(), documentSession_->documentRevision());
     refreshDecorations();
     publishContext(false);
@@ -337,7 +345,6 @@ void ScintillaEditorBridge::synchronizeDocument()
 }
 void ScintillaEditorBridge::textMutated()
 {
-    document_.refresh();
     if (!ready_ || synchronizing_ || handlingIme_) return;
     if (documentSession_) {
         QScopedValueRollback guard(synchronizing_, true);
@@ -355,8 +362,7 @@ void ScintillaEditorBridge::textMutated()
 void ScintillaEditorBridge::refreshDecorations()
 {
     styler_.style();
-    bookmarks_ = controller_ ? controller_->bookmarksForQml(document_.text()) : QVariantList{};
-    styler_.bookmarks(bookmarks_);
+    bookmarks_ = styler_.bookmarks();
     refreshDiagnostics();
     applyFollow();
     emit bookmarksChanged();
@@ -501,8 +507,7 @@ bool ScintillaEditorBridge::applyEditorTransaction(const QVariantMap& tx)
                 send(SCI_ADDUNDOACTION, token, 0);
             }
             send(SCI_ENDUNDOACTION);
-            document_.refresh();
-        }
+                }
         select(tx.value(QStringLiteral("anchor")).toInt(), tx.value(QStringLiteral("position")).toInt());
         send(SCI_SCROLLCARET);
     }
@@ -634,7 +639,6 @@ void ScintillaEditorBridge::inputMethodEvent(QInputMethodEvent* event)
         const bool committed = !commit.isEmpty();
         if (committed) send(SCI_BEGINUNDOACTION);
         ScintillaQuick_item::inputMethodEvent(&normalized);
-        document_.refresh();
         if (controller_ && committed && commit.size() == 1 && controller_->autoCompletionEnabled()
             && !controller_->overwriteMode() && !controller_->completionActive()) {
             const QChar glyph = commit.front();
@@ -645,7 +649,6 @@ void ScintillaEditorBridge::inputMethodEvent(QInputMethodEvent* event)
                 if (caret >= document_.text().size() || document_.text().at(caret) != closing) {
                     const QByteArray closingText = QString(closing).toUtf8();
                     sends(SCI_INSERTTEXT, send(SCI_GETCURRENTPOS), closingText.constData());
-                    document_.refresh();
                 }
                 closingPresent = true;
             }

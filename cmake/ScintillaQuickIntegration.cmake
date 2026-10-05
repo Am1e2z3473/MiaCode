@@ -65,6 +65,20 @@ function(miacode_scintillaquick_surface_background)
         message(FATAL_ERROR "Update the MiaCode ScintillaQuick surface-background patch for this dependency revision")
     endif()
     string(REPLACE "${original}" "${replacement}" patched_code "${item_code}")
+    string(REPLACE "    std::forward<Apply_update>(apply_update)(scene_graph_update_request(i_message));" [=[    auto update_request = scene_graph_update_request(i_message);
+    switch (i_message) {
+        case SCI_SETINDICATORCURRENT:
+        case SCI_SETINDICATORVALUE:
+        case SCI_STARTSTYLING: update_request = {}; break;
+        case SCI_INDICATORFILLRANGE:
+        case SCI_INDICATORCLEARRANGE: update_request = {true, false, false, false}; break;
+        case SCI_SETSTYLINGEX: update_request = {true, true, false, false}; break;
+    }
+    std::forward<Apply_update>(apply_update)(update_request);]=] patched_code "${patched_code}")
+    string(REPLACE "        frame.indicator_primitives   = std::move(m_render_data->frame.indicator_primitives);" "" patched_code "${patched_code}")
+    string(REPLACE "            request_scene_graph_update(true, true, false);\n            // `textChanged()`" [=[            const bool indicator_change = int(scn.modificationType) & SC_MOD_CHANGEINDICATOR;
+            request_scene_graph_update(!indicator_change, !indicator_change, false);
+            // `textChanged()`]=] patched_code "${patched_code}")
     set(patched_source "${CMAKE_CURRENT_BINARY_DIR}/miacode_scintillaquick_item.cpp")
     file(CONFIGURE OUTPUT "${patched_source}" CONTENT "${patched_code}" @ONLY)
     get_target_property(sources ScintillaQuick SOURCES)
@@ -98,6 +112,14 @@ function(miacode_scintillaquick_highlight_layers)
     string(REPLACE "        for (const Indicator_primitive& indicator : frame.indicator_primitives) {" [=[        for (const Indicator_primitive& indicator : frame.indicator_primitives) {
             if (indicator.indicator_number == 11) continue;]=] renderer_code "${renderer_code}")
     string(REPLACE "    QSGNode* m_indicator_under_group = nullptr;" "    QSGClipNode* m_current_line_clip_node = nullptr;\n    QSGNode* m_indicator_under_group = nullptr;" renderer_code "${renderer_code}")
+    # Indicator geometry updates independently from cached glyph nodes.
+    string(FIND "${renderer_code}" "        std::vector<const Indicator_primitive*> under_indicators;" indicator_begin)
+    string(FIND "${renderer_code}" "        sync_frame_text_nodes(window, m_marker_group" indicator_end)
+    math(EXPR indicator_length "${indicator_end} - ${indicator_begin}")
+    string(SUBSTRING "${renderer_code}" ${indicator_begin} ${indicator_length} indicator_code)
+    string(REPLACE "${indicator_code}" "" renderer_code "${renderer_code}")
+    string(REPLACE "        const qreal static_dpr = window->effectiveDevicePixelRatio();"
+        "${indicator_code}        const qreal static_dpr = window->effectiveDevicePixelRatio();" renderer_code "${renderer_code}")
     set(patched_source "${CMAKE_CURRENT_BINARY_DIR}/miacode_scintillaquick_scene_graph_renderer.cpp")
     file(CONFIGURE OUTPUT "${patched_source}" CONTENT "${renderer_code}" @ONLY)
     get_target_property(sources ScintillaQuick SOURCES)
@@ -106,3 +128,19 @@ function(miacode_scintillaquick_highlight_layers)
     target_sources(ScintillaQuick PRIVATE "${patched_source}")
 endfunction()
 cmake_language(DEFER CALL miacode_scintillaquick_highlight_layers)
+
+function(miacode_scintillaquick_indicator_capture)
+    set(view_source "${CMAKE_CURRENT_SOURCE_DIR}/third_party/scintilla/src/EditView.cxx")
+    file(READ "${view_source}" view_code)
+    set(original [=[			if (collector->wants_static_content()) {
+				collector->add_indicator_primitive(capturedInd);
+			}]=])
+    string(REPLACE "${original}" "\t\t\tcollector->add_indicator_primitive(capturedInd);" view_code "${view_code}")
+    set(patched_source "${CMAKE_CURRENT_BINARY_DIR}/miacode_scintilla_edit_view.cpp")
+    file(CONFIGURE OUTPUT "${patched_source}" CONTENT "${view_code}" @ONLY)
+    get_target_property(sources scintillaquick_scintilla_objects SOURCES)
+    list(REMOVE_ITEM sources third_party/scintilla/src/EditView.cxx)
+    set_property(TARGET scintillaquick_scintilla_objects PROPERTY SOURCES "${sources}")
+    target_sources(scintillaquick_scintilla_objects PRIVATE "${patched_source}")
+endfunction()
+cmake_language(DEFER CALL miacode_scintillaquick_indicator_capture)

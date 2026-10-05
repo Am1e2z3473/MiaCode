@@ -243,17 +243,6 @@ QVariantMap EditorController::toQmlTransaction(const miacode::editor::SimaiTextE
 }
 QVariantMap EditorController::processKeyForQml(const QString& text, int anchor, int position, const QString& input, int key, int modifiers) { return toQmlTransaction(processKey(text, anchor, position, input, key, modifiers)); }
 QVariantMap EditorController::acceptCompletionForQml(const QString& text, int anchor, int position) { return toQmlTransaction(acceptCompletion(text, anchor, position)); }
-QVariantList EditorController::bookmarksForQml(const QString& text) const
-{
-    QVariantList result;
-    const QStringList lines = text.split(QLatin1Char('\n'));
-    for (int i = 0; i < lines.size(); ++i) {
-        const auto bookmark = miacode::editor::parseBookmarkComment(lines.at(i));
-        if (!bookmark.has_value() || bookmark->control) continue;
-        result.append(QVariantMap{{QStringLiteral("line"), i + 1}, {QStringLiteral("title"), bookmark->title}});
-    }
-    return result;
-}
 QVariantMap EditorController::createBookmarkForQml(const QString& text, int line, const QString& title) const
 {
     const QStringList lines = text.split(QLatin1Char('\n'));
