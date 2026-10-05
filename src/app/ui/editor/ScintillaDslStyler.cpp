@@ -27,7 +27,7 @@ ScintillaDslStyler::ScintillaDslStyler(ScintillaQuick_item& editor, ScintillaDoc
     editor_.send(SCI_MARKERDEFINE, bookmarkMarker, SC_MARK_LEFTRECT);
     for (int indicator : {errorIndicator, warningIndicator, muriIndicator})
         editor_.send(SCI_INDICSETSTYLE, indicator, INDIC_SQUIGGLE);
-    editor_.send(SCI_INDICSETSTYLE, followIndicator, INDIC_ROUNDBOX);
+    editor_.send(SCI_INDICSETSTYLE, followIndicator, INDIC_FULLBOX);
     editor_.send(SCI_INDICSETUNDER, followIndicator, 1);
     editor_.send(SCI_INDICSETOUTLINEALPHA, followIndicator, 0);
     editor_.send(SCI_SETSELECTIONLAYER, SC_LAYER_UNDER_TEXT);

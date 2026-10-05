@@ -66,7 +66,10 @@ ScintillaEditorBridge::~ScintillaEditorBridge()
 QSGNode* ScintillaEditorBridge::updatePaintNode(QSGNode* oldNode, UpdatePaintNodeData* data)
 {
     QSGNode* root = ScintillaQuick_item::updatePaintNode(oldNode, data);
-    renderRoundedScintillaSelection(root, window(), palette_.value(QStringLiteral("selection")).value<QColor>());
+    QColor follow = palette_.value(QStringLiteral("follow")).value<QColor>();
+    follow.setAlpha(qRound(palette_.value(QStringLiteral("followOpacity")).toDouble() * 255));
+    renderRoundedScintillaHighlights(root, window(),
+        {palette_.value(QStringLiteral("selection")).value<QColor>(), follow});
     return root;
 }
 void ScintillaEditorBridge::componentComplete()

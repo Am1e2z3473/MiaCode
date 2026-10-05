@@ -329,7 +329,7 @@ Rectangle {
         objectName: "sourceArea"
         property bool reservesPlainSpace: true
         anchors.left: parent.left
-        anchors.right: verticalBar.left
+        anchors.right: parent.right
         anchors.top: findReplaceBar.bottom
         anchors.bottom: parent.bottom
         documentSession: root.documentSession

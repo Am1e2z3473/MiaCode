@@ -46,7 +46,9 @@ QPainterPath selectionOutline(const QVector<QRectF>& rows)
             if (i == 0) path.moveTo(start);
             else path.lineTo(start);
             // The same contour rounds convex outside and concave row joins.
-            path.quadTo(current, end);
+            constexpr qreal quarterCircleControl = 0.5522847498307936;
+            path.cubicTo(start + (current - start) * quarterCircleControl,
+                         end + (current - end) * quarterCircleControl, end);
         }
         path.closeSubpath();
         left.clear();
@@ -78,6 +80,8 @@ QPainterPath selectionOutline(const QVector<QRectF>& rows)
 class RoundedSelectionNode final : public QSGNode
 {
 public:
+    explicit RoundedSelectionNode(int range) : range_(range) {}
+    int range() const { return range_; }
     void synchronize(QQuickWindow* window, const QVector<QRectF>& rows, const QColor& color)
     {
         const qreal dpr = window->effectiveDevicePixelRatio();
@@ -114,6 +118,7 @@ public:
         image_->setRect(bounds);
     }
 private:
+    int range_;
     QSGImageNode* image_ = nullptr;
     QVector<QRectF> rows_;
     QColor color_;
@@ -126,28 +131,29 @@ struct SelectionLayer {
     RoundedSelectionNode* contour = nullptr;
 };
 
-void collectSelectionLayers(QSGNode* parent, const QColor& color, QVector<SelectionLayer>& layers)
+void collectSelectionLayers(QSGNode* parent, const QColor& color, int range, QVector<SelectionLayer>& layers)
 {
     SelectionLayer layer;
     layer.parent = parent;
     for (auto* child = parent->firstChild(); child; child = child->nextSibling()) {
         if (auto* contour = dynamic_cast<RoundedSelectionNode*>(child)) {
-            layer.contour = contour;
+            if (contour->range() == range) layer.contour = contour;
         } else if (auto* rectangle = dynamic_cast<QSGRectangleNode*>(child); rectangle && rectangle->color().rgba() == color.rgba()) {
             if (!rectangle->rect().isEmpty()) layer.rectangles.append(rectangle->rect());
             rectangle->setColor(Qt::transparent);
-        } else collectSelectionLayers(child, color, layers);
+        } else collectSelectionLayers(child, color, range, layers);
     }
     if (layer.contour || !layer.rectangles.isEmpty()) layers.append(layer);
 }
 }
 
-void renderRoundedScintillaSelection(QSGNode* root, QQuickWindow* window, const QColor& color)
+void renderRoundedScintillaHighlights(QSGNode* root, QQuickWindow* window, const QVector<QColor>& colors)
 {
     if (!root || !window) return;
-    // 使用指定选区颜色对应的公开 QSGRectangleNode 几何绘制圆角。
+    for (int range = 0; range < colors.size(); ++range) {
+    const auto& color = colors[range];
     QVector<SelectionLayer> layers;
-    collectSelectionLayers(root, color, layers);
+    collectSelectionLayers(root, color, range, layers);
     for (auto& layer : layers) {
         std::sort(layer.rectangles.begin(), layer.rectangles.end(), [](const QRectF& a, const QRectF& b) {
             return a.top() == b.top() ? a.left() < b.left() : a.top() < b.top();
@@ -159,10 +165,11 @@ void renderRoundedScintillaSelection(QSGNode* root, QQuickWindow* window, const 
             else rows.append(rectangle);
         }
         if (!layer.contour) {
-            layer.contour = new RoundedSelectionNode;
-            layer.parent->appendChildNode(layer.contour);
-        }
+            layer.contour = new RoundedSelectionNode(range);
+        } else layer.parent->removeChildNode(layer.contour);
+        layer.parent->appendChildNode(layer.contour);
         layer.contour->synchronize(window, rows, color);
+    }
     }
 }
 }
