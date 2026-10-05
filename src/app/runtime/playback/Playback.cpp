@@ -3,7 +3,6 @@
 #include "app/services/EditorSyncController.h"
 #include "runtime/Shared.h"
 
-#include "BracketScopeHighlighter.h"
 #include "audio/PreviewAudioPlaybackFlowPolicy.h"
 #include "QtPreviewSfxRuntime.h"
 #include "SimaiParser.h"

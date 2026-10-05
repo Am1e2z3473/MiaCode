@@ -2889,6 +2889,10 @@ The file may be open in preview, a media player, File Explorer preview pane, or 
         <source>Correct full-width characters only</source>
         <translation>Correct full-width characters only</translation>
     </message>
+    <message id="preferences.editor_auto_wrap">
+        <source>Word wrap</source>
+        <translation>Word wrap</translation>
+    </message>
     <message id="preferences.editor_scroll_past_end">
         <source>Scroll to top of final line</source>
         <translation>Scroll to top of final line</translation>

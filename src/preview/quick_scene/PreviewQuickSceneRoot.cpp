@@ -1031,19 +1031,20 @@ QSGNode* PreviewQuickSceneRoot::updatePaintNode(QSGNode* oldNode, UpdatePaintNod
         return root;
     }
 
+    const bool releaseStorage = preparedCache_.key().storageGeneration != state->sceneStorageGeneration;
     const bool cacheRebuilt = preparedCache_.sync(*state);
     if (cacheRebuilt) {
-        guideCursor_.reset();
-        headCursor_.reset();
-        trackCursor_.reset();
-        slideMotionCursor_.reset();
-        judgeEffectCursor_.reset();
-        judgeFireworkCursor_.reset();
-        touchCursor_.reset();
-        touchJudgeCursor_.reset();
-        touchHoldCursor_.reset();
-        chartReviewCursor_.reset();
-        maimuriDxJudgeCursor_.reset();
+        guideCursor_.reset(releaseStorage);
+        headCursor_.reset(releaseStorage);
+        trackCursor_.reset(releaseStorage);
+        slideMotionCursor_.reset(releaseStorage);
+        judgeEffectCursor_.reset(releaseStorage);
+        judgeFireworkCursor_.reset(releaseStorage);
+        touchCursor_.reset(releaseStorage);
+        touchJudgeCursor_.reset(releaseStorage);
+        touchHoldCursor_.reset(releaseStorage);
+        chartReviewCursor_.reset(releaseStorage);
+        maimuriDxJudgeCursor_.reset(releaseStorage);
     }
 
     const double playheadSeconds = state->playheadSeconds;

@@ -11,6 +11,7 @@ Item {
     required property var commands
     required property var editorController
     required property var editorSync
+    required property var analysisSession
     required property var preferences
     required property var latency
     required property var pages
@@ -345,6 +346,7 @@ Item {
         documentSession: root.documentSession
         editorController: root.editorController
         syncController: root.editorSync
+        analysisSession: root.analysisSession
         preferences: root.preferences
         onNormalizeChartRequested: root.pages.openNormalizeWholeChart()
     }

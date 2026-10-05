@@ -1,7 +1,6 @@
 #include "runtime/preview/StageMediaHost.h"
 #include "runtime/Shared.h"
 
-#include "BracketScopeHighlighter.h"
 #include "QtPreviewSfxRuntime.h"
 #include "SimaiParser.h"
 #include "app/quick_shell/QuickShellPreviewCompositeSurface.h"

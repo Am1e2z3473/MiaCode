@@ -76,7 +76,9 @@ def git_tree(*paths: str) -> bytes:
 
 def download(url: str, dest: Path):
     dest.parent.mkdir(parents=True, exist_ok=True)
-    urllib.request.urlretrieve(url, dest)
+    request = urllib.request.Request(url, headers={"User-Agent": "MiaCode-CI/1.0"})
+    with urllib.request.urlopen(request) as response, dest.open("wb") as output:
+        shutil.copyfileobj(response, output)
 
 
 def extract_archive(archive: Path, dest: Path):
@@ -252,7 +254,7 @@ def provision_windows_ffmpeg():
             print(f"Using existing FFmpeg preview SDK: {sdk}")
             return
         script = ROOT / "scripts" / "ffmpeg" / "trim" / "build-trimmed-ffmpeg.ps1"
-        run(["powershell", "-ExecutionPolicy", "Bypass", "-File", script, "-OutputDir", sdk, "-Jobs", JOBS])
+        run(["powershell", "-ExecutionPolicy", "Bypass", "-File", script, "-OutputDir", sdk, "-Jobs", cpu_jobs()])
         return
     sdk = dest_dir / "dev"
     if (sdk / "include" / "libavcodec").is_dir() and (sdk / "bin" / "avcodec-62.dll").is_file():
@@ -266,7 +268,7 @@ def provision_windows_ffmpeg():
         download(url, archive)
         extract_archive(archive, extracted)
         include = next(path for path in extracted.rglob("libavcodec") if path.parent.name == "include")
-        src = include.parent
+        src = include.parent.parent
         if sdk.exists():
             shutil.rmtree(sdk)
         shutil.copytree(src / "include", sdk / "include")
@@ -493,9 +495,9 @@ WINDOWS = {
         "host": "windows_arm64",
         "generator": "Ninja Multi-Config",
         "ffmpeg_dir": "winarm64",
-        "ffmpeg_url": "https://github.com/BtbN/FFmpeg-Builds/releases/download/autobuild-2026-09-12-13-12/ffmpeg-n8.1.2-52-g5a03dfa0f6-winarm64-gpl-8.1.zip",
+        "ffmpeg_url": "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-n8.1-latest-winarm64-gpl-8.1.zip",
         "ffmpeg_archive": "ffmpeg.zip",
-        "ffmpeg_dev_url": "https://github.com/BtbN/FFmpeg-Builds/releases/download/autobuild-2026-09-12-13-12/ffmpeg-n8.1.2-52-g5a03dfa0f6-winarm64-lgpl-shared-8.1.zip",
+        "ffmpeg_dev_url": "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-n8.1-latest-winarm64-lgpl-shared-8.1.zip",
     },
 }
 

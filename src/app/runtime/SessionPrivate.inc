@@ -104,7 +104,6 @@
     void applyWaveformData(const std::shared_ptr<const miacode::waveform::WaveformData>& waveformData);
     void refreshWaveformCache();
     void refreshWaveformCache(double knownDurationSeconds);
-    void refreshTimelineQuickModelFromCurrentText();
     void applyLatestTimelinePreviewStateToPausedPreview();
     void scheduleTimelineRefresh();
     void refreshTimelineMetadata();

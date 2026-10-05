@@ -1022,6 +1022,7 @@ void PreviewRuntime::reset(bool releaseStorage)
     const auto presentationMode = frameState_.media.presentationMode;
     if (releaseStorage) {
         frameState_.noteMarkers = QVector<TimelineNoteMarker>();
+        ++frameState_.sceneStorageGeneration;
     } else {
         frameState_.noteMarkers.clear();
     }

@@ -280,13 +280,13 @@ QString DocumentModel::chartText() const
 
 void DocumentModel::setChartText(const QString& value)
 {
-    if (workspace_ == nullptr) return;
+    if (workspace_ == nullptr || chartText() == value) return;
     if (!runWorkspaceMutation([&] {
             return workspace_->replaceActiveDifficultyChart(value).accepted;
         })) {
         return;
     }
-    publishWorkspaceCommit(WorkspaceCommitKind::Incremental);
+    publishWorkspaceCommit(WorkspaceCommitKind::ChartText);
 }
 
 QString DocumentModel::metadataTitle() const
@@ -1602,15 +1602,19 @@ bool DocumentModel::removeDifficulty(int id)
 int DocumentModel::chartPosition(int line, int column) const
 {
     const QString text = chartText();
-    int position = 0;
-    int currentLine = 1;
-    while (currentLine < qMax(1, line) && position < text.size()) {
-        const int newline = text.indexOf(QLatin1Char('\n'), position);
-        if (newline < 0) return text.size();
-        position = newline + 1;
-        ++currentLine;
+    if (positionIndexRevision_ != documentRevision_ || positionIndexGeneration_ != documentGeneration_
+        || positionIndexDifficulty_ != currentDifficultyId()) {
+        positionLineStarts_ = {0};
+        for (int i = 0; i < text.size(); ++i)
+            if (text[i] == QLatin1Char('\n')) positionLineStarts_.append(i + 1);
+        positionIndexRevision_ = documentRevision_;
+        positionIndexGeneration_ = documentGeneration_;
+        positionIndexDifficulty_ = currentDifficultyId();
     }
-    return qBound(position, position + qMax(0, column - 1), text.size());
+    const int row = qMax(0, line - 1);
+    if (row >= positionLineStarts_.size()) return text.size();
+    const int position = positionLineStarts_[row];
+    return qBound(position, position + qMax(0, column - 1), int(text.size()));
 }
 bool DocumentModel::applyDesignerSlots(
     const QVariantList& slotValues, bool unified, const QString& canonicalName)
@@ -1687,6 +1691,7 @@ void DocumentModel::logEditorDocumentState(const QString& reason, int difficulty
 
 QVariantList DocumentModel::bookmarksForDifficulty(int difficultyId) const
 {
+    if (bookmarkCache_.contains(difficultyId)) return bookmarkCache_.value(difficultyId);
     QVariantList bookmarks;
     if (workspace_ == nullptr) return bookmarks;
     const SimaiDifficultyData* difficulty = workspace_->document().difficulty(difficultyId);
@@ -1704,7 +1709,18 @@ QVariantList DocumentModel::bookmarksForDifficulty(int difficultyId) const
             {QStringLiteral("title"), bookmark->title},
         });
     }
+    bookmarkCache_.insert(difficultyId, bookmarks);
     return bookmarks;
+}
+
+void DocumentModel::setEditorBookmarks(int difficultyId, const QVariantList& bookmarks)
+{
+    const bool changed = bookmarkCache_.value(difficultyId) != bookmarks;
+    bookmarkCache_.insert(difficultyId, bookmarks);
+    if (changed) {
+        ++bookmarkGeneration_;
+        emit bookmarksChanged();
+    }
 }
 
 void DocumentModel::navigateToBookmark(int difficultyId, int line)
@@ -1746,7 +1762,7 @@ void DocumentModel::publishWorkspaceCommit(
     if (replacement) {
         ++documentGeneration_;
     }
-    refreshUnifiedDesignerState();
+    if (kind != WorkspaceCommitKind::ChartText) refreshUnifiedDesignerState();
     emitDocumentStateChanged(kind);
     if (replacement) emit documentReplaced();
 }
@@ -1754,7 +1770,9 @@ void DocumentModel::publishWorkspaceCommit(
 void DocumentModel::emitDocumentStateChanged(WorkspaceCommitKind kind)
 {
     refreshDocumentState();
-    if (kind != WorkspaceCommitKind::SavePoint) {
+    if (kind == WorkspaceCommitKind::ChartText) emit chartTextChanged();
+    if (kind != WorkspaceCommitKind::SavePoint && kind != WorkspaceCommitKind::ChartText) {
+        bookmarkCache_.clear();
         emit chartTextChanged();
         emit metadataChanged();
         emit unifiedDesignerEnabledChanged();
@@ -1903,22 +1921,19 @@ QString DocumentModel::chartTransformMoreLabel() const
     return qtTrId("action.transform.more");
 }
 
-QVariantMap DocumentModel::transformChartSelection(
+miacode::editor::SimaiTextEditResult DocumentModel::transformChartSelection(
     const QString& text, int anchor, int position, const QString& opId) const
 {
-    QVariantMap transaction;
-    transaction.insert(QStringLiteral("consumed"), false);
-    transaction.insert(QStringLiteral("hasEdit"), false);
-    transaction.insert(QStringLiteral("undoGroup"), true);
-    transaction.insert(QStringLiteral("changed"), 0);
+    miacode::editor::SimaiTextEditResult result;
+    result.transaction.anchor = anchor;
+    result.transaction.position = position;
 
     const int begin = qBound(0, qMin(anchor, position), text.size());
     const int end = qBound(begin, qMax(anchor, position), text.size());
     if (begin >= end) {
-        // Every one of these edits a range, so an empty selection is a
-        // no-target, not a whole-chart shortcut.
-        transaction.insert(QStringLiteral("error"), QStringLiteral("no_selection"));
-        return transaction;
+        // Chart transforms target the selected range.
+        result.error = QStringLiteral("no_selection");
+        return result;
     }
 
     const auto specs = miacode::ui::chartTransformSpecs();
@@ -1927,8 +1942,8 @@ QVariantMap DocumentModel::transformChartSelection(
                                        return candidate.id == opId;
                                    });
     if (spec == specs.cend()) {
-        transaction.insert(QStringLiteral("error"), QStringLiteral("unknown_transform"));
-        return transaction;
+        result.error = QStringLiteral("unknown_transform");
+        return result;
     }
 
     const QString selected = text.mid(begin, end - begin);
@@ -1947,28 +1962,30 @@ QVariantMap DocumentModel::transformChartSelection(
         replacement = transformedFull.mid(begin, transformedFull.size() - untouchedSuffix - begin);
     }
 
-    transaction.insert(QStringLiteral("consumed"), true);
-    transaction.insert(QStringLiteral("changed"), changed);
+    result.consumed = true;
+
     if (replacement == selected) {
-        return transaction;
+        return result;
     }
 
     const int transformedEnd = begin + replacement.size();
     const bool forward = position >= anchor;
-    transaction.insert(QStringLiteral("hasEdit"), true);
-    transaction.insert(QStringLiteral("replacementStart"), begin);
-    transaction.insert(QStringLiteral("replacementEnd"), end);
-    transaction.insert(QStringLiteral("replacementText"), replacement);
-    transaction.insert(QStringLiteral("anchor"), forward ? begin : transformedEnd);
-    transaction.insert(QStringLiteral("position"), forward ? transformedEnd : begin);
-    return transaction;
+    result.transaction.hasEdit = true;
+    result.transaction.replacementStart = begin;
+    result.transaction.replacementEnd = end;
+    result.transaction.replacementText = replacement;
+    result.transaction.anchor = forward ? begin : transformedEnd;
+    result.transaction.position = forward ? transformedEnd : begin;
+    return result;
 }
 
 QVariantMap DocumentModel::selectionBeatSummary(
     const QString& text, int anchor, int position) const
 {
-    const miacode::chart_selection::ChartSelectionBeatSummary summary =
-        miacode::chart_selection::summarizeChartSelectionBeats(text, anchor, position);
+    if (anchor == position) return {{QStringLiteral("totalCommaCount"), 0},
+        {QStringLiteral("parts"), QVariantList{}}, {QStringLiteral("exact"), true}};
+    selectionBeatIndex_.setText(text);
+    const auto summary = selectionBeatIndex_.summarize(anchor, position);
     QVariantList parts;
     for (const miacode::chart_selection::ChartSelectionBeatPart& part : summary.parts) {
         parts.append(QVariantMap{
@@ -1983,23 +2000,16 @@ QVariantMap DocumentModel::selectionBeatSummary(
     };
 }
 
-QVariantMap DocumentModel::normalizeChartSelection(
+miacode::editor::SimaiTextEditResult DocumentModel::normalizeChartSelection(
     const QString& text, int anchor, int position, const QVariantMap& options) const
 {
-    // Shaped as one of SourceEditor's editor transactions so the existing apply
-    // path records it on the undo stack like any other edit.
-    QVariantMap transaction;
-    transaction.insert(QStringLiteral("consumed"), false);
-    transaction.insert(QStringLiteral("hasEdit"), false);
-    transaction.insert(QStringLiteral("undoGroup"), true);
-    if (workspace_ == nullptr) {
-        transaction.insert(QStringLiteral("error"), QStringLiteral("workspace_unavailable"));
-        return transaction;
-    }
+    miacode::editor::SimaiTextEditResult result;
+    result.transaction.anchor = anchor;
+    result.transaction.position = position;
 
     const int begin = qBound(0, qMin(anchor, position), text.size());
     const int end = qBound(begin, qMax(anchor, position), text.size());
-    // No selection means the whole chart, matching the Widgets entry.
+    // An empty selection targets the whole chart.
     const int selectionStart = begin == end ? 0 : begin;
     const int selectionEnd = begin == end ? text.size() : end;
 
@@ -2010,28 +2020,27 @@ QVariantMap DocumentModel::normalizeChartSelection(
         miacode::simai::buildTimingMetadata(workspace_->document()),
         normalizeOptionsFromVariant(options));
     if (!normalized.ok) {
-        transaction.insert(QStringLiteral("error"), normalized.errorMessage);
-        return transaction;
+        result.error = normalized.errorMessage;
+        return result;
     }
 
     const QString replacement = miacode::chart_transform::composeNormalizedSelectionReplacement(
         text, selectionStart, selectionEnd, normalized.text);
-    transaction.insert(QStringLiteral("consumed"), true);
+    result.consumed = true;
     if (replacement == text.mid(selectionStart, selectionEnd - selectionStart)) {
-        // Already normalized: consumed but with no edit, so the caller can say
-        // so instead of recording an undo step that changes nothing.
-        return transaction;
+        // The selected range matches the normalization output.
+        return result;
     }
 
     const int transformedEnd = selectionStart + replacement.size();
     const bool forward = position >= anchor;
-    transaction.insert(QStringLiteral("hasEdit"), true);
-    transaction.insert(QStringLiteral("replacementStart"), selectionStart);
-    transaction.insert(QStringLiteral("replacementEnd"), selectionEnd);
-    transaction.insert(QStringLiteral("replacementText"), replacement);
-    transaction.insert(QStringLiteral("anchor"), forward ? selectionStart : transformedEnd);
-    transaction.insert(QStringLiteral("position"), forward ? transformedEnd : selectionStart);
-    return transaction;
+    result.transaction.hasEdit = true;
+    result.transaction.replacementStart = selectionStart;
+    result.transaction.replacementEnd = selectionEnd;
+    result.transaction.replacementText = replacement;
+    result.transaction.anchor = forward ? selectionStart : transformedEnd;
+    result.transaction.position = forward ? transformedEnd : selectionStart;
+    return result;
 }
 
 QVariantMap DocumentModel::normalizeOptions() const

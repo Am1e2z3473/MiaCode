@@ -78,7 +78,7 @@ public:
     QString editorText() const;
     void scheduleTimelineRefresh();
     void refreshTimelineMetadata();
-    void refreshTimelineQuickModelFromCurrentText();
+    bool refreshTimelineQuickModelFromCurrentText();
     bool timelineTabIsForeground() const;
     bool quickTimelineBridgeReady() const;
     void flushDeferredTimelineBridgeState();

@@ -15,11 +15,9 @@ struct ExpectedTransaction {
     int anchor = 0;
     int position = 0;
     bool hasEdit = false;
-    bool undoGroup = false;
     int replacementStart = 0;
     int replacementEnd = 0;
     QString replacementText;
-    bool insertsBlock = false;
 };
 
 struct ExpectedResult {
@@ -45,23 +43,23 @@ bool expect(bool condition, const QString& message, QTextStream& out, int* faile
     return false;
 }
 
-void expectResult(const SimaiTextEditResult& actual, const ExpectedResult& expected,
+void expectResult(const QString& input, const SimaiTextEditResult& actual, const ExpectedResult& expected,
                   const QString& label, QTextStream& out, int* failed)
 {
     expect(actual.consumed == expected.consumed, label + QStringLiteral(" consumed"), out, failed);
     expect(actual.transaction.hasEdit == expected.transaction.hasEdit,
            label + QStringLiteral(" transaction hasEdit"), out, failed);
-    expect(actual.transaction.undoGroup == expected.transaction.undoGroup,
-           label + QStringLiteral(" transaction undoGroup"), out, failed);
-    expect(actual.transaction.text == expected.transaction.text,
+    QString applied = input;
+    if (actual.transaction.hasEdit) applied.replace(actual.transaction.replacementStart,
+        actual.transaction.replacementEnd - actual.transaction.replacementStart, actual.transaction.replacementText);
+    expect(applied == expected.transaction.text,
            label + QStringLiteral(" transaction text"), out, failed);
     expect(actual.transaction.anchor == expected.transaction.anchor
                && actual.transaction.position == expected.transaction.position,
            label + QStringLiteral(" transaction selection/caret"), out, failed);
     expect(actual.transaction.replacementStart == expected.transaction.replacementStart
                && actual.transaction.replacementEnd == expected.transaction.replacementEnd
-               && actual.transaction.replacementText == expected.transaction.replacementText
-               && actual.transaction.insertsBlock == expected.transaction.insertsBlock,
+               && actual.transaction.replacementText == expected.transaction.replacementText,
            label + QStringLiteral(" transaction local replacement span"), out, failed);
     expect(actual.completion.active == expected.completion.active
                && actual.completion.opening == expected.completion.opening
@@ -80,114 +78,113 @@ int main(int argc, char** argv)
     QTextStream out(stdout);
     int failed = 0;
 
-    // Each independent v1 event supplies every input and every expected output
-    // field. A new result field cannot silently escape the shared runner.
+    // Each case describes the input, replacement span and completion result.
     const QList<PolicyCase> cases = {
         // Half-width normalization, carried over from the Widgets editor's spec:
         // that editor had its own copy of the conversion, and the policy — the
         // one v2 actually runs — had no coverage for these characters.
         {QStringLiteral("ideographic comma normalizes to a slash separator"),
          {QString(), 0, 0, QStringLiteral("、"), Qt::Key_unknown, Qt::NoModifier,
-          true, true, false, true, QString()},
-         {true, {QStringLiteral("/"), 1, 1, true, true, 0, 0, QStringLiteral("/"), false}, {}}},
+          true, false, true, QString()},
+         {true, {QStringLiteral("/"), 1, 1, true, 0, 0, QStringLiteral("/")}, {}}},
         {QStringLiteral("full-width comma normalizes to the beat separator"),
          {QString(), 0, 0, QStringLiteral("，"), Qt::Key_unknown, Qt::NoModifier,
-          true, true, false, true, QString()},
-         {true, {QStringLiteral(","), 1, 1, true, true, 0, 0, QStringLiteral(","), false}, {}}},
+          true, false, true, QString()},
+         {true, {QStringLiteral(","), 1, 1, true, 0, 0, QStringLiteral(",")}, {}}},
         {QStringLiteral("full-width slash, hash and colon convert to half width"),
          {QString(), 0, 0, QStringLiteral("／＃："), Qt::Key_unknown, Qt::NoModifier,
-          true, true, false, true, QString()},
-         {true, {QStringLiteral("/#:"), 3, 3, true, true, 0, 0, QStringLiteral("/#:"), false}, {}}},
+          true, false, true, QString()},
+         {true, {QStringLiteral("/#:"), 3, 3, true, 0, 0, QStringLiteral("/#:")}, {}}},
         {QStringLiteral("shift-6 forces a caret regardless of the IME's glyph"),
          {QString(), 0, 0, QStringLiteral("＾"), Qt::Key_6, Qt::ShiftModifier,
-          false, true, false, true, QString()},
-         {true, {QStringLiteral("^"), 1, 1, true, true, 0, 0, QStringLiteral("^"), false}, {}}},
+          true, false, true, QString()},
+         {true, {QStringLiteral("^"), 1, 1, true, 0, 0, QStringLiteral("^")}, {}}},
         {QStringLiteral("half-width conversion is off when the preference is off"),
          {QString(), 0, 0, QStringLiteral("，"), Qt::Key_unknown, Qt::NoModifier,
-          true, false, false, true, QString()},
-         {true, {QStringLiteral("，"), 1, 1, true, true, 0, 0, QStringLiteral("，"), false}, {}}},
+          false, false, true, QString()},
+         {true, {QStringLiteral("，"), 1, 1, true, 0, 0, QStringLiteral("，")}, {}}},
         {QStringLiteral("IME half-width bracket conversion"),
          {QString(), 0, 0, QStringLiteral("【"), Qt::Key_BracketLeft, Qt::NoModifier,
-          true, true, false, true, QString()},
-         {true, {QStringLiteral("[]"), 1, 1, true, true, 0, 0, QStringLiteral("[]"), false},
+          true, false, true, QString()},
+         {true, {QStringLiteral("[]"), 1, 1, true, 0, 0, QStringLiteral("[]")},
           {true, QLatin1Char('['), true, 1,
            {QStringLiteral("8:1]"), QStringLiteral("4:1]"), QStringLiteral("16:3]"),
             QStringLiteral("384:1]")}}}},
         {QStringLiteral("selection replacement"),
          {QStringLiteral("abc"), 1, 2, QStringLiteral("["), Qt::Key_BracketLeft,
-          Qt::NoModifier, false, true, false, true, QString()},
-         {true, {QStringLiteral("a[]c"), 2, 2, true, true, 1, 2, QStringLiteral("[]"), false},
+          Qt::NoModifier, true, false, true, QString()},
+         {true, {QStringLiteral("a[]c"), 2, 2, true, 1, 2, QStringLiteral("[]")},
           {true, QLatin1Char('['), true, 2,
            {QStringLiteral("8:1]"), QStringLiteral("4:1]"), QStringLiteral("16:3]"),
             QStringLiteral("384:1]")}}}},
         {QStringLiteral("repeated text replacement stays local"),
          {QStringLiteral("xx"), 1, 2, QStringLiteral("["), Qt::Key_BracketLeft,
-          Qt::NoModifier, false, true, false, true, QString()},
-         {true, {QStringLiteral("x[]"), 2, 2, true, true, 1, 2, QStringLiteral("[]"), false},
+          Qt::NoModifier, true, false, true, QString()},
+         {true, {QStringLiteral("x[]"), 2, 2, true, 1, 2, QStringLiteral("[]")},
           {true, QLatin1Char('['), true, 2,
            {QStringLiteral("8:1]"), QStringLiteral("4:1]"), QStringLiteral("16:3]"),
             QStringLiteral("384:1]")}}}},
         {QStringLiteral("bracket pair insert"),
          {QStringLiteral("x"), 1, 1, QStringLiteral("{"), Qt::Key_BraceLeft,
-          Qt::NoModifier, false, true, false, true, QString()},
-         {true, {QStringLiteral("x{}"), 2, 2, true, true, 1, 1, QStringLiteral("{}"), false},
+          Qt::NoModifier, true, false, true, QString()},
+         {true, {QStringLiteral("x{}"), 2, 2, true, 1, 1, QStringLiteral("{}")},
           {true, QLatin1Char('{'), true, 2,
            {QStringLiteral("16}"), QStringLiteral("24}"), QStringLiteral("32}")}}}},
         {QStringLiteral("whole BPM completion entry"),
          {QString(), 0, 0, QStringLiteral("("), 0, Qt::NoModifier,
-          false, true, false, true, QStringLiteral("180")},
-         {true, {QStringLiteral("()"), 1, 1, true, true, 0, 0, QStringLiteral("()"), false},
+          true, false, true, QStringLiteral("180")},
+         {true, {QStringLiteral("()"), 1, 1, true, 0, 0, QStringLiteral("()")},
           {true, QLatin1Char('('), true, 1, {QStringLiteral("180)")}}}},
         {QStringLiteral("existing left bracket advances"),
          {QStringLiteral("[8:1]"), 0, 0, QStringLiteral("["), Qt::Key_BracketLeft,
-          Qt::NoModifier, false, true, false, true, QString()},
-         {true, {QStringLiteral("[8:1]"), 1, 1, false, false, 0, 0, QString(), false},
+          Qt::NoModifier, true, false, true, QString()},
+         {true, {QStringLiteral("[8:1]"), 1, 1, false, 0, 0, QString()},
           {true, QLatin1Char('['), false, 1,
            {QStringLiteral("8:1]"), QStringLiteral("4:1]"), QStringLiteral("16:3]"),
             QStringLiteral("384:1]")}}}},
         {QStringLiteral("right bracket skips"),
          {QStringLiteral("[]"), 1, 1, QStringLiteral("]"), Qt::Key_BracketRight,
-          Qt::NoModifier, false, true, false, true, QString()},
-         {true, {QStringLiteral("[]"), 2, 2, false, false, 0, 0, QString(), false}, {}}},
+          Qt::NoModifier, true, false, true, QString()},
+         {true, {QStringLiteral("[]"), 2, 2, false, 0, 0, QString()}, {}}},
         {QStringLiteral("empty pair single delete"),
          {QStringLiteral("[]"), 1, 1, QStringLiteral("\b"), Qt::Key_Backspace,
-          Qt::NoModifier, false, true, false, true, QString()},
-         {true, {QString(), 0, 0, true, true, 0, 2, QString(), false}, {}}},
+          Qt::NoModifier, true, false, true, QString()},
+         {true, {QString(), 0, 0, true, 0, 2, QString()}, {}}},
         {QStringLiteral("ordinary Backspace stays native"),
          {QStringLiteral("abc"), 2, 2, QStringLiteral("\b"), Qt::Key_Backspace,
-          Qt::NoModifier, false, true, false, true, QString()},
-         {false, {QStringLiteral("abc"), 2, 2, false, false, 0, 0, QString(), false}, {}}},
+          Qt::NoModifier, true, false, true, QString()},
+         {false, {QStringLiteral("abc"), 2, 2, false, 0, 0, QString()}, {}}},
         {QStringLiteral("ordinary Delete stays native"),
          {QStringLiteral("abc"), 1, 1, QStringLiteral("\x7f"), Qt::Key_Delete,
-          Qt::NoModifier, false, true, false, true, QString()},
-         {false, {QStringLiteral("abc"), 1, 1, false, false, 0, 0, QString(), false}, {}}},
+          Qt::NoModifier, true, false, true, QString()},
+         {false, {QStringLiteral("abc"), 1, 1, false, 0, 0, QString()}, {}}},
         {QStringLiteral("h hold completion entry"),
          {QString(), 0, 0, QStringLiteral("h"), Qt::Key_H,
-          Qt::NoModifier, false, true, false, true, QString()},
-         {true, {QStringLiteral("h"), 1, 1, true, true, 0, 0, QStringLiteral("h"), false},
+          Qt::NoModifier, true, false, true, QString()},
+         {true, {QStringLiteral("h"), 1, 1, true, 0, 0, QStringLiteral("h")},
           {true, QLatin1Char('['), false, 1,
            {QStringLiteral("[8:1]"), QStringLiteral("[4:1]"), QStringLiteral("[16:3]"),
             QStringLiteral("[384:1]")}}}},
         {QStringLiteral("active bracket completion treats h as a filter character"),
          {QStringLiteral("[]"), 1, 1, QStringLiteral("h"), Qt::Key_H,
-          Qt::NoModifier, false, true, false, true, QString(), true},
-         {true, {QStringLiteral("[h]"), 2, 2, true, true, 1, 1, QStringLiteral("h"), false}, {}}},
+          Qt::NoModifier, true, false, true, QString(), true},
+         {true, {QStringLiteral("[h]"), 2, 2, true, 1, 1, QStringLiteral("h")}, {}}},
         {QStringLiteral("Enter line break"),
          {QStringLiteral("x"), 1, 1, QString(), Qt::Key_Return,
-          Qt::NoModifier, false, true, false, true, QString()},
-         {true, {QStringLiteral("x\n"), 2, 2, true, true, 1, 1, QStringLiteral("\n"), true}, {}}},
+          Qt::NoModifier, true, false, true, QString()},
+         {true, {QStringLiteral("x\n"), 2, 2, true, 1, 1, QStringLiteral("\n")}, {}}},
         {QStringLiteral("Ctrl+Enter line break"),
          {QStringLiteral("x"), 1, 1, QString(), Qt::Key_Return,
-          Qt::ControlModifier, false, true, false, true, QString()},
-         {true, {QStringLiteral("x\n"), 2, 2, true, true, 1, 1, QStringLiteral("\n"), true}, {}}},
+          Qt::ControlModifier, true, false, true, QString()},
+         {true, {QStringLiteral("x\n"), 2, 2, true, 1, 1, QStringLiteral("\n")}, {}}},
         {QStringLiteral("overwrite mode falls through"),
          {QStringLiteral("x"), 1, 1, QStringLiteral("["), Qt::Key_BracketLeft,
-          Qt::NoModifier, false, true, true, true, QString()},
-         {false, {QStringLiteral("x"), 1, 1, false, false, 0, 0, QString(), false}, {}}},
+          Qt::NoModifier, true, true, true, QString()},
+         {false, {QStringLiteral("x"), 1, 1, false, 0, 0, QString()}, {}}},
     };
 
     for (const PolicyCase& policyCase : cases) {
-        expectResult(miacode::editor::applySimaiTextEditPolicy(policyCase.request),
+        expectResult(policyCase.request.text, miacode::editor::applySimaiTextEditPolicy(policyCase.request),
                      policyCase.expected, policyCase.label, out, &failed);
     }
 
@@ -226,7 +223,7 @@ int main(int argc, char** argv)
         const auto result = miacode::editor::applySimaiTextEditPolicy(request);
         const bool ok = !result.consumed
             && result.suppressFallbackInsert == fallbackCase.suppress
-            && result.transaction.text == QStringLiteral("abc");
+            && !result.transaction.hasEdit;
         out << (ok ? "[PASS] " : "[FAIL] ") << fallbackCase.label << '\n';
         if (!ok) ++failed;
     }
@@ -253,8 +250,7 @@ int main(int argc, char** argv)
         request.input = nonTextCase.input;
         request.key = nonTextCase.key;
         const auto result = miacode::editor::applySimaiTextEditPolicy(request);
-        const bool ok = !result.consumed && !result.transaction.hasEdit
-            && result.transaction.text == QStringLiteral("abc");
+        const bool ok = !result.consumed && !result.transaction.hasEdit;
         out << (ok ? "[PASS] " : "[FAIL] ") << nonTextCase.label << '\n';
         if (!ok) ++failed;
     }
@@ -282,7 +278,10 @@ int main(int argc, char** argv)
         request.input = textCase.input;
         request.key = textCase.key;
         const auto result = miacode::editor::applySimaiTextEditPolicy(request);
-        const bool ok = result.consumed && result.transaction.text == textCase.expected;
+        QString applied = request.text;
+        if (result.transaction.hasEdit) applied.replace(result.transaction.replacementStart,
+            result.transaction.replacementEnd - result.transaction.replacementStart, result.transaction.replacementText);
+        const bool ok = result.consumed && applied == textCase.expected;
         out << (ok ? "[PASS] " : "[FAIL] ") << textCase.label << '\n';
         if (!ok) ++failed;
     }

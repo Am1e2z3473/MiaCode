@@ -2,7 +2,6 @@
 #include "runtime/Shared.h"
 
 #include "app/ui/export/ExportSession.h"
-#include "BracketScopeHighlighter.h"
 #include "QtPreviewSfxRuntime.h"
 #include "SimaiParser.h"
 #include "app/quick_shell/QuickShellPreviewCompositeSurface.h"

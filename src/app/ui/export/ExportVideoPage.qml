@@ -857,9 +857,5 @@ Rectangle {
             if (!exportRangeEndField.activeFocus)
                 exportRangeEndField.text = root.session.exportEndSeconds.toFixed(3)
         }
-
-        function onSelectionRangeApplied() {
-            exportRangeSelector.seekToSelectedStart()
-        }
     }
 }

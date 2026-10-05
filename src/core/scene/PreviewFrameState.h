@@ -259,6 +259,7 @@ struct PreviewFrameState {
     // kept only to stay independent of any future scene-time clamping.
     double hudPlayheadSecondsOverride = std::numeric_limits<double>::quiet_NaN();
     quint64 sceneContentRevision = 0;
+    quint64 sceneStorageGeneration = 0;
     double fpsDisplay = 0.0;
     double tickFpsDisplay = 0.0;
     double updateRequestFpsDisplay = 0.0;
