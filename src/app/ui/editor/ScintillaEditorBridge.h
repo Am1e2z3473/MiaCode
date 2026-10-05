@@ -24,6 +24,8 @@ class ScintillaEditorBridge : public ScintillaQuick_item
     Q_PROPERTY(miacode::EditorSyncController* syncController READ syncController WRITE setSyncController NOTIFY bindingsChanged)
     Q_PROPERTY(AnalysisModel* analysisSession READ analysisSession WRITE setAnalysisSession NOTIFY bindingsChanged)
     Q_PROPERTY(bool navigationVisible READ navigationVisible WRITE setNavigationVisible NOTIFY bindingsChanged)
+    // The hosting QML surface owns the theme fill, including wallpaper opacity.
+    Q_PROPERTY(QColor sceneBackgroundColor READ sceneBackgroundColor CONSTANT)
     Q_PROPERTY(QVariantMap palette READ palette WRITE setPalette NOTIFY paletteChanged)
     Q_PROPERTY(int blockSpacing READ blockSpacing WRITE setBlockSpacing NOTIFY appearanceChanged)
     Q_PROPERTY(bool scrollPastEnd READ scrollPastEnd WRITE setScrollPastEnd NOTIFY appearanceChanged)
@@ -42,6 +44,7 @@ class ScintillaEditorBridge : public ScintillaQuick_item
     Q_PROPERTY(QVariantList bookmarks READ bookmarks NOTIFY bookmarksChanged)
     Q_PROPERTY(bool imeComposing READ imeComposing NOTIFY imeComposingChanged)
 public:
+    QColor sceneBackgroundColor() const { return Qt::transparent; }
     explicit ScintillaEditorBridge(QQuickItem* parent = nullptr);
     ~ScintillaEditorBridge() override;
     DocumentModel* documentSession() const { return documentSession_; }

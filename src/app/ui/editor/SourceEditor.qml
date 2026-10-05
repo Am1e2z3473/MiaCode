@@ -101,6 +101,14 @@ Rectangle {
     AppMenu {
         id: editorContextMenu
         objectName: "editorContextMenu"
+        property string pendingOperation: ""
+        onClosed: {
+            const operation = pendingOperation
+            pendingOperation = ""
+            sourceArea.forceActiveFocus()
+            if (operation.length > 0)
+                executeOperation(operation)
+        }
         parent: Overlay.overlay
 
         property rect placement: Qt.rect(0, 0, 0, 0)
@@ -196,6 +204,9 @@ Rectangle {
         }
 
         function triggerOperation(operation) {
+            pendingOperation = operation
+        }
+        function executeOperation(operation) {
             switch (operation) {
             case "cut": root.cut(); break
             case "copy": root.copy(); break
@@ -291,7 +302,7 @@ Rectangle {
         anchors.left: parent.left
         anchors.right: verticalBar.left
         anchors.top: findReplaceBar.bottom
-        anchors.bottom: horizontalBar.top
+        anchors.bottom: parent.bottom
         documentSession: root.documentSession
         controller: root.editorController
         syncController: root.syncController
@@ -317,12 +328,22 @@ Rectangle {
             color: Theme.colors.accent.primary
             visible: sourceArea.followCaretVisible
         }
+        // Popup keyboard focus belongs to the menu; the editing location stays
+        // visible until the popup closes and returns focus to Scintilla.
+        Rectangle {
+            x: sourceArea.cursorRectangle.x
+            y: sourceArea.cursorRectangle.y
+            width: 2
+            height: sourceArea.cursorRectangle.height
+            color: Theme.colors.text.editor
+            visible: editorContextMenu.visible && !sourceArea.readonly
+                     && !root.syncController.followPlaybackActive
+        }
         onSelectionChanged: {
             root.viewState.editorCursorLine = cursorLine
             root.viewState.editorCursorColumn = cursorColumn
         }
         onActiveFocusChanged: {
-            root.Window.window.sourceEditorFocused = activeFocus
             if (!activeFocus && !completionPopup.pointerInside)
                 root.editorController.closeCompletion()
         }
@@ -344,22 +365,16 @@ Rectangle {
         position: sourceArea.vertical_scroll_value / Math.max(1, sourceArea.vertical_scroll_max + sourceArea.vertical_scroll_page)
         onPositionChanged: if (pressed) sourceArea.scrollVertical(Math.round(position * (sourceArea.vertical_scroll_max + sourceArea.vertical_scroll_page)))
     }
-    AppScrollBar {
-        id: horizontalBar
-        anchors.left: parent.left
-        anchors.right: verticalBar.left
-        anchors.bottom: parent.bottom
-        orientation: Qt.Horizontal
-        onPressedChanged: if (pressed) sourceArea.beginViewportInteraction()
-        size: sourceArea.horizontal_scroll_page / Math.max(1, sourceArea.horizontal_scroll_max + sourceArea.horizontal_scroll_page)
-        position: sourceArea.horizontal_scroll_value / Math.max(1, sourceArea.horizontal_scroll_max + sourceArea.horizontal_scroll_page)
-        onPositionChanged: if (pressed) sourceArea.scrollHorizontal(Math.round(position * (sourceArea.horizontal_scroll_max + sourceArea.horizontal_scroll_page)))
-    }
     CompletionPopup {
         id: completionPopup
         editor: sourceArea
         controller: root.editorController
         editorScrollY: sourceArea.vertical_scroll_value
+    }
+    Binding {
+        target: root.Window.window
+        property: "sourceEditorFocused"
+        value: sourceArea.activeFocus || editorContextMenu.visible || bookmarkMenu.visible
     }
     Binding {
         target: root.Window.window

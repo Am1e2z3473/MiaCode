@@ -17,6 +17,7 @@ ScintillaEditorBridge::ScintillaEditorBridge(QQuickItem* parent)
 {
     send(SCI_SETCODEPAGE, SC_CP_UTF8);
     send(SCI_USEPOPUP, SC_POPUP_NEVER);
+    send(SCI_SETHSCROLLBAR, false);
     connect(this, &ScintillaQuick_item::textChanged, this, &ScintillaEditorBridge::textMutated);
     connect(this, &ScintillaQuick_item::cursorPositionChanged, this, [this] {
         emit selectionChanged();
@@ -31,6 +32,16 @@ ScintillaEditorBridge::ScintillaEditorBridge(QQuickItem* parent)
         emit selectionChanged();
         emit cursorRectangleChanged();
         emit availabilityChanged();
+        // Match the workspace contract: selection owns the highlight while
+        // nonempty; the current-line fill belongs to an insertion caret.
+        const bool showLine = send(SCI_GETSELECTIONEMPTY);
+        if (bool(send(SCI_GETCARETLINEVISIBLE)) != showLine) {
+            if (showLine) {
+                const QColor fill = palette_.value(QStringLiteral("currentLine")).value<QColor>();
+                send(SCI_SETELEMENTCOLOUR, SC_ELEMENT_CARET_LINE_BACK,
+                     quint32(scintillaquick::rgb_from_color(fill)) | (quint32(fill.alpha()) << 24));
+            } else send(SCI_RESETELEMENTCOLOUR, SC_ELEMENT_CARET_LINE_BACK);
+        }
     });
     connect(this, &QQuickItem::activeFocusChanged, this, [this] { publishContext(false); emit followVisualChanged(); });
     connect(this, &ScintillaQuick_item::fontChanged, this, [this] { styler_.setFont(property("font").value<QFont>()); });
@@ -444,8 +455,11 @@ void ScintillaEditorBridge::mousePressEvent(QMouseEvent* event)
 {
     beginUserInteraction();
     ScintillaQuick_item::mousePressEvent(event);
-    if (event->button() == Qt::RightButton)
+    if (event->button() == Qt::RightButton) {
+        emit selectionChanged();
+        emit cursorRectangleChanged();
         emit contextMenuRequested(event->position().x(), event->position().y());
+    }
     publishContext(true);
 }
 void ScintillaEditorBridge::mouseReleaseEvent(QMouseEvent* event)
