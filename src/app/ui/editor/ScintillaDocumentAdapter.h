@@ -17,6 +17,8 @@ public:
     void clear();
     void drop(const QString& scope);
     void refresh();
+    void captureViewport();
+    bool restoreViewport();
     int bytePosition(int utf16) const;
     int utf16Position(int byte) const;
     const QString& text() const { return text_; }
@@ -27,7 +29,7 @@ private:
         sptr_t pointer = 0;
         int anchor = 0;
         int caret = 0;
-        int firstLine = 0;
+        int topPosition = 0;
         int xOffset = 0;
     };
     void saveViewport();
@@ -36,5 +38,6 @@ private:
     QString scope_;
     QString text_;
     QVector<int> bytes_;
+    bool viewportPending_ = false;
 };
 }

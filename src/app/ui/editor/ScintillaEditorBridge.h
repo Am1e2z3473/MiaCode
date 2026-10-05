@@ -6,6 +6,7 @@
 #include "document/AnalysisModel.h"
 #include "app/services/EditorSyncController.h"
 #include <QtQmlIntegration/qqmlintegration.h>
+#include <optional>
 
 namespace miacode::ui {
 struct ScintillaQuickForeign
@@ -29,6 +30,8 @@ class ScintillaEditorBridge : public ScintillaQuick_item
     Q_PROPERTY(QVariantMap palette READ palette WRITE setPalette NOTIFY paletteChanged)
     Q_PROPERTY(int blockSpacing READ blockSpacing WRITE setBlockSpacing NOTIFY appearanceChanged)
     Q_PROPERTY(bool scrollPastEnd READ scrollPastEnd WRITE setScrollPastEnd NOTIFY appearanceChanged)
+    Q_PROPERTY(QFont effectiveFont READ effectiveFont NOTIFY layoutChanged)
+    Q_PROPERTY(int lineHeight READ lineHeight NOTIFY layoutChanged)
     Q_PROPERTY(int cursorPosition READ cursorPosition WRITE setCursorPosition NOTIFY selectionChanged)
     Q_PROPERTY(int selectionStart READ selectionStart NOTIFY selectionChanged)
     Q_PROPERTY(int selectionEnd READ selectionEnd NOTIFY selectionChanged)
@@ -63,6 +66,8 @@ public:
     void setBlockSpacing(int value);
     bool scrollPastEnd() const { return scrollPastEnd_; }
     void setScrollPastEnd(bool value);
+    QFont effectiveFont() const { return effectiveFont_; }
+    int lineHeight() const { return lineHeight_; }
     int cursorPosition() const;
     void setCursorPosition(int value);
     int selectionStart() const;
@@ -88,6 +93,8 @@ public:
     Q_INVOKABLE void select(int anchor, int position);
     Q_INVOKABLE void selectCurrentLine();
     Q_INVOKABLE void jumpToLine(int line);
+    Q_INVOKABLE int positionAt(qreal x, qreal y) const;
+    Q_INVOKABLE QRectF textPositionRectangle(int position) const;
     Q_INVOKABLE bool applyEditorTransaction(const QVariantMap& transaction);
     Q_INVOKABLE void acceptCompletionFromPopup();
     Q_INVOKABLE void dropDocument(const QString& key);
@@ -102,6 +109,8 @@ signals:
     void bindingsChanged();
     void paletteChanged();
     void appearanceChanged();
+    void layoutChanged();
+    void scenePositionChanged();
     void selectionChanged();
     void cursorRectangleChanged();
     void followVisualChanged();
@@ -113,6 +122,8 @@ signals:
     void bookmarkMenuRequested(int line, qreal x, qreal y);
 protected:
     void componentComplete() override;
+    void updatePolish() override;
+    void geometryChange(const QRectF& newGeometry, const QRectF& oldGeometry) override;
     QSGNode* updatePaintNode(QSGNode* oldNode, UpdatePaintNodeData* data) override;
     void keyPressEvent(QKeyEvent* event) override;
     void mousePressEvent(QMouseEvent* event) override;
@@ -121,6 +132,9 @@ protected:
     void inputMethodEvent(QInputMethodEvent* event) override;
 private:
     void centerCursorInView();
+    void publishLayout();
+    void preserveViewport();
+    void trackScenePosition();
     void seekPreviewToCaret();
     QRectF positionToRectangle(int position) const;
     void synchronizeDocument();
@@ -144,6 +158,26 @@ private:
     QPointer<AnalysisModel> analysisSession_;
     QVariantMap palette_;
     QVariantList bookmarks_;
+    QFont effectiveFont_;
+    int lineHeight_ = 0;
+    QSizeF layoutSize_;
+    QRectF cursorRectangle_;
+    QRectF anchorRectangle_;
+    QRectF followCursorRectangle_;
+    qreal viewportY_ = 0;
+    std::optional<qreal> viewportToRestore_;
+    QVector<QMetaObject::Connection> sceneConnections_;
+    struct NavigationRequest {
+        qulonglong sequence;
+        int difficulty;
+        qulonglong revision;
+        qulonglong generation;
+        int start;
+        int end;
+        bool focus;
+        bool reveal;
+    };
+    std::optional<NavigationRequest> pendingNavigation_;
     qulonglong generation_ = 0;
     bool ready_ = false;
     bool synchronizing_ = false;

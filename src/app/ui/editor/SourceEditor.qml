@@ -13,6 +13,12 @@ Rectangle {
     required property var analysisSession
     property var preferences: null
     property bool navigationVisible: false
+    onNavigationVisibleChanged: {
+        if (!navigationVisible) {
+            editorContextMenu.close()
+            bookmarkMenu.close()
+        }
+    }
     property int pendingBookmarkLine: -1
     signal normalizeChartRequested()
     readonly property var bookmarks: sourceArea.bookmarks
@@ -71,12 +77,17 @@ Rectangle {
     }
     function openContextMenuAt(x, y) {
         sourceArea.forceActiveFocus()
-        const overlay = editorContextMenu.parent
-        const point = sourceArea.mapToItem(overlay, x, y)
-        const line = sourceArea.mapToItem(overlay, sourceArea.cursorRectangle)
+        const position = sourceArea.positionAt(x, y)
+        const line = sourceArea.textPositionRectangle(position)
+        editorContextMenu.anchorPosition = position
+        editorContextMenu.anchorOffset = Qt.point(x - line.x, y - line.y)
         editorContextMenu.prepareItems()
-        editorContextMenu.placeAt(point, line)
+        editorContextMenu.updatePlacement()
         editorContextMenu.open()
+    }
+    function updateMenuPlacement() {
+        if (editorContextMenu.visible) editorContextMenu.updatePlacement()
+        if (bookmarkMenu.visible) bookmarkMenu.updatePlacement()
     }
     AppDialog {
         id: bookmarkTitleDialog
@@ -118,13 +129,21 @@ Rectangle {
         parent: Overlay.overlay
 
         property rect placement: Qt.rect(0, 0, 0, 0)
+        property int anchorPosition: 0
+        property point anchorOffset: Qt.point(0, 0)
         x: placement.x
         y: placement.y
         width: placement.width
         height: placement.height
 
+        function updatePlacement() {
+            const line = sourceArea.textPositionRectangle(anchorPosition)
+            placeAt(sourceArea.mapToItem(parent, line.x + anchorOffset.x, line.y + anchorOffset.y),
+                    sourceArea.mapToItem(parent, line))
+        }
+
         function placeAt(point, lineBounds) {
-            // 点击位置决定水平锚点；当前行决定上下避让，选区长度不参与定位。
+            // 点击位置决定水平锚点，命中行决定上下边缘。
             contentItem.forceLayout()
             const viewportWidth = parent.width
             const viewportHeight = parent.height
@@ -140,7 +159,7 @@ Rectangle {
                 return
             }
 
-            // 右侧空间不足时保留菜单宽度，沿当前行的上下边缘放置。
+            // 右侧空间不足时保留菜单宽度，沿命中行的上下边缘放置。
             const top = Math.max(0, Math.min(lineBounds.y - gap, viewportHeight))
             const bottom = Math.max(0, Math.min(
                 lineBounds.y + lineBounds.height + gap, viewportHeight))
@@ -319,6 +338,9 @@ Rectangle {
         analysisSession: root.analysisSession
         navigationVisible: root.navigationVisible
         font: Theme.codeFont
+        HoverHandler {
+            cursorShape: Qt.IBeamCursor
+        }
         blockSpacing: root.preferences ? root.preferences.editorBlockSpacing : 0
         scrollPastEnd: root.preferences ? root.preferences.editorScrollPastEnd : true
         palette: ({ text: Theme.colors.text.editor,
@@ -366,7 +388,12 @@ Rectangle {
             bookmarkMenu.contextGeneration = root.documentSession.documentOpenGeneration
             // Native margin handling finishes by focusing the item. Open the
             // popup after that event so its keyboard focus stays with the menu.
-            Qt.callLater(() => bookmarkMenu.popup(sourceArea, x, y))
+            Qt.callLater(() => {
+                if (root.navigationVisible && bookmarkMenu.matchesDocument()) {
+                    bookmarkMenu.updatePlacement()
+                    bookmarkMenu.open()
+                }
+            })
         }
     }
     AppScrollBar {
@@ -386,7 +413,6 @@ Rectangle {
         id: completionPopup
         editor: sourceArea
         controller: root.editorController
-        editorScrollY: sourceArea.vertical_scroll_value
     }
     Binding {
         target: root.Window.window
@@ -400,12 +426,25 @@ Rectangle {
     }
     AppMenu {
         id: bookmarkMenu
+        parent: Overlay.overlay
         modal: true
         dim: false
         property string pendingOperation: ""
         property int contextDifficulty: -1
         property double contextRevision: 0
         property double contextGeneration: 0
+        function matchesDocument() {
+            return contextDifficulty === root.documentSession.currentDifficultyId
+                && contextRevision === root.documentSession.documentRevision
+                && contextGeneration === root.documentSession.documentOpenGeneration
+        }
+        function updatePlacement() {
+            const position = root.documentSession.chartPosition(root.pendingBookmarkLine, 1)
+            const line = sourceArea.textPositionRectangle(position)
+            const point = sourceArea.mapToItem(parent, 16, line.y)
+            x = Math.max(0, Math.min(point.x, parent.width - width))
+            y = Math.max(0, Math.min(point.y, parent.height - height))
+        }
         onClosed: {
             const operation = pendingOperation
             pendingOperation = ""
@@ -426,5 +465,32 @@ Rectangle {
     Connections {
         target: root.viewState
         function onEditorClosed(key) { sourceArea.dropDocument(key) }
+    }
+    Connections {
+        target: sourceArea
+        function onLayoutChanged() { root.updateMenuPlacement() }
+        function onScenePositionChanged() { root.updateMenuPlacement() }
+        function onCursorRectangleChanged() { root.updateMenuPlacement() }
+    }
+    Connections {
+        target: editorContextMenu.parent
+        enabled: editorContextMenu.visible || bookmarkMenu.visible
+        function onWidthChanged() { root.updateMenuPlacement() }
+        function onHeightChanged() { root.updateMenuPlacement() }
+    }
+    Connections {
+        target: root.documentSession
+        function onDocumentReplaced() {
+            editorContextMenu.close()
+            bookmarkMenu.close()
+        }
+        function onDocumentStateChanged() {
+            if (editorContextMenu.visible
+                    && (editorContextMenu.contextDifficulty !== root.documentSession.currentDifficultyId
+                        || editorContextMenu.contextRevision !== root.documentSession.documentRevision
+                        || editorContextMenu.contextGeneration !== root.documentSession.documentOpenGeneration))
+                editorContextMenu.close()
+            if (bookmarkMenu.visible && !bookmarkMenu.matchesDocument()) bookmarkMenu.close()
+        }
     }
 }
