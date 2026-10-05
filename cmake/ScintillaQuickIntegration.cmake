@@ -46,6 +46,19 @@ function(miacode_scintillaquick_surface_background)
         }
     }
 
+    // MiaCode's playhead range shares the selection contour renderer. Keep
+    // the indicator capture as the layout source, including overlay updates.
+    for (const auto& indicator : frame.indicator_primitives) {
+        if (indicator.indicator_number == 11) {
+            Scintilla::Internal::Selection_primitive highlight;
+            highlight.rect = indicator.line_rect;
+            highlight.color = indicator.color;
+            highlight.color.setAlpha(indicator.fill_alpha);
+            highlight.layer = Scintilla::Layer::UnderText;
+            frame.selection_primitives.push_back(highlight);
+        }
+    }
+
     m_render_data->captured_caret_primitives = frame.caret_primitives;]=])
     string(FIND "${item_code}" "${original}" match)
     if(match EQUAL -1)
@@ -60,3 +73,36 @@ function(miacode_scintillaquick_surface_background)
     target_sources(ScintillaQuick PRIVATE "${patched_source}")
 endfunction()
 cmake_language(DEFER CALL miacode_scintillaquick_surface_background)
+
+function(miacode_scintillaquick_highlight_layers)
+    set(renderer_source "${CMAKE_CURRENT_SOURCE_DIR}/src/render/scintillaquick_scene_graph_renderer.cpp")
+    file(READ "${renderer_source}" renderer_code)
+    set(original "        appendChildNode(m_text_clip_node);")
+    set(replacement [=[        m_current_line_clip_node = new QSGClipNode();
+        appendChildNode(m_current_line_clip_node);
+        m_current_line_clip_node->appendChildNode(m_current_line_groups[1]);
+        appendChildNode(m_text_clip_node);]=])
+    string(FIND "${renderer_code}" "${original}" match)
+    if(match EQUAL -1)
+        message(FATAL_ERROR "Update the MiaCode ScintillaQuick highlight-layer patch for this dependency revision")
+    endif()
+    string(REPLACE "${original}" "${replacement}" renderer_code "${renderer_code}")
+    string(REPLACE "        m_text_clip_node->appendChildNode(m_current_line_groups[1]);" "" renderer_code "${renderer_code}")
+    string(REPLACE "        update_clip_node(m_text_clip_node, frame.text_rect);" [=[        update_clip_node(m_text_clip_node, frame.text_rect);
+        update_clip_node(m_current_line_clip_node,
+            QRectF(frame.text_rect.left(), frame.text_rect.top(),
+                snapshot.item_size.width() - frame.text_rect.left(), frame.text_rect.height()));]=] renderer_code "${renderer_code}")
+    string(REPLACE "                    current_lines.push_back({primitive.rect, primitive.color});" [=[                    QRectF rect = primitive.rect;
+                    if (primitive.layer == Layer::UnderText) rect.setRight(snapshot.item_size.width());
+                    current_lines.push_back({rect, primitive.color});]=] renderer_code "${renderer_code}")
+    string(REPLACE "        for (const Indicator_primitive& indicator : frame.indicator_primitives) {" [=[        for (const Indicator_primitive& indicator : frame.indicator_primitives) {
+            if (indicator.indicator_number == 11) continue;]=] renderer_code "${renderer_code}")
+    string(REPLACE "    QSGNode* m_indicator_under_group = nullptr;" "    QSGClipNode* m_current_line_clip_node = nullptr;\n    QSGNode* m_indicator_under_group = nullptr;" renderer_code "${renderer_code}")
+    set(patched_source "${CMAKE_CURRENT_BINARY_DIR}/miacode_scintillaquick_scene_graph_renderer.cpp")
+    file(CONFIGURE OUTPUT "${patched_source}" CONTENT "${renderer_code}" @ONLY)
+    get_target_property(sources ScintillaQuick SOURCES)
+    list(REMOVE_ITEM sources src/render/scintillaquick_scene_graph_renderer.cpp)
+    set_property(TARGET ScintillaQuick PROPERTY SOURCES "${sources}")
+    target_sources(ScintillaQuick PRIVATE "${patched_source}")
+endfunction()
+cmake_language(DEFER CALL miacode_scintillaquick_highlight_layers)
