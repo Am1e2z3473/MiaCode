@@ -2,7 +2,6 @@
 
 #include <scintillaquick/scintillaquick_item.h>
 #include <QHash>
-#include <QVector>
 
 namespace miacode::ui {
 
@@ -17,9 +16,9 @@ public:
     void clear();
     void drop(const QString& scope);
     void refresh();
-    void applyChange(int position, int deletedBytes, const QByteArray& inserted);
-    int lineCount() const { return utf16Lines_.size(); }
-    int lineStart(int line) const { return utf16Lines_[line]; }
+    void applyChange(int position, int removedUtf16, const QByteArray& inserted);
+    int lineCount() const { return editor_.send(SCI_GETLINECOUNT); }
+    int lineStart(int line) const { return editor_.send(SCI_INDEXPOSITIONFROMLINE, line, SC_LINECHARACTERINDEX_UTF16); }
     int lineAt(int position) const;
     void captureViewport();
     bool restoreViewport();
@@ -41,8 +40,6 @@ private:
     QHash<QString, Document> documents_;
     QString scope_;
     QString text_;
-    QVector<int> utf16Lines_;
-    QVector<int> byteLines_;
     bool viewportPending_ = false;
 };
 }

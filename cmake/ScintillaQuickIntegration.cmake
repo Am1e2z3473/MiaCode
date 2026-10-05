@@ -75,6 +75,16 @@ function(miacode_scintillaquick_surface_background)
             const bool text_change = int(scn.modificationType) & (SC_MOD_INSERTTEXT | SC_MOD_DELETETEXT);
             request_scene_graph_update(!indicator_change, text_change, false);
             // `textChanged()`]=] patched_code "${patched_code}")
+    # IME queries and Selection attributes share the current logical-line context.
+    foreach(position IN ITEMS pos cur_pos)
+        string(REPLACE "m_core->pdoc->ParaUp(${position})"
+            "m_core->pdoc->LineStart(m_core->pdoc->SciLineFromPosition(${position}))" patched_code "${patched_code}")
+        string(REPLACE "m_core->pdoc->ParaDown(${position})"
+            "m_core->pdoc->LineEnd(m_core->pdoc->SciLineFromPosition(${position}))" patched_code "${patched_code}")
+    endforeach()
+    string(REPLACE "m_core->pdoc->CountUTF16(0, pos)"
+        "(m_core->pdoc->IndexLineStart(line, Scintilla::LineCharacterIndexType::Utf16) + m_core->pdoc->CountUTF16(m_core->pdoc->LineStart(line), pos))"
+        patched_code "${patched_code}")
     # Layout is resolved before MiaCode restores its viewport and applies navigation.
     set(layout_original [=[void ScintillaQuick_item::updatePolish()
 {

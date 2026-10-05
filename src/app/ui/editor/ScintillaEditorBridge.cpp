@@ -49,11 +49,11 @@ ScintillaEditorBridge::ScintillaEditorBridge(QQuickItem* parent)
             const int position = document_.utf16Position(notification.position);
             const int line = document_.lineAt(position);
             const int removed = flags & SC_MOD_DELETETEXT
-                ? document_.utf16Position(notification.position + notification.length) - position : 0;
+                ? QString::fromUtf8(notification.text).size() : 0;
             const int added = flags & SC_MOD_INSERTTEXT ? QString::fromUtf8(notification.text).size() : 0;
             if (styler_.following() && followCaretPosition_ >= position)
                 followCaretPosition_ = qMax(position, followCaretPosition_ - removed) + added;
-            document_.applyChange(notification.position, flags & SC_MOD_DELETETEXT ? notification.length : 0,
+            document_.applyChange(notification.position, removed,
                                   flags & SC_MOD_INSERTTEXT ? notification.text : QByteArray{});
             styler_.invalidate(line, notification.linesAdded);
         }
