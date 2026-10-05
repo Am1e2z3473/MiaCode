@@ -129,7 +129,6 @@ protected:
     void componentComplete() override;
     void updatePolish() override;
     void geometryChange(const QRectF& newGeometry, const QRectF& oldGeometry) override;
-    QSGNode* updatePaintNode(QSGNode* oldNode, UpdatePaintNodeData* data) override;
     void keyPressEvent(QKeyEvent* event) override;
     void mousePressEvent(QMouseEvent* event) override;
     void mouseReleaseEvent(QMouseEvent* event) override;

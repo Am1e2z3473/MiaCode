@@ -56,7 +56,6 @@ void ScintillaDocumentAdapter::activate(const QString& scope, const QString& tex
         if (text_ != text) {
             editor_.sends(SCI_SETTEXT, 0, text.toUtf8().constData());
             editor_.send(SCI_EMPTYUNDOBUFFER);
-            refresh();
         }
         const int length = editor_.send(SCI_GETLENGTH);
         editor_.send(SCI_SETSELECTION, qBound(0, document.caret, length), qBound(0, document.anchor, length));
@@ -70,7 +69,6 @@ void ScintillaDocumentAdapter::activate(const QString& scope, const QString& tex
         const QByteArray replacement = text.toUtf8();
         editor_.sends(SCI_REPLACETARGET, replacement.size(), replacement.constData());
         editor_.send(SCI_ENDUNDOACTION);
-        refresh();
         viewportPending_ = true;
     }
 }
