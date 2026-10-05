@@ -12,7 +12,6 @@ namespace {
 miacode::editor::SimaiTextEditResult untouched(const QString& text, int anchor, int position)
 {
     miacode::editor::SimaiTextEditResult result;
-    result.transaction.text = text;
     result.transaction.anchor = qBound(0, anchor, text.size());
     result.transaction.position = qBound(0, position, text.size());
     return result;
@@ -115,14 +114,13 @@ miacode::editor::SimaiTextEditResult EditorController::process(const miacode::ed
     request.completionActive = completion_.active;
     auto result = miacode::editor::applySimaiTextEditPolicy(request);
     if (result.completion.active) setCompletion(result.completion);
-    else if (completion_.active && result.transaction.hasEdit) filterCompletion(result.transaction.text, result.transaction.position);
     return result;
 }
 
 miacode::editor::SimaiTextEditResult EditorController::acceptCompletion(const QString& text, int anchor, int position)
 {
     auto result = untouched(text, anchor, position);
-    updateCompletionForQml(text, position);
+    updateCompletion(text, position);
     if (!completion_.active || completionIndex_ < 0 || completionIndex_ >= visibleCandidates_.size()) return result;
     const int start = qBound(0, completion_.startPosition, text.size());
     int end = qBound(start, position, text.size());
@@ -137,9 +135,8 @@ miacode::editor::SimaiTextEditResult EditorController::acceptCompletion(const QS
     result.transaction.replacementStart = start;
     result.transaction.replacementEnd = end;
     result.transaction.replacementText = candidate;
-    result.transaction.text.replace(start, end - start, candidate);
     result.transaction.anchor = result.transaction.position = start + candidate.size();
-    result.transaction.hasEdit = result.transaction.undoGroup = true;
+    result.transaction.hasEdit = true;
     result.consumed = true;
     closeCompletion();
     return result;
@@ -163,11 +160,10 @@ void EditorController::triggerCompletion(QChar glyph, const QString& text, int p
     setCompletion(completion);
 }
 
-void EditorController::setDocumentContext(int difficultyId, quint64 revision)
+void EditorController::setDifficulty(int difficultyId)
 {
     if (activeDifficultyId_ != difficultyId) closeCompletion();
     activeDifficultyId_ = difficultyId;
-    documentRevision_ = revision;
 }
 
 void EditorController::setCompletion(const miacode::editor::SimaiCompletionSession& completion)
@@ -198,7 +194,7 @@ void EditorController::filterCompletion(const QString& text, int position)
     emit completionChanged();
 }
 
-void EditorController::updateCompletionForQml(const QString& text, int position)
+void EditorController::updateCompletion(const QString& text, int position)
 {
     if (completion_.active) filterCompletion(text, position);
 }
@@ -231,93 +227,51 @@ void EditorController::closeCompletion()
     emit completionChanged();
 }
 
-QVariantMap EditorController::toQmlTransaction(const miacode::editor::SimaiTextEditResult& result) const
+namespace {
+miacode::editor::SimaiTextEditResult bookmarkEdit(const QString& lineText, int offset,
+                                                const QString& replacement, bool caretAtEnd)
 {
-    const auto& tx = result.transaction;
-    return {{QStringLiteral("consumed"), result.consumed},
-            {QStringLiteral("suppressFallbackInsert"), result.suppressFallbackInsert},
-            {QStringLiteral("hasEdit"), tx.hasEdit},
-            {QStringLiteral("undoGroup"), tx.undoGroup}, {QStringLiteral("replacementStart"), tx.replacementStart},
-            {QStringLiteral("replacementEnd"), tx.replacementEnd}, {QStringLiteral("replacementText"), tx.replacementText},
-            {QStringLiteral("anchor"), tx.anchor}, {QStringLiteral("position"), tx.position}};
-}
-QVariantMap EditorController::processKeyForQml(const QString& text, int anchor, int position, const QString& input, int key, int modifiers) { return toQmlTransaction(processKey(text, anchor, position, input, key, modifiers)); }
-QVariantMap EditorController::acceptCompletionForQml(const QString& text, int anchor, int position) { return toQmlTransaction(acceptCompletion(text, anchor, position)); }
-QVariantMap EditorController::createBookmarkForQml(const QString& text, int line, const QString& title) const
-{
-    const QStringList lines = text.split(QLatin1Char('\n'));
-    const int index = qBound(0, line - 1, qMax(0, lines.size() - 1));
-    int offset = 0;
-    for (int i = 0; i < index; ++i) offset += lines.at(i).size() + 1;
-    const QString replacement = miacode::editor::appendBookmarkComment(lines.at(index), title);
-    if (replacement == lines.at(index)) return toQmlTransaction(untouched(text, offset, offset));
-    auto result = untouched(text, offset, offset);
+    miacode::editor::SimaiTextEditResult result;
+    if (lineText == replacement) return result;
     result.consumed = true;
-    result.transaction.hasEdit = result.transaction.undoGroup = true;
-    result.transaction.replacementStart = offset;
-    result.transaction.replacementEnd = offset + lines.at(index).size();
-    result.transaction.replacementText = replacement;
-    result.transaction.text.replace(offset, lines.at(index).size(), replacement);
-    result.transaction.anchor = result.transaction.position = offset + replacement.size();
-    return toQmlTransaction(result);
+    auto& tx = result.transaction;
+    tx.hasEdit = true;
+    tx.replacementStart = offset;
+    tx.replacementEnd = offset + lineText.size();
+    tx.replacementText = replacement;
+    tx.anchor = tx.position = offset + (caretAtEnd ? replacement.size() : 0);
+    return result;
 }
-QVariantMap EditorController::renameBookmarkForQml(const QString& text, int line, const QString& title) const
-{
-    const QStringList lines = text.split(QLatin1Char('\n'));
-    const int index = line - 1;
-    if (index < 0 || index >= lines.size()) return toQmlTransaction(untouched(text, 0, 0));
-    if (!miacode::editor::parseBookmarkComment(lines.at(index)).has_value()) return toQmlTransaction(untouched(text, 0, 0));
-    int offset = 0; for (int i = 0; i < index; ++i) offset += lines.at(i).size() + 1;
-    auto result = untouched(text, offset, offset);
-    result.consumed = true; result.transaction.hasEdit = result.transaction.undoGroup = true;
-    result.transaction.replacementStart = offset;
-    result.transaction.replacementEnd = offset + lines.at(index).size();
-    result.transaction.replacementText = miacode::editor::renameBookmarkComment(lines.at(index), title);
-    result.transaction.text.replace(result.transaction.replacementStart, result.transaction.replacementEnd - result.transaction.replacementStart, result.transaction.replacementText);
-    result.transaction.anchor = result.transaction.position = result.transaction.replacementStart + result.transaction.replacementText.size();
-    return toQmlTransaction(result);
 }
-QVariantMap EditorController::deleteBookmarkForQml(const QString& text, int line) const
+miacode::editor::SimaiTextEditResult EditorController::createBookmark(const QString& lineText, int offset, const QString& title) const
 {
-    const QStringList lines = text.split(QLatin1Char('\n'));
-    const int index = line - 1;
-    if (index < 0 || index >= lines.size()) return toQmlTransaction(untouched(text, 0, 0));
-    if (!miacode::editor::parseBookmarkComment(lines.at(index)).has_value()) return toQmlTransaction(untouched(text, 0, 0));
-    int offset = 0; for (int i = 0; i < index; ++i) offset += lines.at(i).size() + 1;
-    auto result = untouched(text, offset, offset);
-    result.consumed = true; result.transaction.hasEdit = result.transaction.undoGroup = true;
-    result.transaction.replacementStart = offset;
-    result.transaction.replacementEnd = offset + lines.at(index).size();
-    result.transaction.replacementText = miacode::editor::removeBookmarkComment(lines.at(index));
-    result.transaction.text.replace(result.transaction.replacementStart,
-                                    result.transaction.replacementEnd - result.transaction.replacementStart,
-                                    result.transaction.replacementText);
-    result.transaction.anchor = result.transaction.position = result.transaction.replacementStart;
-    return toQmlTransaction(result);
+    return bookmarkEdit(lineText, offset, miacode::editor::appendBookmarkComment(lineText, title), true);
 }
-
-QVariantMap EditorController::touchPadAuthoringForQml(
-    const QString& text, int anchor, int position, const QString& pad,
-    QChar separator) const
+miacode::editor::SimaiTextEditResult EditorController::renameBookmark(const QString& lineText, int offset, const QString& title) const
 {
-    const miacode::editor::TouchPadAuthoringEditPlan plan =
-        miacode::editor::planTouchPadAuthoringEdit(text, position, pad, separator);
+    return bookmarkEdit(lineText, offset, miacode::editor::renameBookmarkComment(lineText, title), true);
+}
+miacode::editor::SimaiTextEditResult EditorController::deleteBookmark(const QString& lineText, int offset) const
+{
+    return bookmarkEdit(lineText, offset, miacode::editor::removeBookmarkComment(lineText), false);
+}
+miacode::editor::SimaiTextEditResult EditorController::touchPadAuthoring(
+    const QString& text, int anchor, int position, const QString& pad, QChar separator) const
+{
+    const auto plan = miacode::editor::planTouchPadAuthoringEdit(text, position, pad, separator);
     auto result = untouched(text, anchor, position);
-    if (!plan.valid) {
-        return toQmlTransaction(result);
-    }
+    if (!plan.valid) return result;
     const int start = qBound(0, plan.insertionPosition, text.size());
     const int end = qBound(start, start + plan.removalLength, text.size());
     result.consumed = true;
-    result.transaction.hasEdit = result.transaction.undoGroup = true;
-    result.transaction.replacementStart = start;
-    result.transaction.replacementEnd = end;
-    result.transaction.replacementText = plan.insertionText;
-    result.transaction.text.replace(start, end - start, plan.insertionText);
-    result.transaction.anchor = result.transaction.position = start + plan.insertionText.size();
-    QVariantMap transaction = toQmlTransaction(result);
-    transaction.insert(QStringLiteral("touchTokenStart"), plan.tokenStart);
-    return transaction;
+    auto& tx = result.transaction;
+    tx.hasEdit = true;
+    tx.replacementStart = start;
+    tx.replacementEnd = end;
+    tx.replacementText = plan.insertionText;
+    tx.anchor = tx.position = start + plan.insertionText.size();
+    tx.touchTokenStart = plan.tokenStart;
+    return result;
 }
 
 } // namespace miacode::ui

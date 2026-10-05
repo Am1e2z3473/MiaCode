@@ -100,7 +100,8 @@ public:
     Q_INVOKABLE void jumpToLine(int line);
     Q_INVOKABLE int positionAt(qreal x, qreal y) const;
     Q_INVOKABLE QRectF textPositionRectangle(int position) const;
-    Q_INVOKABLE bool applyEditorTransaction(const QVariantMap& transaction);
+    Q_INVOKABLE QRectF lineRectangle(int line) const;
+    Q_INVOKABLE int lineAtPosition(int position) const;
     Q_INVOKABLE void acceptCompletionFromPopup();
     Q_INVOKABLE void dropDocument(const QString& key);
     Q_INVOKABLE void configureSearch(const QString& query, const QString& replacement, bool matchCase, bool wholeWord);
@@ -135,6 +136,8 @@ protected:
     void wheelEvent(QWheelEvent* event) override;
     void inputMethodEvent(QInputMethodEvent* event) override;
 private:
+    bool applyEditorTransaction(const miacode::editor::SimaiTextEditResult& result);
+    void publishTouchAnchor(int position);
     void centerCursorInView();
     void publishLayout();
     void preserveViewport();

@@ -51,15 +51,7 @@ bool hasCommandModifier(Qt::KeyboardModifiers modifiers)
     return modifiers & (Qt::ControlModifier | Qt::AltModifier | Qt::MetaModifier);
 }
 
-// What Qt's own text controls would accept as typed text — the same rule as
-// QInputControl::isAcceptableInput. The policy's fallback inserts `input`
-// under the claim that Qt would have inserted it anyway, and that claim is only
-// true for text this returns true for.
-//
-// Escape is why this exists. Its key text is U+001B: non-empty, unmodified, and
-// not something Qt would ever put in a document — but the fallback's only gate
-// was "is there text", so pressing Escape typed a control character into the
-// chart. Every non-printable key with a non-empty text() had the same hole.
+// Printable text, tabs and format characters form editable content.
 bool isInsertableText(const QString& input)
 {
     if (input.isEmpty()) return false;
@@ -83,7 +75,6 @@ bool wouldInsertLiteralCommandText(const SimaiTextEditRequest& request)
 SimaiTextEditResult untouched(const SimaiTextEditRequest& request)
 {
     SimaiTextEditResult result;
-    result.transaction.text = request.text;
     result.transaction.anchor = qBound(0, request.anchor, request.text.size());
     result.transaction.position = qBound(0, request.position, request.text.size());
     return result;
@@ -96,12 +87,10 @@ void replaceSelection(SimaiTextEditResult* result, const QString& value)
     result->transaction.replacementStart = start;
     result->transaction.replacementEnd = end;
     result->transaction.replacementText = value;
-    result->transaction.text.replace(start, end - start, value);
     const int caret = start + value.size();
     result->transaction.anchor = caret;
     result->transaction.position = caret;
     result->transaction.hasEdit = true;
-    result->transaction.undoGroup = true;
 }
 
 void openCompletion(SimaiTextEditResult* result, QChar opening, bool closingPresent,
@@ -139,24 +128,21 @@ SimaiTextEditResult applySimaiTextEditPolicy(const SimaiTextEditRequest& request
         && !(request.modifiers & (Qt::AltModifier | Qt::MetaModifier));
     if (enter && (!hasCommandModifier(request.modifiers) || ctrlOnly)) {
         replaceSelection(&result, QStringLiteral("\n"));
-        result.transaction.insertsBlock = true;
         result.consumed = true;
         return result;
     }
 
     if (smartEnabled && request.key == Qt::Key_Backspace && !selected && !hasCommandModifier(request.modifiers)) {
         const int pos = result.transaction.position;
-        if (pos > 0 && pos < result.transaction.text.size()) {
-            const QChar opening = result.transaction.text.at(pos - 1);
-            if (isBracketOpening(opening) && result.transaction.text.at(pos) == closingBracketFor(opening)) {
-                result.transaction.text.remove(pos - 1, 2);
+        if (pos > 0 && pos < request.text.size()) {
+            const QChar opening = request.text.at(pos - 1);
+            if (isBracketOpening(opening) && request.text.at(pos) == closingBracketFor(opening)) {
                 result.transaction.replacementStart = pos - 1;
                 result.transaction.replacementEnd = pos + 1;
                 result.transaction.replacementText.clear();
                 result.transaction.anchor = pos - 1;
                 result.transaction.position = pos - 1;
                 result.transaction.hasEdit = true;
-                result.transaction.undoGroup = true;
                 result.consumed = true;
                 return result;
             }
@@ -169,8 +155,7 @@ SimaiTextEditResult applySimaiTextEditPolicy(const SimaiTextEditRequest& request
     // control must perform its native selection/character/word deletion.
     if (request.key == Qt::Key_Backspace || request.key == Qt::Key_Delete) return result;
 
-    // In overwrite mode QTextEdit owns character replacement. Smart typing
-    // must not consume the event or synthesize a regular insertion here.
+    // Scintilla owns character replacement in overwrite mode.
     if (request.overwriteMode) return result;
 
     // Declining leaves the key to Qt, which applies the same rule and declines
@@ -182,17 +167,17 @@ SimaiTextEditResult applySimaiTextEditPolicy(const SimaiTextEditRequest& request
     if (smartEnabled && input.size() == 1) {
         const QChar glyph = input.at(0);
         const int pos = result.transaction.position;
-        if (!selected && glyph == QLatin1Char('[') && pos < result.transaction.text.size()
-            && result.transaction.text.at(pos) == QLatin1Char('[')) {
+        if (!selected && glyph == QLatin1Char('[') && pos < request.text.size()
+            && request.text.at(pos) == QLatin1Char('[')) {
             ++result.transaction.anchor;
             ++result.transaction.position;
             result.consumed = true;
             openCompletion(&result, glyph, false,
-                           candidatesForOpening(glyph, request.wholeBpm, result.transaction.text));
+                           candidatesForOpening(glyph, request.wholeBpm, request.text));
             return result;
         }
-        if (!selected && isBracketClosing(glyph) && pos < result.transaction.text.size()
-            && result.transaction.text.at(pos) == glyph) {
+        if (!selected && isBracketClosing(glyph) && pos < request.text.size()
+            && request.text.at(pos) == glyph) {
             ++result.transaction.anchor;
             ++result.transaction.position;
             result.consumed = true;
@@ -203,21 +188,27 @@ SimaiTextEditResult applySimaiTextEditPolicy(const SimaiTextEditRequest& request
             --result.transaction.anchor;
             --result.transaction.position;
             result.consumed = true;
-            openCompletion(&result, glyph, true,
-                           candidatesForOpening(glyph, request.wholeBpm, result.transaction.text));
+            QStringList candidates;
+            if (glyph == QLatin1Char('(')) {
+                QString chart = request.text;
+                const auto& tx = result.transaction;
+                chart.replace(tx.replacementStart, tx.replacementEnd - tx.replacementStart, tx.replacementText);
+                candidates = candidatesForOpening(glyph, request.wholeBpm, chart);
+            } else candidates = candidatesForOpening(glyph, request.wholeBpm, request.text);
+            openCompletion(&result, glyph, true, candidates);
             return result;
         }
-        if (!request.completionActive && !request.isImeCommit && input == QLatin1String("h")) {
+        if (!request.completionActive && input == QLatin1String("h")) {
             replaceSelection(&result, input);
             result.consumed = true;
-            const bool beforeDuration = result.transaction.position < result.transaction.text.size()
-                && result.transaction.text.at(result.transaction.position) == QLatin1Char('[');
+            const int following = qMax(request.anchor, request.position);
+            const bool beforeDuration = following < request.text.size()
+                && request.text.at(following) == QLatin1Char('[');
             if (!beforeDuration) openCompletion(&result, QLatin1Char('['), false, holdDurationCandidates());
             return result;
         }
     }
 
-    // A policy edit only covers text that Qt would otherwise insert directly.
     replaceSelection(&result, input);
     result.consumed = true;
     return result;

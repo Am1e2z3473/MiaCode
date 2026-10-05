@@ -583,7 +583,6 @@ private:
 public:
     // Derived sidebar bookmark for a non-control `||` chart comment. This is a
     // transient view cache rebuilt from chart text, never a persisted object.
-    using EditorBookmark = miacode::runtime::RuntimeContext::EditorBookmark;
 
 private:
     // Declared before every host that borrows ui_/state_ so the context outlives

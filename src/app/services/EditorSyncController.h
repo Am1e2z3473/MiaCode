@@ -71,8 +71,7 @@ public:
     Q_INVOKABLE void acknowledgeNavigation(qulonglong sequence, bool applied);
     Q_INVOKABLE void setTouchPadControlHold(bool active);
     Q_INVOKABLE bool beginPointerInteraction(int difficultyId, qulonglong revision);
-    Q_INVOKABLE bool setTouchPadPreviewAnchor(int difficultyId, qulonglong revision,
-                                               const QString& text, int tokenStart);
+    bool setTouchPadPreviewAnchor(int difficultyId, qulonglong revision, int line, int column);
     Q_INVOKABLE bool seekPreviewToEditorLocation(int difficultyId, qulonglong revision,
                                                   int line, int column);
     Q_INVOKABLE bool requestSelectionRangeExport(int difficultyId, qulonglong revision,

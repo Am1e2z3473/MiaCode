@@ -109,18 +109,6 @@ public:
         SimaiDifficultyData difficultyData;
     };
 
-    struct EditorBookmark {
-        QString title;
-        QString text;
-        int line = 1;
-        QString source;
-        QString commentText;
-        QString commentFingerprint;
-        QString contextBefore;
-        QString contextAfter;
-        int difficultyId = 0;
-        bool nameLocked = false;
-    };
 
     // Timeline projection and refresh state has a separate storage owner. The
     // legacy State record below exposes references during this incremental
