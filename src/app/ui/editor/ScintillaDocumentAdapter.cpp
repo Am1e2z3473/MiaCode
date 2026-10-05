@@ -6,7 +6,11 @@ ScintillaDocumentAdapter::ScintillaDocumentAdapter(ScintillaQuick_item& editor) 
     editor_.send(SCI_ALLOCATELINECHARACTERINDEX, SC_LINECHARACTERINDEX_UTF16);
     refresh();
 }
-ScintillaDocumentAdapter::~ScintillaDocumentAdapter() { clear(); }
+ScintillaDocumentAdapter::~ScintillaDocumentAdapter()
+{
+    for (const auto& document : std::as_const(documents_))
+        editor_.send(SCI_RELEASEDOCUMENT, 0, document.pointer);
+}
 
 void ScintillaDocumentAdapter::saveViewport()
 {
