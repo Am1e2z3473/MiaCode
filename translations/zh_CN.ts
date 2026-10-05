@@ -2889,6 +2889,10 @@ The file may be open in preview, a media player, File Explorer preview pane, or 
         <source>Correct full-width characters only</source>
         <translation>仅全角字符更正</translation>
     </message>
+    <message id="preferences.editor_auto_wrap">
+        <source>Word wrap</source>
+        <translation>自动换行</translation>
+    </message>
     <message id="preferences.editor_scroll_past_end">
         <source>Scroll to top of final line</source>
         <translation>允许滚动到末行顶部</translation>

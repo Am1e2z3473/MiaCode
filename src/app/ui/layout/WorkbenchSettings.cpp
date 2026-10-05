@@ -28,6 +28,7 @@ constexpr auto kPreviewWidthRatio = "preview_width_ratio";
 constexpr auto kPreviewCanvasFreeAspect = "preview_canvas_free_aspect";
 constexpr auto kPreviewHidePv = "preview_hide_pv";
 constexpr auto kFontSize = "ui_font_size";
+constexpr auto kEditorAutoWrap = "editor_auto_wrap";
 constexpr auto kEditorScrollPastEnd = "editor_scroll_past_end";
 constexpr auto kEditorSelectionBeatDisplay = "editor_selection_beat_display";
 
@@ -225,6 +226,7 @@ bool WorkbenchSettings::editorHalfWidthInputEnabled() const { return editorHalfW
 bool WorkbenchSettings::editorOverwriteModeEnabled() const { return editorOverwriteModeEnabled_; }
 bool WorkbenchSettings::editorAutoCompletionEnabled() const { return editorAutoCompletionEnabled_; }
 bool WorkbenchSettings::editorImeInputDisabled() const { return editorImeInputDisabled_; }
+bool WorkbenchSettings::editorAutoWrap() const { return editorAutoWrap_; }
 bool WorkbenchSettings::editorScrollPastEnd() const { return editorScrollPastEnd_; }
 bool WorkbenchSettings::editorSelectionBeatDisplay() const { return editorSelectionBeatDisplay_; }
 
@@ -246,6 +248,7 @@ void WorkbenchSettings::reloadEditorSettings()
     const bool overwrite = editorUi.value(QStringLiteral("editor_overwrite_mode")).toBool(false);
     const bool autoCompletion = editorUi.value(QStringLiteral("editor_auto_completion")).toBool(true);
     const bool imeDisabled = editorUi.value(QStringLiteral("editor_ime_input_disabled")).toBool(true);
+    const bool autoWrap = editorUi.value(QLatin1String(kEditorAutoWrap)).toBool(true);
     const bool scrollPastEnd = editorUi.value(QLatin1String(kEditorScrollPastEnd)).toBool(true);
     const bool selectionBeatDisplay =
         editorUi.value(QLatin1String(kEditorSelectionBeatDisplay)).toBool(true);
@@ -255,6 +258,7 @@ void WorkbenchSettings::reloadEditorSettings()
         && editorOverwriteModeEnabled_ == overwrite
         && editorAutoCompletionEnabled_ == autoCompletion
         && editorImeInputDisabled_ == imeDisabled
+        && editorAutoWrap_ == autoWrap
         && editorScrollPastEnd_ == scrollPastEnd
         && editorSelectionBeatDisplay_ == selectionBeatDisplay) {
         return;
@@ -265,6 +269,7 @@ void WorkbenchSettings::reloadEditorSettings()
     editorOverwriteModeEnabled_ = overwrite;
     editorAutoCompletionEnabled_ = autoCompletion;
     editorImeInputDisabled_ = imeDisabled;
+    editorAutoWrap_ = autoWrap;
     editorScrollPastEnd_ = scrollPastEnd;
     editorSelectionBeatDisplay_ = selectionBeatDisplay;
     emit editorSettingsChanged();
@@ -401,6 +406,14 @@ void WorkbenchSettings::setEditorAppearance(int pointSize, double lineSpacingFac
     }
     codeFont_ = font;
     editorBlockSpacing_ = blockSpacing;
+    emit editorSettingsChanged();
+}
+
+void WorkbenchSettings::setEditorAutoWrap(bool enabled)
+{
+    if (editorAutoWrap_ == enabled) return;
+    editorAutoWrap_ = enabled;
+    storeUiValue(kEditorAutoWrap, enabled);
     emit editorSettingsChanged();
 }
 

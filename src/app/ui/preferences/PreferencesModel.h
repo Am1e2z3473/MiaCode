@@ -46,6 +46,7 @@ public:
     Q_PROPERTY(double editorLineSpacing READ editorLineSpacing WRITE setEditorLineSpacing NOTIFY editorChanged)
     Q_PROPERTY(bool editorAutoCompletion READ editorAutoCompletion WRITE setEditorAutoCompletion NOTIFY editorChanged)
     Q_PROPERTY(int editorInputHandlingMode READ editorInputHandlingMode WRITE setEditorInputHandlingMode NOTIFY editorChanged)
+    Q_PROPERTY(bool editorAutoWrap READ editorAutoWrap WRITE setEditorAutoWrap NOTIFY editorChanged)
     Q_PROPERTY(bool editorScrollPastEnd READ editorScrollPastEnd WRITE setEditorScrollPastEnd NOTIFY editorChanged)
     Q_PROPERTY(bool editorSelectionBeatDisplay READ editorSelectionBeatDisplay WRITE setEditorSelectionBeatDisplay NOTIFY editorChanged)
 
@@ -101,6 +102,8 @@ public:
     void setEditorHalfWidthInput(bool enabled);
     bool editorImeDisabled() const;
     void setEditorImeDisabled(bool disabled);
+    bool editorAutoWrap() const;
+    void setEditorAutoWrap(bool enabled);
     bool editorScrollPastEnd() const;
     void setEditorScrollPastEnd(bool enabled);
     bool editorSelectionBeatDisplay() const;
