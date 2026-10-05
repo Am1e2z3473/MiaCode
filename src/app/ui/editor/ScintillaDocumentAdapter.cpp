@@ -1,8 +1,11 @@
 #include "editor/ScintillaDocumentAdapter.h"
-#include <algorithm>
 
 namespace miacode::ui {
-ScintillaDocumentAdapter::ScintillaDocumentAdapter(ScintillaQuick_item& editor) : editor_(editor) { refresh(); }
+ScintillaDocumentAdapter::ScintillaDocumentAdapter(ScintillaQuick_item& editor) : editor_(editor)
+{
+    editor_.send(SCI_ALLOCATELINECHARACTERINDEX, SC_LINECHARACTERINDEX_UTF16);
+    refresh();
+}
 ScintillaDocumentAdapter::~ScintillaDocumentAdapter() { clear(); }
 
 void ScintillaDocumentAdapter::saveViewport()
@@ -52,6 +55,8 @@ void ScintillaDocumentAdapter::activate(const QString& scope, const QString& tex
         const auto& document = documents_[scope];
         editor_.send(SCI_SETDOCPOINTER, 0, document.pointer);
         editor_.send(SCI_SETCODEPAGE, SC_CP_UTF8);
+        if (!(editor_.send(SCI_GETLINECHARACTERINDEX) & SC_LINECHARACTERINDEX_UTF16))
+            editor_.send(SCI_ALLOCATELINECHARACTERINDEX, SC_LINECHARACTERINDEX_UTF16);
         refresh();
         if (text_ != text) {
             editor_.sends(SCI_SETTEXT, 0, text.toUtf8().constData());
@@ -100,50 +105,25 @@ void ScintillaDocumentAdapter::refresh()
     QByteArray buffer(length + 1, Qt::Uninitialized);
     editor_.send(SCI_GETTEXT, buffer.size(), reinterpret_cast<sptr_t>(buffer.data()));
     text_ = QString::fromUtf8(buffer.constData(), length);
-    utf16Lines_ = {0};
-    byteLines_ = {0};
-    const QByteArray bytes = text_.toUtf8();
-    for (int i = 0; i < text_.size(); ++i)
-        if (text_[i] == QLatin1Char('\n')) utf16Lines_.append(i + 1);
-    for (int i = 0; i < bytes.size(); ++i)
-        if (bytes[i] == '\n') byteLines_.append(i + 1);
 }
 int ScintillaDocumentAdapter::lineAt(int position) const
 {
-    return int(std::upper_bound(utf16Lines_.cbegin(), utf16Lines_.cend(), position) - utf16Lines_.cbegin()) - 1;
+    return editor_.send(SCI_LINEFROMINDEXPOSITION, position, SC_LINECHARACTERINDEX_UTF16);
 }
-void ScintillaDocumentAdapter::applyChange(int position, int deletedBytes, const QByteArray& inserted)
+void ScintillaDocumentAdapter::applyChange(int position, int removedUtf16, const QByteArray& inserted)
 {
-    const int begin = utf16Position(position);
-    const int end = utf16Position(position + deletedBytes);
-    const QString replacement = QString::fromUtf8(inserted);
-    const int first = int(std::upper_bound(byteLines_.cbegin(), byteLines_.cend(), position) - byteLines_.cbegin());
-    const int last = int(std::upper_bound(byteLines_.cbegin(), byteLines_.cend(), position + deletedBytes) - byteLines_.cbegin());
-    utf16Lines_.remove(first, last - first);
-    byteLines_.remove(first, last - first);
-    for (int i = first; i < byteLines_.size(); ++i) {
-        byteLines_[i] += inserted.size() - deletedBytes;
-        utf16Lines_[i] += replacement.size() - (end - begin);
-    }
-    int line = first;
-    for (int i = 0; i < replacement.size(); ++i)
-        if (replacement[i] == QLatin1Char('\n')) utf16Lines_.insert(line++, begin + i + 1);
-    line = first;
-    for (int i = 0; i < inserted.size(); ++i)
-        if (inserted[i] == '\n') byteLines_.insert(line++, position + i + 1);
-    text_.replace(begin, end - begin, replacement);
+    text_.replace(utf16Position(position), removedUtf16, QString::fromUtf8(inserted));
 }
 int ScintillaDocumentAdapter::bytePosition(int utf16) const
 {
     utf16 = qBound(0, utf16, int(text_.size()));
     const int line = lineAt(utf16);
-    return byteLines_[line] + QStringView(text_).mid(utf16Lines_[line], utf16 - utf16Lines_[line]).toUtf8().size();
+    return editor_.send(SCI_POSITIONRELATIVECODEUNITS, editor_.send(SCI_POSITIONFROMLINE, line), utf16 - lineStart(line));
 }
 int ScintillaDocumentAdapter::utf16Position(int byte) const
 {
-    const int line = int(std::upper_bound(byteLines_.cbegin(), byteLines_.cend(), byte) - byteLines_.cbegin()) - 1;
-    const int end = line + 1 < utf16Lines_.size() ? utf16Lines_[line + 1] : text_.size();
-    const QByteArray bytes = QStringView(text_).mid(utf16Lines_[line], end - utf16Lines_[line]).toUtf8();
-    return utf16Lines_[line] + QString::fromUtf8(bytes.constData(), qBound(0, byte - byteLines_[line], int(bytes.size()))).size();
+    byte = qBound(0, byte, int(editor_.send(SCI_GETLENGTH)));
+    const int line = editor_.send(SCI_LINEFROMPOSITION, byte);
+    return lineStart(line) + editor_.send(SCI_COUNTCODEUNITS, editor_.send(SCI_POSITIONFROMLINE, line), byte);
 }
 }
