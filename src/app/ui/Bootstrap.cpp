@@ -23,9 +23,6 @@
 #include "app/ui/layout/PageHost.h"
 #include "common/DebugLog.h"
 #include "common/OperationLog.h"
-#include "preview/quick_scene/PreviewQuickHudLayer.h"
-#include "preview/quick_scene/PreviewQuickSceneRoot.h"
-#include "timeline/quick/TimelineQuickItem.h"
 
 #include <QCoreApplication>
 #include <QGuiApplication>
@@ -40,18 +37,6 @@
 
 namespace miacode::ui {
 namespace {
-
-void ensurePreviewQuickTypesRegistered()
-{
-    static bool registered = false;
-    if (registered) {
-        return;
-    }
-    registered = true;
-    qmlRegisterType<PreviewQuickSceneRoot>("MiaCode.Preview", 1, 0, "PreviewQuickSceneRoot");
-    qmlRegisterType<PreviewQuickHudLayer>("MiaCode.Preview", 1, 0, "PreviewQuickHudLayer");
-    qmlRegisterType<TimelineQuickItem>("MiaCode.Timeline", 1, 0, "TimelineQuickItem");
-}
 
 void appendUiRuntimeLog(const QString& action, const QString& payload = QString())
 {
@@ -161,7 +146,6 @@ bool Bootstrap::start(const QString& startupOpenTarget)
     engine_->addImportPath(QCoreApplication::applicationDirPath() + QStringLiteral("/qml"));
     registerNoteImageProvider(
         engine_.get(), static_cast<PreviewModel*>(applicationContext_->preview()));
-    ensurePreviewQuickTypesRegistered();
 
     windowChrome_ = std::make_unique<WindowChrome>(this);
     if (auto* settings = qobject_cast<WorkbenchSettings*>(applicationContext_->preferences())) {

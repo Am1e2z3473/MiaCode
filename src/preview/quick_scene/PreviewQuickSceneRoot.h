@@ -7,6 +7,7 @@
 #include <QPointer>
 #include <QQueue>
 #include <QQuickItem>
+#include <QtQml/qqmlregistration.h>
 #include <QSet>
 #include "core/video/PreviewGameplayConfig.h"
 #include <QSize>
@@ -41,6 +42,7 @@ struct PreviewFrameState;
 class PreviewQuickSceneRoot : public QQuickItem
 {
     Q_OBJECT
+    QML_ELEMENT
     Q_PROPERTY(QObject* runtime READ runtimeObject WRITE setRuntimeObject NOTIFY runtimeChanged)
     Q_PROPERTY(QColor backgroundColor READ backgroundColor WRITE setBackgroundColor NOTIFY backgroundColorChanged)
 

@@ -816,7 +816,9 @@ target_link_libraries(MiaCode PRIVATE
     miacode_audio_bass
     miacode_timeline
     miacode_timeline_quick
+    miacode_timeline_quickplugin
     miacode_preview_quick
+    miacode_preview_quickplugin
     miacode_stage_media
     miacode_export
     miacode_media_tools

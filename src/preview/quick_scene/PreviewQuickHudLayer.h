@@ -5,6 +5,7 @@
 #include <QMetaObject>
 #include <QPointer>
 #include <QQuickPaintedItem>
+#include <QtQml/qqmlregistration.h>
 #include <QSize>
 
 #include "core/scene/PreviewLayerOrder.h"
@@ -42,6 +43,7 @@ void paintCenterDisplay(
 class PreviewQuickHudLayer : public QQuickPaintedItem
 {
     Q_OBJECT
+    QML_ELEMENT
     Q_PROPERTY(QObject* runtime READ runtimeObject WRITE setRuntimeObject NOTIFY runtimeChanged)
     Q_PROPERTY(QColor textColor READ textColor WRITE setTextColor NOTIFY textColorChanged)
     Q_PROPERTY(QColor shadowColor READ shadowColor WRITE setShadowColor NOTIFY shadowColorChanged)
