@@ -314,7 +314,7 @@ miacode_add_spec(video_export_intro_mode_spec
     SOURCES
         src/tools/video_export/VideoExportIntroModeSpec.cpp
         src/tools/video_export/VideoExportController.h
-        src/timeline/TimelineData.h
+        src/core/chart/model/TimelineData.h
     LIBS Qt6::Core Qt6::Gui
     INCLUDES src
 )
@@ -329,7 +329,7 @@ miacode_add_spec(video_export_intro_sound_spec
         src/tools/video_export/VideoExportSettings.cpp
         src/tools/video_export/VideoExportRuntimePolicy.cpp
         src/tools/video_export/VideoExportSnapshot.cpp
-        src/timeline/TimelineMarkerOffset.h
+        src/core/chart/model/TimelineMarkerOffset.h
         src/audio/PreviewAudioSettings.h
         src/audio/PreviewAudioSettings.cpp
         ${_miacode_chart_core}
@@ -360,7 +360,7 @@ miacode_add_spec(video_export_audio_render_plan_spec
         src/common/VideoExportConfig.h
         src/audio/PreviewAudioSettings.h
         src/audio/PreviewAudioSettings.cpp
-        src/timeline/TimelineData.h
+        src/core/chart/model/TimelineData.h
     LIBS Qt6::Core Qt6::Gui
     INCLUDES src
 )

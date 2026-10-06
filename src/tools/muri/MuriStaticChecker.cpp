@@ -8,7 +8,7 @@
 #include <QString>
 #include <QtMath>
 
-#include "timeline/TimelineData.h"
+#include "core/chart/model/TimelineData.h"
 #include "common/MuriConfig.h"
 #include "common/MuriTypes.h"
 

@@ -4,7 +4,7 @@
 #include <QVector>
 
 #include "core/chart/document/SimaiTimingMetadata.h"
-#include "timeline/TimelineData.h"
+#include "core/chart/model/TimelineData.h"
 
 struct SimaiMessage {
     int line = 1;

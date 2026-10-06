@@ -8,7 +8,7 @@
 #include "common/MuriTypes.h"
 #include "core/chart/document/SimaiTimingMetadata.h"
 #include "core/chart/parser/SimaiParser.h"
-#include "timeline/TimelineData.h"
+#include "core/chart/model/TimelineData.h"
 
 struct TimelineSlowRefreshRequest {
     quint64 revision = 0;

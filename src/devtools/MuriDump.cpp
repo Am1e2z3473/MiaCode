@@ -16,8 +16,8 @@
 
 #include "core/chart/document/SimaiDocument.h"
 #include "core/chart/parser/SimaiParser.h"
-#include "timeline/TimelineData.h"
-#include "timeline/TimelineMarkerOffset.h"
+#include "core/chart/model/TimelineData.h"
+#include "core/chart/model/TimelineMarkerOffset.h"
 #include "common/MuriConfig.h"
 #include "common/MuriTypes.h"
 #include "tools/muri/MuriAnalyzer.h"

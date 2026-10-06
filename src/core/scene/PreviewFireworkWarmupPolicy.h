@@ -1,7 +1,7 @@
 #pragma once
 
 #include "common/PreviewGameplayConfig.h"
-#include "timeline/TimelineData.h"
+#include "core/chart/model/TimelineData.h"
 
 #include <QtGlobal>
 

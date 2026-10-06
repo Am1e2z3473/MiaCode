@@ -7,7 +7,7 @@
 #include "common/MuriConfig.h"
 #include "common/MuriRenderOptions.h"
 #include "common/MuriTypes.h"
-#include "timeline/TimelineMarkerOffset.h"
+#include "core/chart/model/TimelineMarkerOffset.h"
 #include "tools/muri/MuriAnalyzer.h"
 #include "tools/muri/MuriAnalyzerInternal.h"
 #include "tools/muri/MuriRuntimeModelBuilder.h"

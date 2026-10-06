@@ -8,7 +8,7 @@
 
 #include "audio/PreviewAudioSettings.h"
 #include "app/services/LatencyEngine.h"
-#include "timeline/TimelineData.h"
+#include "core/chart/model/TimelineData.h"
 #include "timeline/TimelineRenderData.h"
 
 class Session;

@@ -9,7 +9,7 @@
 #include "audio/QtPreviewSfxRuntime.h"
 #include "core/chart/parser/SimaiParser.h"
 #include "preview/runtime/PreviewRuntime.h"
-#include "timeline/TimelineMarkerOffset.h"
+#include "core/chart/model/TimelineMarkerOffset.h"
 #include "timeline/TimelineQuickModel.h"
 #include "timeline/TimelineSlowRefresh.h"
 #include "timeline/quick/TimelineQuickStateBridge.h"

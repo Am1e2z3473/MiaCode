@@ -25,14 +25,14 @@ target_compile_definitions(timeline_model_spec PRIVATE
     "MIACODE_SOURCE_ROOT=\"${CMAKE_CURRENT_SOURCE_DIR}\"")
 
 miacode_add_spec(timeline_marker_offset_spec
-    OWNER src/timeline
+    OWNER src/core/chart/model
     CONTRACT timeline.timeline-marker-offset
     DOMAIN timeline KIND behavior RISK normal
     EXECUTION ctest STATUS active PLATFORM all
     SOURCES
         src/tools/timeline/TimelineMarkerOffsetSpec.cpp
-        src/timeline/TimelineMarkerOffset.h
-        src/timeline/TimelineData.h
+        src/core/chart/model/TimelineMarkerOffset.h
+        src/core/chart/model/TimelineData.h
     LIBS Qt6::Core
     INCLUDES src
 )

@@ -550,7 +550,7 @@ add_executable(MiaCode WIN32 MACOSX_BUNDLE
     src/core/chart/parser/SimaiCommentScan.cpp
     src/core/chart/selection/ChartSelectionBeatSummary.h
     src/core/chart/selection/ChartSelectionBeatSummary.cpp
-    src/timeline/TimelineData.h
+    src/core/chart/model/TimelineData.h
     src/timeline/TimelineRenderData.h
     src/timeline/TimelineQuickModel.h
     src/timeline/TimelineQuickModel.cpp

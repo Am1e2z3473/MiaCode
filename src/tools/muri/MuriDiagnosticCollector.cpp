@@ -7,7 +7,7 @@
 
 #include <QHash>
 
-#include "timeline/TimelineData.h"
+#include "core/chart/model/TimelineData.h"
 #include "common/MuriTypes.h"  // muriKindDisplayName, makeMarkerAnalysisKey
 
 namespace miacode::muri::detail {
