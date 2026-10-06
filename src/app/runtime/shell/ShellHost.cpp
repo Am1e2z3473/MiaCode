@@ -5,7 +5,7 @@
 #include "app/runtime/export/VideoExportHost.h"
 #include "app/runtime/playback/PlaybackCoordinator.h"
 
-#include "app/ui/chrome/ShortcutRegistry.h"
+#include "app/services/ShortcutRegistry.h"
 #include "common/CrashRecovery.h"
 #include "common/DebugLog.h"
 #include "common/DebugOptions.h"

@@ -27,8 +27,8 @@ class IntroBannerSpec;
 class PreviewAudioDeviceWatcher;
 class PreviewRuntime;
 class PreviewStageMediaHost;
-namespace miacode::ui {
-class ExportSession;
+namespace miacode {
+class ExportPagePort;
 }
 class QtPreviewSfxRuntime;
 class QuickShellPreviewCompositeSurface;

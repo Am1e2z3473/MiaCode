@@ -1,4 +1,4 @@
-#include "app/ui/chrome/ShortcutRegistry.h"
+#include "app/services/ShortcutRegistry.h"
 
 #include "common/InputShortcutGesture.h"
 

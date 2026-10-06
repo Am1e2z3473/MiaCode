@@ -8,7 +8,7 @@
 #include <QtGlobal>
 
 #include "core/chart/parser/SimaiParser.h"
-#include "app/ui/chrome/WindowParityMetrics.h"
+#include "app/runtime/shell/WindowParityMetrics.h"
 #include "common/DebugLog.h"
 #include "common/DebugOptions.h"
 #include "app/runtime/RuntimeContext.h"

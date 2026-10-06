@@ -32,7 +32,7 @@ miacode_add_spec(debug_options_spec
 )
 
 miacode_add_spec(process_identity_fields_spec
-    OWNER src/app
+    OWNER src/app/platform
     CONTRACT debug-index.process-identity-fields
     DOMAIN debug_index KIND behavior RISK normal
     EXECUTION ctest STATUS active PLATFORM all
@@ -101,14 +101,14 @@ if (WIN32)
 endif()
 
 miacode_add_spec(window_visibility_diagnostics_spec
-    OWNER src/app
+    OWNER src/app/platform
     CONTRACT debug-index.window-visibility-diagnostics
     DOMAIN debug_index KIND behavior RISK normal
     EXECUTION ctest STATUS active PLATFORM all
     SOURCES
         src/tools/debug_index/WindowVisibilityDiagnosticsSpec.cpp
-        src/app/WindowVisibilityDiagnostics.h
-        src/app/WindowVisibilityDiagnostics.cpp
+        src/app/platform/WindowVisibilityDiagnostics.h
+        src/app/platform/WindowVisibilityDiagnostics.cpp
         ${_miacode_log_core}
     LIBS Qt6::Core Qt6::Gui
     INCLUDES src

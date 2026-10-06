@@ -1,6 +1,6 @@
 #include "app/ui/export/CoverExportWindow.h"
 
-#include "app/MainEntrypoints.h"
+#include "app/platform/PlatformDiagnostics.h"
 #include "app/ui/layout/WorkbenchSettings.h"
 #include "app/ui/chrome/NativeWindowTheme.h"
 #include "app/ui/preferences/LocaleService.h"

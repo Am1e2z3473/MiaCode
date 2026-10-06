@@ -11,8 +11,9 @@
 #include "app/services/PreferenceDocument.h"
 #include "app/ui/preview/NoteImageProvider.h"
 #include "app/ui/export/CoverExportWindow.h"
+#include "app/ui/export/ExportSession.h"
 #include "app/ui/chrome/WindowChrome.h"
-#include "app/MainEntrypoints.h"
+#include "app/platform/PlatformDiagnostics.h"
 #include "app/runtime/Session.h"
 #include "app/services/ApplicationServices.h"
 #include "app/ui/chrome/NativeWindowTheme.h"
@@ -117,6 +118,24 @@ bool Bootstrap::start(const QString& startupOpenTarget)
             updateService_.get(), &miacode::update::UpdateService::setLanguageToken);
     applicationServices_->setUpdateFetcher(updateFetcher_.get());
     applicationServices_->setUpdateService(updateService_.get());
+    // The runtime creates its export page through this factory while it
+    // assembles, parented to the session; range requests drive its playback.
+    applicationServices_->setExportPageFactory(
+        [services = applicationServices_.get()](QObject* parent) -> miacode::ExportPagePort* {
+            auto* session = new miacode::ui::ExportSession(
+                services->shellNotifications(), services->uiRequests(),
+                services->jobProgress(), services->previewAppearance(),
+                services->exportEngineSlot(), services->previewSurfaceSlot(),
+                parent);
+            services->setExportPageSession(session);
+            QObject::connect(session, &miacode::ui::ExportSession::playbackRangeRequested,
+                parent, [services](bool enabled, double startSecond, double endSecond) {
+                    if (auto* control = services->playbackControl(); control != nullptr) {
+                        control->setPlaybackRangeEnabled(enabled, startSecond, endSecond);
+                    }
+                });
+            return session;
+        });
     backend_ = std::make_unique<Session>(*applicationServices_);
     backend_->setBackendActive(true);
     appendUiRuntimeLog(QStringLiteral("backend_ready"));

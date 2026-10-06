@@ -33,8 +33,8 @@
 #include "export/video_export/VideoExportSnapshot.h"
 #include "core/video/PreviewGameplayConfig.h"
 #include "core/video/PreviewVideoGeometryConfig.h"
-#include "app/ui/document/DocumentProjection.h"
-#include "app/ui/document/AnalysisProjection.h"
+#include "app/services/DocumentProjection.h"
+#include "app/services/AnalysisProjection.h"
 #include "app/services/ApplicationServices.h"
 #include "app/services/PlaybackControl.h"
 #include "app/services/PlaybackPreferencesPort.h"
@@ -52,7 +52,6 @@ class JobProgressService;
 }
 namespace miacode::ui {
 class PageHost;
-class ExportSession;
 class PreviewSettingsModel;
 class Bootstrap;
 }
@@ -335,7 +334,7 @@ public:
     void setChartNormalizeOptions(const miacode::chart_transform::ChartNormalizationOptions& options);
     // Read-only hand-off to the single export-session owner. QML page services
     // may compose on top of this session, but never construct another one.
-    miacode::ui::ExportSession* qmlExportSession() const { return qmlExportSession_; }
+    miacode::ExportPagePort* qmlExportSession() const { return qmlExportSession_; }
     miacode::UiRequestService* uiRequestService() const;
     miacode::JobProgressService* jobProgressService() const;
     // PlaybackPreviewPort: the port's one method that is Session's own

@@ -1,4 +1,4 @@
-#include "app/ui/document/DocumentProjection.h"
+#include "app/services/DocumentProjection.h"
 
 #include "app/services/AnalysisService.h"
 #include "app/services/ChartWorkspace.h"

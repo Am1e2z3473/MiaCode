@@ -45,8 +45,8 @@ miacode_add_spec(qml_document_projection_spec
         ${_miacode_log_core}
         src/app/services/ChartWorkspace.cpp
         src/app/services/ChartWorkspace.h
-        src/app/ui/document/DocumentProjection.cpp
-        src/app/ui/document/DocumentProjection.h
+        src/app/services/DocumentProjection.cpp
+        src/app/services/DocumentProjection.h
     LIBS Qt6::Core
     INCLUDES src
 )
@@ -58,9 +58,9 @@ miacode_add_spec(qml_analysis_model_spec
     EXECUTION ctest STATUS active PLATFORM all
     SOURCES
         src/tools/ui/QmlAnalysisModelSpec.cpp
-        src/app/ui/document/AnalysisProjection.cpp
-        src/app/ui/document/AnalysisProjection.h
-        src/app/ui/document/DocumentProjection.h
+        src/app/services/AnalysisProjection.cpp
+        src/app/services/AnalysisProjection.h
+        src/app/services/DocumentProjection.h
     LIBS Qt6::Core
     INCLUDES src
 )
@@ -81,8 +81,8 @@ miacode_add_spec(qml_shortcut_binding_spec
         src/core/chart/transform/ChartBatchTransform.Subdivision.cpp
         src/core/chart/transform/ChartBatchTransform.Selection.cpp
         src/core/chart/transform/ChartBatchTransform.Transform.cpp
-        src/app/ui/chrome/ShortcutRegistry.cpp
-        src/app/ui/chrome/ShortcutRegistry.h
+        src/app/services/ShortcutRegistry.cpp
+        src/app/services/ShortcutRegistry.h
         src/common/InputShortcutGesture.h
         src/common/InputShortcutGesture.cpp
         ${_miacode_log_core}
