@@ -4,7 +4,7 @@
 #include <QString>
 #include <QVector>
 
-#include "common/MuriTypes.h"
+#include "core/analysis/MuriTypes.h"
 
 struct TimelineNoteMarker;
 

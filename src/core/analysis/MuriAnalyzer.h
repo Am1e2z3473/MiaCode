@@ -2,9 +2,9 @@
 
 #include <QVector>
 
-#include "common/MuriConfig.h"
-#include "common/MuriRenderOptions.h"
-#include "common/MuriTypes.h"
+#include "core/analysis/MuriConfig.h"
+#include "core/analysis/MuriRenderOptions.h"
+#include "core/analysis/MuriTypes.h"
 
 struct TimelineNoteMarker;
 

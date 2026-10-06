@@ -1,12 +1,12 @@
-#include "tools/muri/MuriOverlayBuilder.h"
+#include "core/analysis/MuriOverlayBuilder.h"
 
 #include "common/TaskCancellation.h"
 
 #include "core/chart/model/TimelineData.h"
-#include "common/MuriConfig.h"
-#include "common/MuriTypes.h"  // makeMarkerAnalysisKey
-#include "tools/muri/MuriAnalyzerModel.h"     // PadWindowIndex
-#include "tools/muri/MuriAnalyzerInternal.h"  // pad-window/trail primitives + slide-judge math
+#include "core/analysis/MuriConfig.h"
+#include "core/analysis/MuriTypes.h"  // makeMarkerAnalysisKey
+#include "core/analysis/MuriAnalyzerModel.h"     // PadWindowIndex
+#include "core/analysis/MuriAnalyzerInternal.h"  // pad-window/trail primitives + slide-judge math
 
 namespace miacode::muri::detail {
 

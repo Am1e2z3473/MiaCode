@@ -4,9 +4,9 @@
 #include <QString>
 #include <QVector>
 
-#include "common/MuriRenderOptions.h"
-#include "common/MuriTypes.h"
-#include "tools/muri/MuriAnalyzerModel.h"
+#include "core/analysis/MuriRenderOptions.h"
+#include "core/analysis/MuriTypes.h"
+#include "core/analysis/MuriAnalyzerModel.h"
 
 struct TimelineNoteMarker;
 

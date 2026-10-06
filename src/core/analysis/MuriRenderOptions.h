@@ -2,7 +2,7 @@
 
 #include <QString>
 
-#include "common/MuriConfig.h"
+#include "core/analysis/MuriConfig.h"
 
 enum class RenderMode {
     Native,

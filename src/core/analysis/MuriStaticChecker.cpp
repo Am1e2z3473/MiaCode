@@ -1,4 +1,4 @@
-#include "tools/muri/MuriStaticChecker.h"
+#include "core/analysis/MuriStaticChecker.h"
 
 #include "common/TaskCancellation.h"
 
@@ -9,8 +9,8 @@
 #include <QtMath>
 
 #include "core/chart/model/TimelineData.h"
-#include "common/MuriConfig.h"
-#include "common/MuriTypes.h"
+#include "core/analysis/MuriConfig.h"
+#include "core/analysis/MuriTypes.h"
 
 namespace {
 

@@ -1,11 +1,11 @@
-#include "timeline/TimelineSlowRefresh.h"
+#include "core/analysis/TimelineSlowRefresh.h"
 
 #include "common/TaskCancellation.h"
 
-#include "common/MuriTypes.h"
+#include "core/analysis/MuriTypes.h"
 #include "core/chart/model/TimelineMarkerOffset.h"
-#include "tools/muri/MuriAnalyzer.h"
-#include "tools/muri/MuriStaticChecker.h"
+#include "core/analysis/MuriAnalyzer.h"
+#include "core/analysis/MuriStaticChecker.h"
 
 namespace {
 

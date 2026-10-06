@@ -6,7 +6,7 @@
 #include "common/ChartClockCount.h"
 #include "common/ChartAssetPaths.h"
 #include "core/chart/model/TimelineMarkerOffset.h"
-#include "tools/muri/MuriAnalyzer.h"
+#include "core/analysis/MuriAnalyzer.h"
 
 #include <QDir>
 #include <QFileInfo>

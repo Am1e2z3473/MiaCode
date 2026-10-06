@@ -1,4 +1,4 @@
-#include "tools/muri/MuriSlideWifiJudge.h"
+#include "core/analysis/MuriSlideWifiJudge.h"
 
 #include "common/TaskCancellation.h"
 
@@ -10,12 +10,12 @@
 
 #include "core/chart/parser/SimaiParser.h"
 #include "core/chart/model/TimelineData.h"
-#include "common/MuriConfig.h"
-#include "common/MuriTypes.h"  // makeMarkerAnalysisKey + Muri* state types
-#include "tools/muri/MuriAnalyzerGeometry.h"     // pointDistance
-#include "tools/muri/MuriAnalyzerInternal.h"     // timing / hand-action helpers
-#include "tools/muri/MuriDiagnosticLabels.h"     // config labels / source anchors
-#include "tools/muri/MuriSlideReferenceData.h"   // slideRuntimeRoot + load*
+#include "core/analysis/MuriConfig.h"
+#include "core/analysis/MuriTypes.h"  // makeMarkerAnalysisKey + Muri* state types
+#include "core/analysis/MuriAnalyzerGeometry.h"     // pointDistance
+#include "core/analysis/MuriAnalyzerInternal.h"     // timing / hand-action helpers
+#include "core/analysis/MuriDiagnosticLabels.h"     // config labels / source anchors
+#include "core/analysis/MuriSlideReferenceData.h"   // slideRuntimeRoot + load*
 
 namespace miacode::muri::detail {
 

@@ -3,8 +3,8 @@
 #include <QJsonObject>
 #include <QString>
 
-#include "common/MuriConfig.h"
-#include "common/MuriRenderOptions.h"
+#include "core/analysis/MuriConfig.h"
+#include "core/analysis/MuriRenderOptions.h"
 #include "tools/video_export/VideoExportController.h"
 
 // IntroBannerSpec is defined in VideoExportController.h (so VideoExportTask can

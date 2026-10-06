@@ -3,7 +3,7 @@
 #include <QPointF>
 #include <QVector>
 
-#include "common/MuriTypes.h"
+#include "core/analysis/MuriTypes.h"
 #include "core/chart/model/TimelineData.h"
 
 namespace miacode::preview::scene {

@@ -19,9 +19,9 @@
 #include "timeline/quick/TimelineQuickStateBridge.h"
 #include "app/ui/export/ExportSession.h"
 #include "tools/latency/LatencySandboxController.h"
-#include "tools/muri/MuriAnalyzer.h"
-#include "tools/muri/MuriPanelEntries.h"
-#include "tools/muri/MuriStaticChecker.h"
+#include "core/analysis/MuriAnalyzer.h"
+#include "core/analysis/MuriPanelEntries.h"
+#include "core/analysis/MuriStaticChecker.h"
 
 #include <QtCore>
 #include <QtGui>

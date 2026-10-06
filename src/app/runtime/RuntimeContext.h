@@ -11,8 +11,8 @@
 #include "core/chart/document/SimaiDocument.h"
 #include "core/chart/parser/SimaiParser.h"
 #include "core/chart/document/SimaiTimingMetadata.h"
-#include "common/MuriRenderOptions.h"
-#include "common/MuriTypes.h"
+#include "core/analysis/MuriRenderOptions.h"
+#include "core/analysis/MuriTypes.h"
 #include "common/PreviewGameplayConfig.h"
 #include "common/PreviewTimingSettings.h"
 #include "common/PreviewVideoGeometryConfig.h"
@@ -20,7 +20,7 @@
 #include "app/services/PlaybackControl.h"
 #include "core/chart/model/TimelineData.h"
 #include "timeline/TimelineQuickModel.h"
-#include "timeline/TimelineSlowRefresh.h"
+#include "core/analysis/TimelineSlowRefresh.h"
 #include "tools/video_export/VideoExportSnapshot.h"
 
 class IntroBannerSpec;

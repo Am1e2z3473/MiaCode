@@ -8,12 +8,12 @@
 #include <optional>
 
 #include "app/services/ChartWorkspace.h"
-#include "common/MuriRenderOptions.h"
-#include "common/MuriTypes.h"
+#include "core/analysis/MuriRenderOptions.h"
+#include "core/analysis/MuriTypes.h"
 #include "common/TaskCancellation.h"
 #include "core/chart/parser/SimaiParser.h"
 #include "core/chart/model/TimelineData.h"
-#include "timeline/TimelineSlowRefresh.h"
+#include "core/analysis/TimelineSlowRefresh.h"
 
 namespace miacode {
 

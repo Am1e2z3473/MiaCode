@@ -5,8 +5,8 @@
 #include <QString>
 #include <QVector>
 
-#include "common/MuriTypes.h"             // MuriAlertLevel
-#include "tools/muri/MuriAnalyzerModel.h"  // DiagnosticAnchor, MarkerSourceRef, JudgeableSimpleNote, RuntimeHandAction, RuntimePadEvent
+#include "core/analysis/MuriTypes.h"             // MuriAlertLevel
+#include "core/analysis/MuriAnalyzerModel.h"  // DiagnosticAnchor, MarkerSourceRef, JudgeableSimpleNote, RuntimeHandAction, RuntimePadEvent
 
 struct TimelineNoteMarker;
 

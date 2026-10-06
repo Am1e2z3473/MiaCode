@@ -19,7 +19,7 @@
 #include "core/scene/PreviewSceneGeometry.h"
 #include "common/PreviewSfxTimeline.h"
 #include "preview/runtime/PreviewSceneAssetLoader.h"
-#include "tools/muri/MuriAnalyzer.h"
+#include "core/analysis/MuriAnalyzer.h"
 
 #include <QByteArray>
 #include <QCoreApplication>

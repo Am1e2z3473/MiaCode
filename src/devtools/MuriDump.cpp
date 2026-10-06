@@ -18,11 +18,11 @@
 #include "core/chart/parser/SimaiParser.h"
 #include "core/chart/model/TimelineData.h"
 #include "core/chart/model/TimelineMarkerOffset.h"
-#include "common/MuriConfig.h"
-#include "common/MuriTypes.h"
-#include "tools/muri/MuriAnalyzer.h"
-#include "tools/muri/MuriStaticChecker.h"
-#include "tools/muri/MuriPanelEntries.h"
+#include "core/analysis/MuriConfig.h"
+#include "core/analysis/MuriTypes.h"
+#include "core/analysis/MuriAnalyzer.h"
+#include "core/analysis/MuriStaticChecker.h"
+#include "core/analysis/MuriPanelEntries.h"
 
 namespace {
 

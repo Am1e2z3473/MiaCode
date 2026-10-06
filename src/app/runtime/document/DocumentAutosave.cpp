@@ -20,9 +20,9 @@
 #include "core/scene/PreviewProgressStatsCache.h"
 #include "core/chart/transform/ChartBatchTransform.h"
 #include "core/chart/transform/ChartNormalization.h"
-#include "tools/muri/MuriAnalyzer.h"
-#include "tools/muri/MuriPanelEntries.h"
-#include "tools/muri/MuriStaticChecker.h"
+#include "core/analysis/MuriAnalyzer.h"
+#include "core/analysis/MuriPanelEntries.h"
+#include "core/analysis/MuriStaticChecker.h"
 
 #include <algorithm>
 

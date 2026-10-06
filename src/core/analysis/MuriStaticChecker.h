@@ -2,7 +2,7 @@
 
 #include <QVector>
 
-#include "common/MuriConfig.h"
+#include "core/analysis/MuriConfig.h"
 
 struct TimelineNoteMarker;
 struct MuriStaticReference;

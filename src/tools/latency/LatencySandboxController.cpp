@@ -11,7 +11,7 @@
 #include "preview/runtime/PreviewRuntime.h"
 #include "core/chart/model/TimelineMarkerOffset.h"
 #include "timeline/TimelineQuickModel.h"
-#include "timeline/TimelineSlowRefresh.h"
+#include "core/analysis/TimelineSlowRefresh.h"
 #include "timeline/quick/TimelineQuickStateBridge.h"
 
 #include <QTimer>

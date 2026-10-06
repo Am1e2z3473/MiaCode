@@ -12,8 +12,8 @@
 #include <atomic>
 #include <memory>
 
-#include "common/MuriRenderOptions.h"
-#include "common/MuriTypes.h"
+#include "core/analysis/MuriRenderOptions.h"
+#include "core/analysis/MuriTypes.h"
 #include "preview/quick_scene/PreviewTextureRepository.h"
 #include "core/scene/PreviewFrameState.h"
 #include "preview/runtime/PreviewSceneAssetRepository.h"

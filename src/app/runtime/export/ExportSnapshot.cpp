@@ -6,7 +6,7 @@
 #include "audio/QtPreviewSfxRuntime.h"
 #include "core/chart/parser/SimaiParser.h"
 #include "timeline/TimelineQuickModel.h"
-#include "timeline/TimelineSlowRefresh.h"
+#include "core/analysis/TimelineSlowRefresh.h"
 #include "timeline/quick/TimelineQuickStateBridge.h"
 #include "common/ChartClockCount.h"
 #include "common/ChartAssetPaths.h"
