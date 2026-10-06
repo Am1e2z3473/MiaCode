@@ -325,12 +325,12 @@ miacode_add_spec(preview_audio_worker_spec
         src/audio/PreviewAudioWorker.cpp
         src/audio/QtPreviewSfxRuntime.h
         src/audio/QtPreviewSfxRuntime.cpp
-        src/audio/PreviewBassEmergencyPause.h
-        src/audio/PreviewBassEmergencyPause.cpp
-        src/audio/PreviewBassDefaultDevice.h
-        src/audio/PreviewBassDefaultDevice.cpp
-        src/audio/PreviewBassDeviceLease.h
-        src/audio/PreviewBassDeviceLease.cpp
+        src/audio/bass/PreviewBassEmergencyPause.h
+        src/audio/bass/PreviewBassEmergencyPause.cpp
+        src/audio/bass/PreviewBassDefaultDevice.h
+        src/audio/bass/PreviewBassDefaultDevice.cpp
+        src/audio/bass/PreviewBassDeviceLease.h
+        src/audio/bass/PreviewBassDeviceLease.cpp
     LIBS Qt6::Core soundtouch
     INCLUDES src
 )
@@ -340,13 +340,13 @@ target_sources(preview_audio_worker_spec PRIVATE
 target_compile_definitions(preview_audio_worker_spec PRIVATE
     "MIACODE_SOURCE_ROOT=\"${CMAKE_CURRENT_SOURCE_DIR}\"")
 target_sources(preview_audio_worker_spec PRIVATE
-    src/audio/BassPreviewAudioBackend.h
-    src/audio/BassPreviewAudioBackend.cpp
-    src/audio/BassPreviewAudioBackend_EngineInit.cpp
-    src/audio/BassPreviewAudioBackend_Assets.cpp
-    src/audio/BassPreviewAudioBackend_Transport.cpp
-    src/audio/BassPreviewAudioBackend_PlaybackClock.cpp
-    src/audio/BassPreviewAudioBackend_EventDrain.cpp
+    src/audio/bass/BassPreviewAudioBackend.h
+    src/audio/bass/BassPreviewAudioBackend.cpp
+    src/audio/bass/BassPreviewAudioBackend_EngineInit.cpp
+    src/audio/bass/BassPreviewAudioBackend_Assets.cpp
+    src/audio/bass/BassPreviewAudioBackend_Transport.cpp
+    src/audio/bass/BassPreviewAudioBackend_PlaybackClock.cpp
+    src/audio/bass/BassPreviewAudioBackend_EventDrain.cpp
 )
 target_include_directories(preview_audio_worker_spec PRIVATE third_party/bass/include)
 # The BASS backend resolves track paths through core/chart/ChartAssetPaths.h, whose
@@ -423,39 +423,39 @@ target_compile_definitions(touch_pad_authoring_state_spec PRIVATE
     "MIACODE_SOURCE_ROOT=\"${CMAKE_CURRENT_SOURCE_DIR}\"")
 
 miacode_add_spec(bass_preview_retained_state_spec
-    OWNER src/audio
+    OWNER src/audio/bass
     CONTRACT preview.bass-preview-retained-state
     DOMAIN preview KIND behavior RISK high
     EXECUTION ctest STATUS active PLATFORM all
     SOURCES
         src/tools/preview/BassPreviewRetainedStateSpec.cpp
-        src/audio/BassPreviewRetainedState.h
+        src/audio/bass/BassPreviewRetainedState.h
         src/audio/PreviewAudioBackend.h
     LIBS Qt6::Core
     INCLUDES src
 )
 
 miacode_add_spec(bass_preview_debug_log_routing_spec
-    OWNER src/audio
+    OWNER src/audio/bass
     CONTRACT preview.bass-preview-debug-log-routing
     DOMAIN preview KIND behavior RISK high
     EXECUTION ctest STATUS active PLATFORM all
     SOURCES
         src/tools/preview/BassPreviewDebugLogRoutingSpec.cpp
-        src/audio/BassPreviewDebugLogRouting.h
+        src/audio/bass/BassPreviewDebugLogRouting.h
     LIBS Qt6::Core
     INCLUDES src
 )
 
 miacode_add_spec(preview_bass_device_lease_spec
-    OWNER src/audio
+    OWNER src/audio/bass
     CONTRACT preview.preview-bass-device-lease
     DOMAIN preview KIND integration RISK high
     EXECUTION ctest STATUS active PLATFORM all
     SOURCES
         src/tools/preview/PreviewBassDeviceLeaseSpec.cpp
-        src/audio/PreviewBassDeviceLease.h
-        src/audio/PreviewBassDeviceLease.cpp
+        src/audio/bass/PreviewBassDeviceLease.h
+        src/audio/bass/PreviewBassDeviceLease.cpp
     LIBS Qt6::Core
     INCLUDES src
 )
@@ -498,15 +498,15 @@ miacode_add_spec(preview_audio_device_change_policy_spec
 )
 
 miacode_add_spec(bass_preview_sfx_scheduler_policy_spec
-    OWNER src/audio
+    OWNER src/audio/bass
     CONTRACT preview.bass-preview-sfx-scheduler-policy
     DOMAIN preview KIND behavior RISK high
     EXECUTION ctest STATUS active PLATFORM all
     SOURCES
         src/tools/preview/BassPreviewSfxSchedulerPolicySpec.cpp
-        src/audio/BassPreviewMasterMixerPolicy.h
-        src/audio/BassPreviewSfxCallbackRing.h
-        src/audio/BassPreviewSfxSchedulerPolicy.h
+        src/audio/bass/BassPreviewMasterMixerPolicy.h
+        src/audio/bass/BassPreviewSfxCallbackRing.h
+        src/audio/bass/BassPreviewSfxSchedulerPolicy.h
     LIBS Qt6::Core
     INCLUDES src
 )

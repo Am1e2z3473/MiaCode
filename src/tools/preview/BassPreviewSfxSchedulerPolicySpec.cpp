@@ -4,9 +4,9 @@
 
 #include <limits>
 
-#include "audio/BassPreviewMasterMixerPolicy.h"
-#include "audio/BassPreviewSfxCallbackRing.h"
-#include "audio/BassPreviewSfxSchedulerPolicy.h"
+#include "audio/bass/BassPreviewMasterMixerPolicy.h"
+#include "audio/bass/BassPreviewSfxCallbackRing.h"
+#include "audio/bass/BassPreviewSfxSchedulerPolicy.h"
 
 #ifndef MIACODE_SOURCE_ROOT
 #error "MIACODE_SOURCE_ROOT must be defined"
@@ -242,9 +242,9 @@ int main()
     // until a pause or seek re-anchors it. The same worker tick runs the chain watchdog,
     // which is what turns every remaining way for the chain to die into a logged, bounded
     // late trigger instead of silence.
-    const QString eventDrain = readSource(QStringLiteral("src/audio/BassPreviewAudioBackend_EventDrain.cpp"));
-    const QString transport = readSource(QStringLiteral("src/audio/BassPreviewAudioBackend_Transport.cpp"));
-    const QString playbackClock = readSource(QStringLiteral("src/audio/BassPreviewAudioBackend_PlaybackClock.cpp"));
+    const QString eventDrain = readSource(QStringLiteral("src/audio/bass/BassPreviewAudioBackend_EventDrain.cpp"));
+    const QString transport = readSource(QStringLiteral("src/audio/bass/BassPreviewAudioBackend_Transport.cpp"));
+    const QString playbackClock = readSource(QStringLiteral("src/audio/bass/BassPreviewAudioBackend_PlaybackClock.cpp"));
     const QString worker = readSource(QStringLiteral("src/audio/PreviewAudioWorker.cpp"));
     ok &= require(
         !eventDrain.isEmpty() && !transport.isEmpty() && !playbackClock.isEmpty() && !worker.isEmpty(),

@@ -64,7 +64,7 @@ Qt 最低版本锁定：`6.10`
 | `version` | 平台 | `WIN32`（MinGW） | 启动诊断的文件版本查询 | 启动诊断 | 链接期 |
 | `rstrtmgr` | 平台 | `WIN32`（MinGW） | 媒体工具的 Restart Manager 占用进程查找 | 媒体工具报「文件被占用」时 | 链接期 |
 | `dwmapi` | 平台 | `WIN32` | `WindowChrome` 的 `DwmExtendFrameIntoClientArea` | 根窗口创建 | 链接期；Windows 冷启动走查 |
-| `${CMAKE_DL_LIBS}` | 平台 | `Linux`（只在 Linux BASS 块里加入链接行；macOS 的 `dl` 由 libSystem 隐式提供，无需显式链接） | `src/audio/BassPreviewAudioBackend_EngineInit.cpp` 用 `dlopen`/`dlsym` 载入 `libbass_fx.so` 并取 `BASS_FX_TempoCreate` | 首次变速播放（BASS FX 引擎初始化） | 链接期（Linux 构建）；音频手工回归 |
+| `${CMAKE_DL_LIBS}` | 平台 | `Linux`（只在 Linux BASS 块里加入链接行；macOS 的 `dl` 由 libSystem 隐式提供，无需显式链接） | `src/audio/bass/BassPreviewAudioBackend_EngineInit.cpp` 用 `dlopen`/`dlsym` 载入 `libbass_fx.so` 并取 `BASS_FX_TempoCreate` | 首次变速播放（BASS FX 引擎初始化） | 链接期（Linux 构建）；音频手工回归 |
 
 ## 构建期组件
 

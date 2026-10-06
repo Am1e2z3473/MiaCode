@@ -1,4 +1,4 @@
-#include "audio/OfflineAudioDecoder.h"
+#include "audio/bass/OfflineAudioDecoder.h"
 
 #include <algorithm>
 #include <climits>
@@ -8,8 +8,8 @@
 #include <QFileInfo>
 #include <QtMath>
 
-#include "audio/PreviewBassDeviceLease.h"
-#include "audio/BassFlacPlugin.h"
+#include "audio/bass/PreviewBassDeviceLease.h"
+#include "audio/bass/BassFlacPlugin.h"
 
 #include "bass.h"
 
@@ -200,6 +200,27 @@ double probeFileDurationSeconds(const QString& path)
         ? 0.0 : BASS_ChannelBytes2Seconds(stream, length);
     BASS_StreamFree(stream);
     return qIsFinite(seconds) && seconds > 0.0 ? seconds : 0.0;
+}
+
+namespace {
+
+class BassAudioFileDecoder final : public AudioFileDecoder
+{
+public:
+    QString decoderName() const override { return QStringLiteral("bass"); }
+    DecodedMonoAudio decodeFileToMono(const QString& path, int targetSampleRate) const override
+    {
+        return miacode::audio_decode::decodeFileToMono(path, targetSampleRate);
+    }
+};
+
+}  // namespace
+
+std::shared_ptr<const AudioFileDecoder> bassAudioFileDecoder()
+{
+    static const std::shared_ptr<const AudioFileDecoder> decoder =
+        std::make_shared<BassAudioFileDecoder>();
+    return decoder;
 }
 
 }  // namespace miacode::audio_decode

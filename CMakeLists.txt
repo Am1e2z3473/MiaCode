@@ -301,11 +301,12 @@ add_executable(MiaCode WIN32 MACOSX_BUNDLE
     src/common/InputShortcutGesture.h
     src/common/InputShortcutGesture.cpp
     src/core/chart/ChartAssetPaths.h
-    src/audio/OfflineAudioDecoder.h
-    src/audio/OfflineAudioDecoder.cpp
+    src/audio/bass/OfflineAudioDecoder.h
+    src/audio/bass/OfflineAudioDecoder.cpp
     src/app/services/Id3TagReader.h
     src/app/services/Id3TagReader.cpp
     src/timeline/TimelineThemeConfig.h
+    src/audio/AudioFileDecoder.h
     src/audio/WaveformCache.h
     src/audio/WaveformCache.cpp
     src/app/services/ProjectPreferences.h
@@ -523,8 +524,8 @@ add_executable(MiaCode WIN32 MACOSX_BUNDLE
     src/audio/PreviewAudioPlaybackFlowPolicy.h
     src/audio/PreviewAudioCommandQueue.h
     src/audio/PreviewAudioCommandQueue.cpp
-    src/audio/PreviewBassEmergencyPause.h
-    src/audio/PreviewBassEmergencyPause.cpp
+    src/audio/bass/PreviewBassEmergencyPause.h
+    src/audio/bass/PreviewBassEmergencyPause.cpp
     src/audio/PreviewAudioSettings.h
     src/audio/PreviewAudioSettings.cpp
     src/audio/PreviewAudioDeviceChangePolicy.h
@@ -1005,23 +1006,23 @@ target_sources(MiaCode PRIVATE
     src/audio/PreviewAudioWorkerFactory.cpp
     src/audio/PreviewAudioWorker.h
     src/audio/PreviewAudioWorker.cpp
-    src/audio/PreviewBassDefaultDevice.h
-    src/audio/PreviewBassDefaultDevice.cpp
-    src/audio/PreviewBassDeviceLease.h
-    src/audio/PreviewBassDeviceLease.cpp
+    src/audio/bass/PreviewBassDefaultDevice.h
+    src/audio/bass/PreviewBassDefaultDevice.cpp
+    src/audio/bass/PreviewBassDeviceLease.h
+    src/audio/bass/PreviewBassDeviceLease.cpp
     src/export/video_export/VideoExportAudioRenderPlan.h
     src/export/video_export/VideoExportAudioRenderPlan.cpp
     src/export/video_export/VideoExportAudioBackend.h
 )
 
 target_sources(MiaCode PRIVATE
-    src/audio/BassPreviewAudioBackend.h
-    src/audio/BassPreviewAudioBackend.cpp
-    src/audio/BassPreviewAudioBackend_EngineInit.cpp
-    src/audio/BassPreviewAudioBackend_Assets.cpp
-    src/audio/BassPreviewAudioBackend_Transport.cpp
-    src/audio/BassPreviewAudioBackend_PlaybackClock.cpp
-    src/audio/BassPreviewAudioBackend_EventDrain.cpp
+    src/audio/bass/BassPreviewAudioBackend.h
+    src/audio/bass/BassPreviewAudioBackend.cpp
+    src/audio/bass/BassPreviewAudioBackend_EngineInit.cpp
+    src/audio/bass/BassPreviewAudioBackend_Assets.cpp
+    src/audio/bass/BassPreviewAudioBackend_Transport.cpp
+    src/audio/bass/BassPreviewAudioBackend_PlaybackClock.cpp
+    src/audio/bass/BassPreviewAudioBackend_EventDrain.cpp
     src/export/video_export/BassExportAudioBackend.h
     src/export/video_export/BassExportAudioBackend.cpp
 )

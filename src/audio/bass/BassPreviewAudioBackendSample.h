@@ -1,9 +1,9 @@
 #pragma once
 
-#include "audio/BassPreviewAudioBackend.h"
+#include "audio/bass/BassPreviewAudioBackend.h"
 
-#include "audio/BassPreviewDebugLogRouting.h"
-#include "audio/BassPreviewRetainedState.h"
+#include "audio/bass/BassPreviewDebugLogRouting.h"
+#include "audio/bass/BassPreviewRetainedState.h"
 #include "core/chart/ChartAssetPaths.h"
 #include "common/DebugLog.h"
 #include "common/DebugOptions.h"
@@ -26,7 +26,7 @@
 #include "bass.h"
 #include "bassmix.h"
 
-#include "audio/BassPreviewAudioBackendImpl.h"
+#include "audio/bass/BassPreviewAudioBackendImpl.h"
 
 using namespace miacode::audio::bass_detail;
 

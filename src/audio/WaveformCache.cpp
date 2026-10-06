@@ -14,7 +14,7 @@
 #include <QThreadPool>
 #include <QtMath>
 
-#include "audio/OfflineAudioDecoder.h"
+#include "audio/AudioFileDecoder.h"
 #include "common/DebugLog.h"
 #include "common/DebugOptions.h"
 
@@ -181,9 +181,14 @@ WaveformDataPtr buildWaveformData(
     return data;
 }
 
-miacode::audio_decode::DecodedMonoAudio decodeMonoSamples(const QString& trackPath)
+miacode::audio_decode::DecodedMonoAudio decodeMonoSamples(
+    const QString& trackPath,
+    const miacode::audio_decode::AudioFileDecoder* decoder)
 {
-    return miacode::audio_decode::decodeFileToMono(
+    if (decoder == nullptr) {
+        return {};
+    }
+    return decoder->decodeFileToMono(
         trackPath,
         kWaveformDecodeSampleRate);
 }
@@ -326,11 +331,12 @@ WaveformDataPtr buildWaveformDataFromSamples(
 WaveformDataPtr buildWaveformDataFromFile(
     const QString& trackPath,
     qint64 fileSize,
-    qint64 lastModifiedMs)
+    qint64 lastModifiedMs,
+    const miacode::audio_decode::AudioFileDecoder* decoder)
 {
     QElapsedTimer timer;
     timer.start();
-    const miacode::audio_decode::DecodedMonoAudio decoded = decodeMonoSamples(trackPath);
+    const miacode::audio_decode::DecodedMonoAudio decoded = decodeMonoSamples(trackPath, decoder);
     WaveformDataPtr data = buildWaveformData(
         normalizeTrackPath(trackPath),
         fileSize,
@@ -339,7 +345,7 @@ WaveformDataPtr buildWaveformDataFromFile(
         decoded.durationSeconds);
     appendWaveformDebugLog(
         QStringLiteral("event=build decoder=%1 samples=%2 elapsed_ms=%3 %4")
-            .arg(QStringLiteral("bass"))
+            .arg(decoder != nullptr ? decoder->decoderName() : QStringLiteral("none"))
             .arg(decoded.samples.size())
             .arg(timer.nsecsElapsed() / 1000000.0, 0, 'f', 3)
             .arg(data ? waveformDataDebugSummary(*data) : QStringLiteral("data=0")));
@@ -520,6 +526,12 @@ void WaveformCacheService::setThreadPool(QThreadPool* threadPool)
     threadPool_ = threadPool;
 }
 
+void WaveformCacheService::setDecoder(
+    std::shared_ptr<const miacode::audio_decode::AudioFileDecoder> decoder)
+{
+    decoder_ = std::move(decoder);
+}
+
 void WaveformCacheService::requestWaveform(
     const QString& trackPath,
     const QString& cacheDirectoryPath,
@@ -586,7 +598,7 @@ void WaveformCacheService::requestWaveform(
 
     QPointer<WaveformCacheService> guard(this);
     QThreadPool* const pool = threadPool_ != nullptr ? threadPool_ : QThreadPool::globalInstance();
-    pool->start([guard, request]() {
+    pool->start([guard, request, decoder = decoder_]() {
         QElapsedTimer timer;
         timer.start();
         WaveformDataPtr data;
@@ -606,7 +618,8 @@ void WaveformCacheService::requestWaveform(
             data = buildWaveformDataFromFile(
                 request->trackPath,
                 request->fileSize,
-                request->lastModifiedMs);
+                request->lastModifiedMs,
+                decoder.get());
             if (data && !data->levels.isEmpty() && !request->cacheFilePath.isEmpty()) {
                 const bool wrote = writeWaveformDataCache(request->cacheFilePath, *data);
                 appendWaveformDebugLog(

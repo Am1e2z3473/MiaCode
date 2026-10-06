@@ -5,7 +5,7 @@
 #include <cmath>
 #include <limits>
 
-#include "audio/OfflineAudioDecoder.h"
+#include "audio/bass/OfflineAudioDecoder.h"
 
 namespace miacode::latency_analysis {
 

@@ -1,10 +1,10 @@
-#include "audio/BassPreviewAudioBackend.h"
+#include "audio/bass/BassPreviewAudioBackend.h"
 
-#include "audio/BassPreviewDebugLogRouting.h"
-#include "audio/BassFlacPlugin.h"
-#include "audio/BassPreviewRetainedState.h"
-#include "audio/PreviewBassDefaultDevice.h"
-#include "audio/PreviewBassEmergencyPause.h"
+#include "audio/bass/BassPreviewDebugLogRouting.h"
+#include "audio/bass/BassFlacPlugin.h"
+#include "audio/bass/BassPreviewRetainedState.h"
+#include "audio/bass/PreviewBassDefaultDevice.h"
+#include "audio/bass/PreviewBassEmergencyPause.h"
 #include "core/chart/ChartAssetPaths.h"
 #include "common/DebugLog.h"
 #include "common/DebugOptions.h"
@@ -37,8 +37,8 @@
 #include "bass.h"
 #include "bassmix.h"
 
-#include "audio/BassPreviewAudioBackendImpl.h"
-#include "audio/BassPreviewAudioBackendSample.h"
+#include "audio/bass/BassPreviewAudioBackendImpl.h"
+#include "audio/bass/BassPreviewAudioBackendSample.h"
 
 using namespace miacode::audio::bass_detail;
 

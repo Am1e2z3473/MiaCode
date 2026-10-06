@@ -11,6 +11,10 @@
 
 class QThreadPool;
 
+namespace miacode::audio_decode {
+class AudioFileDecoder;
+}
+
 namespace miacode::waveform {
 
 // The density change keeps schema 3 because the serialized pyramid layout is
@@ -61,10 +65,12 @@ WaveformDataPtr buildWaveformDataFromSamples(
     qint64 lastModifiedMs,
     const QVector<float>& samples,
     double durationSeconds);
+// Decodes through `decoder`; without one the result carries no samples.
 WaveformDataPtr buildWaveformDataFromFile(
     const QString& trackPath,
     qint64 fileSize,
-    qint64 lastModifiedMs);
+    qint64 lastModifiedMs,
+    const miacode::audio_decode::AudioFileDecoder* decoder);
 WaveformDataPtr readWaveformDataCache(
     const QString& cacheFilePath,
     const QString& normalizedTrackPath,
@@ -87,6 +93,8 @@ public:
     explicit WaveformCacheService(QObject* parent = nullptr);
 
     void setThreadPool(QThreadPool* threadPool);
+    // Decoder for cache misses, supplied by the host's audio backend.
+    void setDecoder(std::shared_ptr<const miacode::audio_decode::AudioFileDecoder> decoder);
     void requestWaveform(
         const QString& trackPath,
         const QString& cacheDirectoryPath,
@@ -108,6 +116,7 @@ private:
     void finishPendingRequest(const std::shared_ptr<PendingRequest>& request, WaveformDataPtr data);
 
     QThreadPool* threadPool_ = nullptr;
+    std::shared_ptr<const miacode::audio_decode::AudioFileDecoder> decoder_;
     QHash<QString, WaveformDataPtr> memoryCache_;
     QHash<QString, std::shared_ptr<PendingRequest>> pendingRequests_;
 };

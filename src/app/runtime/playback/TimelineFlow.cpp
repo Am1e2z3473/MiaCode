@@ -7,6 +7,7 @@
 #include "app/services/LatencyEngine.h"
 
 #include "audio/QtPreviewSfxRuntime.h"
+#include "audio/bass/OfflineAudioDecoder.h"
 #include "core/chart/parser/SimaiParser.h"
 #include "app/MainEntrypoints.h"
 #include "app/quick_shell/QuickShellPreviewCompositeSurface.h"
@@ -1082,6 +1083,7 @@ miacode::waveform::WaveformCacheService* miacode::runtime::PlaybackCoordinator::
 {
     if (state_.waveformCacheService_ == nullptr) {
         state_.waveformCacheService_ = new miacode::waveform::WaveformCacheService(&owner_);
+        state_.waveformCacheService_->setDecoder(miacode::audio_decode::bassAudioFileDecoder());
     }
     state_.waveformCacheService_->setThreadPool(
         state_.previewWarmupPool_ != nullptr ? state_.previewWarmupPool_ : QThreadPool::globalInstance());

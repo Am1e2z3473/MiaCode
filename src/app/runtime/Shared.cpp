@@ -2,7 +2,7 @@
 
 #include "app/services/ApplicationServices.h"
 
-#include "audio/OfflineAudioDecoder.h"
+#include "audio/bass/OfflineAudioDecoder.h"
 #include "common/DebugLog.h"
 #include "common/DebugOptions.h"
 #include "audio/WaveformCache.h"

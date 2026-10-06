@@ -1,6 +1,6 @@
 #include "export/video_export/BassExportAudioBackend.h"
 
-#include "audio/BassFlacPlugin.h"
+#include "audio/bass/BassFlacPlugin.h"
 
 #include "common/DebugLog.h"
 #include "audio/PreviewAudioMixConfig.h"

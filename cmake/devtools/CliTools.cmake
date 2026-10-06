@@ -72,24 +72,24 @@ miacode_add_dev_tool(miacode_audio_probe
         src/audio/PreviewAudioWorkerProtocol.h
         src/audio/PreviewAudioCommandQueue.h
         src/audio/PreviewAudioCommandQueue.cpp
-        src/audio/PreviewBassEmergencyPause.h
-        src/audio/PreviewBassEmergencyPause.cpp
+        src/audio/bass/PreviewBassEmergencyPause.h
+        src/audio/bass/PreviewBassEmergencyPause.cpp
         src/audio/PreviewAudioWorkerFactory.h
         src/audio/PreviewAudioWorkerFactory.cpp
         src/audio/PreviewAudioWorker.h
         src/audio/PreviewAudioWorker.cpp
-        src/audio/PreviewBassDefaultDevice.h
-        src/audio/PreviewBassDefaultDevice.cpp
-        src/audio/PreviewBassDeviceLease.h
-        src/audio/PreviewBassDeviceLease.cpp
+        src/audio/bass/PreviewBassDefaultDevice.h
+        src/audio/bass/PreviewBassDefaultDevice.cpp
+        src/audio/bass/PreviewBassDeviceLease.h
+        src/audio/bass/PreviewBassDeviceLease.cpp
         src/devtools/AudioProbe.cpp
-        src/audio/BassPreviewAudioBackend.h
-        src/audio/BassPreviewAudioBackend.cpp
-        src/audio/BassPreviewAudioBackend_EngineInit.cpp
-        src/audio/BassPreviewAudioBackend_Assets.cpp
-        src/audio/BassPreviewAudioBackend_Transport.cpp
-        src/audio/BassPreviewAudioBackend_PlaybackClock.cpp
-        src/audio/BassPreviewAudioBackend_EventDrain.cpp
+        src/audio/bass/BassPreviewAudioBackend.h
+        src/audio/bass/BassPreviewAudioBackend.cpp
+        src/audio/bass/BassPreviewAudioBackend_EngineInit.cpp
+        src/audio/bass/BassPreviewAudioBackend_Assets.cpp
+        src/audio/bass/BassPreviewAudioBackend_Transport.cpp
+        src/audio/bass/BassPreviewAudioBackend_PlaybackClock.cpp
+        src/audio/bass/BassPreviewAudioBackend_EventDrain.cpp
         src/audio/PreviewAudioSettings.h
         src/audio/PreviewAudioSettings.cpp
         src/audio/QtPreviewSfxRuntime.h
@@ -110,10 +110,10 @@ miacode_add_dev_tool(miacode_latency_offset_batch
         src/devtools/LatencyOffsetBatch.cpp
         src/app/runtime/latency/LatencyAnalysis.h
         src/app/runtime/latency/LatencyAnalysis.cpp
-        src/audio/OfflineAudioDecoder.h
-        src/audio/OfflineAudioDecoder.cpp
-        src/audio/PreviewBassDeviceLease.h
-        src/audio/PreviewBassDeviceLease.cpp
+        src/audio/bass/OfflineAudioDecoder.h
+        src/audio/bass/OfflineAudioDecoder.cpp
+        src/audio/bass/PreviewBassDeviceLease.h
+        src/audio/bass/PreviewBassDeviceLease.cpp
     LIBS Qt6::Core
     INCLUDES src
 )

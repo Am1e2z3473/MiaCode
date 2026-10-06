@@ -9,13 +9,14 @@
 #include <QMutex>
 
 #include "audio/PreviewAudioMixConfig.h"
-#include "audio/BassPreviewDebugLogRouting.h"
-#include "audio/BassPreviewSfxCallbackRing.h"
-#include "audio/BassPreviewOutputGlitchProbeState.h"
-#include "audio/BassPreviewSfxSchedulerPolicy.h"
-#include "audio/PreviewBassDeviceLease.h"
+#include "audio/bass/BassPreviewDebugLogRouting.h"
+#include "audio/bass/BassPreviewSfxCallbackRing.h"
+#include "audio/bass/BassPreviewOutputGlitchProbeState.h"
+#include "audio/bass/BassPreviewSfxSchedulerPolicy.h"
+#include "audio/bass/PreviewBassDeviceLease.h"
 #include "audio/PreviewAudioBackend.h"
 #include "audio/PreviewAudioHealth.h"
+#include "audio/PreviewAudioWorkerFactory.h"
 
 class BassPreviewAudioBackend final : public QObject, public miacode::preview_audio::PreviewAudioBackend
 {
@@ -438,3 +439,12 @@ private:
     std::unique_ptr<Sample> trackStartSample_;  // 片头 opening jingle (audition only)
     std::unique_ptr<Sample> backgroundTrackSampleOwner_;
 };
+
+namespace miacode::preview_audio {
+
+// The BASS backend packaged for installPreviewAudioBackendProvider(): creates
+// BassPreviewAudioBackend on the worker thread and pauses the armed output on
+// a device change (PreviewBassEmergencyPause).
+PreviewAudioBackendProvider bassPreviewAudioBackendProvider();
+
+}  // namespace miacode::preview_audio
