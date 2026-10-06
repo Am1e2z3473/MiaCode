@@ -1,4 +1,4 @@
-#include "audio/PreviewBassEmergencyPause.h"
+#include "audio/bass/PreviewBassEmergencyPause.h"
 
 #include <chrono>
 #include <mutex>

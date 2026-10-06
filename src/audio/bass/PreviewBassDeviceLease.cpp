@@ -1,4 +1,4 @@
-#include "audio/PreviewBassDeviceLease.h"
+#include "audio/bass/PreviewBassDeviceLease.h"
 
 #include <array>
 #include <mutex>

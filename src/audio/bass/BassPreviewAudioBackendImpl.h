@@ -14,7 +14,7 @@
 // the tempo constants and noteBassErr therefore resolve against the including
 // TU's bass.h on every supported platform.
 
-#include "audio/BassPreviewDebugLogRouting.h"
+#include "audio/bass/BassPreviewDebugLogRouting.h"
 #include "audio/PreviewAudioBackend.h"
 #include "common/DebugLog.h"
 #include "common/DebugOptions.h"

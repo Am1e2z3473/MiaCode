@@ -1,5 +1,7 @@
 #pragma once
 
+#include "audio/PreviewAudioWorkerFactory.h"
+
 #include <QtGlobal>
 
 namespace miacode::preview_audio {
@@ -7,16 +9,7 @@ namespace miacode::preview_audio {
 // A tiny process-local control plane for the active Windows BASS output.  The Core
 // Audio callback uses it to stop the old endpoint before the audio worker has an
 // opportunity to drain a queued command.  Stream lifetime remains worker-owned.
-struct BassEmergencyPauseResult {
-    bool available = false;
-    bool attempted = false;
-    bool paused = false;
-    int outputDeviceIndex = -1;
-    int nativeErrorCode = 0;
-    qint64 startedMonotonicNs = 0;
-    qint64 finishedMonotonicNs = 0;
-};
-
+// The result type lives with the backend provider in audio/PreviewAudioWorkerFactory.h.
 class PreviewBassEmergencyPause final
 {
 public:

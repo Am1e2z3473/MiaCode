@@ -10,7 +10,8 @@
 #include "common/UiHangWatchdog.h"
 #include "common/DebugOptions.h"
 #include "audio/WaveformCache.h"
-#include "audio/PreviewBassDefaultDevice.h"
+#include "audio/bass/BassPreviewAudioBackend.h"
+#include "audio/bass/PreviewBassDefaultDevice.h"
 #include "core/chart/parser/SimaiParser.h"
 
 #include <QCoreApplication>
@@ -201,6 +202,11 @@ int main(int argc, char* argv[])
 #endif
 
     MC_OP("main");
+
+    // Every role of this executable plays preview audio through BASS; install
+    // it before anything can construct a preview audio worker.
+    miacode::preview_audio::installPreviewAudioBackendProvider(
+        miacode::preview_audio::bassPreviewAudioBackendProvider());
 
     // Negative HS (`<HS*-N>`) is ON by default. The opt-out escape hatch
     // MIACODE_PREVIEW_REJECT_NEGATIVE_HS restores the strict reject-hs<=0

@@ -77,7 +77,7 @@ miacode_add_spec(log_pruning_policy_spec
         src/tools/debug_index/LogPruningPolicySpec.cpp
         src/common/LogEmissionPolicy.h
         src/common/UiHangWatchdogPolicy.h
-        src/audio/BassPreviewSfxSchedulerPolicy.h
+        src/audio/bass/BassPreviewSfxSchedulerPolicy.h
     LIBS Qt6::Core
     INCLUDES src
 )

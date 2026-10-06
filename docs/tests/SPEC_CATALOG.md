@@ -37,9 +37,9 @@ Owners name production modules; kinds describe the checked boundary, not runtime
 | `src/tools/muri/MuriSpec.cpp` | `muri_spec` | `src/core/analysis` | `muri.muri` | muri | behavior | normal | all | ctest | active |
 | `src/tools/net/NetClientSpec.cpp` | `net_client_spec` | `src/media_tools/net` | `net.net-client` | net | behavior | normal | all | ctest | active |
 | `src/tools/oplog/OperationLogSpec.cpp` | `oplog_self_test` | `src/common` | `oplog.oplog` | oplog | behavior | normal | all | ctest | active |
-| `src/tools/preview/BassPreviewDebugLogRoutingSpec.cpp` | `bass_preview_debug_log_routing_spec` | `src/audio` | `preview.bass-preview-debug-log-routing` | preview | behavior | high | all | ctest | active |
-| `src/tools/preview/BassPreviewRetainedStateSpec.cpp` | `bass_preview_retained_state_spec` | `src/audio` | `preview.bass-preview-retained-state` | preview | behavior | high | all | ctest | active |
-| `src/tools/preview/BassPreviewSfxSchedulerPolicySpec.cpp` | `bass_preview_sfx_scheduler_policy_spec` | `src/audio` | `preview.bass-preview-sfx-scheduler-policy` | preview | behavior | high | all | ctest | active |
+| `src/tools/preview/BassPreviewDebugLogRoutingSpec.cpp` | `bass_preview_debug_log_routing_spec` | `src/audio/bass` | `preview.bass-preview-debug-log-routing` | preview | behavior | high | all | ctest | active |
+| `src/tools/preview/BassPreviewRetainedStateSpec.cpp` | `bass_preview_retained_state_spec` | `src/audio/bass` | `preview.bass-preview-retained-state` | preview | behavior | high | all | ctest | active |
+| `src/tools/preview/BassPreviewSfxSchedulerPolicySpec.cpp` | `bass_preview_sfx_scheduler_policy_spec` | `src/audio/bass` | `preview.bass-preview-sfx-scheduler-policy` | preview | behavior | high | all | ctest | active |
 | `src/tools/preview/PreviewAudioCommandQueueSpec.cpp` | `preview_audio_command_queue_spec` | `src/audio` | `preview.preview-audio-command-queue` | preview | behavior | high | all | ctest | active |
 | `src/tools/preview/PreviewAudioDeviceChangePolicySpec.cpp` | `preview_audio_device_change_policy_spec` | `src/audio` | `preview.preview-audio-device-change-policy` | preview | behavior | high | all | ctest | active |
 | `src/tools/preview/PreviewAudioHealthSpec.cpp` | `preview_audio_health_spec` | `src/audio` | `preview.preview-audio-health` | preview | behavior | high | all | ctest | active |
@@ -49,7 +49,7 @@ Owners name production modules; kinds describe the checked boundary, not runtime
 | `src/tools/preview/PreviewAudioSettingsSpec.cpp` | `preview_audio_settings_spec` | `src/audio` | `preview.preview-audio-settings` | preview | behavior | high | all | ctest | active |
 | `src/tools/preview/PreviewAudioWorkerProtocolSpec.cpp` | `preview_audio_worker_protocol_spec` | `src/audio` | `preview.preview-audio-worker-protocol` | preview | behavior | high | all | ctest | active |
 | `src/tools/preview/PreviewAudioWorkerSpec.cpp` | `preview_audio_worker_spec` | `src/audio` | `preview.preview-audio-worker` | preview | integration | high | all | ctest | active |
-| `src/tools/preview/PreviewBassDeviceLeaseSpec.cpp` | `preview_bass_device_lease_spec` | `src/audio` | `preview.preview-bass-device-lease` | preview | integration | high | all | ctest | active |
+| `src/tools/preview/PreviewBassDeviceLeaseSpec.cpp` | `preview_bass_device_lease_spec` | `src/audio/bass` | `preview.preview-bass-device-lease` | preview | integration | high | all | ctest | active |
 | `src/tools/preview/PreviewEndOfMediaPolicySpec.cpp` | `preview_end_of_media_policy_spec` | `src/core/video` | `preview.preview-end-of-media-policy` | preview | behavior | high | all | ctest | active |
 | `src/tools/preview/PreviewFireworkLifecycleSpec.cpp` | `preview_firework_lifecycle_spec` | `src/core/scene` | `preview.preview-firework-lifecycle` | preview | behavior | high | all | ctest | active |
 | `src/tools/preview/PreviewFireworkWarmupPolicySpec.cpp` | `preview_firework_warmup_policy_spec` | `src/core/scene` | `preview.preview-firework-warmup-policy` | preview | behavior | high | all | ctest | active |
