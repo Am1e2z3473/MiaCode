@@ -11,8 +11,8 @@ miacode_add_spec(qml_app_background_model_spec
         src/app/ui/preferences/AppBackgroundModel.cpp
         src/app/ui/preferences/AppBackgroundSettings.h
         src/app/ui/preferences/AppBackgroundSettings.cpp
-        src/app/ui/preferences/PreferenceDocument.h
-        src/app/ui/preferences/PreferenceDocument.cpp
+        src/app/services/PreferenceDocument.h
+        src/app/services/PreferenceDocument.cpp
         src/app/ui/preferences/LocaleService.h
         src/app/ui/preferences/LocaleService.cpp
         src/app/services/UiRequestService.h
@@ -135,8 +135,8 @@ miacode_add_spec(timeline_surface_ready_spec
         src/app/services/ShellNotifications.cpp
         src/app/services/ShellNotifications.h
         src/app/services/TimelineSurface.h
-        src/app/ui/preferences/PreferenceDocument.cpp
-        src/app/ui/preferences/PreferenceDocument.h
+        src/app/services/PreferenceDocument.cpp
+        src/app/services/PreferenceDocument.h
         src/app/ui/preferences/LocaleService.cpp
         src/app/ui/preferences/LocaleService.h
     LIBS Qt6::Core Qt6::Qml
@@ -261,8 +261,8 @@ miacode_add_spec(qml_preview_rate_feedback_spec
         src/app/ui/preview/PreviewModel.h
         src/app/ui/preferences/LocaleService.cpp
         src/app/ui/preferences/LocaleService.h
-        src/app/ui/preferences/PreferenceDocument.cpp
-        src/app/ui/preferences/PreferenceDocument.h
+        src/app/services/PreferenceDocument.cpp
+        src/app/services/PreferenceDocument.h
         src/app/services/ShellNotifications.cpp
         src/app/services/ShellNotifications.h
         src/app/services/PlaybackControl.h

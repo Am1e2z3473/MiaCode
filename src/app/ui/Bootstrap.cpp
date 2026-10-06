@@ -8,7 +8,7 @@
 #include "app/services/update/PreferenceUpdateStateStore.h"
 #include "app/services/update/UpdateManifest.h"
 #include "app/services/update/UpdateService.h"
-#include "app/ui/preferences/PreferenceDocument.h"
+#include "app/services/PreferenceDocument.h"
 #include "app/ui/preview/NoteImageProvider.h"
 #include "app/ui/export/CoverExportWindow.h"
 #include "app/ui/chrome/WindowChrome.h"

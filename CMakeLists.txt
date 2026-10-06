@@ -219,6 +219,8 @@ add_executable(MiaCode WIN32 MACOSX_BUNDLE
     src/app/runtime/SessionBootstrap.cpp
     src/app/runtime/SessionBootstrapFinalize.cpp
     src/app/runtime/settings/Settings.cpp
+    src/app/runtime/settings/PreferenceDocumentProvider.h
+    src/app/runtime/settings/PreferenceDocumentProvider.cpp
     src/app/runtime/preview/StageMediaRoute.cpp
     src/app/runtime/preview/WarmupAndSettings.cpp
     src/app/runtime/playback/TimelineFlow.cpp
@@ -258,8 +260,8 @@ add_executable(MiaCode WIN32 MACOSX_BUNDLE
     src/app/runtime/playback/SurfaceContract.cpp
     src/app/runtime/playback/SessionForwarding.SurfaceContract.cpp
     src/app/runtime/shell/ShellHost.cpp
-    src/app/ui/preferences/PreferenceDocument.h
-    src/app/ui/preferences/PreferenceDocument.cpp
+    src/app/services/PreferenceDocument.h
+    src/app/services/PreferenceDocument.cpp
     src/app/ui/preferences/LocaleService.h
     src/app/ui/preferences/LocaleService.cpp
     src/app/ui/preferences/AppBackgroundSettings.h
@@ -290,6 +292,8 @@ add_executable(MiaCode WIN32 MACOSX_BUNDLE
     src/common/GpuDevicePolicy.cpp
     src/common/OperationLog.h
     src/common/OperationLog.cpp
+    src/common/PreferenceProvider.h
+    src/common/PreferenceProvider.cpp
     src/common/CrashRecovery.h
     src/common/CrashRecovery.cpp
     src/common/Mmcss.h

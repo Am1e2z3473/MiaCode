@@ -1,6 +1,6 @@
 #include "export/video_export/FontLibrary.h"
 
-#include "app/ui/preferences/PreferenceDocument.h"
+#include "common/PreferenceProvider.h"
 
 #include <QDateTime>
 #include <QDir>
@@ -14,8 +14,7 @@ namespace miacode::video_export {
 
 QString fontLibraryDirPath()
 {
-    const QFileInfo preferencesInfo(PreferenceDocument::preferencesFilePath());
-    return preferencesInfo.absoluteDir().filePath(QStringLiteral("fonts"));
+    return QDir(miacode::preferences::preferencesDirectoryPath()).filePath(QStringLiteral("fonts"));
 }
 
 QString fontFamilyForFile(const QString& path)

@@ -8,7 +8,7 @@
 #include "common/DebugOptions.h"
 #include "common/InputShortcutGesture.h"
 #include "core/chart/parser/SimaiParser.h"
-#include "app/ui/preferences/PreferenceDocument.h"
+#include "common/PreferenceProvider.h"
 #include "timeline/TimelineThemeConfig.h"
 #include "timeline/TimelineSceneStateBuilder.h"
 
@@ -45,7 +45,7 @@ int zoomPresetIndexForScale(const QVector<double>& zoomPresets, double scale, in
 
 SimaiValidationLocale timelineUiValidationLocale()
 {
-    const QString token = PreferenceDocument::resolvedLanguageToken();
+    const QString token = miacode::preferences::resolvedLanguageToken();
     if (token.startsWith(QStringLiteral("zh"))) {
         return SimaiValidationLocale::Chinese;
     }

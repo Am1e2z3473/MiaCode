@@ -1,6 +1,6 @@
 #include "app/services/update/PreferenceUpdateStateStore.h"
 
-#include "app/ui/preferences/PreferenceDocument.h"
+#include "app/services/PreferenceDocument.h"
 
 #include <QJsonObject>
 
