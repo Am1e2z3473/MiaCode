@@ -22,7 +22,6 @@ AppMenu {
         delegate: AppMenuItem {
             id: zoomItem
             required property var modelData
-            compact: true
 
             readonly property bool current: root.stateBridge
                      && Math.abs(root.stateBridge.zoomScale - modelData) <= 1e-6

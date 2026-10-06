@@ -60,7 +60,7 @@ AppDialog {
             : qsTrId("dialog.preferences.layout.editor_preview")
 
         implicitWidth: 180
-        implicitHeight: (width - 24) * 9 / 16 + 46
+        implicitHeight: (width - 24) * 10 / 16 + 46
         hoverEnabled: true
         focusPolicy: Qt.TabFocus
         Accessible.role: Accessible.RadioButton
@@ -81,11 +81,15 @@ AppDialog {
         contentItem: Item {
             Rectangle {
                 id: miniature
+                readonly property real contentLeft: miniatureSidebar.x + miniatureSidebar.width + 4
+                readonly property real contentWidth: width - contentLeft - 5
+                readonly property real paneSpacing: 8
+                readonly property real paneWidth: (contentWidth - paneSpacing) / 2
                 anchors.left: parent.left
                 anchors.right: parent.right
                 anchors.top: parent.top
                 anchors.margins: 12
-                height: width * 9 / 16
+                height: width * 10 / 16
                 radius: Theme.compactControlRadius
                 color: Theme.surfaceColor(Theme.colors.background.surface)
                 border.width: 1
@@ -99,8 +103,9 @@ AppDialog {
                     color: Theme.colors.border.control
                 }
                 Rectangle {
+                    id: miniatureSidebar
                     x: 5; y: 14
-                    width: 10
+                    width: miniature.width * 0.14
                     height: parent.height - 19
                     radius: 2
                     color: Theme.colors.border.control
@@ -108,32 +113,41 @@ AppDialog {
 
                 Item {
                     id: previewPane
-                    x: card.previewOnLeft ? 19 : miniature.width - width - 5
+                    x: card.previewOnLeft ? miniature.contentLeft : miniature.width - width - 5
                     y: 14
-                    width: (miniature.width - 29) * 0.44
+                    width: miniature.paneWidth
                     height: miniature.height - 19
 
-                    Rectangle {
-                        anchors.centerIn: parent
-                        anchors.verticalCenterOffset: -8
-                        width: Math.min(parent.width - 8, parent.height - 22)
-                        height: width
-                        radius: width / 2
-                        color: "transparent"
-                        border.width: 2
-                        border.color: Theme.colors.accent.primary
-                    }
-                    Grid {
+                    Item {
                         anchors.left: parent.left
                         anchors.right: parent.right
+                        anchors.top: parent.top
+                        anchors.bottom: previewControls.top
+                        anchors.bottomMargin: 4
+
+                        Rectangle {
+                            id: previewCircle
+                            anchors.centerIn: parent
+                            width: Math.min(parent.width - 8, parent.height - 8)
+                            height: width
+                            radius: width / 2
+                            color: "transparent"
+                            border.width: 2
+                            border.color: Theme.colors.accent.primary
+                        }
+                    }
+                    Grid {
+                        id: previewControls
+                        anchors.horizontalCenter: parent.horizontalCenter
                         anchors.bottom: parent.bottom
+                        width: previewCircle.width
                         columns: 3
                         spacing: 3
 
                         Repeater {
                             model: 3
                             delegate: Item {
-                                width: (previewPane.width - 6) / 3
+                                width: (previewControls.width - 6) / 3
                                 height: 5
 
                                 Rectangle {
@@ -161,12 +175,13 @@ AppDialog {
 
                 Item {
                     id: editorPane
-                    x: card.previewOnLeft ? miniature.width - width - 5 : 19
+                    x: card.previewOnLeft ? miniature.width - width - 5 : miniature.contentLeft
                     y: 14
-                    width: (miniature.width - 29) * 0.5
+                    width: miniature.paneWidth
                     height: miniature.height - 19
 
                     Column {
+                        y: 6
                         anchors.left: parent.left
                         anchors.right: parent.right
                         spacing: 5

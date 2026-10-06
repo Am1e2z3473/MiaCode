@@ -11,17 +11,14 @@ Popup {
 
     property bool closing: false
     readonly property bool active: root.visible && !root.closing
-    enter: FadeTransition {
-        id: enterTransition
+    enter: Transition {
+        PropertyAction { property: "opacity"; value: 1 }
     }
     exit: FadeTransition {
         appearing: false
         initialOpacity: root.opacity
     }
-    onAboutToShow: {
-        enterTransition.initialOpacity = root.closing ? root.opacity : 0
-        root.closing = false
-    }
+    onAboutToShow: root.closing = false
     onAboutToHide: root.closing = true
     onClosed: root.closing = false
 

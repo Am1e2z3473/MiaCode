@@ -333,11 +333,31 @@ Item {
         }
 
         CornerMask {
+            id: workspaceCorner
             x: root.compact ? 0 : sidebar.activityBarWidth
             backgroundSource: root.backgroundSource
             backgroundOffset: Qt.point(root.backgroundOffset.x + x, root.backgroundOffset.y)
             panelItem: !root.compact && root.viewState.sidebarVisible ? sidebar : workspaceSplit
             panelOffset: Qt.point(x - panelItem.x, 0)
+        }
+
+        Rectangle {
+            x: workspaceCorner.x + workspaceCorner.width
+            y: 0
+            width: parent.width - x
+            height: 1 / root.Screen.devicePixelRatio
+            color: Theme.chromeSeparatorColor
+            enabled: false
+        }
+
+        Rectangle {
+            x: workspaceCorner.x
+            y: workspaceCorner.height
+            width: 1 / root.Screen.devicePixelRatio
+            height: parent.height - y
+            visible: sidebar.visible
+            color: Theme.chromeSeparatorColor
+            enabled: false
         }
 
         SplitHandle {

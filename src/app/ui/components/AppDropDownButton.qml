@@ -1,5 +1,7 @@
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Layouts
+import QtQuick.Window
 import QtQuick.Controls.impl as ControlsImpl
 import MiaCode.UI
 
@@ -18,9 +20,9 @@ AbstractButton {
     leftPadding: compact ? 6 : 8
     rightPadding: compact ? 6 : 8
     implicitWidth: leftPadding + rightPadding + root.longestLabelWidth + 6 + root.chevronSize
-    implicitHeight: compact ? Theme.compactControlHeight : Math.max(Theme.controlMinHeight,
-                             Math.max(label.implicitHeight, chevronSize)
-                             + 2 * (Theme.chromePadding + Theme.chromeInsetY))
+    implicitHeight: Theme.compactControlHeight
+    Layout.minimumHeight: implicitHeight
+    Layout.maximumHeight: implicitHeight
     hoverEnabled: true
     focusPolicy: Qt.TabFocus
     Accessible.name: root.tooltip.length > 0 ? root.tooltip : root.text
@@ -96,10 +98,12 @@ AbstractButton {
     }
 
     background: HoverChrome {
-        cornerRadius: root.compact ? Theme.compactControlRadius : Theme.controlRadius
+        cornerRadius: Theme.controlRadius
         stateColors: Theme.colors.buttonState
         contentHeight: Math.max(label.implicitHeight, root.chevronSize)
         baseColor: Theme.colors.background.elevated
+        borderColor: Theme.floatingBorderColor
+        borderWidth: 1 / root.Screen.devicePixelRatio
         selected: root.expanded
         hovered: root.hovered
         pressed: root.down

@@ -41,6 +41,15 @@ Item {
                : Qt.rgba(root.tintColor.r, root.tintColor.g, root.tintColor.b, 1.0)
     }
 
+    Rectangle {
+        anchors.fill: parent
+        radius: root.cornerRadius
+        color: "transparent"
+        border.width: 1
+        border.color: Theme.floatingBorderColor
+        border.pixelAligned: false
+    }
+
     layer.enabled: true
     layer.effect: MultiEffect {
         autoPaddingEnabled: true

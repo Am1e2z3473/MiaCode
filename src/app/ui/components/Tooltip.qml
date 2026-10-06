@@ -19,8 +19,13 @@ ToolTip {
             ? above : (root.parent ? root.parent.height : 0) + 6
     }
 
-    enter: FadeTransition {}
-    exit: FadeTransition { appearing: false }
+    enter: Transition {
+        PropertyAction { property: "opacity"; value: 1 }
+    }
+    exit: FadeTransition {
+        appearing: false
+        initialOpacity: root.opacity
+    }
 
     delay: 550
     timeout: 3500

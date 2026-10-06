@@ -540,6 +540,8 @@ QtObject {
     readonly property real nativeMaterialTintOpacity: Qt.platform.os === "windows"
         ? (darkTheme ? 0.88 : 0.80)
         : (darkTheme ? 0.65 : 0.50)
+    readonly property color chromeSeparatorColor: darkTheme
+        ? Qt.rgba(1, 1, 1, 0.04) : Qt.rgba(0, 0, 0, 0.08)
     readonly property color chromeHighlightBaseColor: {
         const c = Qt.color(colors.background.activityBar)
         return darkTheme
@@ -554,6 +556,10 @@ QtObject {
         selected: chromeHighlightColor(0.16)
     }) : colors.activityState
     readonly property real popupOpacity: 0.96
+    readonly property int popupEnterDuration: 120
+    readonly property int popupExitDuration: 90
+    readonly property color floatingBorderColor: darkTheme
+        ? Qt.rgba(1, 1, 1, 0.06) : Qt.rgba(0, 0, 0, 0.08)
     // Frosted menu material is independent of wallpaper visibility.
     readonly property real popupTintOpacity: 0.85
     readonly property int popupBlurRadius: 96
