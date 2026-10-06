@@ -10,6 +10,9 @@
 #include "preview/quick_scene/PreviewTextureRepository.h"
 
 #include <QDateTime>
+#ifdef HAVE_QT_MULTIMEDIA
+#include <QVideoFrame>
+#endif
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
@@ -537,17 +540,33 @@ void PreviewRuntime::setMediaFrame(const QImage& frame)
     frameState_.media.stageMediaSerial = 0;
     frameState_.media.resolvedStageImageCacheable = false;
     frameState_.media.resolvedStageImageToImageMs = 0.0;
-#ifdef HAVE_QT_MULTIMEDIA
-    frameState_.media.videoFrame = QVideoFrame();
-#endif
+    frameState_.media.videoFrame = {};
     frameState_.media.retainedVideoFallbackFrame = QImage();
     setStageMediaAvailable(!frame.isNull());
 }
 
+namespace {
+
+// Wraps a valid frame into the scene's opaque handle; an invalid frame clears it.
+miacode::preview::scene::PreviewVideoFrameHandle videoFrameHandle(const QVideoFrame& frame)
+{
+#ifdef HAVE_QT_MULTIMEDIA
+    if (frame.isValid()) {
+        return miacode::preview::scene::PreviewVideoFrameHandle(
+            std::make_shared<const QVideoFrame>(frame));
+    }
+#else
+    Q_UNUSED(frame);
+#endif
+    return {};
+}
+
+}  // namespace
+
 void PreviewRuntime::setVideoFrame(const QVideoFrame& frame)
 {
 #ifdef HAVE_QT_MULTIMEDIA
-    frameState_.media.videoFrame = frame;
+    frameState_.media.videoFrame = videoFrameHandle(frame);
     if (!frame.isValid()) {
         frameState_.media.resolvedStageImage = QImage();
         frameState_.media.resolvedStageImageCacheable = false;
@@ -567,11 +586,7 @@ void PreviewRuntime::setResolvedStageVideoFrame(
     double toImageMs
 )
 {
-#ifdef HAVE_QT_MULTIMEDIA
-    frameState_.media.videoFrame = frame;
-#else
-    Q_UNUSED(frame);
-#endif
+    frameState_.media.videoFrame = videoFrameHandle(frame);
     frameState_.media.resolvedStageImage = resolvedImage;
     frameState_.media.resolvedStageImageCacheable = !resolvedImage.isNull() && cacheable;
     frameState_.media.stageMediaSerial = serial;

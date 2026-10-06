@@ -19,6 +19,7 @@
 #include "preview/runtime/PreviewSceneAssetRepository.h"
 
 class QQuickWindow;
+class QVideoFrame;
 
 struct PreviewRuntimeLayerProfileAggregate {
     QString name;
