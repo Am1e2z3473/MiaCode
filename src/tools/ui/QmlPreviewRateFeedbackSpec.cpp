@@ -14,6 +14,7 @@
 #include "app/services/PlaybackControl.h"
 #include "app/services/PreviewSurface.h"
 #include "app/services/ShellNotifications.h"
+#include "common/DebugLog.h"
 
 #include <QCoreApplication>
 #include <QSignalSpy>
@@ -173,6 +174,11 @@ int main(int argc, char** argv)
     expect(qFuzzyCompare(model.rate(), 0.25),
            QStringLiteral("a clamped request reports the clamped rate, not the request"),
            out, &failed);
+
+    // The model logs through the async writer. Join it while QCoreApplication is
+    // still alive, as the product entry does; joining it from static teardown
+    // after the application object is gone intermittently hangs the process.
+    miacode::debug_log::shutdownAsyncLogWriter();
 
     if (failed != 0) {
         out << "QmlPreviewRateFeedback spec failed: " << failed << '\n';
