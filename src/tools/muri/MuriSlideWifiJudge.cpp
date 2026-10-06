@@ -9,7 +9,7 @@
 #include <QSet>
 
 #include "core/chart/parser/SimaiParser.h"
-#include "timeline/TimelineData.h"
+#include "core/chart/model/TimelineData.h"
 #include "common/MuriConfig.h"
 #include "common/MuriTypes.h"  // makeMarkerAnalysisKey + Muri* state types
 #include "tools/muri/MuriAnalyzerGeometry.h"     // pointDistance

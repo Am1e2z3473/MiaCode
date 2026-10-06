@@ -3,7 +3,7 @@
 #include <QVector>
 
 #include "app/ui/document/DocumentProjection.h"
-#include "timeline/TimelineData.h"
+#include "core/chart/model/TimelineData.h"
 
 namespace miacode {
 struct AnalysisSnapshot;

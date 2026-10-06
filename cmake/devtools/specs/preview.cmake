@@ -94,7 +94,7 @@ miacode_add_spec(preview_head_layer_spec
         src/core/scene/PreviewSkinSelectors.cpp
         src/common/MuriTypes.h
         src/common/MuriTypes.cpp
-        src/timeline/TimelineData.h
+        src/core/chart/model/TimelineData.h
         resources/fonts.qrc
         resources/slide_data.qrc
     LIBS Qt6::Core Qt6::Gui Qt6::Widgets
@@ -133,7 +133,7 @@ miacode_add_spec(preview_guide_layer_spec
         src/core/scene/PreviewSkinSelectors.cpp
         src/common/MuriTypes.h
         src/common/MuriTypes.cpp
-        src/timeline/TimelineData.h
+        src/core/chart/model/TimelineData.h
         resources/fonts.qrc
         resources/slide_data.qrc
     LIBS Qt6::Core Qt6::Gui Qt6::Widgets
@@ -154,7 +154,7 @@ miacode_add_spec(preview_slide_erase_by_area_spec
         src/core/scene/PreviewSceneConstants.h
         src/common/MuriTypes.h
         src/common/MuriTypes.cpp
-        src/timeline/TimelineData.h
+        src/core/chart/model/TimelineData.h
         resources/slide_data.qrc
     LIBS Qt6::Core Qt6::Gui
     INCLUDES src
@@ -201,7 +201,7 @@ miacode_add_spec(preview_realtime_object_hot_path_spec
         src/core/scene/PreviewSkinSelectors.cpp
         src/common/MuriTypes.h
         src/common/MuriTypes.cpp
-        src/timeline/TimelineData.h
+        src/core/chart/model/TimelineData.h
     LIBS Qt6::Core Qt6::Gui
     INCLUDES src
 )
@@ -241,7 +241,7 @@ miacode_add_spec(preview_sfx_timeline_spec
         src/common/PreviewSfxTiming.h
         src/common/PreviewSfxTimeline.h
         src/common/PreviewGameplayConfig.h
-        src/timeline/TimelineData.h
+        src/core/chart/model/TimelineData.h
     LIBS Qt6::Core
     INCLUDES src
 )

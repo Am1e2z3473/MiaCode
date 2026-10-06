@@ -12,7 +12,7 @@
 #include "common/MuriTypes.h"
 #include "common/TaskCancellation.h"
 #include "core/chart/parser/SimaiParser.h"
-#include "timeline/TimelineData.h"
+#include "core/chart/model/TimelineData.h"
 #include "timeline/TimelineSlowRefresh.h"
 
 namespace miacode {

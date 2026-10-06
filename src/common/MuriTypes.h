@@ -9,11 +9,6 @@
 struct TimelineNoteMarker;
 enum class SimaiValidationLocale;
 
-struct MuriPadTimeEntry {
-    QString pad;
-    double proportion = 0.0;
-};
-
 enum class MuriKind {
     SlideTooFast,
     SlideHeadTap,

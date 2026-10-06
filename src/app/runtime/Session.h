@@ -25,7 +25,7 @@
 #include "core/chart/document/SimaiDocument.h"
 #include "core/chart/document/SimaiTimingMetadata.h"
 #include "core/chart/parser/SimaiParser.h"
-#include "timeline/TimelineData.h"
+#include "core/chart/model/TimelineData.h"
 #include "timeline/TimelineQuickModel.h"
 #include "timeline/TimelineSlowRefresh.h"
 #include "common/MuriRenderOptions.h"

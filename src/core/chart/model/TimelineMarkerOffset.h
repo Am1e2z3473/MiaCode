@@ -6,7 +6,7 @@
 #include <QVector>
 #include <QtNumeric>
 
-#include "timeline/TimelineData.h"
+#include "core/chart/model/TimelineData.h"
 
 // The `&first` offset pipeline: parse the raw field, then slide timeline markers by it.
 //

@@ -3,7 +3,7 @@
 #include <QString>
 #include <QVector>
 
-#include "timeline/TimelineData.h"
+#include "core/chart/model/TimelineData.h"
 
 struct VideoExportTask;
 

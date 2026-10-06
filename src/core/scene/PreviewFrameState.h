@@ -15,7 +15,7 @@
 #include "common/MuriTypes.h"
 #include "core/scene/PreviewProgressStatsCache.h"
 #include "core/video/PreviewRenderSettings.h"
-#include "timeline/TimelineData.h"
+#include "core/chart/model/TimelineData.h"
 
 #ifdef HAVE_QT_MULTIMEDIA
 #include <QVideoFrame>

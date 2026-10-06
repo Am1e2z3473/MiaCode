@@ -18,7 +18,7 @@
 #include "common/PreviewVideoGeometryConfig.h"
 #include "core/chart/transform/ChartNormalization.h"
 #include "app/services/PlaybackControl.h"
-#include "timeline/TimelineData.h"
+#include "core/chart/model/TimelineData.h"
 #include "timeline/TimelineQuickModel.h"
 #include "timeline/TimelineSlowRefresh.h"
 #include "tools/video_export/VideoExportSnapshot.h"

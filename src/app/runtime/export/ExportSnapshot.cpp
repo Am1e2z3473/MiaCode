@@ -14,7 +14,7 @@
 #include "common/DebugLog.h"
 #include "common/DebugOptions.h"
 #include "preview/runtime/PreviewRuntime.h"
-#include "timeline/TimelineMarkerOffset.h"
+#include "core/chart/model/TimelineMarkerOffset.h"
 #include "tools/video_export/VideoExportController.h"
 #include "tools/video_export/VideoExportSnapshot.h"
 

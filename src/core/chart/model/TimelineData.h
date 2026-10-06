@@ -5,7 +5,11 @@
 #include <QStringList>
 #include <QVector>
 
-#include "common/MuriTypes.h"
+// Pad entry time along a slide or wifi track, as a proportion of the track.
+struct MuriPadTimeEntry {
+    QString pad;
+    double proportion = 0.0;
+};
 
 struct TimelineBeatMarker {
     double second = 0.0;

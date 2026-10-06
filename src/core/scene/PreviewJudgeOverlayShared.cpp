@@ -2,7 +2,7 @@
 
 #include "common/MuriConfig.h"
 #include "core/scene/PreviewSceneMath.h"
-#include "timeline/TimelineData.h"
+#include "core/chart/model/TimelineData.h"
 
 #include <QStringList>
 #include <QtMath>

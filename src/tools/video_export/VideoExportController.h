@@ -10,7 +10,7 @@
 #include "core/video/PreviewRenderSettings.h"
 #include "audio/PreviewAudioSettings.h"
 #include "common/PreviewTimingSettings.h"
-#include "timeline/TimelineData.h"
+#include "core/chart/model/TimelineData.h"
 #include "common/MuriConfig.h"
 #include "common/MuriRenderOptions.h"
 #include "common/MuriTypes.h"

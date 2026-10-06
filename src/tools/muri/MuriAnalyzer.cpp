@@ -13,7 +13,7 @@
 #include <QJsonObject>
 
 #include "core/chart/parser/SimaiParser.h"
-#include "timeline/TimelineData.h"
+#include "core/chart/model/TimelineData.h"
 #include "common/MuriConfig.h"
 #include "tools/muri/MuriAnalyzerGeometry.h"
 #include "tools/muri/MuriAnalyzerModel.h"
