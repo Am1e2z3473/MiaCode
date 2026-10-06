@@ -1,4 +1,4 @@
-#include "tools/muri/MuriAnalyzer.h"
+#include "core/analysis/MuriAnalyzer.h"
 
 #include "common/TaskCancellation.h"
 
@@ -14,17 +14,17 @@
 
 #include "core/chart/parser/SimaiParser.h"
 #include "core/chart/model/TimelineData.h"
-#include "common/MuriConfig.h"
-#include "tools/muri/MuriAnalyzerGeometry.h"
-#include "tools/muri/MuriAnalyzerModel.h"
-#include "tools/muri/MuriAnalyzerInternal.h"
-#include "tools/muri/MuriDiagnosticCollector.h"
-#include "tools/muri/MuriDiagnosticLabels.h"
-#include "tools/muri/MuriOverlayBuilder.h"
-#include "tools/muri/MuriRuntimeModelBuilder.h"
-#include "tools/muri/MuriSimpleNoteJudge.h"
-#include "tools/muri/MuriSlideReferenceData.h"
-#include "tools/muri/MuriSlideWifiJudge.h"
+#include "core/analysis/MuriConfig.h"
+#include "core/analysis/MuriAnalyzerGeometry.h"
+#include "core/analysis/MuriAnalyzerModel.h"
+#include "core/analysis/MuriAnalyzerInternal.h"
+#include "core/analysis/MuriDiagnosticCollector.h"
+#include "core/analysis/MuriDiagnosticLabels.h"
+#include "core/analysis/MuriOverlayBuilder.h"
+#include "core/analysis/MuriRuntimeModelBuilder.h"
+#include "core/analysis/MuriSimpleNoteJudge.h"
+#include "core/analysis/MuriSlideReferenceData.h"
+#include "core/analysis/MuriSlideWifiJudge.h"
 
 // The analyzer implementation lives in namespace miacode::muri::detail (not an
 // anonymous namespace) so the analysis pipeline can be split across translation
@@ -38,12 +38,12 @@ constexpr double kPadTimeEpsilon = 1e-6;
 // The cross-stage data model (PadWindowIndex, MarkerSourceRef, RuntimePadEvent,
 // RuntimeJudgeHit, RuntimeSlideJudgeResult, JudgeableSimpleNote, RuntimeTouchGroup,
 // RuntimeTopLevelNote, RuntimeHandAction[Kind], RuntimeTouchPoint, DiagnosticAnchor)
-// now lives in src/tools/muri/MuriAnalyzerModel.h (namespace miacode::muri::detail).
+// now lives in src/core/analysis/MuriAnalyzerModel.h (namespace miacode::muri::detail).
 // It is available unqualified here via the using-directive above. Stage-local
 // runtime-judge structs are still defined further down, next to their stage.
 
 // slideRuntimeRoot() and the load*(...) reference-data accessors now live in
-// src/tools/muri/MuriSlideReferenceData.{h,cpp} (namespace miacode::muri::detail),
+// src/core/analysis/MuriSlideReferenceData.{h,cpp} (namespace miacode::muri::detail),
 // reachable unqualified via the using-directive above.
 
 bool isSlideLike(const TimelineNoteMarker& marker)
@@ -455,7 +455,7 @@ void addWifiPadWindowsAndTrails(
 // The runtime-model build stage (buildMarkerSourceRefs, buildJudgeableSimpleNotes,
 // buildNoteExpiryBuckets, buildRuntimeTouchGroups, buildRuntimeTopLevelNotes) and
 // the MuriRuntimeModel / MuriRuntimeModelBuilder types now live in
-// src/tools/muri/MuriRuntimeModelBuilder.{h,cpp}. They remain in namespace
+// src/core/analysis/MuriRuntimeModelBuilder.{h,cpp}. They remain in namespace
 // miacode::muri::detail, so the call sites here resolve through that header.
 
 QVector<MuriPadWindow> buildRuntimePadWindows(

@@ -2,7 +2,7 @@
 
 #include "app/services/PlaybackControl.h"
 #include "audio/PreviewAudioSettings.h"
-#include "common/MuriRenderOptions.h"
+#include "core/analysis/MuriRenderOptions.h"
 #include "core/video/PreviewRenderSettings.h"
 
 #include <QObject>

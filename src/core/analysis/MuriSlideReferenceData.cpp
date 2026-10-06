@@ -1,4 +1,4 @@
-#include "tools/muri/MuriSlideReferenceData.h"
+#include "core/analysis/MuriSlideReferenceData.h"
 
 #include <QFile>
 #include <QJsonDocument>

@@ -4,9 +4,9 @@
 
 #include "core/chart/parser/SimaiParser.h"
 #include "preview/runtime/PreviewRuntime.h"
-#include "tools/muri/MuriAnalyzer.h"
-#include "tools/muri/MuriPanelEntries.h"
-#include "common/MuriTypes.h"
+#include "core/analysis/MuriAnalyzer.h"
+#include "core/analysis/MuriPanelEntries.h"
+#include "core/analysis/MuriTypes.h"
 
 #include <QtCore>
 

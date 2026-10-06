@@ -3,8 +3,8 @@
 #include <QString>
 #include <QVector>
 
-#include "common/MuriTypes.h"             // MuriDiagnostic, MuriJudgeSpriteEvent, MuriKind, ...
-#include "tools/muri/MuriAnalyzerModel.h"  // DiagnosticAnchor, JudgeableSimpleNote
+#include "core/analysis/MuriTypes.h"             // MuriDiagnostic, MuriJudgeSpriteEvent, MuriKind, ...
+#include "core/analysis/MuriAnalyzerModel.h"  // DiagnosticAnchor, JudgeableSimpleNote
 
 struct TimelineNoteMarker;
 

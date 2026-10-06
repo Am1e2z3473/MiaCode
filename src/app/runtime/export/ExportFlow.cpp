@@ -17,7 +17,7 @@
 #include "preview/runtime/PreviewRuntime.h"
 #include "preview/runtime/PreviewStageMediaHost.h"
 #include "app/ui/export/ExportSession.h"
-#include "tools/muri/MuriAnalyzer.h"
+#include "core/analysis/MuriAnalyzer.h"
 #include "tools/video_export/VideoExportController.h"
 #include "tools/video_export/VideoExportPreferences.h"
 

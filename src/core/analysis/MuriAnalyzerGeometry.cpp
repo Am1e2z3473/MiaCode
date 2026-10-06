@@ -1,4 +1,4 @@
-#include "tools/muri/MuriAnalyzerGeometry.h"
+#include "core/analysis/MuriAnalyzerGeometry.h"
 
 #include "common/TaskCancellation.h"
 
@@ -7,7 +7,7 @@
 
 #include <QtGlobal>
 
-#include "common/MuriConfig.h"
+#include "core/analysis/MuriConfig.h"
 
 namespace miacode::muri::detail {
 

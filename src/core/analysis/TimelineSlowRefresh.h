@@ -4,8 +4,8 @@
 #include <QString>
 #include <QVector>
 
-#include "common/MuriRenderOptions.h"
-#include "common/MuriTypes.h"
+#include "core/analysis/MuriRenderOptions.h"
+#include "core/analysis/MuriTypes.h"
 #include "core/chart/document/SimaiTimingMetadata.h"
 #include "core/chart/parser/SimaiParser.h"
 #include "core/chart/model/TimelineData.h"

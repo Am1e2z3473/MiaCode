@@ -1,4 +1,4 @@
-#include "tools/muri/MuriDiagnosticLabels.h"
+#include "core/analysis/MuriDiagnosticLabels.h"
 
 #include <limits>
 
@@ -10,10 +10,10 @@
 
 #include "core/chart/parser/SimaiParser.h"
 #include "core/chart/model/TimelineData.h"
-#include "common/MuriConfig.h"
-#include "common/MuriTypes.h"  // makeMarkerAnalysisKey
-#include "tools/muri/MuriAnalyzerModel.h"
-#include "tools/muri/MuriAnalyzerInternal.h"  // isSlideLike / hasUsableSlideTraceTiming / judgeTickForPadActiveStart / head-star identity
+#include "core/analysis/MuriConfig.h"
+#include "core/analysis/MuriTypes.h"  // makeMarkerAnalysisKey
+#include "core/analysis/MuriAnalyzerModel.h"
+#include "core/analysis/MuriAnalyzerInternal.h"  // isSlideLike / hasUsableSlideTraceTiming / judgeTickForPadActiveStart / head-star identity
 
 namespace miacode::muri::detail {
 

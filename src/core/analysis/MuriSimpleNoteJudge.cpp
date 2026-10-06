@@ -1,4 +1,4 @@
-#include "tools/muri/MuriSimpleNoteJudge.h"
+#include "core/analysis/MuriSimpleNoteJudge.h"
 
 #include "common/TaskCancellation.h"
 
@@ -13,14 +13,14 @@
 
 #include "core/chart/parser/SimaiParser.h"
 #include "core/chart/model/TimelineData.h"
-#include "common/MuriConfig.h"
-#include "common/MuriTypes.h"
-#include "tools/muri/MuriAnalyzerGeometry.h"     // pointDistance
-#include "tools/muri/MuriAnalyzerInternal.h"     // timing / hand-action / pad-event / diagnostic-sink helpers
-#include "tools/muri/MuriAnalyzerModel.h"
-#include "tools/muri/MuriDiagnosticLabels.h"     // config labels / source anchors / alert text
-#include "tools/muri/MuriRuntimeModelBuilder.h"  // buildNoteExpiryBuckets + the Stage-1 model builders
-#include "tools/muri/MuriStaticChecker.h"
+#include "core/analysis/MuriConfig.h"
+#include "core/analysis/MuriTypes.h"
+#include "core/analysis/MuriAnalyzerGeometry.h"     // pointDistance
+#include "core/analysis/MuriAnalyzerInternal.h"     // timing / hand-action / pad-event / diagnostic-sink helpers
+#include "core/analysis/MuriAnalyzerModel.h"
+#include "core/analysis/MuriDiagnosticLabels.h"     // config labels / source anchors / alert text
+#include "core/analysis/MuriRuntimeModelBuilder.h"  // buildNoteExpiryBuckets + the Stage-1 model builders
+#include "core/analysis/MuriStaticChecker.h"
 
 namespace miacode::muri::detail {
 

@@ -11,8 +11,8 @@
 
 #include "common/PreviewGameplayConfig.h"
 #include "common/PreviewVideoGeometryConfig.h"
-#include "common/MuriRenderOptions.h"
-#include "common/MuriTypes.h"
+#include "core/analysis/MuriRenderOptions.h"
+#include "core/analysis/MuriTypes.h"
 #include "core/scene/PreviewProgressStatsCache.h"
 #include "core/video/PreviewRenderSettings.h"
 #include "core/chart/model/TimelineData.h"

@@ -1,4 +1,4 @@
-#include "tools/muri/MuriRuntimeModelBuilder.h"
+#include "core/analysis/MuriRuntimeModelBuilder.h"
 
 #include "common/TaskCancellation.h"
 
@@ -7,9 +7,9 @@
 #include <QSet>
 
 #include "core/chart/model/TimelineData.h"
-#include "common/MuriConfig.h"
-#include "common/MuriTypes.h"  // makeMarkerAnalysisKey
-#include "tools/muri/MuriAnalyzerInternal.h"
+#include "core/analysis/MuriConfig.h"
+#include "core/analysis/MuriTypes.h"  // makeMarkerAnalysisKey
+#include "core/analysis/MuriAnalyzerInternal.h"
 
 namespace miacode::muri::detail {
 

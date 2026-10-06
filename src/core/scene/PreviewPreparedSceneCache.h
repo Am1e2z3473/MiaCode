@@ -3,7 +3,7 @@
 #include <QBitArray>
 #include <QVector>
 
-#include "common/MuriTypes.h"
+#include "core/analysis/MuriTypes.h"
 #include "core/scene/PreviewChartReviewLayerState.h"
 #include "core/scene/PreviewFrameState.h"
 

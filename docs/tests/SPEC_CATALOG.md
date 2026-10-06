@@ -3,7 +3,7 @@
 Generated from `cmake/devtools/specs/` by `cmake -P cmake/devtools/SpecCatalog.cmake`.
 Check without writing: `cmake -DMIACODE_SPEC_CATALOG_CHECK=ON -P cmake/devtools/SpecCatalog.cmake`.
 
-118 independent specs; source lists and link dependencies are maintained only in CMake.
+117 independent specs; source lists and link dependencies are maintained only in CMake.
 
 `platform:all` means the target is registered on every platform, not that all platforms
 have been tested. Platform-specific source branches and link additions remain in their manifests.
@@ -34,7 +34,7 @@ Owners name production modules; kinds describe the checked boundary, not runtime
 | `src/tools/extensions/ExtensionManifestSpec.cpp` | `extension_manifest_spec` | `src/extensions` | `extensions.extension-manifest` | extensions | behavior | normal | all | ctest | active |
 | `src/tools/extensions/ExtensionProductBoundarySpec.cpp` | `extension_product_boundary_spec` | `src/extensions` | `extensions.extension-product-boundary` | extensions | boundary | normal | all | ctest | active |
 | `src/tools/media/PvCompressionPolicySpec.cpp` | `pv_compression_policy_spec` | `src/tools/media` | `media.pv-compression-policy` | media | behavior | normal | all | ctest | active |
-| `src/tools/muri/MuriSpec.cpp` | `muri_spec` | `src/tools/muri` | `muri.muri` | muri | behavior | normal | all | ctest | active |
+| `src/tools/muri/MuriSpec.cpp` | `muri_spec` | `src/core/analysis` | `muri.muri` | muri | behavior | normal | all | ctest | active |
 | `src/tools/net/NetClientSpec.cpp` | `net_client_spec` | `src/tools/net` | `net.net-client` | net | behavior | normal | all | ctest | active |
 | `src/tools/oplog/OperationLogSpec.cpp` | `oplog_self_test` | `src/common` | `oplog.oplog` | oplog | behavior | normal | all | ctest | active |
 | `src/tools/preview/BassPreviewDebugLogRoutingSpec.cpp` | `bass_preview_debug_log_routing_spec` | `src/audio` | `preview.bass-preview-debug-log-routing` | preview | behavior | high | all | ctest | active |
@@ -89,7 +89,7 @@ Owners name production modules; kinds describe the checked boundary, not runtime
 | `src/tools/services/ValidationPortSpec.cpp` | `validation_port_spec` | `src/app/services` | `v2.validation-port` | services | boundary | high | all | ctest | active |
 | `src/tools/simai_parser/SimaiParserSpec.cpp` | `simai_parser_spec` | `src/core/chart/parser` | `simai-parser.simai-parser` | simai_parser | behavior | normal | all | ctest | active |
 | `src/tools/timeline/TimelineCadenceArbitrationPolicySpec.cpp` | `timeline_cadence_arbitration_policy_spec` | `src/timeline` | `timeline.timeline-cadence-arbitration-policy` | timeline | behavior | normal | all | ctest | active |
-| `src/tools/timeline/TimelineMarkerOffsetSpec.cpp` | `timeline_marker_offset_spec` | `src/timeline` | `timeline.timeline-marker-offset` | timeline | behavior | normal | all | ctest | active |
+| `src/tools/timeline/TimelineMarkerOffsetSpec.cpp` | `timeline_marker_offset_spec` | `src/core/chart/model` | `timeline.timeline-marker-offset` | timeline | behavior | normal | all | ctest | active |
 | `src/tools/timeline/TimelineModelSpec.cpp` | `timeline_model_spec` | `src/timeline` | `timeline.timeline-model` | timeline | integration | normal | all | ctest | active |
 | `src/tools/timeline/TimelineQuickTextureCachePolicySpec.cpp` | `timeline_quick_texture_cache_policy_spec` | `src/timeline` | `timeline.timeline-quick-texture-cache-policy` | timeline | behavior | normal | all | ctest | active |
 | `src/tools/ui/AppBackgroundSettingsSpec.cpp` | `app_background_settings_spec` | `src/app/ui` | `ui.app-background-settings` | ui | behavior | normal | all | ctest | active |

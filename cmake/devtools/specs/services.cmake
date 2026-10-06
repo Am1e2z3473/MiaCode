@@ -98,8 +98,8 @@ miacode_add_spec(analysis_service_spec
         ${_miacode_chart_core}
         ${_miacode_log_core}
         ${_miacode_muri_analysis_core}
-        src/timeline/TimelineSlowRefresh.h
-        src/timeline/TimelineSlowRefresh.cpp
+        src/core/analysis/TimelineSlowRefresh.h
+        src/core/analysis/TimelineSlowRefresh.cpp
         src/app/services/ChartWorkspace.cpp
         src/app/services/ChartWorkspace.h
         src/app/services/AnalysisService.cpp
@@ -123,8 +123,8 @@ miacode_add_spec(editor_page_router_spec
         ${_miacode_chart_core}
         ${_miacode_log_core}
         ${_miacode_muri_analysis_core}
-        src/timeline/TimelineSlowRefresh.h
-        src/timeline/TimelineSlowRefresh.cpp
+        src/core/analysis/TimelineSlowRefresh.h
+        src/core/analysis/TimelineSlowRefresh.cpp
         src/app/ui/preferences/PreferenceDocument.h
         src/app/ui/preferences/PreferenceDocument.cpp
         src/app/services/ApplicationServices.h
@@ -167,8 +167,8 @@ miacode_add_spec(export_engine_spec
         ${_miacode_chart_core}
         ${_miacode_log_core}
         ${_miacode_muri_analysis_core}
-        src/timeline/TimelineSlowRefresh.h
-        src/timeline/TimelineSlowRefresh.cpp
+        src/core/analysis/TimelineSlowRefresh.h
+        src/core/analysis/TimelineSlowRefresh.cpp
         src/app/ui/preferences/PreferenceDocument.h
         src/app/ui/preferences/PreferenceDocument.cpp
         src/app/services/ApplicationServices.h
@@ -228,8 +228,8 @@ miacode_add_spec(application_services_spec
         ${_miacode_chart_core}
         ${_miacode_log_core}
         ${_miacode_muri_analysis_core}
-        src/timeline/TimelineSlowRefresh.h
-        src/timeline/TimelineSlowRefresh.cpp
+        src/core/analysis/TimelineSlowRefresh.h
+        src/core/analysis/TimelineSlowRefresh.cpp
         src/app/ui/preferences/PreferenceDocument.h
         src/app/ui/preferences/PreferenceDocument.cpp
         src/app/services/ApplicationServices.h
@@ -292,7 +292,7 @@ miacode_add_spec(validation_port_spec
     SOURCES
         src/tools/services/ValidationPortSpec.cpp
         src/app/services/PlaybackValidationPort.h
-        src/common/MuriRenderOptions.h
+        src/core/analysis/MuriRenderOptions.h
     LIBS Qt6::Core Qt6::Test
     INCLUDES src
 )

@@ -15,28 +15,28 @@ set(_miacode_log_core
     src/common/DebugLog.cpp
 )
 set(_miacode_muri_analysis_core
-    src/common/MuriTypes.h
-    src/common/MuriTypes.cpp
-    src/tools/muri/MuriAnalyzer.h
-    src/tools/muri/MuriAnalyzer.cpp
-    src/tools/muri/MuriAnalyzerGeometry.h
-    src/tools/muri/MuriAnalyzerGeometry.cpp
-    src/tools/muri/MuriAnalyzerModel.h
-    src/tools/muri/MuriSlideReferenceData.h
-    src/tools/muri/MuriSlideReferenceData.cpp
-    src/tools/muri/MuriAnalyzerInternal.h
-    src/tools/muri/MuriDiagnosticCollector.h
-    src/tools/muri/MuriDiagnosticCollector.cpp
-    src/tools/muri/MuriDiagnosticLabels.h
-    src/tools/muri/MuriDiagnosticLabels.cpp
-    src/tools/muri/MuriRuntimeModelBuilder.h
-    src/tools/muri/MuriRuntimeModelBuilder.cpp
-    src/tools/muri/MuriOverlayBuilder.h
-    src/tools/muri/MuriOverlayBuilder.cpp
-    src/tools/muri/MuriSlideWifiJudge.h
-    src/tools/muri/MuriSlideWifiJudge.cpp
-    src/tools/muri/MuriSimpleNoteJudge.h
-    src/tools/muri/MuriSimpleNoteJudge.cpp
-    src/tools/muri/MuriStaticChecker.h
-    src/tools/muri/MuriStaticChecker.cpp
+    src/core/analysis/MuriTypes.h
+    src/core/analysis/MuriTypes.cpp
+    src/core/analysis/MuriAnalyzer.h
+    src/core/analysis/MuriAnalyzer.cpp
+    src/core/analysis/MuriAnalyzerGeometry.h
+    src/core/analysis/MuriAnalyzerGeometry.cpp
+    src/core/analysis/MuriAnalyzerModel.h
+    src/core/analysis/MuriSlideReferenceData.h
+    src/core/analysis/MuriSlideReferenceData.cpp
+    src/core/analysis/MuriAnalyzerInternal.h
+    src/core/analysis/MuriDiagnosticCollector.h
+    src/core/analysis/MuriDiagnosticCollector.cpp
+    src/core/analysis/MuriDiagnosticLabels.h
+    src/core/analysis/MuriDiagnosticLabels.cpp
+    src/core/analysis/MuriRuntimeModelBuilder.h
+    src/core/analysis/MuriRuntimeModelBuilder.cpp
+    src/core/analysis/MuriOverlayBuilder.h
+    src/core/analysis/MuriOverlayBuilder.cpp
+    src/core/analysis/MuriSlideWifiJudge.h
+    src/core/analysis/MuriSlideWifiJudge.cpp
+    src/core/analysis/MuriSimpleNoteJudge.h
+    src/core/analysis/MuriSimpleNoteJudge.cpp
+    src/core/analysis/MuriStaticChecker.h
+    src/core/analysis/MuriStaticChecker.cpp
 )

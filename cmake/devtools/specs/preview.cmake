@@ -92,8 +92,8 @@ miacode_add_spec(preview_head_layer_spec
         src/core/scene/PreviewSceneMath.cpp
         src/core/scene/PreviewSkinSelectors.h
         src/core/scene/PreviewSkinSelectors.cpp
-        src/common/MuriTypes.h
-        src/common/MuriTypes.cpp
+        src/core/analysis/MuriTypes.h
+        src/core/analysis/MuriTypes.cpp
         src/core/chart/model/TimelineData.h
         resources/fonts.qrc
         resources/slide_data.qrc
@@ -131,8 +131,8 @@ miacode_add_spec(preview_guide_layer_spec
         src/core/scene/PreviewSceneMath.cpp
         src/core/scene/PreviewSkinSelectors.h
         src/core/scene/PreviewSkinSelectors.cpp
-        src/common/MuriTypes.h
-        src/common/MuriTypes.cpp
+        src/core/analysis/MuriTypes.h
+        src/core/analysis/MuriTypes.cpp
         src/core/chart/model/TimelineData.h
         resources/fonts.qrc
         resources/slide_data.qrc
@@ -152,8 +152,8 @@ miacode_add_spec(preview_slide_erase_by_area_spec
         src/core/scene/PreviewTrackShared.h
         src/core/scene/PreviewTrackShared.cpp
         src/core/scene/PreviewSceneConstants.h
-        src/common/MuriTypes.h
-        src/common/MuriTypes.cpp
+        src/core/analysis/MuriTypes.h
+        src/core/analysis/MuriTypes.cpp
         src/core/chart/model/TimelineData.h
         resources/slide_data.qrc
     LIBS Qt6::Core Qt6::Gui
@@ -199,8 +199,8 @@ miacode_add_spec(preview_realtime_object_hot_path_spec
         src/core/scene/PreviewSceneMath.cpp
         src/core/scene/PreviewSkinSelectors.h
         src/core/scene/PreviewSkinSelectors.cpp
-        src/common/MuriTypes.h
-        src/common/MuriTypes.cpp
+        src/core/analysis/MuriTypes.h
+        src/core/analysis/MuriTypes.cpp
         src/core/chart/model/TimelineData.h
     LIBS Qt6::Core Qt6::Gui
     INCLUDES src

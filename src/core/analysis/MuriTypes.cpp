@@ -1,4 +1,4 @@
-#include "common/MuriTypes.h"
+#include "core/analysis/MuriTypes.h"
 
 #include "core/chart/parser/SimaiParser.h"
 #include "core/chart/model/TimelineData.h"

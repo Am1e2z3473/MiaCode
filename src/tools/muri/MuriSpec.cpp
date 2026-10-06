@@ -4,15 +4,15 @@
 #include <QTextStream>
 #include <QtMath>
 
-#include "common/MuriConfig.h"
-#include "common/MuriRenderOptions.h"
-#include "common/MuriTypes.h"
+#include "core/analysis/MuriConfig.h"
+#include "core/analysis/MuriRenderOptions.h"
+#include "core/analysis/MuriTypes.h"
 #include "core/chart/model/TimelineMarkerOffset.h"
-#include "tools/muri/MuriAnalyzer.h"
-#include "tools/muri/MuriAnalyzerInternal.h"
-#include "tools/muri/MuriRuntimeModelBuilder.h"
-#include "tools/muri/MuriPanelEntries.h"
-#include "tools/muri/MuriStaticChecker.h"
+#include "core/analysis/MuriAnalyzer.h"
+#include "core/analysis/MuriAnalyzerInternal.h"
+#include "core/analysis/MuriRuntimeModelBuilder.h"
+#include "core/analysis/MuriPanelEntries.h"
+#include "core/analysis/MuriStaticChecker.h"
 
 namespace {
 

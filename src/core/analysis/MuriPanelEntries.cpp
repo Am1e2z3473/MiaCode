@@ -1,4 +1,4 @@
-#include "tools/muri/MuriPanelEntries.h"
+#include "core/analysis/MuriPanelEntries.h"
 
 #include <QHash>
 #include <QSet>

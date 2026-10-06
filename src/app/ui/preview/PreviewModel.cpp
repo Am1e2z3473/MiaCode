@@ -2,7 +2,7 @@
 
 #include "common/DebugLog.h"
 #include "common/DebugOptions.h"
-#include "common/MuriRenderOptions.h"
+#include "core/analysis/MuriRenderOptions.h"
 #include "app/ui/preferences/LocaleService.h"
 
 #include <array>

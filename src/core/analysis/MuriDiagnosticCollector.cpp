@@ -1,4 +1,4 @@
-#include "tools/muri/MuriDiagnosticCollector.h"
+#include "core/analysis/MuriDiagnosticCollector.h"
 
 #include "common/TaskCancellation.h"
 
@@ -8,7 +8,7 @@
 #include <QHash>
 
 #include "core/chart/model/TimelineData.h"
-#include "common/MuriTypes.h"  // muriKindDisplayName, makeMarkerAnalysisKey
+#include "core/analysis/MuriTypes.h"  // muriKindDisplayName, makeMarkerAnalysisKey
 
 namespace miacode::muri::detail {
 

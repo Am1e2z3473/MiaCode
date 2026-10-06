@@ -1,6 +1,6 @@
 #include "app/services/AnalysisService.h"
 
-#include "common/MuriConfig.h"
+#include "core/analysis/MuriConfig.h"
 #include "common/TaskCancellation.h"
 #include "core/chart/document/SimaiTimingMetadata.h"
 #include "core/chart/model/TimelineMarkerOffset.h"

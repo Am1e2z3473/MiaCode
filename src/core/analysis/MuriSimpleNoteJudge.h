@@ -2,8 +2,8 @@
 
 #include <QVector>
 
-#include "common/MuriRenderOptions.h"
-#include "tools/muri/MuriDiagnosticCollector.h"
+#include "core/analysis/MuriRenderOptions.h"
+#include "core/analysis/MuriDiagnosticCollector.h"
 
 struct TimelineNoteMarker;
 

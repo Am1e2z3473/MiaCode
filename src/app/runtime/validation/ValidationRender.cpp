@@ -3,7 +3,7 @@
 
 #include "preview/runtime/PreviewRuntime.h"
 #include "timeline/quick/TimelineQuickStateBridge.h"
-#include "tools/muri/MuriPanelEntries.h"
+#include "core/analysis/MuriPanelEntries.h"
 
 #include <QtCore>
 

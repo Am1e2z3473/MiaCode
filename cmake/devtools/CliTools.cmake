@@ -47,8 +47,8 @@ miacode_add_dev_tool(miacode_muri_dump
         ${_miacode_log_core}
         ${_miacode_chart_core}
         ${_miacode_muri_analysis_core}
-        src/tools/muri/MuriPanelEntries.h
-        src/tools/muri/MuriPanelEntries.cpp
+        src/core/analysis/MuriPanelEntries.h
+        src/core/analysis/MuriPanelEntries.cpp
         resources/fonts.qrc
         resources/slide_data.qrc
     LIBS Qt6::Core Qt6::Gui Qt6::Widgets
