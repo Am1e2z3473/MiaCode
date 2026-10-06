@@ -1,6 +1,6 @@
 #pragma once
 
-#include "LayoutRingConfig.h"
+#include "common/LayoutRingConfig.h"
 
 #include <QRectF>
 

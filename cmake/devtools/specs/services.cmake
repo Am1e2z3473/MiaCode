@@ -107,7 +107,7 @@ miacode_add_spec(analysis_service_spec
         resources/fonts.qrc
         resources/slide_data.qrc
     LIBS Qt6::Core Qt6::Gui
-    INCLUDES src src/app/ui src/common src/core/chart src/core/chart/parser src/timeline src/tools
+    INCLUDES src
 )
 
 # Stage 3.5 items 2-3: the editor page-routing seam. EditorPageRouter is not
@@ -149,7 +149,7 @@ miacode_add_spec(editor_page_router_spec
         resources/fonts.qrc
         resources/slide_data.qrc
     LIBS Qt6::Core Qt6::Gui Qt6::Test
-    INCLUDES src src/app/ui src/audio src/common src/core/chart src/core/chart/parser src/core/video src/timeline src/tools
+    INCLUDES src
 )
 target_compile_definitions(editor_page_router_spec PRIVATE
     "MIACODE_SOURCE_ROOT=\"${CMAKE_CURRENT_SOURCE_DIR}\"")
@@ -193,7 +193,7 @@ miacode_add_spec(export_engine_spec
         resources/fonts.qrc
         resources/slide_data.qrc
     LIBS Qt6::Core Qt6::Gui Qt6::Test
-    INCLUDES src src/app/ui src/audio src/common src/core/chart src/core/chart/parser src/core/video src/timeline src/tools
+    INCLUDES src
 )
 target_compile_definitions(export_engine_spec PRIVATE
     "MIACODE_SOURCE_ROOT=\"${CMAKE_CURRENT_SOURCE_DIR}\"")
@@ -211,7 +211,7 @@ miacode_add_spec(preview_appearance_state_spec
         src/app/services/PreviewAppearanceState.h
         src/app/services/PreviewAppearanceState.cpp
     LIBS Qt6::Core Qt6::Gui Qt6::Test
-    INCLUDES src src/common src/core/video
+    INCLUDES src
 )
 
 # Stage 3.5 item 1: the application service assembly must stand up with no
@@ -253,7 +253,7 @@ miacode_add_spec(application_services_spec
         resources/fonts.qrc
         resources/slide_data.qrc
     LIBS Qt6::Core Qt6::Gui Qt6::Test
-    INCLUDES src src/app/ui src/common src/core/chart src/core/chart/parser src/core/video src/timeline src/tools
+    INCLUDES src
 )
 target_compile_definitions(application_services_spec PRIVATE
     "MIACODE_SOURCE_ROOT=\"${CMAKE_CURRENT_SOURCE_DIR}\"")
@@ -276,7 +276,7 @@ miacode_add_spec(preferences_port_spec
         src/common/PreviewSfxAssets.h
         src/common/PreviewSfxSemantics.h
     LIBS Qt6::Core Qt6::Test
-    INCLUDES src src/common src/audio src/core/video
+    INCLUDES src
 )
 
 # Stage 4.9d-4b-2b: the playback coordinator's second narrow port, this one
@@ -294,7 +294,7 @@ miacode_add_spec(validation_port_spec
         src/app/services/PlaybackValidationPort.h
         src/common/MuriRenderOptions.h
     LIBS Qt6::Core Qt6::Test
-    INCLUDES src src/common
+    INCLUDES src
 )
 
 # Stage 4.9d-4b-2c: the playback coordinator's third narrow port, onto
@@ -333,7 +333,7 @@ miacode_add_spec(preview_port_spec
         src/app/services/PlaybackPreviewPort.h
         src/core/video/PreviewRenderSettings.h
     LIBS Qt6::Core Qt6::Test
-    INCLUDES src src/core/video
+    INCLUDES src
 )
 
 # Stage 4.9e-3: the coordinator's second playback contract, alongside
@@ -387,7 +387,7 @@ miacode_add_spec(preview_host_spec
         src/app/services/PlaybackControl.h
         src/app/services/PreviewSurface.h
     LIBS Qt6::Core Qt6::Gui
-    INCLUDES src src/audio src/common src/core/video
+    INCLUDES src
 )
 target_compile_definitions(preview_host_spec PRIVATE
     "MIACODE_SOURCE_ROOT=\"${CMAKE_CURRENT_SOURCE_DIR}\"")
@@ -422,16 +422,7 @@ miacode_add_spec(runtime_context_boundary_spec
         src/app/runtime/RuntimeContext.h
         src/app/runtime/SessionMembers.inc
     LIBS Qt6::Core Qt6::Gui Qt6::Widgets
-    INCLUDES
-        src
-        src/app
-        src/audio
-        src/common
-        src/core/video
-        src/core/chart/document
-        src/core/chart/parser
-        src/timeline
-        src/tools/video_export
+    INCLUDES src
 )
 
 # Stage 4.9e-4: same shape as runtime_context_boundary_spec above, but for
@@ -446,16 +437,7 @@ miacode_add_spec(playback_storage_boundary_spec
         src/app/runtime/RuntimeContext.h
         src/app/runtime/SessionMembers.inc
     LIBS Qt6::Core Qt6::Gui Qt6::Widgets
-    INCLUDES
-        src
-        src/app
-        src/audio
-        src/common
-        src/core/video
-        src/core/chart/document
-        src/core/chart/parser
-        src/timeline
-        src/tools/video_export
+    INCLUDES src
 )
 
 miacode_add_spec(update_version_spec

@@ -23,7 +23,7 @@
 // is a manual diagnostic (needs a real corpus), built behind
 // MIACODE_BUILD_DEV_TOOLS but not registered with CTest.
 
-#include "LatencyAnalysis.h"
+#include "tools/latency/LatencyAnalysis.h"
 
 #include <QCommandLineOption>
 #include <QCommandLineParser>

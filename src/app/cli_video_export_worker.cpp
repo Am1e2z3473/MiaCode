@@ -1,4 +1,4 @@
-#include "MainEntrypoints.h"
+#include "app/MainEntrypoints.h"
 
 #include "tools/video_export/VideoExportSnapshot.h"
 #include "common/DebugLog.h"

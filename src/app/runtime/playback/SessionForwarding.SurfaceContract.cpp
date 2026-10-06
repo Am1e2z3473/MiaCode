@@ -7,8 +7,8 @@
 // this file holds the Session-owned chart-normalize settings and the two
 // narrow service accessors that used to share that TU.
 
-#include "runtime/playback/PlaybackCoordinator.h"
-#include "runtime/Session.h"
+#include "app/runtime/playback/PlaybackCoordinator.h"
+#include "app/runtime/Session.h"
 
 #include "core/chart/transform/ChartNormalization.h"
 

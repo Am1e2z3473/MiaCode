@@ -1,7 +1,7 @@
 #pragma once
 #include <QVariantMap>
 #include <QMap>
-#include "editor/ScintillaDocumentAdapter.h"
+#include "app/ui/editor/ScintillaDocumentAdapter.h"
 
 namespace miacode::ui {
 class ScintillaDslStyler

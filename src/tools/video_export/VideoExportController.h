@@ -7,8 +7,8 @@
 #include <QVariantMap>
 #include <QVector>
 
-#include "PreviewRenderSettings.h"
-#include "PreviewAudioSettings.h"
+#include "core/video/PreviewRenderSettings.h"
+#include "audio/PreviewAudioSettings.h"
 #include "common/PreviewTimingSettings.h"
 #include "timeline/TimelineData.h"
 #include "common/MuriConfig.h"

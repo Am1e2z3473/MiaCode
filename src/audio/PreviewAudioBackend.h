@@ -5,8 +5,8 @@
 
 #include "common/PreviewSfxTimeline.h"
 #include "common/PreviewTimingSettings.h"
-#include "PreviewAudioSettings.h"
-#include "PreviewAudioHealth.h"
+#include "audio/PreviewAudioSettings.h"
+#include "audio/PreviewAudioHealth.h"
 
 namespace miacode::preview_audio {
 

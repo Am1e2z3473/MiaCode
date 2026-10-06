@@ -1,6 +1,6 @@
 #pragma once
 
-#include "NetClient.h"
+#include "tools/net/NetClient.h"
 
 #include <QList>
 #include <QObject>

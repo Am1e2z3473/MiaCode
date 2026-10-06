@@ -1,4 +1,4 @@
-#include "chrome/NativeWindowThemeMac.h"
+#include "app/ui/chrome/NativeWindowThemeMac.h"
 
 #import <AppKit/AppKit.h>
 

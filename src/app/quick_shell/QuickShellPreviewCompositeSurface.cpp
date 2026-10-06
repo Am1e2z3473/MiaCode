@@ -1,6 +1,6 @@
-#include "QuickShellPreviewCompositeSurface.h"
+#include "app/quick_shell/QuickShellPreviewCompositeSurface.h"
 
-#include "MainEntrypoints.h"
+#include "app/MainEntrypoints.h"
 #include "app/WindowVisibilityDiagnostics.h"
 #include "preview/quick_scene/PreviewQuickHudLayer.h"
 #include "preview/quick_scene/PreviewQuickSceneRoot.h"

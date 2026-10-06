@@ -1,6 +1,6 @@
 #pragma once
 
-#include "VideoExportController.h"
+#include "tools/video_export/VideoExportController.h"
 
 #include <QJsonObject>
 #include <QJsonValue>

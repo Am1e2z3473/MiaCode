@@ -1,13 +1,13 @@
 #pragma once
 
-#include "AnalysisService.h"
-#include "ChartWorkspace.h"
-#include "ChartWorkspaceFileService.h"
-#include "EditorSyncController.h"
-#include "JobProgressService.h"
-#include "PreviewAppearanceState.h"
-#include "ShellNotifications.h"
-#include "UiRequestService.h"
+#include "app/services/AnalysisService.h"
+#include "app/services/ChartWorkspace.h"
+#include "app/services/ChartWorkspaceFileService.h"
+#include "app/services/EditorSyncController.h"
+#include "app/services/JobProgressService.h"
+#include "app/services/PreviewAppearanceState.h"
+#include "app/services/ShellNotifications.h"
+#include "app/services/UiRequestService.h"
 
 #include <QObject>
 

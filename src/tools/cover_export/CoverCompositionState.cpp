@@ -1,6 +1,6 @@
 #include "tools/cover_export/CoverCompositionState.h"
 
-#include "preferences/PreferenceDocument.h"
+#include "app/ui/preferences/PreferenceDocument.h"
 
 #include <QJsonArray>
 

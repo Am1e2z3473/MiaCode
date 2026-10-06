@@ -1,4 +1,4 @@
-#include "SimaiParser.h"
+#include "core/chart/parser/SimaiParser.h"
 
 #include <QCoreApplication>
 #include <QTextStream>

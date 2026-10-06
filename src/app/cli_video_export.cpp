@@ -1,6 +1,6 @@
-#include "MainEntrypoints.h"
+#include "app/MainEntrypoints.h"
 
-#include "runtime/Session.h"
+#include "app/runtime/Session.h"
 #include "app/services/ApplicationServices.h"
 #include "tools/video_export/VideoExportSnapshot.h"
 #include "common/DebugLog.h"

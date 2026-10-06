@@ -4,7 +4,7 @@
 #include <QString>
 #include <QtGlobal>
 
-#include "PvCompressionPolicy.h"
+#include "tools/media/PvCompressionPolicy.h"
 
 namespace miacode::media {
 

@@ -1,11 +1,11 @@
-#include "runtime/document/DocumentSessionHost.h"
-#include "runtime/Shared.h"
-#include "runtime/editor/EditorHost.h"
+#include "app/runtime/document/DocumentSessionHost.h"
+#include "app/runtime/Shared.h"
+#include "app/runtime/editor/EditorHost.h"
 
 #include "app/services/PlaybackStateAuthority.h"
 
-#include "QtPreviewSfxRuntime.h"
-#include "SimaiParser.h"
+#include "audio/QtPreviewSfxRuntime.h"
+#include "core/chart/parser/SimaiParser.h"
 #include "app/quick_shell/QuickShellPreviewCompositeSurface.h"
 #include "app/quick_shell/QuickShellPreviewSurfacePolicy.h"
 #include "common/ChartAssetPaths.h"

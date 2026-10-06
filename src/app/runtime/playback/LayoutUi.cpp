@@ -1,5 +1,5 @@
-#include "runtime/playback/PlaybackCoordinator.h"
-#include "runtime/Shared.h"
+#include "app/runtime/playback/PlaybackCoordinator.h"
+#include "app/runtime/Shared.h"
 #include "app/services/ApplicationServices.h"
 
 #include "common/ContentDurationConfig.h"

@@ -1,4 +1,4 @@
-#include "chrome/WindowChrome.h"
+#include "app/ui/chrome/WindowChrome.h"
 
 #include <QWindow>
 

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "PvBatchCompressionScanner.h"
+#include "tools/media/PvBatchCompressionScanner.h"
 #include "common/LocalizedText.h"
 
 #include <QObject>

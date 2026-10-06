@@ -1,6 +1,6 @@
 #pragma once
 
-#include "document/ChartTransformCommands.h"
+#include "app/ui/document/ChartTransformCommands.h"
 
 #include <QString>
 #include <QStringList>

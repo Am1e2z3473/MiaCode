@@ -2,7 +2,7 @@
 
 #include <QtGlobal>
 
-#include "PreviewAudioBackend.h"
+#include "audio/PreviewAudioBackend.h"
 
 namespace miacode::preview_audio::bass {
 

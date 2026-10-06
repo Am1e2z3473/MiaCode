@@ -52,10 +52,7 @@ miacode_add_dev_tool(miacode_muri_dump
         resources/fonts.qrc
         resources/slide_data.qrc
     LIBS Qt6::Core Qt6::Gui Qt6::Widgets
-    INCLUDES
-        src src/app/ui src/common src/core/chart
-        src/core/chart/document src/core/chart/parser src/timeline src/tools
-        src/tools/muri
+    INCLUDES src
 )
 
 miacode_add_dev_tool(miacode_simai_dump
@@ -66,7 +63,7 @@ miacode_add_dev_tool(miacode_simai_dump
         resources/fonts.qrc
         resources/slide_data.qrc
     LIBS Qt6::Core Qt6::Gui Qt6::Widgets
-    INCLUDES src src/core/chart src/core/chart/parser src/timeline
+    INCLUDES src
 )
 
 miacode_add_dev_tool(miacode_audio_probe
@@ -101,9 +98,7 @@ miacode_add_dev_tool(miacode_audio_probe
         src/common/Mmcss.cpp
         ${_miacode_log_core}
     LIBS Qt6::Concurrent Qt6::Core Qt6::Gui Qt6::Widgets soundtouch
-    INCLUDES
-        src src/preview src/audio
-        src/core/video src/timeline src/tools
+    INCLUDES src
 )
 miacode_link_dev_audio(miacode_audio_probe MIXER)
 
@@ -120,6 +115,6 @@ miacode_add_dev_tool(miacode_latency_offset_batch
         src/audio/PreviewBassDeviceLease.h
         src/audio/PreviewBassDeviceLease.cpp
     LIBS Qt6::Core
-    INCLUDES src src/tools/latency
+    INCLUDES src
 )
 miacode_link_dev_audio(miacode_latency_offset_batch)

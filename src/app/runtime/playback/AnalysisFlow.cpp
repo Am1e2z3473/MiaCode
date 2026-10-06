@@ -1,8 +1,8 @@
-﻿#include "runtime/playback/PlaybackCoordinator.h"
+﻿#include "app/runtime/playback/PlaybackCoordinator.h"
 
 #include "app/services/ApplicationServices.h"
 #include "common/ProcessDiagnostics.h"
-#include "runtime/playback/TimelineFlow.Internal.h"
+#include "app/runtime/playback/TimelineFlow.Internal.h"
 #include "timeline/TimelineAnalysisPublication.h"
 
 #include <QElapsedTimer>

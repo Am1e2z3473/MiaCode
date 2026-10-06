@@ -1,11 +1,11 @@
-#include "runtime/playback/PlaybackCoordinator.h"
+#include "app/runtime/playback/PlaybackCoordinator.h"
 #include "app/services/ApplicationServices.h"
 #include "app/services/EditorSyncController.h"
-#include "runtime/Shared.h"
+#include "app/runtime/Shared.h"
 
 #include "audio/PreviewAudioPlaybackFlowPolicy.h"
-#include "QtPreviewSfxRuntime.h"
-#include "SimaiParser.h"
+#include "audio/QtPreviewSfxRuntime.h"
+#include "core/chart/parser/SimaiParser.h"
 #include "app/quick_shell/QuickShellPreviewCompositeSurface.h"
 #include "app/quick_shell/QuickShellPreviewSurfacePolicy.h"
 #include "common/ChartAssetPaths.h"
@@ -31,7 +31,7 @@
 #include <QtGui>
 
 #include <cstdio>  // G2 Diag: std::snprintf for sync rate-change beacon lines
-#include "runtime/playback/Playback.Internal.h"
+#include "app/runtime/playback/Playback.Internal.h"
 
 using namespace miacode::runtime::shared;
 

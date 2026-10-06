@@ -11,7 +11,7 @@
 #include <QStringList>
 #include <QVector>
 
-#include "SimaiParser.h"
+#include "core/chart/parser/SimaiParser.h"
 #include "timeline/TimelineData.h"
 #include "common/MuriConfig.h"
 #include "common/MuriTypes.h"

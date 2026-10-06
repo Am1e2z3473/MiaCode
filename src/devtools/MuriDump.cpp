@@ -14,8 +14,8 @@
 
 #include <limits>
 
-#include "SimaiDocument.h"
-#include "SimaiParser.h"
+#include "core/chart/document/SimaiDocument.h"
+#include "core/chart/parser/SimaiParser.h"
 #include "timeline/TimelineData.h"
 #include "timeline/TimelineMarkerOffset.h"
 #include "common/MuriConfig.h"

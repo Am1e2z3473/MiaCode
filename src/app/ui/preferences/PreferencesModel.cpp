@@ -1,10 +1,10 @@
-#include "preferences/PreferencesModel.h"
+#include "app/ui/preferences/PreferencesModel.h"
 
-#include "layout/WorkbenchSettings.h"
+#include "app/ui/layout/WorkbenchSettings.h"
 #include "app/services/PreferencesStore.h"
-#include "runtime/Shared.h"
-#include "ui/preferences/LocaleService.h"
-#include "ui/preferences/PreferenceDocument.h"
+#include "app/runtime/Shared.h"
+#include "app/ui/preferences/LocaleService.h"
+#include "app/ui/preferences/PreferenceDocument.h"
 
 #include <QVariantMap>
 #include <QCoreApplication>

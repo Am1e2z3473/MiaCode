@@ -2,7 +2,7 @@
 
 #include <QString>
 
-#include "VideoExportAudioRenderPlan.h"
+#include "tools/video_export/VideoExportAudioRenderPlan.h"
 
 namespace miacode::video_export {
 

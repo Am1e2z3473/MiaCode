@@ -1,4 +1,4 @@
-#include "SimaiDocument.h"
+#include "core/chart/document/SimaiDocument.h"
 
 #include <algorithm>
 

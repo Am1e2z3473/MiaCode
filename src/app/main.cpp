@@ -1,7 +1,7 @@
 #include "AppVersion.h"
-#include "ui/Bootstrap.h"
-#include "preferences/PreferenceDocument.h"
-#include "preferences/LocaleService.h"
+#include "app/ui/Bootstrap.h"
+#include "app/ui/preferences/PreferenceDocument.h"
+#include "app/ui/preferences/LocaleService.h"
 #include "common/CrashRecovery.h"
 #include "common/DebugLog.h"
 #include "common/OperationLog.h"
@@ -10,7 +10,7 @@
 #include "common/DebugOptions.h"
 #include "common/WaveformCache.h"
 #include "audio/PreviewBassDefaultDevice.h"
-#include "SimaiParser.h"
+#include "core/chart/parser/SimaiParser.h"
 
 #include <QCoreApplication>
 #include <QCommandLineOption>
@@ -54,7 +54,7 @@
 #pragma comment(lib, "version.lib")
 #endif
 
-#include "MainEntrypoints.h"
+#include "app/MainEntrypoints.h"
 
 namespace {
 

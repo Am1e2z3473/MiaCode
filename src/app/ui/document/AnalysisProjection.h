@@ -2,7 +2,7 @@
 
 #include <QVector>
 
-#include "document/DocumentProjection.h"
+#include "app/ui/document/DocumentProjection.h"
 #include "timeline/TimelineData.h"
 
 namespace miacode {

@@ -1,4 +1,4 @@
-#include "AnalysisService.h"
+#include "app/services/AnalysisService.h"
 
 #include "common/MuriConfig.h"
 #include "common/TaskCancellation.h"

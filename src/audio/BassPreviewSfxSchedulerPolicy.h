@@ -3,7 +3,7 @@
 #include <cmath>
 #include <cstdint>
 
-#include "BassPreviewMasterMixerPolicy.h"
+#include "audio/BassPreviewMasterMixerPolicy.h"
 
 namespace miacode::preview_audio::bass {
 

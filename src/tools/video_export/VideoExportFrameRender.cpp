@@ -1,10 +1,10 @@
-#include "VideoExportController.h"
+#include "tools/video_export/VideoExportController.h"
 
-#include "BassExportAudioBackend.h"
-#include "RawVideoPipeTransport.h"
-#include "VideoExportAudioRenderPlan.h"
-#include "VideoExportQuickRenderBackend.h"
-#include "VideoExportRuntimePolicy.h"
+#include "tools/video_export/BassExportAudioBackend.h"
+#include "tools/video_export/RawVideoPipeTransport.h"
+#include "tools/video_export/VideoExportAudioRenderPlan.h"
+#include "tools/video_export/VideoExportQuickRenderBackend.h"
+#include "tools/video_export/VideoExportRuntimePolicy.h"
 #include "common/AssetPaths.h"
 #include "common/ChartAssetPaths.h"
 #include "common/IntroConfig.h"
@@ -60,7 +60,7 @@
 #ifdef Q_OS_WIN
 #include <windows.h>
 #endif
-#include "VideoExportControllerInternal.h"
+#include "tools/video_export/VideoExportControllerInternal.h"
 
 // VideoExportFrameRender.cpp — lead-in pause overlay, ready-frame payload assembly, GPU/offscreen frame rendering + PBO drain, circular dim mask, static background staging, and packed-RGBA frame preparation.
 //

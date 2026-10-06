@@ -12,14 +12,14 @@
 // definitions and adds `using namespace miacode::video_export::detail;` at file
 // scope so the VideoExportController member methods call the helpers unqualified.
 
-#include "VideoExportController.h"
+#include "tools/video_export/VideoExportController.h"
 
-#include "BassExportAudioBackend.h"
-#include "RawVideoPipeTransport.h"
-#include "VideoExportAudioRenderPlan.h"
-#include "VideoExportPendingFrameRedraw.h"
-#include "VideoExportQuickRenderBackend.h"
-#include "VideoExportRuntimePolicy.h"
+#include "tools/video_export/BassExportAudioBackend.h"
+#include "tools/video_export/RawVideoPipeTransport.h"
+#include "tools/video_export/VideoExportAudioRenderPlan.h"
+#include "tools/video_export/VideoExportPendingFrameRedraw.h"
+#include "tools/video_export/VideoExportQuickRenderBackend.h"
+#include "tools/video_export/VideoExportRuntimePolicy.h"
 #include "common/AssetPaths.h"
 #include "common/ChartAssetPaths.h"
 #include "common/IntroConfig.h"

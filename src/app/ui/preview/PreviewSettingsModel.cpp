@@ -1,13 +1,13 @@
 #include "common/LocalizedText.h"
 
-#include "preview/PreviewSettingsModel.h"
+#include "app/ui/preview/PreviewSettingsModel.h"
 
 #include "common/PreviewGameplayConfig.h"
 #include "core/scene/PreviewHudState.h"
 #include "core/video/PreviewRenderSettings.h"
 #include "preview/runtime/PreviewRuntime.h"
 #include "tools/video_export/FontLibrary.h"
-#include "ui/preferences/LocaleService.h"
+#include "app/ui/preferences/LocaleService.h"
 
 #include <QDesktopServices>
 #include <QDir>

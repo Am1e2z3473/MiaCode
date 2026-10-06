@@ -1,4 +1,4 @@
-#include "RawVideoPipeTransport.h"
+#include "tools/video_export/RawVideoPipeTransport.h"
 
 #include <QDir>
 #include <QElapsedTimer>

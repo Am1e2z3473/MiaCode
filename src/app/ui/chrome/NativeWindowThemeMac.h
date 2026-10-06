@@ -1,6 +1,6 @@
 #pragma once
 
-#include "chrome/NativeWindowThemePolicy.h"
+#include "app/ui/chrome/NativeWindowThemePolicy.h"
 
 namespace NativeWindowThemeMac {
 

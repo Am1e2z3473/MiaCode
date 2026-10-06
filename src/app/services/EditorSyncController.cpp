@@ -1,4 +1,4 @@
-#include "EditorSyncController.h"
+#include "app/services/EditorSyncController.h"
 
 #include <QMetaObject>
 

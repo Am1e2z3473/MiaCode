@@ -1,7 +1,7 @@
 #pragma once
 
-#include "PreviewAudioDeviceCutoff.h"
-#include "PreviewAudioWorker.h"
+#include "audio/PreviewAudioDeviceCutoff.h"
+#include "audio/PreviewAudioWorker.h"
 
 #include <atomic>
 #include <chrono>

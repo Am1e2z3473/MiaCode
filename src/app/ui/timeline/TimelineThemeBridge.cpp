@@ -1,4 +1,4 @@
-#include "timeline/TimelineThemeBridge.h"
+#include "app/ui/timeline/TimelineThemeBridge.h"
 
 #include "common/TimelineThemeConfig.h"
 

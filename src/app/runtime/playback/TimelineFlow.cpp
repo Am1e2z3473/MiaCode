@@ -1,14 +1,14 @@
-﻿#include "runtime/playback/PlaybackCoordinator.h"
-#include "runtime/Shared.h"
-#include "runtime/media/MediaJobsHost.h"
-#include "runtime/document/DocumentSessionHost.h"
+﻿#include "app/runtime/playback/PlaybackCoordinator.h"
+#include "app/runtime/Shared.h"
+#include "app/runtime/media/MediaJobsHost.h"
+#include "app/runtime/document/DocumentSessionHost.h"
 
 #include "app/services/ApplicationServices.h"
 #include "app/services/LatencyEngine.h"
 
-#include "QtPreviewSfxRuntime.h"
-#include "SimaiParser.h"
-#include "MainEntrypoints.h"
+#include "audio/QtPreviewSfxRuntime.h"
+#include "core/chart/parser/SimaiParser.h"
+#include "app/MainEntrypoints.h"
 #include "app/quick_shell/QuickShellPreviewCompositeSurface.h"
 #include "app/quick_shell/QuickShellPreviewSurfacePolicy.h"
 #include "common/ChartAssetPaths.h"
@@ -35,7 +35,7 @@
 #include <QtCore>
 #include <QtGui>
 
-#include "runtime/playback/TimelineFlow.Internal.h"
+#include "app/runtime/playback/TimelineFlow.Internal.h"
 
 using namespace miacode::runtime::shared;
 using namespace miacode::runtime::preview_timeline_detail;

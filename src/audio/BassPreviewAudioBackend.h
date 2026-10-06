@@ -9,13 +9,13 @@
 #include <QMutex>
 
 #include "common/PreviewAudioMixConfig.h"
-#include "BassPreviewDebugLogRouting.h"
-#include "BassPreviewSfxCallbackRing.h"
-#include "BassPreviewOutputGlitchProbeState.h"
-#include "BassPreviewSfxSchedulerPolicy.h"
-#include "PreviewBassDeviceLease.h"
-#include "PreviewAudioBackend.h"
-#include "PreviewAudioHealth.h"
+#include "audio/BassPreviewDebugLogRouting.h"
+#include "audio/BassPreviewSfxCallbackRing.h"
+#include "audio/BassPreviewOutputGlitchProbeState.h"
+#include "audio/BassPreviewSfxSchedulerPolicy.h"
+#include "audio/PreviewBassDeviceLease.h"
+#include "audio/PreviewAudioBackend.h"
+#include "audio/PreviewAudioHealth.h"
 
 class BassPreviewAudioBackend final : public QObject, public miacode::preview_audio::PreviewAudioBackend
 {

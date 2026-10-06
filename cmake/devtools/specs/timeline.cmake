@@ -17,7 +17,7 @@ miacode_add_spec(timeline_model_spec
         resources/fonts.qrc
         resources/slide_data.qrc
     LIBS Qt6::Core Qt6::Gui Qt6::Widgets
-    INCLUDES src src/app/ui src/core/chart src/core/chart/parser src/timeline src/tools
+    INCLUDES src
 )
 # Source-contract assertions in TimelineModelSpec must work from both the
 # standard `build/` CTest directory and the developer build tree.
@@ -34,7 +34,7 @@ miacode_add_spec(timeline_marker_offset_spec
         src/timeline/TimelineMarkerOffset.h
         src/timeline/TimelineData.h
     LIBS Qt6::Core
-    INCLUDES src src/common src/timeline
+    INCLUDES src
 )
 
 miacode_add_spec(timeline_quick_texture_cache_policy_spec
@@ -46,7 +46,7 @@ miacode_add_spec(timeline_quick_texture_cache_policy_spec
         src/tools/timeline/TimelineQuickTextureCachePolicySpec.cpp
         src/timeline/quick/TimelineQuickTextureCachePolicy.h
     LIBS Qt6::Core
-    INCLUDES src src/timeline src/timeline/quick
+    INCLUDES src
 )
 
 miacode_add_spec(timeline_cadence_arbitration_policy_spec
@@ -58,5 +58,5 @@ miacode_add_spec(timeline_cadence_arbitration_policy_spec
         src/tools/timeline/TimelineCadenceArbitrationPolicySpec.cpp
         src/timeline/TimelineCadenceArbitrationPolicy.h
     LIBS Qt6::Core
-    INCLUDES src src/common src/timeline
+    INCLUDES src
 )

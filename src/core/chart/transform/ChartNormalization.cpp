@@ -1,4 +1,4 @@
-#include "ChartNormalization.h"
+#include "core/chart/transform/ChartNormalization.h"
 
 #include <algorithm>
 #include <limits>

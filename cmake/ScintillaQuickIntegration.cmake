@@ -176,7 +176,7 @@ function(miacode_scintillaquick_highlight_layers)
     string(REPLACE "        const qreal static_dpr = window->effectiveDevicePixelRatio();"
         "${gutter_code}\n        const qreal static_dpr = window->effectiveDevicePixelRatio();" renderer_code "${renderer_code}")
     # Dedicated captured ranges update fixed contour nodes beneath glyphs.
-    string(PREPEND renderer_code "#include \"editor/ScintillaSelectionRenderer.h\"\n")
+    string(PREPEND renderer_code "#include \"app/ui/editor/ScintillaSelectionRenderer.h\"\n")
     string(REPLACE "        for (size_t layer = 0; layer < m_selection_groups.size(); ++layer) {"
         "        for (size_t layer = 0; layer < m_selection_groups.size(); ++layer) {\n            if (layer == 1) continue;" renderer_code "${renderer_code}")
     set(highlight_code [=[        QVector<QRectF> selection_rectangles, follow_rectangles;
@@ -206,7 +206,7 @@ function(miacode_scintillaquick_highlight_layers)
     target_sources(ScintillaQuick PRIVATE
         "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/../src/app/ui/editor/ScintillaSelectionRenderer.cpp"
         "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/../src/app/ui/editor/ScintillaSelectionRenderer.h")
-    target_include_directories(ScintillaQuick PRIVATE "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/../src/app/ui")
+    target_include_directories(ScintillaQuick PRIVATE "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/../src")
     set(patched_source "${CMAKE_CURRENT_BINARY_DIR}/miacode_scintillaquick_scene_graph_renderer.cpp")
     file(CONFIGURE OUTPUT "${patched_source}" CONTENT "${renderer_code}" @ONLY)
     get_target_property(sources ScintillaQuick SOURCES)

@@ -1,4 +1,4 @@
-#include "PvBatchCompressionWorker.h"
+#include "tools/media/PvBatchCompressionWorker.h"
 
 
 #include <QCoreApplication>

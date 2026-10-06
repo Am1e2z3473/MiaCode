@@ -1,4 +1,4 @@
-#include "document/AnalysisProjection.h"
+#include "app/ui/document/AnalysisProjection.h"
 
 #include "app/services/AnalysisService.h"
 

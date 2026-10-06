@@ -1,6 +1,6 @@
-#include "VideoExportAudioRenderPlan.h"
+#include "tools/video_export/VideoExportAudioRenderPlan.h"
 
-#include "VideoExportController.h"
+#include "tools/video_export/VideoExportController.h"
 
 #include "common/PreviewAudioMixConfig.h"
 #include "common/PreviewSfxAssets.h"

@@ -1,4 +1,4 @@
-#include "NetBatchDownloadWorker.h"
+#include "tools/net/NetBatchDownloadWorker.h"
 
 
 #include <QDir>

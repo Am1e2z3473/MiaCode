@@ -1,6 +1,6 @@
 #include "core/scene/PreviewHudState.h"
 
-#include "preferences/PreferenceDocument.h"
+#include "app/ui/preferences/PreferenceDocument.h"
 
 #include <QFileInfo>
 #include <QFontDatabase>

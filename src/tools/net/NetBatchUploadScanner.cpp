@@ -1,4 +1,4 @@
-#include "NetBatchUploadScanner.h"
+#include "tools/net/NetBatchUploadScanner.h"
 
 #include <QCollator>
 #include <QDir>

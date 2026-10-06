@@ -1,6 +1,6 @@
 #pragma once
 
-#include "export/CoverExportSession.h"
+#include "app/ui/export/CoverExportSession.h"
 
 #include <QIcon>
 #include <QObject>

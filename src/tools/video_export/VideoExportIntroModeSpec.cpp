@@ -1,6 +1,6 @@
 #include <QTextStream>
 
-#include "VideoExportController.h"
+#include "tools/video_export/VideoExportController.h"
 
 namespace {
 

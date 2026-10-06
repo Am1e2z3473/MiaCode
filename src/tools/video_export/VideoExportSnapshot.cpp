@@ -1,8 +1,8 @@
-#include "VideoExportSnapshot.h"
-#include "VideoExportRuntimePolicy.h"
+#include "tools/video_export/VideoExportSnapshot.h"
+#include "tools/video_export/VideoExportRuntimePolicy.h"
 
-#include "SimaiDocument.h"
-#include "SimaiParser.h"
+#include "core/chart/document/SimaiDocument.h"
+#include "core/chart/parser/SimaiParser.h"
 #include "common/ChartClockCount.h"
 #include "common/ChartAssetPaths.h"
 #include "timeline/TimelineMarkerOffset.h"

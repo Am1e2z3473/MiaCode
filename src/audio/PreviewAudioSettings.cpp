@@ -1,4 +1,4 @@
-#include "PreviewAudioSettings.h"
+#include "audio/PreviewAudioSettings.h"
 
 #include <QtGlobal>
 

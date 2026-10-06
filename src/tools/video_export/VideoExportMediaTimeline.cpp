@@ -1,4 +1,4 @@
-#include "VideoExportMediaTimeline.h"
+#include "tools/video_export/VideoExportMediaTimeline.h"
 
 #include "common/PreviewSfxTimeline.h"
 

@@ -1,6 +1,6 @@
-#include "NetBatchUploadWorker.h"
+#include "tools/net/NetBatchUploadWorker.h"
 
-#include "NetUploadDiagnostics.h"
+#include "tools/net/NetUploadDiagnostics.h"
 
 #include <QCryptographicHash>
 #include <QEventLoop>

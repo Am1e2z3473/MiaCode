@@ -4,7 +4,7 @@
 #include <QSet>
 #include <QtMath>
 
-#include "SimaiParser.h"
+#include "core/chart/parser/SimaiParser.h"
 
 namespace {
 
