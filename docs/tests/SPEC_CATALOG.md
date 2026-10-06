@@ -3,7 +3,7 @@
 Generated from `cmake/devtools/specs/` by `cmake -P cmake/devtools/SpecCatalog.cmake`.
 Check without writing: `cmake -DMIACODE_SPEC_CATALOG_CHECK=ON -P cmake/devtools/SpecCatalog.cmake`.
 
-117 independent specs; source lists and link dependencies are maintained only in CMake.
+119 independent specs; source lists and link dependencies are maintained only in CMake.
 
 `platform:all` means the target is registered on every platform, not that all platforms
 have been tested. Platform-specific source branches and link additions remain in their manifests.
@@ -12,6 +12,8 @@ Owners name production modules; kinds describe the checked boundary, not runtime
 
 | Source | Target / CTest name | Owner | Contract | Domain | Kind | Risk | Platform | Execution | Status |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `src/tools/boundary/AndroidModuleBoundarySpec.cpp` | `android_module_boundary_spec` | `src` | `architecture.android-module-boundary` | architecture | boundary | high | all | ctest | active |
+| `src/tools/boundary/WebModuleBoundarySpec.cpp` | `web_module_boundary_spec` | `src` | `architecture.web-module-boundary` | architecture | boundary | high | all | ctest | active |
 | `src/tools/chart_document/SimaiDocumentSpec.cpp` | `simai_document_spec` | `src/core/chart/document` | `chart-document.simai-document` | chart_document | behavior | normal | all | ctest | active |
 | `src/tools/chart_selection/ChartSelectionBeatSummarySpec.cpp` | `chart_selection_beat_summary_spec` | `src/core/chart/selection` | `chart-selection.chart-selection-beat-summary` | chart_selection | behavior | normal | all | ctest | active |
 | `src/tools/chart_transform/ChartBatchTransformSpec.cpp` | `chart_batch_transform_spec` | `src/core/chart/transform` | `chart-transform.chart-batch-transform` | chart_transform | behavior | normal | all | ctest | active |
