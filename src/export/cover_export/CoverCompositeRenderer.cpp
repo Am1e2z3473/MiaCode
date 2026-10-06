@@ -2,7 +2,6 @@
 
 #include "core/chart/ChartAssetPaths.h"
 #include "export/cover_export/CoverLayoutModel.h"
-#include "preview/quick_scene/PreviewQuickSceneRoot.h"
 
 #include <QColor>
 #include <QCoreApplication>
@@ -26,15 +25,6 @@ namespace {
 
 constexpr char kComposerQmlUrl[] = "qrc:/intro/qml/CoverComposer.qml";
 constexpr char kCoverChartImageProviderId[] = "coverchart";
-
-void ensureComposerQmlTypesRegistered()
-{
-    static const bool registered = [] {
-        qmlRegisterType<PreviewQuickSceneRoot>("MiaCode.Preview", 1, 0, "PreviewQuickSceneRoot");
-        return true;
-    }();
-    Q_UNUSED(registered);
-}
 
 class CoverChartImageProvider final : public QQuickImageProvider
 {
@@ -148,7 +138,6 @@ QImage renderCoverComposite(CoverLayoutModel* model,
         return QImage();
     }
 
-    ensureComposerQmlTypesRegistered();
     auto* window = new QQuickWindow();
     window->setFlags(window->flags() | Qt::FramelessWindowHint | Qt::Tool
                      | Qt::WindowTransparentForInput | Qt::WindowDoesNotAcceptFocus);

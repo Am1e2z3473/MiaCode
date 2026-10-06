@@ -15,6 +15,7 @@
 #include "core/chart/parser/SimaiParser.h"
 
 #include <QCoreApplication>
+#include <QtQml/qqmlextensionplugin.h>
 #include <QCommandLineOption>
 #include <QCommandLineParser>
 #include <QDateTime>
@@ -152,6 +153,12 @@ QString summarizeTopLevelWindows()
 }  // namespace
 
 using namespace miacode::app::entry;
+
+// MiaCode.Preview and MiaCode.Timeline are static QML modules linked from
+// miacode_preview_quick and miacode_timeline_quick; every engine in this
+// process (UI, preview composite, cover composer, export) resolves them here.
+Q_IMPORT_QML_PLUGIN(MiaCode_PreviewPlugin)
+Q_IMPORT_QML_PLUGIN(MiaCode_TimelinePlugin)
 
 int main(int argc, char* argv[])
 {

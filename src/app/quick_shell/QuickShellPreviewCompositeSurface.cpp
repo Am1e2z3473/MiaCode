@@ -2,36 +2,17 @@
 
 #include "app/platform/PlatformDiagnostics.h"
 #include "app/platform/WindowVisibilityDiagnostics.h"
-#include "preview/quick_scene/PreviewQuickHudLayer.h"
-#include "preview/quick_scene/PreviewQuickSceneRoot.h"
 #include "preview/runtime/PreviewRuntime.h"
 #include "preview/stage_media/PreviewStageMediaHost.h"
+#include <QQuickItem>
 #include <QQuickView>
 #include <QSurfaceFormat>
 #include <QUrl>
 #include <QVariant>
-#include <QtQml/qqml.h>
-
-namespace {
-
-void ensureQuickShellPreviewTypesRegistered()
-{
-    static bool registered = false;
-    if (registered) {
-        return;
-    }
-    qmlRegisterType<PreviewQuickSceneRoot>("MiaCode.Preview", 1, 0, "PreviewQuickSceneRoot");
-   qmlRegisterType<PreviewQuickHudLayer>("MiaCode.Preview", 1, 0, "PreviewQuickHudLayer");
-   registered = true;
-}
-
-}  // namespace
 
 QuickShellPreviewCompositeSurface::QuickShellPreviewCompositeSurface(QObject* parent)
     : QObject(parent)
 {
-    ensureQuickShellPreviewTypesRegistered();
-
     view_ = new QQuickView();
 
     // P4.3 — bind the composite view's QRhi through the unified high-performance

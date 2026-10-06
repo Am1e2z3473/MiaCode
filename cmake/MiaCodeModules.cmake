@@ -323,7 +323,7 @@ miacode_add_module(miacode_timeline
     PUBLIC miacode_analysis miacode_audio
 )
 
-# ---- timeline_quick: QSG layers ---------------------------------------------
+# ---- timeline_quick: QSG layers, QML module MiaCode.Timeline --------------
 miacode_add_module(miacode_timeline_quick
     SOURCES
         src/timeline/quick/TimelineQuickGridLayer.cpp
@@ -349,14 +349,21 @@ miacode_add_module(miacode_timeline_quick
         src/timeline/quick/TimelineQuickWaveformLayer.h
     PUBLIC miacode_timeline Qt6::Quick Qt6::Qml
 )
+# qmltyperegistrar includes QML_ELEMENT headers by file name only.
+target_include_directories(miacode_timeline_quick PRIVATE src/timeline/quick)
 if (WIN32)
     target_link_libraries(miacode_timeline_quick PRIVATE
         d3d11
         dxgi         # TimelineQuickItem per-process VRAM gauge
     )
 endif()
+qt_add_qml_module(miacode_timeline_quick
+    URI MiaCode.Timeline
+    VERSION 1.0
+    OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/qml_modules/MiaCode/Timeline"
+)
 
-# ---- preview_quick: QSG scene, PreviewRuntime -----------------------------
+# ---- preview_quick: QSG scene, PreviewRuntime, QML module MiaCode.Preview -
 miacode_add_module(miacode_preview_quick
     SOURCES
         src/preview/quick_scene/PreviewQuickArcNodes.cpp
@@ -419,6 +426,8 @@ miacode_add_module(miacode_preview_quick
     QRC resources/preview_judge_effects.qrc
 )
 target_compile_definitions(miacode_preview_quick PRIVATE HAVE_QT_MULTIMEDIA=1)
+# qmltyperegistrar includes QML_ELEMENT headers by file name only.
+target_include_directories(miacode_preview_quick PRIVATE src/preview/quick_scene)
 if (WIN32)
     target_link_libraries(miacode_preview_quick PRIVATE
         d3d11
@@ -434,6 +443,11 @@ qt_add_shaders(miacode_preview_quick "preview_sprite_shaders"
         src/preview/quick_scene/shaders/PreviewStageDimMaterial.frag
         src/preview/quick_scene/shaders/PreviewFireworkMaterial.vert
         src/preview/quick_scene/shaders/PreviewFireworkMaterial.frag
+)
+qt_add_qml_module(miacode_preview_quick
+    URI MiaCode.Preview
+    VERSION 1.0
+    OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/qml_modules/MiaCode/Preview"
 )
 
 # ---- stage_media: PreviewStageMediaHost over QtAVPlayer -------------------
