@@ -30,7 +30,7 @@ MiaCode 是一款基于 Qt 6 / C++ / QML 的 maimai 谱面创作工具，集成�
 
 正式发布包见 [GitHub Releases](https://github.com/Team-MiaCode/MiaCode/releases)。
 
-nightly 构建包见 [GitHub Actions](https://github.com/Team-MiaCode/MiaCode/actions/workflows/package.yml)，选择 `feature/qml-ui` 的构建记录。
+nightly 构建包见 [GitHub Actions](https://github.com/Team-MiaCode/MiaCode/actions/workflows/package.yml)，选择 `dev` 分支的构建记录。
 
 支持 Windows（x64 / ARM64）与 macOS（Apple 芯片），下载对应系统和架构的压缩包后解压。
 
@@ -161,7 +161,7 @@ xcode-select --install
 brew install cmake python
 ```
 
-安装 Qt 6.11.1（包含 Multimedia、Shader Tools 和 Quick 3D），准备预览 SDK 与导出用 FFmpeg，然后构建并打包：
+安装 Qt 6.10+（包含 Multimedia、Shader Tools 和 Quick 3D），准备预览 SDK 与导出用 FFmpeg，然后构建并打包：
 
 ```bash
 python3 -m pip install aqtinstall
