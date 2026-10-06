@@ -4,10 +4,11 @@
 
 入口与维护规则见 [README](README.md)；可执行规格见 [Spec 目录](tests/SPEC_CATALOG.md)。
 
-## stable-current（6）
+## stable-current（7）
 
 | 文档 | Canonical ID |
 | --- | --- |
+| [模块分层（当前）](specs/architecture/MODULE_LAYERING_CURRENT_ZH.md) | architecture.module-layering |
 | [延迟 Slide、头材质与无头 Slide 规则](specs/chart/SLIDE_DELAY_AND_HEAD_MATERIAL_SPEC.md) | chart.slide-head-material |
 | [无理检测规则与行为规格](specs/muri/MURI_DETECTION_SPEC.md) | muri.detection |
 | [当前预览与导出渲染契约](specs/preview/CURRENT_RENDER_EXPORT_CONTRACT_ZH.md) | preview.render-export |

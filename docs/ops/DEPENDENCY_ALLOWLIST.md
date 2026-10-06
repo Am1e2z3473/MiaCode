@@ -50,7 +50,7 @@ Qt 最低版本锁定：`6.10`
 | `${QtAVPlayer_LIBS}` | 媒体 | `WIN32 OR APPLE`（需 `MIACODE_FFMPEG_DEV_DIR`）；Linux 用主机 pkg-config FFmpeg + libva | `PreviewStageMediaHost*`（PV/BG 解码）、`PreviewSharedD3D11Device`（D3D11VA 共享设备） | 背景视频首帧解码 | `qtavplayer_platform_spec`；macOS 打包契约 |
 | `PkgConfig::MIACODE_FFMPEG` | 媒体 | `Linux`（Win/macOS 改走 `MIACODE_FFMPEG_DEV_DIR` 的项目 SDK，见上一行） | QtAVPlayer 的解码依赖，由主机 pkg-config 提供：`libavfilter`、`libavcodec`、`libavformat`、`libavutil`、`libswresample`、`libswscale` | 背景视频首帧解码 | 链接期（Linux 构建）；`qtavplayer_platform_spec` |
 | `PkgConfig::MIACODE_VAAPI` | 媒体 | `Linux` | QtAVPlayer 在 Linux 的 VAAPI 硬件解码路径：`libva`、`libva-drm`、`libdrm` | 背景视频首帧解码（硬件解码可用时） | 链接期（Linux 构建）；`qtavplayer_platform_spec` |
-| `soundtouch` | 媒体 | 全平台 | 变速播放与音频处理（`src/audio/`、`src/tools/media/`） | 首次变速播放 / 音频处理作业 | 链接期；音频手工回归 |
+| `soundtouch` | 媒体 | 全平台 | 变速播放与音频处理（`src/audio/`、`src/media_tools/media/`） | 首次变速播放 / 音频处理作业 | 链接期；音频手工回归 |
 | `bass` | 媒体 | 全平台（Win: `bass.lib`，macOS: `libbass.dylib`，Linux: `libbass.so`） | `BassPreviewAudioBackend`、`BassExportAudioBackend`、`OfflineAudioDecoder` | 预览、导出和离线解码初始化 | 链接期；macOS 打包契约校验 dylib 已随包 |
 | `bassmix` | 媒体 | 全平台 | `BassPreviewAudioBackend`、`BassExportAudioBackend` 的混音总线 | 预览或导出混音初始化 | 链接期；打包契约校验原生库已随包 |
 | `miniz` | 导出 | 全平台 | `ChartZipPackager`（ZIP 打包导出） | 触发 ZIP 导出 | `chart_zip_packager_spec` |
