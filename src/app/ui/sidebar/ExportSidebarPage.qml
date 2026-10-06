@@ -26,14 +26,14 @@ Rectangle {
         anchors.right: parent.right
         anchors.top: heading.bottom
         anchors.bottom: parent.bottom
-        contentHeight: list.implicitHeight + 12
+        contentHeight: list.y + list.implicitHeight + 6
         clip: true
         boundsBehavior: Flickable.StopAtBounds
 
         Column {
             id: list
             x: 6
-            y: 6
+            y: Theme.workspaceSectionTopMargin
             width: parent.width - 12
             spacing: 2
 
@@ -41,6 +41,8 @@ Rectangle {
                 width: parent.width
                 enabled: root.documentAvailable
                 text: qsTrId("export_page.export_video")
+                iconSource: Qt.resolvedUrl("icons/video.svg")
+                filledIconSource: Qt.resolvedUrl("icons/video-fill.svg")
                 selected: root.pages.activePageId === "export"
                 onClicked: root.pages.openVideoExportPage()
             }
@@ -48,12 +50,16 @@ Rectangle {
                 width: parent.width
                 enabled: root.documentAvailable
                 text: qsTrId("export_page.export_cover")
+                iconSource: Qt.resolvedUrl("icons/image.svg")
+                filledIconSource: Qt.resolvedUrl("icons/image-fill.svg")
                 onClicked: root.pages.openCoverExport()
             }
             NavRow {
                 width: parent.width
                 enabled: root.documentAvailable
                 text: qsTrId("export_page.pack_as_zip")
+                iconSource: Qt.resolvedUrl("icons/folder-zip.svg")
+                filledIconSource: Qt.resolvedUrl("icons/folder-zip-fill.svg")
                 onClicked: root.pages.packAsZip()
             }
         }

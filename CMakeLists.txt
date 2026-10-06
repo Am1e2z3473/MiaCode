@@ -764,6 +764,12 @@ set(MIACODE_UI_ICON_FILES
     src/app/ui/resources/icons/check.svg
     src/app/ui/resources/icons/file-fill.svg
     src/app/ui/resources/icons/export-fill.svg
+    src/app/ui/resources/icons/video.svg
+    src/app/ui/resources/icons/video-fill.svg
+    src/app/ui/resources/icons/image.svg
+    src/app/ui/resources/icons/image-fill.svg
+    src/app/ui/resources/icons/folder-zip.svg
+    src/app/ui/resources/icons/folder-zip-fill.svg
     src/app/ui/resources/icons/tools-fill.svg
     src/app/ui/resources/icons/panel-left-fill.svg
     src/app/ui/resources/icons/panel-bottom-fill.svg

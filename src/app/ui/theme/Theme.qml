@@ -538,7 +538,7 @@ QtObject {
     // Fill alpha only: text/icons and popup transition opacity stay independent.
     readonly property real overlayOpacity: darkTheme ? 0.72 : 0.82
     readonly property real nativeMaterialTintOpacity: Qt.platform.os === "windows"
-        ? (darkTheme ? 0.88 : 0.80)
+        ? (darkTheme ? 0.83 : 0.72)
         : (darkTheme ? 0.65 : 0.50)
     readonly property color chromeSeparatorColor: darkTheme
         ? Qt.rgba(1, 1, 1, 0.04) : Qt.rgba(0, 0, 0, 0.08)
@@ -654,6 +654,10 @@ QtObject {
     readonly property int workspaceHeaderHeight: 34
     // Visual baseline shared by the editor tabs and workspace side headings.
     readonly property int workspaceHeaderContentOffsetY: 2
+    readonly property real workspaceHeaderContentCenterY:
+        workspaceHeaderHeight / 2 + workspaceHeaderContentOffsetY
+    readonly property real workspaceSectionTopMargin:
+        2 * workspaceHeaderContentOffsetY + (activityButtonSize - controlMinHeight) / 2
     // SplitView handle: 1px layout (same as non-interactive dividers),
     // wider invisible hit, thicker stroke only while hovered/pressed.
     readonly property int splitDividerThickness: 1

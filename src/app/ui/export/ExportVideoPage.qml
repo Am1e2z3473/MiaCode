@@ -71,25 +71,27 @@ Rectangle {
 
         PanelHeader {
             Layout.fillWidth: true
-            title: qsTrId("export_page.center")
+            title: qsTrId("export_page.export_video")
             sidebarTitle: true
             showMore: false
+
+            AppChoiceButton {
+                text: qsTrId("action.batch_export")
+                enabled: root.session !== null
+                checked: root.session && root.session.activeTab === "batch"
+                onClicked: {
+                    if (root.session)
+                        root.session.activeTab = checked ? "batch" : "export"
+                    checked = Qt.binding(() => root.session && root.session.activeTab === "batch")
+                }
+            }
         }
 
         ColumnLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            Layout.topMargin: 6
+            Layout.topMargin: Theme.workspaceSectionTopMargin
             spacing: 2
-
-            AppTabBar {
-                Layout.fillWidth: true
-                Layout.leftMargin: root.tabInset
-                tabs: [{ id: "export", label: qsTrId("sidebar.export") },
-                       { id: "batch", label: qsTrId("action.batch_export") }]
-                selectedId: root.session ? root.session.activeTab : "export"
-                onTabSelected: function(tabId) { if (root.session) root.session.activeTab = tabId }
-            }
 
             Text {
                 Layout.fillWidth: true
