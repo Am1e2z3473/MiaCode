@@ -16,7 +16,7 @@
 #include "common/ProjectPreferences.h"
 #include "common/WaveformCache.h"
 #include "app/services/PlaybackStateAuthority.h"
-#include "tools/latency/LatencySandboxController.h"
+#include "app/runtime/latency/LatencySandboxController.h"
 #include "preview/runtime/PreviewRuntime.h"
 #include "preview/runtime/PreviewStageMediaHost.h"
 #include "core/scene/PreviewProgressStatsCache.h"

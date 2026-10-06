@@ -138,20 +138,20 @@ miacode_add_spec(simai_document_spec
 )
 
 miacode_add_spec(cover_layout_model_spec
-    OWNER src/tools/cover_export
+    OWNER src/export/cover_export
     CONTRACT cover-export.cover-layout-model
     DOMAIN cover_export KIND behavior RISK normal
     EXECUTION ctest STATUS active PLATFORM all
     SOURCES
         src/tools/cover_export/CoverLayoutModelSpec.cpp
-        src/tools/cover_export/CoverLayoutModel.h
-        src/tools/cover_export/CoverLayoutModel.cpp
-        src/tools/cover_export/CoverFrameExportPlan.h
-        src/tools/cover_export/CoverFrameExportPlan.cpp
-        src/tools/cover_export/CoverCompositionState.h
-        src/tools/cover_export/CoverCompositionState.cpp
-        src/tools/cover_export/CoverCompositionPersistenceGuard.h
-        src/tools/cover_export/CoverCompositionPersistenceGuard.cpp
+        src/export/cover_export/CoverLayoutModel.h
+        src/export/cover_export/CoverLayoutModel.cpp
+        src/export/cover_export/CoverFrameExportPlan.h
+        src/export/cover_export/CoverFrameExportPlan.cpp
+        src/export/cover_export/CoverCompositionState.h
+        src/export/cover_export/CoverCompositionState.cpp
+        src/export/cover_export/CoverCompositionPersistenceGuard.h
+        src/export/cover_export/CoverCompositionPersistenceGuard.cpp
         src/app/ui/preferences/PreferenceDocument.h
         src/app/ui/preferences/PreferenceDocument.cpp
     LIBS Qt6::Core Qt6::Gui Qt6::Widgets
@@ -159,27 +159,27 @@ miacode_add_spec(cover_layout_model_spec
 )
 
 miacode_add_spec(cover_frame_playback_controller_spec
-    OWNER src/tools/cover_export
+    OWNER src/export/cover_export
     CONTRACT cover-export.cover-frame-playback-controller
     DOMAIN cover_export KIND behavior RISK normal
     EXECUTION ctest STATUS active PLATFORM all
     SOURCES
         src/tools/cover_export/CoverFramePlaybackControllerSpec.cpp
-        src/tools/cover_export/CoverFramePlaybackController.h
-        src/tools/cover_export/CoverFramePlaybackController.cpp
+        src/export/cover_export/CoverFramePlaybackController.h
+        src/export/cover_export/CoverFramePlaybackController.cpp
     LIBS Qt6::Core
     INCLUDES src
 )
 
 miacode_add_spec(cover_frame_scene_binder_spec
-    OWNER src/tools/cover_export
+    OWNER src/export/cover_export
     CONTRACT cover-export.cover-frame-scene-binder
     DOMAIN cover_export KIND behavior RISK normal
     EXECUTION ctest STATUS active PLATFORM all
     SOURCES
         src/tools/cover_export/CoverFrameSceneBinderSpec.cpp
-        src/tools/cover_export/CoverFrameSceneBinder.h
-        src/tools/cover_export/CoverFrameSceneBinder.cpp
+        src/export/cover_export/CoverFrameSceneBinder.h
+        src/export/cover_export/CoverFrameSceneBinder.cpp
     LIBS Qt6::Core Qt6::Gui
     INCLUDES src
 )
@@ -269,66 +269,66 @@ miacode_add_spec(simai_text_edit_policy_spec
 )
 
 miacode_add_spec(video_export_runtime_policy_spec
-    OWNER src/tools/video_export
+    OWNER src/export/video_export
     CONTRACT video-export.video-export-runtime-policy
     DOMAIN video_export KIND behavior RISK high
     EXECUTION ctest STATUS active PLATFORM all
     SOURCES
         src/tools/video_export/VideoExportRuntimePolicySpec.cpp
-        src/tools/video_export/VideoExportRuntimePolicy.h
-        src/tools/video_export/VideoExportRuntimePolicy.cpp
+        src/export/video_export/VideoExportRuntimePolicy.h
+        src/export/video_export/VideoExportRuntimePolicy.cpp
     LIBS Qt6::Core
     INCLUDES src
 )
 
 miacode_add_spec(raw_video_pipe_frame_conservation_spec
-    OWNER src/tools/video_export
+    OWNER src/export/video_export
     CONTRACT video-export.raw-video-pipe-frame-conservation
     DOMAIN video_export KIND behavior RISK high
     EXECUTION ctest STATUS active PLATFORM all
     SOURCES
         src/tools/video_export/RawVideoPipeFrameConservationSpec.cpp
-        src/tools/video_export/RawVideoPipeTransport.h
-        src/tools/video_export/RawVideoPipeTransport.cpp
+        src/export/video_export/RawVideoPipeTransport.h
+        src/export/video_export/RawVideoPipeTransport.cpp
     LIBS Qt6::Core Qt6::Gui
     INCLUDES src
 )
 
 miacode_add_spec(video_export_pending_frame_redraw_spec
-    OWNER src/tools/video_export
+    OWNER src/export/video_export
     CONTRACT video-export.video-export-pending-frame-redraw
     DOMAIN video_export KIND behavior RISK high
     EXECUTION ctest STATUS active PLATFORM all
     SOURCES
         src/tools/video_export/VideoExportPendingFrameRedrawSpec.cpp
-        src/tools/video_export/VideoExportPendingFrameRedraw.h
+        src/export/video_export/VideoExportPendingFrameRedraw.h
     LIBS Qt6::Core
     INCLUDES src
 )
 
 miacode_add_spec(video_export_intro_mode_spec
-    OWNER src/tools/video_export
+    OWNER src/export/video_export
     CONTRACT video-export.video-export-intro-mode
     DOMAIN video_export KIND behavior RISK high
     EXECUTION ctest STATUS active PLATFORM all
     SOURCES
         src/tools/video_export/VideoExportIntroModeSpec.cpp
-        src/tools/video_export/VideoExportController.h
+        src/export/video_export/VideoExportController.h
         src/core/chart/model/TimelineData.h
     LIBS Qt6::Core Qt6::Gui
     INCLUDES src
 )
 
 miacode_add_spec(video_export_intro_sound_spec
-    OWNER src/tools/video_export
+    OWNER src/export/video_export
     CONTRACT video-export.video-export-intro-sound
     DOMAIN video_export KIND behavior RISK high
     EXECUTION ctest STATUS active PLATFORM all
     SOURCES
         src/tools/video_export/VideoExportIntroSoundSpec.cpp
-        src/tools/video_export/VideoExportSettings.cpp
-        src/tools/video_export/VideoExportRuntimePolicy.cpp
-        src/tools/video_export/VideoExportSnapshot.cpp
+        src/export/video_export/VideoExportSettings.cpp
+        src/export/video_export/VideoExportRuntimePolicy.cpp
+        src/export/video_export/VideoExportSnapshot.cpp
         src/core/chart/model/TimelineMarkerOffset.h
         src/audio/PreviewAudioSettings.h
         src/audio/PreviewAudioSettings.cpp
@@ -342,15 +342,15 @@ miacode_add_spec(video_export_intro_sound_spec
 )
 
 miacode_add_spec(video_export_audio_render_plan_spec
-    OWNER src/tools/video_export
+    OWNER src/export/video_export
     CONTRACT video-export.video-export-audio-render-plan
     DOMAIN video_export KIND behavior RISK high
     EXECUTION ctest STATUS active PLATFORM all
     SOURCES
         src/tools/video_export/VideoExportAudioRenderPlanSpec.cpp
-        src/tools/video_export/VideoExportAudioRenderPlan.h
-        src/tools/video_export/VideoExportAudioRenderPlan.cpp
-        src/tools/video_export/VideoExportController.h
+        src/export/video_export/VideoExportAudioRenderPlan.h
+        src/export/video_export/VideoExportAudioRenderPlan.cpp
+        src/export/video_export/VideoExportController.h
         src/common/PreviewAudioMixConfig.h
         src/common/PreviewTimingSettings.h
         src/common/PreviewSfxTiming.h
@@ -366,59 +366,59 @@ miacode_add_spec(video_export_audio_render_plan_spec
 )
 
 miacode_add_spec(video_export_media_timeline_spec
-    OWNER src/tools/video_export
+    OWNER src/export/video_export
     CONTRACT video-export.video-export-media-timeline
     DOMAIN video_export KIND behavior RISK high
     EXECUTION ctest STATUS active PLATFORM all
     SOURCES
         src/tools/video_export/VideoExportMediaTimelineSpec.cpp
-        src/tools/video_export/VideoExportMediaTimeline.h
-        src/tools/video_export/VideoExportMediaTimeline.cpp
+        src/export/video_export/VideoExportMediaTimeline.h
+        src/export/video_export/VideoExportMediaTimeline.cpp
         src/common/PreviewSfxTimeline.h
     LIBS Qt6::Core Qt6::Gui
     INCLUDES src
 )
 
 miacode_add_spec(chart_zip_packager_spec
-    OWNER src/tools/zip_export
+    OWNER src/media_tools/zip_export
     CONTRACT zip-export.chart-zip-packager
     DOMAIN zip_export KIND integration RISK normal
     EXECUTION ctest STATUS active PLATFORM all
     SOURCES
         src/tools/zip_export/ChartZipPackagerSpec.cpp
-        src/tools/zip_export/ChartZipPackager.h
-        src/tools/zip_export/ChartZipPackager.cpp
+        src/media_tools/zip_export/ChartZipPackager.h
+        src/media_tools/zip_export/ChartZipPackager.cpp
         src/common/ChartAssetPaths.h
     LIBS Qt6::Core Qt6::Gui miniz
     INCLUDES src
 )
 
 # The Net engine's only build home. The Net page was removed from the v2
-# product runtime, so src/tools/net/ is compiled here and nowhere else —
+# product runtime, so src/media_tools/net/ is compiled here and nowhere else —
 # that is what keeps Qt6::Network out of MiaCode (docs/ops/DEPENDENCY_ALLOWLIST.md).
 # The two batch workers carry no assertions yet; they are listed so the
 # engine keeps compiling instead of rotting while it waits for the page.
 miacode_add_spec(net_client_spec
-    OWNER src/tools/net
+    OWNER src/media_tools/net
     CONTRACT net.net-client
     DOMAIN net KIND behavior RISK normal
     EXECUTION ctest STATUS active PLATFORM all
     SOURCES
         src/tools/net/NetClientSpec.cpp
-        src/tools/net/NetClient.h
-        src/tools/net/NetClient.cpp
-        src/tools/net/NetBatchUploadScanner.h
-        src/tools/net/NetBatchUploadScanner.cpp
-        src/tools/net/NetUploadDiagnostics.h
-        src/tools/net/NetUploadDiagnostics.cpp
-        src/tools/net/NetBatchDownloadWorker.h
-        src/tools/net/NetBatchDownloadWorker.cpp
-        src/tools/net/NetBatchUploadWorker.h
-        src/tools/net/NetBatchUploadWorker.cpp
-        src/tools/media/PvBatchCompressionScanner.h
-        src/tools/media/PvBatchCompressionScanner.cpp
-        src/tools/zip_export/ChartZipPackager.h
-        src/tools/zip_export/ChartZipPackager.cpp
+        src/media_tools/net/NetClient.h
+        src/media_tools/net/NetClient.cpp
+        src/media_tools/net/NetBatchUploadScanner.h
+        src/media_tools/net/NetBatchUploadScanner.cpp
+        src/media_tools/net/NetUploadDiagnostics.h
+        src/media_tools/net/NetUploadDiagnostics.cpp
+        src/media_tools/net/NetBatchDownloadWorker.h
+        src/media_tools/net/NetBatchDownloadWorker.cpp
+        src/media_tools/net/NetBatchUploadWorker.h
+        src/media_tools/net/NetBatchUploadWorker.cpp
+        src/media_tools/media/PvBatchCompressionScanner.h
+        src/media_tools/media/PvBatchCompressionScanner.cpp
+        src/media_tools/zip_export/ChartZipPackager.h
+        src/media_tools/zip_export/ChartZipPackager.cpp
         src/app/ui/preferences/PreferenceDocument.h
         src/app/ui/preferences/PreferenceDocument.cpp
         src/common/ChartAssetPaths.h
@@ -427,14 +427,14 @@ miacode_add_spec(net_client_spec
 )
 
 miacode_add_spec(pv_compression_policy_spec
-    OWNER src/tools/media
+    OWNER src/media_tools/media
     CONTRACT media.pv-compression-policy
     DOMAIN media KIND behavior RISK normal
     EXECUTION ctest STATUS active PLATFORM all
     SOURCES
         src/tools/media/PvCompressionPolicySpec.cpp
-        src/tools/media/PvCompressionPolicy.h
-        src/tools/media/PvCompressionPolicy.cpp
+        src/media_tools/media/PvCompressionPolicy.h
+        src/media_tools/media/PvCompressionPolicy.cpp
     LIBS Qt6::Core
     INCLUDES src
 )

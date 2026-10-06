@@ -2,7 +2,7 @@
 #include <QCoreApplication>
 #include <QTextStream>
 
-#include "tools/video_export/RawVideoPipeTransport.h"
+#include "export/video_export/RawVideoPipeTransport.h"
 
 namespace {
 

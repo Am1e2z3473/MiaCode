@@ -1,6 +1,6 @@
 #include "app/ui/latency/LatencyModel.h"
 
-#include "tools/latency/LatencySandboxController.h"
+#include "app/runtime/latency/LatencySandboxController.h"
 
 #include <QCoreApplication>
 

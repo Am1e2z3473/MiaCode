@@ -18,7 +18,7 @@
 #include "audio/QtPreviewSfxRuntime.h"
 #include "preview/runtime/PreviewStageMediaHost.h"
 #include "preview/runtime/PreviewRuntime.h"
-#include "tools/latency/LatencySandboxController.h"
+#include "app/runtime/latency/LatencySandboxController.h"
 
 Session::~Session()
 {

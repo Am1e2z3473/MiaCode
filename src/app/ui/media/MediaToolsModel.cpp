@@ -7,7 +7,7 @@
 
 #include "app/services/JobProgressService.h"
 #include "app/services/UiRequestService.h"
-#include "tools/media/PvBatchCompressionWorker.h"
+#include "media_tools/media/PvBatchCompressionWorker.h"
 
 #include <QDir>
 #include <QFileInfo>

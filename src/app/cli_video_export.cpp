@@ -2,7 +2,7 @@
 
 #include "app/runtime/Session.h"
 #include "app/services/ApplicationServices.h"
-#include "tools/video_export/VideoExportSnapshot.h"
+#include "export/video_export/VideoExportSnapshot.h"
 #include "common/DebugLog.h"
 #include "common/OperationLog.h"
 

@@ -34,7 +34,7 @@
 #include "app/ui/export/ExportSession.h"
 #include "app/services/JobProgressService.h"
 #include "app/services/UiRequestService.h"
-#include "tools/latency/LatencySandboxController.h"
+#include "app/runtime/latency/LatencySandboxController.h"
 #include "core/analysis/MuriAnalyzer.h"
 #include "core/analysis/MuriPanelEntries.h"
 #include "core/analysis/MuriStaticChecker.h"

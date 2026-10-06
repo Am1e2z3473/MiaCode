@@ -30,7 +30,7 @@
 #include "core/analysis/TimelineSlowRefresh.h"
 #include "core/analysis/MuriRenderOptions.h"
 #include "core/analysis/MuriTypes.h"
-#include "tools/video_export/VideoExportSnapshot.h"
+#include "export/video_export/VideoExportSnapshot.h"
 #include "common/PreviewGameplayConfig.h"
 #include "common/PreviewVideoGeometryConfig.h"
 #include "app/ui/document/DocumentProjection.h"

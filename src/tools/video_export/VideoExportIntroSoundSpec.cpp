@@ -1,5 +1,5 @@
-#include "tools/video_export/VideoExportSettings.h"
-#include "tools/video_export/VideoExportSnapshot.h"
+#include "export/video_export/VideoExportSettings.h"
+#include "export/video_export/VideoExportSnapshot.h"
 
 #include <QJsonObject>
 #include <QTextStream>

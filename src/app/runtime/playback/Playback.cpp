@@ -17,7 +17,7 @@
 #include "preview/runtime/PreviewRuntime.h"
 #include "preview/runtime/PreviewStageMediaHost.h"
 #include "common/IntroConfig.h"
-#include "tools/video_export/VideoExportController.h"
+#include "export/video_export/VideoExportController.h"
 #include "core/scene/PreviewOpacityCurves.h"
 #include "core/scene/PreviewProgressStatsCache.h"
 #include "core/chart/transform/ChartBatchTransform.h"

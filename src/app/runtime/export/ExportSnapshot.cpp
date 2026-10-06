@@ -15,8 +15,8 @@
 #include "common/DebugOptions.h"
 #include "preview/runtime/PreviewRuntime.h"
 #include "core/chart/model/TimelineMarkerOffset.h"
-#include "tools/video_export/VideoExportController.h"
-#include "tools/video_export/VideoExportSnapshot.h"
+#include "export/video_export/VideoExportController.h"
+#include "export/video_export/VideoExportSnapshot.h"
 
 #include <QtCore>
 #include <QtGui>

@@ -98,14 +98,14 @@ int main(int argc, char** argv)
     const QString session = readSource(
         QStringLiteral("src/app/ui/export/CoverExportSession.cpp"));
     const QString sceneRendererHeader = readSource(
-        QStringLiteral("src/tools/cover_export/SceneFrameRenderer.h"));
+        QStringLiteral("src/export/cover_export/SceneFrameRenderer.h"));
     const QString sceneRenderer = readSource(
-        QStringLiteral("src/tools/cover_export/SceneFrameRenderer.cpp"));
+        QStringLiteral("src/export/cover_export/SceneFrameRenderer.cpp"));
     const QString pageHost = readSource(QStringLiteral("src/app/ui/layout/PageHost.cpp"));
     const QString mainWindow = readSource(
         QStringLiteral("src/app/runtime/export/VideoExportHost.cpp"));
     const QString renderer = readSource(
-        QStringLiteral("src/tools/cover_export/CoverCompositeRenderer.cpp"));
+        QStringLiteral("src/export/cover_export/CoverCompositeRenderer.cpp"));
     const QString bootstrap = readSource(QStringLiteral("src/app/ui/Bootstrap.cpp"));
     const QString window = readSource(QStringLiteral("src/app/ui/export/CoverExportWindow.cpp"));
     const QString windowQml = readSource(QStringLiteral("src/app/ui/export/CoverExportWindow.qml"));

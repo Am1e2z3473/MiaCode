@@ -318,12 +318,12 @@ add_executable(MiaCode WIN32 MACOSX_BUNDLE
     src/editor/SimaiCompletionCatalog.cpp
     src/editor/SimaiTextEditPolicy.h
     src/editor/SimaiTextEditPolicy.cpp
-    src/tools/latency/LatencyAnalysis.h
-    src/tools/latency/LatencyAnalysis.cpp
-    src/tools/latency/LatencyTestChartBuilder.h
-    src/tools/latency/LatencyTestChartBuilder.cpp
-    src/tools/latency/LatencySandboxController.h
-    src/tools/latency/LatencySandboxController.cpp
+    src/app/runtime/latency/LatencyAnalysis.h
+    src/app/runtime/latency/LatencyAnalysis.cpp
+    src/app/runtime/latency/LatencyTestChartBuilder.h
+    src/app/runtime/latency/LatencyTestChartBuilder.cpp
+    src/app/runtime/latency/LatencySandboxController.h
+    src/app/runtime/latency/LatencySandboxController.cpp
     src/core/analysis/MuriAnalyzer.h
     src/core/analysis/MuriAnalyzer.cpp
     src/core/analysis/MuriAnalyzerGeometry.h
@@ -348,49 +348,49 @@ add_executable(MiaCode WIN32 MACOSX_BUNDLE
     src/core/analysis/MuriPanelEntries.cpp
     src/core/analysis/MuriStaticChecker.h
     src/core/analysis/MuriStaticChecker.cpp
-    src/tools/video_export/VideoExportSettings.h
-    src/tools/video_export/VideoExportSettings.cpp
-    src/tools/video_export/FontLibrary.h
-    src/tools/video_export/FontLibrary.cpp
-    src/tools/video_export/VideoExportController.h
-    src/tools/video_export/VideoExportController.cpp
-    src/tools/video_export/VideoExportEncoder.cpp
-    src/tools/video_export/VideoExportDiagnostics.cpp
-    src/tools/video_export/VideoExportFrameRender.cpp
-    src/tools/video_export/VideoExportPipeline.cpp
-    src/tools/video_export/VideoExportPreparedTask.cpp
-    src/tools/video_export/VideoExportMediaTimeline.h
-    src/tools/video_export/VideoExportMediaTimeline.cpp
-    src/tools/video_export/VideoExportRuntimePolicy.h
-    src/tools/video_export/VideoExportRuntimePolicy.cpp
-    src/tools/video_export/VideoExportQuickRenderBackend.h
-    src/tools/video_export/VideoExportQuickRenderBackend.cpp
-    src/tools/video_export/RawVideoPipeTransport.h
-    src/tools/video_export/RawVideoPipeTransport.cpp
-    src/tools/video_export/VideoExportSnapshot.h
-    src/tools/video_export/VideoExportSnapshot.cpp
-    src/tools/zip_export/ChartZipPackager.h
-    src/tools/zip_export/ChartZipPackager.cpp
-    src/tools/media/PvBatchCompressionScanner.h
-    src/tools/media/PvBatchCompressionScanner.cpp
-    src/tools/media/PvCompressionPolicy.h
-    src/tools/media/PvCompressionPolicy.cpp
-    src/tools/media/PvBatchCompressionWorker.h
-    src/tools/media/PvBatchCompressionWorker.cpp
-    src/tools/cover_export/CoverLayoutModel.h
-    src/tools/cover_export/CoverLayoutModel.cpp
-    src/tools/cover_export/CoverCompositionState.h
-    src/tools/cover_export/CoverCompositionState.cpp
-    src/tools/cover_export/CoverCompositeRenderer.h
-    src/tools/cover_export/CoverCompositeRenderer.cpp
-    src/tools/cover_export/SceneFrameRenderer.h
-    src/tools/cover_export/SceneFrameRenderer.cpp
-    src/tools/cover_export/CoverFramePlaybackController.h
-    src/tools/cover_export/CoverFramePlaybackController.cpp
-    src/tools/cover_export/CoverFrameSceneBinder.h
-    src/tools/cover_export/CoverFrameSceneBinder.cpp
-    src/tools/cover_export/CoverFrameExportPlan.h
-    src/tools/cover_export/CoverFrameExportPlan.cpp
+    src/export/video_export/VideoExportSettings.h
+    src/export/video_export/VideoExportSettings.cpp
+    src/export/video_export/FontLibrary.h
+    src/export/video_export/FontLibrary.cpp
+    src/export/video_export/VideoExportController.h
+    src/export/video_export/VideoExportController.cpp
+    src/export/video_export/VideoExportEncoder.cpp
+    src/export/video_export/VideoExportDiagnostics.cpp
+    src/export/video_export/VideoExportFrameRender.cpp
+    src/export/video_export/VideoExportPipeline.cpp
+    src/export/video_export/VideoExportPreparedTask.cpp
+    src/export/video_export/VideoExportMediaTimeline.h
+    src/export/video_export/VideoExportMediaTimeline.cpp
+    src/export/video_export/VideoExportRuntimePolicy.h
+    src/export/video_export/VideoExportRuntimePolicy.cpp
+    src/export/video_export/VideoExportQuickRenderBackend.h
+    src/export/video_export/VideoExportQuickRenderBackend.cpp
+    src/export/video_export/RawVideoPipeTransport.h
+    src/export/video_export/RawVideoPipeTransport.cpp
+    src/export/video_export/VideoExportSnapshot.h
+    src/export/video_export/VideoExportSnapshot.cpp
+    src/media_tools/zip_export/ChartZipPackager.h
+    src/media_tools/zip_export/ChartZipPackager.cpp
+    src/media_tools/media/PvBatchCompressionScanner.h
+    src/media_tools/media/PvBatchCompressionScanner.cpp
+    src/media_tools/media/PvCompressionPolicy.h
+    src/media_tools/media/PvCompressionPolicy.cpp
+    src/media_tools/media/PvBatchCompressionWorker.h
+    src/media_tools/media/PvBatchCompressionWorker.cpp
+    src/export/cover_export/CoverLayoutModel.h
+    src/export/cover_export/CoverLayoutModel.cpp
+    src/export/cover_export/CoverCompositionState.h
+    src/export/cover_export/CoverCompositionState.cpp
+    src/export/cover_export/CoverCompositeRenderer.h
+    src/export/cover_export/CoverCompositeRenderer.cpp
+    src/export/cover_export/SceneFrameRenderer.h
+    src/export/cover_export/SceneFrameRenderer.cpp
+    src/export/cover_export/CoverFramePlaybackController.h
+    src/export/cover_export/CoverFramePlaybackController.cpp
+    src/export/cover_export/CoverFrameSceneBinder.h
+    src/export/cover_export/CoverFrameSceneBinder.cpp
+    src/export/cover_export/CoverFrameExportPlan.h
+    src/export/cover_export/CoverFrameExportPlan.cpp
     src/preview/runtime/PreviewQuickExportSession.h
     src/preview/runtime/PreviewQuickExportSession.cpp
     src/preview/runtime/PreviewQuickD3D11ExportSession.h
@@ -1005,9 +1005,9 @@ target_sources(MiaCode PRIVATE
     src/audio/PreviewBassDefaultDevice.cpp
     src/audio/PreviewBassDeviceLease.h
     src/audio/PreviewBassDeviceLease.cpp
-    src/tools/video_export/VideoExportAudioRenderPlan.h
-    src/tools/video_export/VideoExportAudioRenderPlan.cpp
-    src/tools/video_export/VideoExportAudioBackend.h
+    src/export/video_export/VideoExportAudioRenderPlan.h
+    src/export/video_export/VideoExportAudioRenderPlan.cpp
+    src/export/video_export/VideoExportAudioBackend.h
 )
 
 target_sources(MiaCode PRIVATE
@@ -1018,8 +1018,8 @@ target_sources(MiaCode PRIVATE
     src/audio/BassPreviewAudioBackend_Transport.cpp
     src/audio/BassPreviewAudioBackend_PlaybackClock.cpp
     src/audio/BassPreviewAudioBackend_EventDrain.cpp
-    src/tools/video_export/BassExportAudioBackend.h
-    src/tools/video_export/BassExportAudioBackend.cpp
+    src/export/video_export/BassExportAudioBackend.h
+    src/export/video_export/BassExportAudioBackend.cpp
 )
 
 if (WIN32)

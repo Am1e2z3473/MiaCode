@@ -423,7 +423,7 @@ Enable the Windows fixed-FPS timer-resolution A/B path:
 - runtime/debug orchestration:
   - `src/app/mainwindow/MainWindow.cpp`
 - export logging:
-  - `src/tools/video_export/VideoExportController.cpp`
+  - `src/export/video_export/VideoExportController.cpp`
 - Quick export session:
   - `src/preview/runtime/PreviewQuickExportSession.cpp`
 

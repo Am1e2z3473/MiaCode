@@ -1,6 +1,6 @@
 #pragma once
 
-#include "tools/video_export/VideoExportController.h"
+#include "export/video_export/VideoExportController.h"
 
 #include <QList>
 #include <QString>

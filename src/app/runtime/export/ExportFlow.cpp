@@ -18,8 +18,8 @@
 #include "preview/runtime/PreviewStageMediaHost.h"
 #include "app/ui/export/ExportSession.h"
 #include "core/analysis/MuriAnalyzer.h"
-#include "tools/video_export/VideoExportController.h"
-#include "tools/video_export/VideoExportPreferences.h"
+#include "export/video_export/VideoExportController.h"
+#include "export/video_export/VideoExportPreferences.h"
 
 #include <QtCore>
 #include <QtGui>

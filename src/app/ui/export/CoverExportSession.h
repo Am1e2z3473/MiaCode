@@ -2,8 +2,8 @@
 
 #include "app/services/UiRequestService.h"
 #include "app/services/ExportEngine.h"
-#include "tools/cover_export/CoverCompositeRenderer.h"
-#include "tools/video_export/VideoExportController.h"
+#include "export/cover_export/CoverCompositeRenderer.h"
+#include "export/video_export/VideoExportController.h"
 
 #include <QObject>
 #include <QJsonObject>
