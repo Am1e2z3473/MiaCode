@@ -396,25 +396,25 @@ add_executable(MiaCode WIN32 MACOSX_BUNDLE
     src/export/cover_export/CoverFrameSceneBinder.cpp
     src/export/cover_export/CoverFrameExportPlan.h
     src/export/cover_export/CoverFrameExportPlan.cpp
-    src/preview/runtime/PreviewQuickExportSession.h
-    src/preview/runtime/PreviewQuickExportSession.cpp
-    src/preview/runtime/PreviewQuickD3D11ExportSession.h
-    src/preview/runtime/PreviewQuickD3D11ExportSession.cpp
+    src/export/session/PreviewQuickExportSession.h
+    src/export/session/PreviewQuickExportSession.cpp
+    src/export/session/PreviewQuickD3D11ExportSession.h
+    src/export/session/PreviewQuickD3D11ExportSession.cpp
     src/preview/runtime/PreviewSceneAssetLoader.h
     src/preview/runtime/PreviewSceneAssetLoader.cpp
     src/preview/runtime/PreviewSceneAssetRepository.h
     src/preview/runtime/PreviewSceneAssetRepository.cpp
-    src/preview/runtime/PreviewStageMediaHost.h
-    src/preview/runtime/PreviewStageMediaHost.cpp
-    src/preview/runtime/PreviewStageMediaHost_Backend.cpp
-    src/preview/runtime/PreviewStageMediaHost_Media.cpp
-    src/preview/runtime/PreviewStageMediaHost_Playback.cpp
-    src/preview/runtime/PreviewStageMediaHost_Diagnostics.cpp
-    src/preview/runtime/PreviewStageMediaHost_Timeout.cpp
-    src/preview/runtime/PvMemoryDiagnostics.h
-    src/preview/runtime/PvMemoryDiagnostics.cpp
-    src/preview/runtime/PreviewSharedD3D11Device.h
-    src/preview/runtime/PreviewSharedD3D11Device.cpp
+    src/preview/stage_media/PreviewStageMediaHost.h
+    src/preview/stage_media/PreviewStageMediaHost.cpp
+    src/preview/stage_media/PreviewStageMediaHost_Backend.cpp
+    src/preview/stage_media/PreviewStageMediaHost_Media.cpp
+    src/preview/stage_media/PreviewStageMediaHost_Playback.cpp
+    src/preview/stage_media/PreviewStageMediaHost_Diagnostics.cpp
+    src/preview/stage_media/PreviewStageMediaHost_Timeout.cpp
+    src/preview/stage_media/PvMemoryDiagnostics.h
+    src/preview/stage_media/PvMemoryDiagnostics.cpp
+    src/preview/stage_media/PreviewSharedD3D11Device.h
+    src/preview/stage_media/PreviewSharedD3D11Device.cpp
     src/preview/runtime/PreviewRuntime.h
     src/preview/runtime/PreviewRuntime.cpp
     src/core/scene/PreviewFrameState.h

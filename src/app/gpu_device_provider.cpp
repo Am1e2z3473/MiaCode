@@ -10,7 +10,7 @@
 #include <QString>
 
 #if defined(Q_OS_WIN)
-#include "preview/runtime/PreviewSharedD3D11Device.h"  // H2 single-device video-share
+#include "preview/stage_media/PreviewSharedD3D11Device.h"  // H2 single-device video-share
 #endif
 
 // P4.1 / P4.2 — high-performance Quick graphics device provider.

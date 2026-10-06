@@ -1,4 +1,4 @@
-#include "preview/runtime/PreviewStageMediaHost.h"
+#include "preview/stage_media/PreviewStageMediaHost.h"
 
 #include "core/chart/ChartAssetPaths.h"
 #include "common/DebugLog.h"
@@ -6,7 +6,7 @@
 #include "common/FileContentStamp.h"
 #include "common/OperationLog.h"
 #include "core/video/PreviewVideoGeometryConfig.h"
-#include "preview/runtime/PreviewSharedD3D11Device.h"  // H2: single_device= log field
+#include "preview/stage_media/PreviewSharedD3D11Device.h"  // H2: single_device= log field
 
 #include <cstdio>  // G2 Diag: std::snprintf for sync rate-change beacon lines
 
@@ -42,7 +42,7 @@
 #include <QVariant>
 #include <QtMath>
 
-#include "preview/runtime/PreviewStageMediaHostInternal.h"
+#include "preview/stage_media/PreviewStageMediaHostInternal.h"
 
 using namespace miacode::preview::psmh_detail;
 

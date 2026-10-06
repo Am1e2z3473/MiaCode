@@ -3,7 +3,7 @@
 #include "common/LogEmissionPolicy.h"
 #include "core/video/PreviewVideoGeometryConfig.h"
 #include "core/video/PreviewRenderSettings.h"
-#include "preview/runtime/PvMemoryDiagnostics.h"
+#include "preview/stage_media/PvMemoryDiagnostics.h"
 
 #include <QElapsedTimer>
 #include <QImage>

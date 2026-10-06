@@ -62,8 +62,8 @@ Owners name production modules; kinds describe the checked boundary, not runtime
 | `src/tools/preview/PreviewSfxTimelineSpec.cpp` | `preview_sfx_timeline_spec` | `src/core/scene` | `preview.preview-sfx-timeline` | preview | behavior | high | all | ctest | active |
 | `src/tools/preview/PreviewSlideEraseByAreaSpec.cpp` | `preview_slide_erase_by_area_spec` | `src/core/scene` | `preview.preview-slide-erase-by-area` | preview | behavior | high | all | ctest | active |
 | `src/tools/preview/PreviewTextureGenerationPolicySpec.cpp` | `preview_texture_generation_policy_spec` | `src/preview/quick_scene` | `preview.preview-texture-generation-policy` | preview | behavior | high | all | ctest | active |
-| `src/tools/preview/PvMemoryDiagnosticsSpec.cpp` | `pv_memory_diagnostics_spec` | `src/preview/runtime` | `preview.pv-memory-diagnostics` | preview | behavior | high | all | ctest | active |
-| `src/tools/preview/PvMemoryHostContractSpec.cpp` | `pv_memory_host_contract_spec` | `src/preview/runtime` | `preview.pv-memory-host-contract` | preview | source-contract | high | all | ctest | active |
+| `src/tools/preview/PvMemoryDiagnosticsSpec.cpp` | `pv_memory_diagnostics_spec` | `src/preview/stage_media` | `preview.pv-memory-diagnostics` | preview | behavior | high | all | ctest | active |
+| `src/tools/preview/PvMemoryHostContractSpec.cpp` | `pv_memory_host_contract_spec` | `src/preview/stage_media` | `preview.pv-memory-host-contract` | preview | source-contract | high | all | ctest | active |
 | `src/tools/preview/QuickShellPreviewSurfacePolicySpec.cpp` | `quickshell_preview_surface_policy_spec` | `src/app/quick_shell` | `preview.quickshell-preview-surface-policy` | preview | source-contract | high | all | ctest | active |
 | `src/tools/preview/TouchPadAuthoringStateSpec.cpp` | `touch_pad_authoring_state_spec` | `src/core/scene` | `preview.touch-pad-authoring-state` | preview | source-contract | high | all | ctest | active |
 | `src/tools/services/AnalysisServiceSpec.cpp` | `analysis_service_spec` | `src/app/services` | `v2.analysis-service` | services | integration | high | all | ctest | active |

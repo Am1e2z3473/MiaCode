@@ -16,7 +16,7 @@
 #include "app/runtime/timeline/TimelineHost.h"
 #include "app/runtime/validation/ValidationHost.h"
 #include "audio/QtPreviewSfxRuntime.h"
-#include "preview/runtime/PreviewStageMediaHost.h"
+#include "preview/stage_media/PreviewStageMediaHost.h"
 #include "preview/runtime/PreviewRuntime.h"
 #include "app/runtime/latency/LatencySandboxController.h"
 

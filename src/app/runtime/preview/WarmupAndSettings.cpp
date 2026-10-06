@@ -12,7 +12,7 @@
 #include "app/services/ProjectPreferences.h"
 #include "core/video/AssetPaths.h"
 #include "preview/runtime/PreviewRuntime.h"
-#include "preview/runtime/PreviewStageMediaHost.h"
+#include "preview/stage_media/PreviewStageMediaHost.h"
 #include "core/scene/PreviewProgressStatsCache.h"
 #include "core/chart/transform/ChartBatchTransform.h"
 #include "core/chart/transform/ChartNormalization.h"

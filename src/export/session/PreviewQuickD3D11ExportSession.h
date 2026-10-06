@@ -13,7 +13,7 @@
 
 #include "core/scene/PreviewFrameState.h"
 #include "core/scene/PreviewLayerOrder.h"
-#include "preview/runtime/PreviewQuickExportSession.h"  // PreviewQuickExportRenderStats
+#include "export/session/PreviewQuickExportSession.h"  // PreviewQuickExportRenderStats
 
 class QQmlEngine;
 class QQuickItem;

@@ -115,13 +115,13 @@ otool -L build-macos/MiaCode.app/Contents/MacOS/MiaCode | grep Qt
 
 | 文件 | 职责 |
 | --- | --- |
-| `src/preview/runtime/PreviewStageMediaHost.cpp` | 适配层入口：PV/BG 播放器生命周期 |
-| `src/preview/runtime/PreviewStageMediaHost_Backend.cpp` | 后端选择与帧回调 |
-| `src/preview/runtime/PreviewStageMediaHost_Media.cpp` | 媒体装载与轨道选择 |
-| `src/preview/runtime/PreviewStageMediaHost_Playback.cpp` | 播放/暂停/seek |
-| `src/preview/runtime/PreviewStageMediaHost_Diagnostics.cpp` | 解码诊断计数 |
-| `src/preview/runtime/PreviewStageMediaHost_Timeout.cpp` | 解码超时与 EOF 归因 |
-| `src/preview/runtime/PreviewSharedD3D11Device.cpp` | Windows D3D11VA 共享设备发布 |
+| `src/preview/stage_media/PreviewStageMediaHost.cpp` | 适配层入口：PV/BG 播放器生命周期 |
+| `src/preview/stage_media/PreviewStageMediaHost_Backend.cpp` | 后端选择与帧回调 |
+| `src/preview/stage_media/PreviewStageMediaHost_Media.cpp` | 媒体装载与轨道选择 |
+| `src/preview/stage_media/PreviewStageMediaHost_Playback.cpp` | 播放/暂停/seek |
+| `src/preview/stage_media/PreviewStageMediaHost_Diagnostics.cpp` | 解码诊断计数 |
+| `src/preview/stage_media/PreviewStageMediaHost_Timeout.cpp` | 解码超时与 EOF 归因 |
+| `src/preview/stage_media/PreviewSharedD3D11Device.cpp` | Windows D3D11VA 共享设备发布 |
 
 **后续项（阶段 4 之后，未排期）**：改用公共 `QtMultimedia` / `QVideoSink` API，去掉
 `Qt6::MultimediaQuickPrivate`。前置条件是 QtAVPlayer 的帧桥不再需要 `qsgvideonode` 私有头，

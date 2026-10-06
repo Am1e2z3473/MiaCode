@@ -10,7 +10,7 @@
 #include "common/DebugLog.h"
 #include "core/scene/PreviewProgressStatsCache.h"
 #include "preview/runtime/PreviewRuntime.h"
-#include "preview/runtime/PreviewStageMediaHost.h"
+#include "preview/stage_media/PreviewStageMediaHost.h"
 #include "timeline/quick/TimelineQuickStateBridge.h"
 
 using namespace miacode::runtime::shared;

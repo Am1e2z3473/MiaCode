@@ -11,7 +11,7 @@
 #include "common/DebugLog.h"
 #include "common/OperationLog.h"
 #include "preview/runtime/PreviewRuntime.h"
-#include "preview/runtime/PreviewStageMediaHost.h"
+#include "preview/stage_media/PreviewStageMediaHost.h"
 #include "app/services/PreferenceDocument.h"
 #include "core/scene/PreviewProgressStatsCache.h"
 #include "core/chart/transform/ChartBatchTransform.h"

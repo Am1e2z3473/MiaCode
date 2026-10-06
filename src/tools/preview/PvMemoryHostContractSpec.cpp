@@ -43,12 +43,12 @@ int main()
     QTextStream out(stdout);
     bool ok = true;
 
-    const QString header = sourceFile("src/preview/runtime/PreviewStageMediaHost.h");
-    const QString host = sourceFile("src/preview/runtime/PreviewStageMediaHost.cpp");
-    const QString media = sourceFile("src/preview/runtime/PreviewStageMediaHost_Media.cpp");
-    const QString backend = sourceFile("src/preview/runtime/PreviewStageMediaHost_Backend.cpp");
-    const QString playback = sourceFile("src/preview/runtime/PreviewStageMediaHost_Playback.cpp");
-    const QString diagnostics = sourceFile("src/preview/runtime/PreviewStageMediaHost_Diagnostics.cpp");
+    const QString header = sourceFile("src/preview/stage_media/PreviewStageMediaHost.h");
+    const QString host = sourceFile("src/preview/stage_media/PreviewStageMediaHost.cpp");
+    const QString media = sourceFile("src/preview/stage_media/PreviewStageMediaHost_Media.cpp");
+    const QString backend = sourceFile("src/preview/stage_media/PreviewStageMediaHost_Backend.cpp");
+    const QString playback = sourceFile("src/preview/stage_media/PreviewStageMediaHost_Playback.cpp");
+    const QString diagnostics = sourceFile("src/preview/stage_media/PreviewStageMediaHost_Diagnostics.cpp");
 
     ok &= require(!header.isEmpty() && !host.isEmpty() && !media.isEmpty() && !backend.isEmpty()
                       && !playback.isEmpty() && !diagnostics.isEmpty(),

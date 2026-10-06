@@ -7,8 +7,8 @@
 
 #include "core/video/PreviewRenderSettings.h"
 #include "export/video_export/VideoExportController.h"
-#include "preview/runtime/PreviewQuickD3D11ExportSession.h"
-#include "preview/runtime/PreviewQuickExportSession.h"
+#include "export/session/PreviewQuickD3D11ExportSession.h"
+#include "export/session/PreviewQuickExportSession.h"
 #include "preview/runtime/PreviewSceneAssetRepository.h"
 
 class QOpenGLContext;
