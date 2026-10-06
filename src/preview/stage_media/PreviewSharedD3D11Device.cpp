@@ -1,4 +1,4 @@
-#include "preview/runtime/PreviewSharedD3D11Device.h"
+#include "preview/stage_media/PreviewSharedD3D11Device.h"
 
 #include "common/DebugLog.h"
 #include "common/DebugOptions.h"

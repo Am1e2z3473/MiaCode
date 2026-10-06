@@ -8,7 +8,7 @@
 #include "common/OperationLog.h"
 #include "core/scene/PreviewSfxAssets.h"
 #include "preview/runtime/PreviewRuntime.h"
-#include "preview/runtime/PreviewStageMediaHost.h"
+#include "preview/stage_media/PreviewStageMediaHost.h"
 
 #include <QDir>
 #include <QElapsedTimer>

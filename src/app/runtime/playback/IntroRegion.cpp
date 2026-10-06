@@ -13,7 +13,7 @@
 #include "core/video/PreviewGameplayConfig.h"
 #include "core/video/PreviewInteractionConfig.h"
 #include "preview/runtime/PreviewRuntime.h"
-#include "preview/runtime/PreviewStageMediaHost.h"
+#include "preview/stage_media/PreviewStageMediaHost.h"
 #include "export/video_export/FontLibrary.h"
 #include "core/chart/IntroConfig.h"
 #include "export/video_export/VideoExportController.h"

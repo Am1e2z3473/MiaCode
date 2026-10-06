@@ -1,4 +1,4 @@
-#include "preview/runtime/PvMemoryDiagnostics.h"
+#include "preview/stage_media/PvMemoryDiagnostics.h"
 
 #include <algorithm>
 

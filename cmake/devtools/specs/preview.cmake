@@ -531,14 +531,14 @@ miacode_add_spec(preview_media_cache_stamp_spec
 )
 
 miacode_add_spec(pv_memory_diagnostics_spec
-    OWNER src/preview/runtime
+    OWNER src/preview/stage_media
     CONTRACT preview.pv-memory-diagnostics
     DOMAIN preview KIND behavior RISK high
     EXECUTION ctest STATUS active PLATFORM all
     SOURCES
         src/tools/preview/PvMemoryDiagnosticsSpec.cpp
-        src/preview/runtime/PvMemoryDiagnostics.h
-        src/preview/runtime/PvMemoryDiagnostics.cpp
+        src/preview/stage_media/PvMemoryDiagnostics.h
+        src/preview/stage_media/PvMemoryDiagnostics.cpp
     LIBS Qt6::Core
     INCLUDES src
 )
@@ -546,7 +546,7 @@ target_compile_definitions(pv_memory_diagnostics_spec PRIVATE
     "MIACODE_SOURCE_ROOT=\"${CMAKE_CURRENT_SOURCE_DIR}\"")
 
 miacode_add_spec(pv_memory_host_contract_spec
-    OWNER src/preview/runtime
+    OWNER src/preview/stage_media
     CONTRACT preview.pv-memory-host-contract
     DOMAIN preview KIND source-contract RISK high
     EXECUTION ctest STATUS active PLATFORM all

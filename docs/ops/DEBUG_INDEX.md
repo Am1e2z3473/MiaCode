@@ -425,6 +425,6 @@ Enable the Windows fixed-FPS timer-resolution A/B path:
 - export logging:
   - `src/export/video_export/VideoExportController.cpp`
 - Quick export session:
-  - `src/preview/runtime/PreviewQuickExportSession.cpp`
+  - `src/export/session/PreviewQuickExportSession.cpp`
 
 For architecture details, see `docs/specs/preview/CURRENT_RENDER_EXPORT_CONTRACT_ZH.md`.
