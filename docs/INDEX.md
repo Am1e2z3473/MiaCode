@@ -22,8 +22,9 @@
 | [无理检测测试清单](tests/MURI_DETECTION_TEST_CHECKLIST.md) | verify.muri |
 | [Timeline 坐标与聚焦测试清单](tests/TIMELINE_COORDINATE_FOCUS_TEST_CHECKLIST.md) | verify.timeline-focus |
 
-## working（1）
+## working（2）
 
 | 文档 | Canonical ID |
 | --- | --- |
 | [Windows 首次播放无响应：BASS DEV_DEFAULT 时序根因与修复](audit/PREVIEW_FIRST_PLAY_DEV_DEFAULT_ROOT_CAUSE_AND_FIX_ZH.md) | — |
+| [模块分层与解耦方向](specs/architecture/MODULE_LAYERING_ZH.md) | — |
