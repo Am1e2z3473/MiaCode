@@ -424,7 +424,7 @@ miacode_add_spec(net_client_spec
         src/app/ui/preferences/PreferenceDocument.h
         src/app/ui/preferences/PreferenceDocument.cpp
         src/common/ChartAssetPaths.h
-    LIBS Qt6::Core Qt6::Network miniz
+    LIBS Qt6::Core Qt6::Gui Qt6::Network miniz
     INCLUDES src src/common src/tools src/app/ui
 )
 

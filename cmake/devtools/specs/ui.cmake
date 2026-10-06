@@ -45,7 +45,6 @@ miacode_add_spec(qml_document_projection_spec
         ${_miacode_log_core}
         src/app/services/ChartWorkspace.cpp
         src/app/services/ChartWorkspace.h
-        src/app/services/AnalysisService.h
         src/app/ui/document/DocumentProjection.cpp
         src/app/ui/document/DocumentProjection.h
     LIBS Qt6::Core
@@ -59,7 +58,6 @@ miacode_add_spec(qml_analysis_model_spec
     EXECUTION ctest STATUS active PLATFORM all
     SOURCES
         src/tools/ui/QmlAnalysisModelSpec.cpp
-        src/app/services/AnalysisService.h
         src/app/ui/document/AnalysisProjection.cpp
         src/app/ui/document/AnalysisProjection.h
         src/app/ui/document/DocumentProjection.h

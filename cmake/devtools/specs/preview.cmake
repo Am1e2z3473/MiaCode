@@ -532,7 +532,7 @@ miacode_add_spec(preview_media_cache_stamp_spec
         src/tools/preview/PreviewMediaCacheStampSpec.cpp
         src/common/FileContentStamp.h
         src/common/ChartAssetPaths.h
-    LIBS Qt6::Core
+    LIBS Qt6::Core Qt6::Gui
     INCLUDES src src/common
 )
 

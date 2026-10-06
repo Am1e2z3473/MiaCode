@@ -35,9 +35,12 @@ function(miacode_add_dev_tool NAME)
     if (DT_TEST)
         # Resolve product assets relative to the source tree.
         add_test(NAME ${NAME} COMMAND ${NAME} WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
-        # Make Qt's runtime available to specs on Windows.
+        # Make Qt's runtime available to specs on Windows, and resolve Qt plugins
+        # (the offscreen QPA used by QML specs) from the Qt installation rather
+        # than from whatever windeployqt staged beside MiaCode.
         set_tests_properties(${NAME} PROPERTIES
-            ENVIRONMENT_MODIFICATION "PATH=path_list_prepend:$<TARGET_FILE_DIR:Qt6::Core>")
+            ENVIRONMENT_MODIFICATION
+                "PATH=path_list_prepend:$<TARGET_FILE_DIR:Qt6::Core>;QT_PLUGIN_PATH=set:${QT6_INSTALL_PREFIX}/${QT6_INSTALL_PLUGINS}")
     endif()
 endfunction()
 
