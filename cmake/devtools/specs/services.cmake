@@ -7,11 +7,9 @@ miacode_add_spec(chart_workspace_spec
     EXECUTION ctest STATUS active PLATFORM all
     SOURCES
         src/tools/services/ChartWorkspaceSpec.cpp
-        ${_miacode_chart_core}
-        ${_miacode_log_core}
         src/app/services/ChartWorkspace.cpp
         src/app/services/ChartWorkspace.h
-    LIBS Qt6::Core
+    LIBS miacode_chart Qt6::Core
     INCLUDES src
 )
 
@@ -37,13 +35,11 @@ miacode_add_spec(chart_workspace_file_service_spec
     EXECUTION ctest STATUS active PLATFORM all
     SOURCES
         src/tools/services/ChartWorkspaceFileServiceSpec.cpp
-        ${_miacode_chart_core}
-        ${_miacode_log_core}
         src/app/services/ChartWorkspace.cpp
         src/app/services/ChartWorkspace.h
         src/app/services/ChartWorkspaceFileService.cpp
         src/app/services/ChartWorkspaceFileService.h
-    LIBS Qt6::Core
+    LIBS miacode_chart Qt6::Core
     INCLUDES src
 )
 
@@ -95,18 +91,11 @@ miacode_add_spec(analysis_service_spec
     EXECUTION ctest STATUS active PLATFORM all
     SOURCES
         src/tools/services/AnalysisServiceSpec.cpp
-        ${_miacode_chart_core}
-        ${_miacode_log_core}
-        ${_miacode_muri_analysis_core}
-        src/core/analysis/TimelineSlowRefresh.h
-        src/core/analysis/TimelineSlowRefresh.cpp
         src/app/services/ChartWorkspace.cpp
         src/app/services/ChartWorkspace.h
         src/app/services/AnalysisService.cpp
         src/app/services/AnalysisService.h
-        resources/fonts.qrc
-        resources/slide_data.qrc
-    LIBS Qt6::Core Qt6::Gui
+    LIBS miacode_analysis Qt6::Core Qt6::Gui
     INCLUDES src
 )
 
@@ -120,11 +109,6 @@ miacode_add_spec(editor_page_router_spec
     EXECUTION ctest STATUS active PLATFORM all
     SOURCES
         src/tools/services/EditorPageRouterSpec.cpp
-        ${_miacode_chart_core}
-        ${_miacode_log_core}
-        ${_miacode_muri_analysis_core}
-        src/core/analysis/TimelineSlowRefresh.h
-        src/core/analysis/TimelineSlowRefresh.cpp
         src/app/services/PreferenceDocument.h
         src/app/services/PreferenceDocument.cpp
         src/app/services/ApplicationServices.h
@@ -146,9 +130,7 @@ miacode_add_spec(editor_page_router_spec
         src/app/services/ShellNotifications.cpp
         src/app/services/UiRequestService.h
         src/app/services/UiRequestService.cpp
-        resources/fonts.qrc
-        resources/slide_data.qrc
-    LIBS Qt6::Core Qt6::Gui Qt6::Test
+    LIBS miacode_analysis Qt6::Core Qt6::Gui Qt6::Test
     INCLUDES src
 )
 target_compile_definitions(editor_page_router_spec PRIVATE
@@ -164,11 +146,6 @@ miacode_add_spec(export_engine_spec
     EXECUTION ctest STATUS active PLATFORM all
     SOURCES
         src/tools/services/ExportEngineSpec.cpp
-        ${_miacode_chart_core}
-        ${_miacode_log_core}
-        ${_miacode_muri_analysis_core}
-        src/core/analysis/TimelineSlowRefresh.h
-        src/core/analysis/TimelineSlowRefresh.cpp
         src/app/services/PreferenceDocument.h
         src/app/services/PreferenceDocument.cpp
         src/app/services/ApplicationServices.h
@@ -190,9 +167,7 @@ miacode_add_spec(export_engine_spec
         src/app/services/ShellNotifications.cpp
         src/app/services/UiRequestService.h
         src/app/services/UiRequestService.cpp
-        resources/fonts.qrc
-        resources/slide_data.qrc
-    LIBS Qt6::Core Qt6::Gui Qt6::Test
+    LIBS miacode_analysis Qt6::Core Qt6::Gui Qt6::Test
     INCLUDES src
 )
 target_compile_definitions(export_engine_spec PRIVATE
@@ -225,11 +200,6 @@ miacode_add_spec(application_services_spec
     EXECUTION ctest STATUS active PLATFORM all
     SOURCES
         src/tools/services/ApplicationServicesSpec.cpp
-        ${_miacode_chart_core}
-        ${_miacode_log_core}
-        ${_miacode_muri_analysis_core}
-        src/core/analysis/TimelineSlowRefresh.h
-        src/core/analysis/TimelineSlowRefresh.cpp
         src/app/services/PreferenceDocument.h
         src/app/services/PreferenceDocument.cpp
         src/app/services/ApplicationServices.h
@@ -250,9 +220,7 @@ miacode_add_spec(application_services_spec
         src/app/services/ShellNotifications.cpp
         src/app/services/UiRequestService.h
         src/app/services/UiRequestService.cpp
-        resources/fonts.qrc
-        resources/slide_data.qrc
-    LIBS Qt6::Core Qt6::Gui Qt6::Test
+    LIBS miacode_analysis Qt6::Core Qt6::Gui Qt6::Test
     INCLUDES src
 )
 target_compile_definitions(application_services_spec PRIVATE
@@ -271,10 +239,6 @@ miacode_add_spec(preferences_port_spec
     SOURCES
         src/tools/services/PreferencesPortSpec.cpp
         src/app/services/PlaybackPreferencesPort.h
-        src/audio/PreviewAudioSettings.h
-        src/audio/PreviewAudioSettings.cpp
-        src/core/scene/PreviewSfxAssets.h
-        src/core/scene/PreviewSfxSemantics.h
     LIBS Qt6::Core Qt6::Test
     INCLUDES src
 )
@@ -292,7 +256,6 @@ miacode_add_spec(validation_port_spec
     SOURCES
         src/tools/services/ValidationPortSpec.cpp
         src/app/services/PlaybackValidationPort.h
-        src/core/analysis/MuriRenderOptions.h
     LIBS Qt6::Core Qt6::Test
     INCLUDES src
 )
@@ -331,7 +294,6 @@ miacode_add_spec(preview_port_spec
     SOURCES
         src/tools/services/PreviewPortSpec.cpp
         src/app/services/PlaybackPreviewPort.h
-        src/core/video/PreviewRenderSettings.h
     LIBS Qt6::Core Qt6::Test
     INCLUDES src
 )

@@ -127,6 +127,199 @@ set(CMAKE_PROJECT_ScintillaQuick_INCLUDE "${CMAKE_CURRENT_SOURCE_DIR}/cmake/Scin
 add_subdirectory(third_party/ScintillaQuick)
 unset(CMAKE_PROJECT_ScintillaQuick_INCLUDE)
 
+add_library(soundtouch STATIC
+    third_party/soundtouch/source/SoundTouch/AAFilter.cpp
+    third_party/soundtouch/source/SoundTouch/BPMDetect.cpp
+    third_party/soundtouch/source/SoundTouch/cpu_detect_x86.cpp
+    third_party/soundtouch/source/SoundTouch/FIFOSampleBuffer.cpp
+    third_party/soundtouch/source/SoundTouch/FIRFilter.cpp
+    third_party/soundtouch/source/SoundTouch/InterpolateCubic.cpp
+    third_party/soundtouch/source/SoundTouch/InterpolateLinear.cpp
+    third_party/soundtouch/source/SoundTouch/InterpolateShannon.cpp
+    third_party/soundtouch/source/SoundTouch/mmx_optimized.cpp
+    third_party/soundtouch/source/SoundTouch/PeakFinder.cpp
+    third_party/soundtouch/source/SoundTouch/RateTransposer.cpp
+    third_party/soundtouch/source/SoundTouch/SoundTouch.cpp
+    third_party/soundtouch/source/SoundTouch/sse_optimized.cpp
+    third_party/soundtouch/source/SoundTouch/TDStretch.cpp
+)
+target_include_directories(soundtouch PUBLIC
+    third_party/soundtouch/include
+    third_party/soundtouch/source/SoundTouch
+)
+target_compile_definitions(soundtouch PUBLIC SOUNDTOUCH_FLOAT_SAMPLES=1)
+
+# Vendored single-file ZIP writer (third_party/miniz), used by the
+# "Export as ZIP" feature. Public stable API, no new runtime DLL — the
+# amalgamated miniz.c links straight into the static lib.
+add_library(miniz STATIC
+    third_party/miniz/miniz.c
+)
+target_include_directories(miniz PUBLIC
+    third_party/miniz
+)
+# Plain C, no Qt — keep the global AUTOMOC/UIC/RCC off this target.
+set_target_properties(miniz PROPERTIES
+    AUTOMOC OFF
+    AUTOUIC OFF
+    AUTORCC OFF
+)
+
+# BASS runtime and import libraries (linked by miacode_audio_bass and
+# miacode_export, staged beside MiaCode below).
+if (WIN32)
+    if (CMAKE_SYSTEM_PROCESSOR MATCHES "^(aarch64|arm64|ARM64)$")
+        set(MIACODE_BASS_WINDOWS_ARCH "winarm64")
+    else()
+        set(MIACODE_BASS_WINDOWS_ARCH "win64")
+    endif()
+    set(MIACODE_BASS_WINDOWS_LIB_DIR
+        "${CMAKE_CURRENT_SOURCE_DIR}/third_party/bass/lib/${MIACODE_BASS_WINDOWS_ARCH}")
+    set(MIACODE_BASS_WINDOWS_BIN_DIR
+        "${CMAKE_CURRENT_SOURCE_DIR}/third_party/bass/bin/${MIACODE_BASS_WINDOWS_ARCH}")
+    # bass_aac ships for x86/x64 only; the arm64 runtime uses the remaining
+    # plugins and the audio backend already tolerates a missing add-on.
+    set(MIACODE_BASS_WINDOWS_DLLS bass.dll bassmix.dll bass_fx.dll bassopus.dll bassflac.dll)
+    if (MIACODE_BASS_WINDOWS_ARCH STREQUAL "win64")
+        list(APPEND MIACODE_BASS_WINDOWS_DLLS bass_aac.dll)
+    endif()
+    foreach(MIACODE_BASS_DLL IN LISTS MIACODE_BASS_WINDOWS_DLLS)
+        if (NOT EXISTS "${MIACODE_BASS_WINDOWS_BIN_DIR}/${MIACODE_BASS_DLL}")
+            message(FATAL_ERROR
+                "Missing required Windows BASS runtime: ${MIACODE_BASS_WINDOWS_BIN_DIR}/${MIACODE_BASS_DLL}")
+        endif()
+    endforeach()
+elseif (APPLE)
+    set(MIACODE_BASS_MACOS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/third_party/bass/lib/macos/universal")
+    set(MIACODE_BASS_MACOS_LIBRARIES
+        "${MIACODE_BASS_MACOS_DIR}/libbass.dylib"
+        "${MIACODE_BASS_MACOS_DIR}/libbassmix.dylib"
+        "${MIACODE_BASS_MACOS_DIR}/libbass_fx.dylib"
+        "${MIACODE_BASS_MACOS_DIR}/libbassopus.dylib"
+        "${MIACODE_BASS_MACOS_DIR}/libbassflac.dylib"
+    )
+    foreach(MIACODE_BASS_LIBRARY IN LISTS MIACODE_BASS_MACOS_LIBRARIES)
+        if (NOT EXISTS "${MIACODE_BASS_LIBRARY}")
+            message(FATAL_ERROR "Missing required macOS BASS runtime: ${MIACODE_BASS_LIBRARY}")
+        endif()
+    endforeach()
+elseif (CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    if (CMAKE_SYSTEM_PROCESSOR MATCHES "^(x86_64|amd64|AMD64)$")
+        set(MIACODE_BASS_LINUX_ARCH "x86_64")
+    elseif (CMAKE_SYSTEM_PROCESSOR MATCHES "^(aarch64|arm64|ARM64)$")
+        set(MIACODE_BASS_LINUX_ARCH "aarch64")
+    else()
+        message(FATAL_ERROR "MiaCode's bundled Linux BASS runtime currently supports x86_64 and aarch64 only")
+    endif()
+
+    set(MIACODE_BASS_LINUX_DIR "${CMAKE_CURRENT_SOURCE_DIR}/third_party/bass/lib/linux/${MIACODE_BASS_LINUX_ARCH}")
+    set(MIACODE_BASS_LINUX_LIBRARIES
+        "${MIACODE_BASS_LINUX_DIR}/libbass.so"
+        "${MIACODE_BASS_LINUX_DIR}/libbassmix.so"
+        "${MIACODE_BASS_LINUX_DIR}/libbass_fx.so"
+        "${MIACODE_BASS_LINUX_DIR}/libbassflac.so"
+    )
+    foreach(MIACODE_BASS_LIBRARY IN LISTS MIACODE_BASS_LINUX_LIBRARIES)
+        if (NOT EXISTS "${MIACODE_BASS_LIBRARY}")
+            message(FATAL_ERROR "Missing required Linux BASS runtime: ${MIACODE_BASS_LIBRARY}")
+        endif()
+    endforeach()
+endif()
+
+# ---------------------------------------------------------------------------
+# QtAVPlayer (FFmpeg) — preview background-video decode backend.
+#
+# Decodes PV/BG video inside PreviewStageMediaHost; see
+# docs/ops/DEBUG_INDEX.md. QtAVPlayer is the
+# MIT-licensed source vendored under third_party/QtAVPlayer, compiled into
+# miacode_stage_media. Windows and macOS use the project-selected FFmpeg SDK through
+# MIACODE_FFMPEG_DEV_DIR. Linux resolves FFmpeg and VA-API from the host
+# toolchain through pkg-config.
+#
+# All desktop platforms use QtAVPlayer. Windows selects D3D11VA, macOS selects
+# VideoToolbox/Metal, and Linux selects VA-API through DRM/EGL.
+# ---------------------------------------------------------------------------
+    if (WIN32)
+        if (CMAKE_SYSTEM_PROCESSOR MATCHES "^(aarch64|arm64|ARM64)$")
+            set(MIACODE_FFMPEG_DEV_DIR_DEFAULT
+                "${CMAKE_CURRENT_SOURCE_DIR}/third_party/ffmpeg/windows/winarm64/dev")
+        else()
+            set(MIACODE_FFMPEG_DEV_DIR_DEFAULT
+                "${CMAKE_CURRENT_SOURCE_DIR}/third_party/ffmpeg/windows/win64/dev")
+        endif()
+    elseif (APPLE)
+        set(MIACODE_FFMPEG_DEV_DIR_DEFAULT
+            "${CMAKE_CURRENT_SOURCE_DIR}/third_party/ffmpeg/macos/dev")
+    endif()
+    if (WIN32 OR APPLE)
+        set(MIACODE_FFMPEG_DEV_DIR "${MIACODE_FFMPEG_DEV_DIR_DEFAULT}"
+            CACHE PATH "FFmpeg shared dev SDK root (include/ + lib/) for the QtAVPlayer preview backend")
+        if (NOT EXISTS "${MIACODE_FFMPEG_DEV_DIR}/include" OR NOT EXISTS "${MIACODE_FFMPEG_DEV_DIR}/lib")
+            if (APPLE)
+                set(MIACODE_FFMPEG_PROVISION_COMMAND
+                    "bash scripts/ffmpeg/ensure-macos-ffmpeg-dev.sh")
+            else()
+                set(MIACODE_FFMPEG_PROVISION_COMMAND
+                    "scripts/ffmpeg/ensure-windows-ffmpeg-dev.ps1")
+            endif()
+            message(FATAL_ERROR
+                "FFmpeg dev SDK not found at '${MIACODE_FFMPEG_DEV_DIR}'. "
+                "Run '${MIACODE_FFMPEG_PROVISION_COMMAND}', or pass "
+                "-DMIACODE_FFMPEG_DEV_DIR=<root containing include/ lib/>.")
+        endif()
+        if (APPLE AND MIACODE_FFMPEG_DEV_DIR MATCHES "^/(opt/homebrew|usr/local)/")
+            message(FATAL_ERROR
+                "macOS release builds must use the project-provisioned FFmpeg SDK, not Homebrew: "
+                "${MIACODE_FFMPEG_DEV_DIR}. Run bash scripts/ffmpeg/ensure-macos-ffmpeg-dev.sh.")
+        endif()
+
+        # find_library() in QtAVPlayer.cmake resolves the FFmpeg import libs from
+        # <prefix>/lib; prepending the dev root makes our SDK win over any system one.
+        list(PREPEND CMAKE_PREFIX_PATH "${MIACODE_FFMPEG_DEV_DIR}")
+    else()
+        find_package(PkgConfig REQUIRED)
+        pkg_check_modules(MIACODE_FFMPEG REQUIRED IMPORTED_TARGET
+            libavfilter libavcodec libavformat libavutil libswresample libswscale)
+        pkg_check_modules(MIACODE_VAAPI REQUIRED IMPORTED_TARGET libva libva-drm libdrm)
+        find_library(AVFILTER_LIBRARY NAMES avfilter
+            HINTS ${MIACODE_FFMPEG_LIBRARY_DIRS} NO_DEFAULT_PATH REQUIRED NO_CACHE)
+        find_library(AVCODEC_LIBRARY NAMES avcodec
+            HINTS ${MIACODE_FFMPEG_LIBRARY_DIRS} NO_DEFAULT_PATH REQUIRED NO_CACHE)
+        find_library(AVFORMAT_LIBRARY NAMES avformat
+            HINTS ${MIACODE_FFMPEG_LIBRARY_DIRS} NO_DEFAULT_PATH REQUIRED NO_CACHE)
+        find_library(AVUTIL_LIBRARY NAMES avutil
+            HINTS ${MIACODE_FFMPEG_LIBRARY_DIRS} NO_DEFAULT_PATH REQUIRED NO_CACHE)
+        find_library(SWRESAMPLE_LIBRARY NAMES swresample
+            HINTS ${MIACODE_FFMPEG_LIBRARY_DIRS} NO_DEFAULT_PATH REQUIRED NO_CACHE)
+        find_library(SWSCALE_LIBRARY NAMES swscale
+            HINTS ${MIACODE_FFMPEG_LIBRARY_DIRS} NO_DEFAULT_PATH REQUIRED NO_CACHE)
+        set(QT_AVPLAYER_VA_DRM ON CACHE BOOL "" FORCE)
+    endif()
+
+    set(QTAVPLAYER_SRC "${CMAKE_CURRENT_SOURCE_DIR}/third_party/QtAVPlayer/src")
+    set(QT_AVPLAYER_DIR "${QTAVPLAYER_SRC}/QtAVPlayer")
+    set(QT_AVPLAYER_MULTIMEDIA ON CACHE BOOL "" FORCE)
+    # Drop avdevice (capture-device I/O only, unused for file playback):
+    # QtAVPlayer skips finding/linking it and qavdemuxer compiles out its lone
+    # avdevice_register_all() call.
+    set(QT_AVPLAYER_NO_AVDEVICE ON)
+    if (APPLE)
+        # QtAVPlayer.cmake uses find_library(). These cache entries otherwise
+        # survive an SDK change and can keep linking an old Homebrew path even
+        # though CMAKE_PREFIX_PATH now starts with the project-local SDK.
+        foreach(MIACODE_QTAVPLAYER_FFMPEG_LIBRARY
+                AVFILTER_LIBRARY AVCODEC_LIBRARY AVFORMAT_LIBRARY AVUTIL_LIBRARY
+                SWRESAMPLE_LIBRARY SWSCALE_LIBRARY)
+            unset(${MIACODE_QTAVPLAYER_FFMPEG_LIBRARY} CACHE)
+            unset(${MIACODE_QTAVPLAYER_FFMPEG_LIBRARY})
+        endforeach()
+    endif()
+    # Sets QtAVPlayer_SOURCES / QtAVPlayer_LIBS (absolute import-lib paths via
+    # find_library) and globally defines QT_BUILD_QTAVPLAYER_LIB.
+    include("${QT_AVPLAYER_DIR}/QtAVPlayer.cmake")
+
+include(cmake/MiaCodeModules.cmake)
+
 add_executable(MiaCode WIN32 MACOSX_BUNDLE
     src/app/main.cpp
     src/app/services/ApplicationServices.cpp
@@ -185,8 +378,6 @@ add_executable(MiaCode WIN32 MACOSX_BUNDLE
     src/app/platform/WindowVisibilityDiagnostics.cpp
     src/app/platform/gpu_adapter_probe.cpp
     src/app/platform/gpu_device_provider.cpp
-    src/preview/quick_scene/PreviewQuickGraphicsInfo.h
-    src/preview/quick_scene/PreviewQuickGraphicsInfo.cpp
     src/app/gpu_high_performance_hint.cpp
     src/app/cli_shared.cpp
     src/app/cli_video_export.cpp
@@ -279,345 +470,39 @@ add_executable(MiaCode WIN32 MACOSX_BUNDLE
     src/app/ui/chrome/NativeWindowThemePolicy.h
     src/app/runtime/shell/WindowParityMetrics.h
     src/app/runtime/shell/WindowParityMetrics.cpp
-    src/core/analysis/MuriTypes.h
-    src/core/analysis/MuriTypes.cpp
-    src/core/analysis/MuriRenderOptions.h
-    src/core/analysis/MuriConfig.h
-    src/common/DebugLog.h
-    src/common/DebugLog.cpp
-    src/common/UiHangWatchdog.h
-    src/common/UiHangWatchdog.cpp
-    src/common/UiHangWatchdogPolicy.h
-    src/common/ProcessDiagnostics.h
-    src/common/ProcessDiagnostics.cpp
-    src/common/GpuDevicePolicy.h
-    src/common/GpuDevicePolicy.cpp
-    src/common/OperationLog.h
-    src/common/OperationLog.cpp
-    src/common/PreferenceProvider.h
-    src/common/PreferenceProvider.cpp
-    src/common/CrashRecovery.h
-    src/common/CrashRecovery.cpp
-    src/common/Mmcss.h
-    src/common/Mmcss.cpp
-    src/common/InputShortcutGesture.h
-    src/common/InputShortcutGesture.cpp
-    src/core/chart/ChartAssetPaths.h
-    src/audio/bass/OfflineAudioDecoder.h
-    src/audio/bass/OfflineAudioDecoder.cpp
     src/app/services/Id3TagReader.h
     src/app/services/Id3TagReader.cpp
-    src/timeline/TimelineThemeConfig.h
-    src/audio/AudioFileDecoder.h
-    src/audio/WaveformCache.h
-    src/audio/WaveformCache.cpp
     src/app/services/ProjectPreferences.h
     src/app/services/ProjectPreferences.cpp
-    src/core/video/PreviewTimingSettings.h
-    src/core/chart/document/ChartClockCount.h
-    src/core/scene/PreviewSfxTiming.h
-    src/core/scene/PreviewSfxTimeline.h
-    src/editor/BookmarkCommentSyntax.h
-    src/editor/BookmarkCommentSyntax.cpp
-    src/editor/TouchPadAuthoringEdit.h
-    src/editor/TouchPadAuthoringEdit.cpp
-    src/editor/SimaiCompletionCatalog.h
-    src/editor/SimaiCompletionCatalog.cpp
-    src/editor/SimaiTextEditPolicy.h
-    src/editor/SimaiTextEditPolicy.cpp
     src/app/runtime/latency/LatencyAnalysis.h
     src/app/runtime/latency/LatencyAnalysis.cpp
     src/app/runtime/latency/LatencyTestChartBuilder.h
     src/app/runtime/latency/LatencyTestChartBuilder.cpp
     src/app/runtime/latency/LatencySandboxController.h
     src/app/runtime/latency/LatencySandboxController.cpp
-    src/core/analysis/MuriAnalyzer.h
-    src/core/analysis/MuriAnalyzer.cpp
-    src/core/analysis/MuriAnalyzerGeometry.h
-    src/core/analysis/MuriAnalyzerGeometry.cpp
-    src/core/analysis/MuriAnalyzerModel.h
-    src/core/analysis/MuriSlideReferenceData.h
-    src/core/analysis/MuriSlideReferenceData.cpp
-    src/core/analysis/MuriAnalyzerInternal.h
-    src/core/analysis/MuriDiagnosticCollector.h
-    src/core/analysis/MuriDiagnosticCollector.cpp
-    src/core/analysis/MuriDiagnosticLabels.h
-    src/core/analysis/MuriDiagnosticLabels.cpp
-    src/core/analysis/MuriRuntimeModelBuilder.h
-    src/core/analysis/MuriRuntimeModelBuilder.cpp
-    src/core/analysis/MuriOverlayBuilder.h
-    src/core/analysis/MuriOverlayBuilder.cpp
-    src/core/analysis/MuriSlideWifiJudge.h
-    src/core/analysis/MuriSlideWifiJudge.cpp
-    src/core/analysis/MuriSimpleNoteJudge.h
-    src/core/analysis/MuriSimpleNoteJudge.cpp
-    src/core/analysis/MuriPanelEntries.h
-    src/core/analysis/MuriPanelEntries.cpp
-    src/core/analysis/MuriStaticChecker.h
-    src/core/analysis/MuriStaticChecker.cpp
-    src/export/video_export/VideoExportSettings.h
-    src/export/video_export/VideoExportSettings.cpp
-    src/export/video_export/FontLibrary.h
-    src/export/video_export/FontLibrary.cpp
-    src/export/video_export/VideoExportController.h
-    src/export/video_export/VideoExportController.cpp
-    src/export/video_export/VideoExportEncoder.cpp
-    src/export/video_export/VideoExportDiagnostics.cpp
-    src/export/video_export/VideoExportFrameRender.cpp
-    src/export/video_export/VideoExportPipeline.cpp
-    src/export/video_export/VideoExportPreparedTask.cpp
-    src/export/video_export/VideoExportMediaTimeline.h
-    src/export/video_export/VideoExportMediaTimeline.cpp
-    src/export/video_export/VideoExportRuntimePolicy.h
-    src/export/video_export/VideoExportRuntimePolicy.cpp
-    src/export/video_export/VideoExportQuickRenderBackend.h
-    src/export/video_export/VideoExportQuickRenderBackend.cpp
-    src/export/video_export/RawVideoPipeTransport.h
-    src/export/video_export/RawVideoPipeTransport.cpp
-    src/export/video_export/VideoExportSnapshot.h
-    src/export/video_export/VideoExportSnapshot.cpp
-    src/media_tools/zip_export/ChartZipPackager.h
-    src/media_tools/zip_export/ChartZipPackager.cpp
-    src/media_tools/media/PvBatchCompressionScanner.h
-    src/media_tools/media/PvBatchCompressionScanner.cpp
-    src/media_tools/media/PvCompressionPolicy.h
-    src/media_tools/media/PvCompressionPolicy.cpp
-    src/media_tools/media/PvBatchCompressionWorker.h
-    src/media_tools/media/PvBatchCompressionWorker.cpp
-    src/export/cover_export/CoverLayoutModel.h
-    src/export/cover_export/CoverLayoutModel.cpp
-    src/export/cover_export/CoverCompositionState.h
-    src/export/cover_export/CoverCompositionState.cpp
-    src/export/cover_export/CoverCompositeRenderer.h
-    src/export/cover_export/CoverCompositeRenderer.cpp
-    src/export/cover_export/SceneFrameRenderer.h
-    src/export/cover_export/SceneFrameRenderer.cpp
-    src/export/cover_export/CoverFramePlaybackController.h
-    src/export/cover_export/CoverFramePlaybackController.cpp
-    src/export/cover_export/CoverFrameSceneBinder.h
-    src/export/cover_export/CoverFrameSceneBinder.cpp
-    src/export/cover_export/CoverFrameExportPlan.h
-    src/export/cover_export/CoverFrameExportPlan.cpp
-    src/export/session/PreviewQuickExportSession.h
-    src/export/session/PreviewQuickExportSession.cpp
-    src/export/session/PreviewQuickD3D11ExportSession.h
-    src/export/session/PreviewQuickD3D11ExportSession.cpp
-    src/preview/runtime/PreviewSceneAssetLoader.h
-    src/preview/runtime/PreviewSceneAssetLoader.cpp
-    src/preview/runtime/PreviewSceneAssetRepository.h
-    src/preview/runtime/PreviewSceneAssetRepository.cpp
-    src/preview/stage_media/PreviewStageMediaHost.h
-    src/preview/stage_media/PreviewStageMediaHost.cpp
-    src/preview/stage_media/PreviewStageMediaHost_Backend.cpp
-    src/preview/stage_media/PreviewStageMediaHost_Media.cpp
-    src/preview/stage_media/PreviewStageMediaHost_Playback.cpp
-    src/preview/stage_media/PreviewStageMediaHost_Diagnostics.cpp
-    src/preview/stage_media/PreviewStageMediaHost_Timeout.cpp
-    src/preview/stage_media/PvMemoryDiagnostics.h
-    src/preview/stage_media/PvMemoryDiagnostics.cpp
-    src/preview/stage_media/PreviewSharedD3D11Device.h
-    src/preview/stage_media/PreviewSharedD3D11Device.cpp
-    src/preview/runtime/PreviewRuntime.h
-    src/preview/runtime/PreviewRuntime.cpp
-    src/core/scene/PreviewFrameState.h
-    src/core/scene/PreviewHudState.h
-    src/core/scene/PreviewHudState.cpp
-    src/core/scene/PreviewProgressStatsCache.h
-    src/core/scene/PreviewProgressStatsCache.cpp
-    src/core/scene/PreviewPreparedSceneCache.h
-    src/core/scene/PreviewPreparedSceneCache.cpp
-    src/core/scene/PreviewLayerOrder.h
-    src/core/scene/PreviewOpacityCurves.h
-    src/core/scene/PreviewOpacityCurves.cpp
-    src/core/scene/PreviewSceneConstants.h
-    src/core/scene/PreviewSceneMath.h
-    src/core/scene/PreviewSceneMath.cpp
-    src/core/scene/PreviewSceneGeometry.h
-    src/core/scene/PreviewSceneGeometry.cpp
-    src/core/scene/PreviewMarkerDrawOrder.h
-    src/core/scene/PreviewMarkerDrawOrder.cpp
-    src/core/scene/PreviewSkinSelectors.h
-    src/core/scene/PreviewSkinSelectors.cpp
-    src/core/scene/PreviewSpriteDescriptor.h
-    src/core/scene/PreviewCircleDescriptor.h
-    src/core/scene/PreviewSectorDescriptor.h
-    src/core/scene/PreviewTrackShared.h
-    src/core/scene/PreviewTrackShared.cpp
-    src/core/scene/PreviewJudgeOverlayShared.h
-    src/core/scene/PreviewJudgeOverlayShared.cpp
-    src/core/scene/PreviewGuideLayerState.h
-    src/core/scene/PreviewGuideLayerState.cpp
-    src/core/scene/PreviewTrackLayerState.h
-    src/core/scene/PreviewTrackLayerState.cpp
-    src/core/scene/PreviewSlideMotionLayerState.h
-    src/core/scene/PreviewSlideMotionLayerState.cpp
-    src/core/scene/PreviewJudgeEffectLayerState.h
-    src/core/scene/PreviewJudgeEffectLayerState.cpp
-    src/core/scene/PreviewChartReviewLayerState.h
-    src/core/scene/PreviewChartReviewLayerState.cpp
-    src/core/scene/PreviewJudgeFireworkLayerState.h
-    src/core/scene/PreviewJudgeFireworkLayerState.cpp
-    src/core/scene/PreviewMuriPadLayerState.h
-    src/core/scene/PreviewMuriPadLayerState.cpp
-    src/core/scene/PreviewMuriActionLayerState.h
-    src/core/scene/PreviewMuriActionLayerState.cpp
-    src/core/scene/PreviewTouchJudgeLayerState.h
-    src/core/scene/PreviewTouchJudgeLayerState.cpp
-    src/core/scene/PreviewTouchLayerState.h
-    src/core/scene/PreviewTouchLayerState.cpp
-    src/core/scene/PreviewAnimatedSpriteHelpers.h
-    src/core/scene/PreviewAnimatedSpriteHelpers.cpp
-    src/core/scene/PreviewArcDescriptor.h
-    src/core/scene/PreviewHeadLayerState.h
-    src/core/scene/PreviewHeadLayerState.cpp
-    src/core/scene/PreviewTouchHoldLayerState.h
-    src/core/scene/PreviewTouchHoldLayerState.cpp
-    src/core/scene/PreviewMaimuriDxJudgeLayerState.h
-    src/core/scene/PreviewMaimuriDxJudgeLayerState.cpp
-    src/preview/quick_scene/PreviewTextureRepository.h
-    src/preview/quick_scene/PreviewTextureRepository.cpp
-    src/preview/quick_scene/PreviewTextureGenerationPolicy.h
-    src/preview/quick_scene/PreviewQuickStageBackgroundLayer.h
-    src/preview/quick_scene/PreviewQuickStageBackgroundLayer.cpp
-    src/preview/quick_scene/PreviewQuickBackdropLayer.h
-    src/preview/quick_scene/PreviewQuickBackdropLayer.cpp
-    src/preview/quick_scene/PreviewQuickCircleNodes.h
-    src/preview/quick_scene/PreviewQuickCircleNodes.cpp
-    src/preview/quick_scene/PreviewQuickSpriteNodes.h
-    src/preview/quick_scene/PreviewQuickSpriteNodes.cpp
-    src/preview/quick_scene/PreviewQuickArcNodes.h
-    src/preview/quick_scene/PreviewQuickArcNodes.cpp
-    src/preview/quick_scene/PreviewQuickSectorNodes.h
-    src/preview/quick_scene/PreviewQuickSectorNodes.cpp
-    src/preview/quick_scene/PreviewQuickGuideLayer.h
-    src/preview/quick_scene/PreviewQuickGuideLayer.cpp
-    src/preview/quick_scene/PreviewQuickTouchHoverLayer.h
-    src/preview/quick_scene/PreviewQuickTouchHoverLayer.cpp
-    src/preview/quick_scene/PreviewQuickTrackLayer.h
-    src/preview/quick_scene/PreviewQuickTrackLayer.cpp
-    src/preview/quick_scene/PreviewQuickSlideMotionLayer.h
-    src/preview/quick_scene/PreviewQuickSlideMotionLayer.cpp
-    src/preview/quick_scene/PreviewQuickJudgeEffectLayer.h
-    src/preview/quick_scene/PreviewQuickJudgeEffectLayer.cpp
-    src/preview/quick_scene/PreviewQuickChartReviewLayer.h
-    src/preview/quick_scene/PreviewQuickChartReviewLayer.cpp
-    src/preview/quick_scene/PreviewQuickHeadLayer.h
-    src/preview/quick_scene/PreviewQuickHeadLayer.cpp
-    src/preview/quick_scene/PreviewQuickTouchLayer.h
-    src/preview/quick_scene/PreviewQuickTouchLayer.cpp
-    src/preview/quick_scene/PreviewQuickTouchHoldLayer.h
-    src/preview/quick_scene/PreviewQuickTouchHoldLayer.cpp
-    src/preview/quick_scene/PreviewQuickMaimuriDxJudgeLayer.h
-    src/preview/quick_scene/PreviewQuickMaimuriDxJudgeLayer.cpp
-    src/preview/quick_scene/PreviewQuickMuriPadLayer.h
-    src/preview/quick_scene/PreviewQuickMuriPadLayer.cpp
-    src/preview/quick_scene/PreviewQuickMuriActionLayer.h
-    src/preview/quick_scene/PreviewQuickMuriActionLayer.cpp
-    src/preview/quick_scene/PreviewQuickJudgeFireworkLayer.h
-    src/preview/quick_scene/PreviewQuickJudgeFireworkLayer.cpp
-    src/preview/quick_scene/PreviewQuickTouchJudgeLayer.h
-    src/preview/quick_scene/PreviewQuickTouchJudgeLayer.cpp
-    src/preview/quick_scene/PreviewQuickHudLayer.h
-    src/preview/quick_scene/PreviewQuickHudLayer.cpp
-    src/preview/quick_scene/PreviewQuickSceneRoot.h
-    src/preview/quick_scene/PreviewQuickSceneRoot.cpp
-    src/audio/PreviewAudioBackend.h
-    src/audio/PreviewAudioWorkerProtocol.h
-    src/audio/PreviewAudioPlaybackFlowPolicy.h
-    src/audio/PreviewAudioCommandQueue.h
-    src/audio/PreviewAudioCommandQueue.cpp
-    src/audio/bass/PreviewBassEmergencyPause.h
-    src/audio/bass/PreviewBassEmergencyPause.cpp
-    src/audio/PreviewAudioSettings.h
-    src/audio/PreviewAudioSettings.cpp
-    src/audio/PreviewAudioDeviceChangePolicy.h
-    src/audio/PreviewAudioDeviceCutoff.h
-    src/audio/PreviewAudioDeviceWatcher.h
-    src/audio/PreviewAudioDeviceWatcher.cpp
-    src/audio/QtPreviewSfxRuntime.h
-    src/audio/QtPreviewSfxRuntime.cpp
-    src/core/chart/transform/ChartBatchTransform.h
-    src/core/chart/transform/ChartBatchTransform.Parsers.cpp
-    src/core/chart/transform/ChartBatchTransform.Subdivision.cpp
-    src/core/chart/transform/ChartBatchTransform.Selection.cpp
-    src/core/chart/transform/ChartBatchTransform.Transform.cpp
-    src/core/chart/transform/ChartNormalization.h
-    src/core/chart/transform/ChartNormalization.cpp
-    src/core/chart/transform/ChartNormalizationSegmentPolicy.h
-    src/core/chart/transform/ChartNormalizationSegmentPolicy.cpp
-    src/core/chart/transform/Non384SnapTable.h
-    src/core/chart/transform/Non384SnapTable.cpp
-    src/core/chart/document/SimaiDocument.h
-    src/core/chart/document/SimaiDocument.cpp
-    src/core/chart/document/SimaiTimingMetadata.h
-    src/core/chart/document/SimaiTimingMetadata.cpp
-    src/core/chart/parser/SimaiParser.h
-    src/core/chart/parser/SimaiParser.cpp
-    src/core/chart/parser/SimaiCommentScan.h
-    src/core/chart/parser/SimaiCommentScan.cpp
-    src/core/chart/selection/ChartSelectionBeatSummary.h
-    src/core/chart/selection/ChartSelectionBeatSummary.cpp
-    src/core/chart/model/TimelineData.h
-    src/timeline/TimelineRenderData.h
-    src/timeline/TimelineQuickModel.h
-    src/timeline/TimelineQuickModel.cpp
-    src/timeline/TimelineQuickModelParser.cpp
-    src/timeline/TimelineQuickModelSnapshot.cpp
-    src/timeline/TimelineQuickModelIndexing.cpp
-    src/timeline/TimelineSceneState.h
-    src/timeline/TimelineSceneState.cpp
-    src/timeline/TimelineSceneStateBuilder.h
-    src/timeline/TimelineSceneStateBuilder.cpp
-    src/timeline/TimelineNoteAssets.h
-    src/timeline/TimelineNoteAssets.cpp
-    src/core/analysis/TimelineSlowRefresh.h
-    src/core/analysis/TimelineSlowRefresh.cpp
-    src/timeline/quick/TimelineQuickItem.h
-    src/timeline/quick/TimelineQuickItem.cpp
-    src/timeline/quick/TimelineQuickStateBridge.h
-    src/timeline/quick/TimelineQuickStateBridge.cpp
-    src/timeline/quick/TimelineQuickTextureCache.h
-    src/timeline/quick/TimelineQuickTextureCache.cpp
-    src/timeline/quick/TimelineQuickTextureCachePolicy.h
-    src/timeline/quick/TimelineQuickLayerUtils.h
-    src/timeline/quick/TimelineQuickLayerUtils.cpp
-    src/timeline/quick/TimelineQuickGridLayer.h
-    src/timeline/quick/TimelineQuickGridLayer.cpp
-    src/timeline/quick/TimelineQuickWaveformLayer.h
-    src/timeline/quick/TimelineQuickWaveformLayer.cpp
-    src/timeline/quick/TimelineQuickHeaderLayer.h
-    src/timeline/quick/TimelineQuickHeaderLayer.cpp
-    src/timeline/quick/TimelineQuickGridLinesLayer.h
-    src/timeline/quick/TimelineQuickGridLinesLayer.cpp
-    src/timeline/quick/TimelineQuickNotesLayer.h
-    src/timeline/quick/TimelineQuickNotesLayer.cpp
-    src/timeline/quick/TimelineQuickOverlayLayer.h
-    src/timeline/quick/TimelineQuickOverlayLayer.cpp
     src/app/ui/drop/ChartDropBridge.h
     src/app/ui/drop/ChartDropBridge.cpp
-    resources/app_icons.qrc
-    resources/fonts.qrc
-    resources/slide_data.qrc
-    resources/preview_judge_effects.qrc
-    resources/preview_runtime_qml.qrc
-    resources/intro.qrc
+    src/app/services/ImageResourceModel.cpp
+    src/app/services/ImageResourceModel.h
+    src/app/services/DocumentProjection.cpp
+    src/app/services/DocumentProjection.h
+    src/app/services/AnalysisProjection.cpp
+    src/app/services/AnalysisProjection.h
+    src/app/services/update/SemanticVersion.cpp
+    src/app/services/update/SemanticVersion.h
+    src/app/services/update/UpdateManifest.cpp
+    src/app/services/update/UpdateManifest.h
+    src/app/services/update/UpdateStateStore.h
+    src/app/services/update/UpdateFetcher.h
+    src/app/services/update/PreferenceUpdateStateStore.cpp
+    src/app/services/update/PreferenceUpdateStateStore.h
+    src/app/services/update/NetworkUpdateFetcher.cpp
+    src/app/services/update/NetworkUpdateFetcher.h
+    src/app/services/update/UpdateService.cpp
+    src/app/services/update/UpdateService.h
 )
+miacode_add_qrc(MiaCode resources/app_icons.qrc)
 
-qt_add_shaders(MiaCode "preview_sprite_shaders"
-    PREFIX "/"
-    FILES
-        src/preview/quick_scene/shaders/PreviewSpriteMaterial.vert
-        src/preview/quick_scene/shaders/PreviewSpriteMaterial.frag
-        src/preview/quick_scene/shaders/PreviewStageDimMaterial.vert
-        src/preview/quick_scene/shaders/PreviewStageDimMaterial.frag
-        src/preview/quick_scene/shaders/PreviewFireworkMaterial.vert
-        src/preview/quick_scene/shaders/PreviewFireworkMaterial.frag
-)
-qt_add_shaders(MiaCode "intro_shaders"
-    PREFIX "/"
-    FILES
-        src/intro/shaders/bg_texture.frag
-)
 qt_add_shaders(MiaCode "ui_shaders"
     PREFIX "/"
     FILES
@@ -848,19 +733,11 @@ qt_add_qml_module(MiaCode
     SOURCES
         src/app/ui/ApplicationContext.cpp
         src/app/ui/ApplicationContext.h
-        src/app/services/ImageResourceModel.cpp
-        src/app/services/ImageResourceModel.h
         src/app/ui/document/CommandService.cpp
         src/app/ui/document/CommandService.h
         src/app/ui/chrome/ShortcutCommands.h
         src/app/ui/document/DocumentModel.cpp
         src/app/ui/document/DocumentModel.h
-        src/core/chart/selection/ChartSelectionBeatSummary.h
-        src/core/chart/selection/ChartSelectionBeatSummary.cpp
-        src/app/services/DocumentProjection.cpp
-        src/app/services/DocumentProjection.h
-        src/app/services/AnalysisProjection.cpp
-        src/app/services/AnalysisProjection.h
         src/app/ui/document/AnalysisModel.cpp
         src/app/ui/document/AnalysisModel.h
         src/app/ui/preview/PreviewModel.cpp
@@ -898,18 +775,6 @@ qt_add_qml_module(MiaCode
         src/app/ui/Bootstrap.h
         src/app/ui/pet/PetOverlayController.cpp
         src/app/ui/pet/PetOverlayController.h
-        src/app/services/update/SemanticVersion.cpp
-        src/app/services/update/SemanticVersion.h
-        src/app/services/update/UpdateManifest.cpp
-        src/app/services/update/UpdateManifest.h
-        src/app/services/update/UpdateStateStore.h
-        src/app/services/update/UpdateFetcher.h
-        src/app/services/update/PreferenceUpdateStateStore.cpp
-        src/app/services/update/PreferenceUpdateStateStore.h
-        src/app/services/update/NetworkUpdateFetcher.cpp
-        src/app/services/update/NetworkUpdateFetcher.h
-        src/app/services/update/UpdateService.cpp
-        src/app/services/update/UpdateService.h
         src/app/ui/shell/RootLifecycle.h
         src/app/ui/timeline/TimelineThemeBridge.cpp
         src/app/ui/timeline/TimelineThemeBridge.h
@@ -941,133 +806,49 @@ qt_add_resources(MiaCode "miacode_i18n"
 )
 add_dependencies(MiaCode miacode_lrelease)
 
-add_library(soundtouch STATIC
-    third_party/soundtouch/source/SoundTouch/AAFilter.cpp
-    third_party/soundtouch/source/SoundTouch/BPMDetect.cpp
-    third_party/soundtouch/source/SoundTouch/cpu_detect_x86.cpp
-    third_party/soundtouch/source/SoundTouch/FIFOSampleBuffer.cpp
-    third_party/soundtouch/source/SoundTouch/FIRFilter.cpp
-    third_party/soundtouch/source/SoundTouch/InterpolateCubic.cpp
-    third_party/soundtouch/source/SoundTouch/InterpolateLinear.cpp
-    third_party/soundtouch/source/SoundTouch/InterpolateShannon.cpp
-    third_party/soundtouch/source/SoundTouch/mmx_optimized.cpp
-    third_party/soundtouch/source/SoundTouch/PeakFinder.cpp
-    third_party/soundtouch/source/SoundTouch/RateTransposer.cpp
-    third_party/soundtouch/source/SoundTouch/SoundTouch.cpp
-    third_party/soundtouch/source/SoundTouch/sse_optimized.cpp
-    third_party/soundtouch/source/SoundTouch/TDStretch.cpp
-)
-target_include_directories(soundtouch PUBLIC
-    third_party/soundtouch/include
-    third_party/soundtouch/source/SoundTouch
-)
-target_compile_definitions(soundtouch PUBLIC SOUNDTOUCH_FLOAT_SAMPLES=1)
-
-# Vendored single-file ZIP writer (third_party/miniz), used by the
-# "Export as ZIP" feature. Public stable API, no new runtime DLL — the
-# amalgamated miniz.c links straight into the static lib.
-add_library(miniz STATIC
-    third_party/miniz/miniz.c
-)
-target_include_directories(miniz PUBLIC
-    third_party/miniz
-)
-# Plain C, no Qt — keep the global AUTOMOC/UIC/RCC off this target.
-set_target_properties(miniz PROPERTIES
-    AUTOMOC OFF
-    AUTOUIC OFF
-    AUTORCC OFF
-)
-
 target_link_libraries(MiaCode PRIVATE
+    miacode_base
+    miacode_chart
+    miacode_analysis
+    miacode_editor_core
+    miacode_scene
+    miacode_audio
+    miacode_audio_bass
+    miacode_timeline
+    miacode_timeline_quick
+    miacode_preview_quick
+    miacode_stage_media
+    miacode_export
+    miacode_media_tools
     Qt6::Core
     Qt6::Gui
     Qt6::Network
     Qt6::Qml
     Qt6::Quick
-    Qt6::QuickPrivate
     Qt6::Quick3D
     Qt6::Quick3DHelpers
     Qt6::QuickControls2
+    Qt6::Multimedia
     soundtouch
-    miniz
 )
 target_include_directories(MiaCode PRIVATE
     ${CMAKE_CURRENT_BINARY_DIR}/generated
-    third_party/bass/include
     src
     # qmltyperegistrar includes QML_ELEMENT headers by file name only; project
     # code includes them by their src-rooted path.
     src/app/ui/editor
     src/app/ui/timeline
 )
-
-target_sources(MiaCode PRIVATE
-    src/audio/PreviewAudioMixConfig.h
-    src/audio/PreviewAudioWorkerFactory.h
-    src/audio/PreviewAudioWorkerFactory.cpp
-    src/audio/PreviewAudioWorker.h
-    src/audio/PreviewAudioWorker.cpp
-    src/audio/bass/PreviewBassDefaultDevice.h
-    src/audio/bass/PreviewBassDefaultDevice.cpp
-    src/audio/bass/PreviewBassDeviceLease.h
-    src/audio/bass/PreviewBassDeviceLease.cpp
-    src/export/video_export/VideoExportAudioRenderPlan.h
-    src/export/video_export/VideoExportAudioRenderPlan.cpp
-    src/export/video_export/VideoExportAudioBackend.h
-)
-
-target_sources(MiaCode PRIVATE
-    src/audio/bass/BassPreviewAudioBackend.h
-    src/audio/bass/BassPreviewAudioBackend.cpp
-    src/audio/bass/BassPreviewAudioBackend_EngineInit.cpp
-    src/audio/bass/BassPreviewAudioBackend_Assets.cpp
-    src/audio/bass/BassPreviewAudioBackend_Transport.cpp
-    src/audio/bass/BassPreviewAudioBackend_PlaybackClock.cpp
-    src/audio/bass/BassPreviewAudioBackend_EventDrain.cpp
-    src/export/video_export/BassExportAudioBackend.h
-    src/export/video_export/BassExportAudioBackend.cpp
-)
+target_compile_definitions(MiaCode PRIVATE HAVE_QT_MULTIMEDIA=1)
 
 if (WIN32)
-    if (CMAKE_SYSTEM_PROCESSOR MATCHES "^(aarch64|arm64|ARM64)$")
-        set(MIACODE_BASS_WINDOWS_ARCH "winarm64")
-    else()
-        set(MIACODE_BASS_WINDOWS_ARCH "win64")
-    endif()
-    set(MIACODE_BASS_WINDOWS_LIB_DIR
-        "${CMAKE_CURRENT_SOURCE_DIR}/third_party/bass/lib/${MIACODE_BASS_WINDOWS_ARCH}")
-    set(MIACODE_BASS_WINDOWS_BIN_DIR
-        "${CMAKE_CURRENT_SOURCE_DIR}/third_party/bass/bin/${MIACODE_BASS_WINDOWS_ARCH}")
-    # bass_aac ships for x86/x64 only; the arm64 runtime uses the remaining
-    # plugins and the audio backend already tolerates a missing add-on.
-    set(MIACODE_BASS_WINDOWS_DLLS bass.dll bassmix.dll bass_fx.dll bassopus.dll bassflac.dll)
-    if (MIACODE_BASS_WINDOWS_ARCH STREQUAL "win64")
-        list(APPEND MIACODE_BASS_WINDOWS_DLLS bass_aac.dll)
-    endif()
-    foreach(MIACODE_BASS_DLL IN LISTS MIACODE_BASS_WINDOWS_DLLS)
-        if (NOT EXISTS "${MIACODE_BASS_WINDOWS_BIN_DIR}/${MIACODE_BASS_DLL}")
-            message(FATAL_ERROR
-                "Missing required Windows BASS runtime: ${MIACODE_BASS_WINDOWS_BIN_DIR}/${MIACODE_BASS_DLL}")
-        endif()
-    endforeach()
-
     target_link_libraries(MiaCode PRIVATE
-        "${MIACODE_BASS_WINDOWS_LIB_DIR}/bass.lib"
-        "${MIACODE_BASS_WINDOWS_LIB_DIR}/bassmix.lib"
-        winmm
-        ole32       # Windows Core Audio endpoint notification COM API
-        avrt  # Multimedia Class Scheduler Service (AvSetMmThreadCharacteristicsW)
-        d3d11        # Shared preview device, D3D11 export session, QuickShell composite
-                     # surface, stage-media host (src/preview/runtime, src/app)
-        dxgi         # Adapter enumeration + per-process VRAM gauge
-                     # (GpuDevicePolicy, ProcessDiagnostics, TimelineQuickItem)
+        winmm        # timeBeginPeriod for preview frame pacing
+        d3d11        # Startup D3D11 probe (startup_diagnostics_win32.cpp)
         User32       # RegisterPowerSettingNotification
         Wtsapi32     # Session lock/unlock notifications for idle-freeze diagnostics
         version      # Startup diagnostic file-version queries (MinGW)
         rstrtmgr     # Restart Manager process lookup for media tools (MinGW)
-        opengl32     # QtAVPlayer D3D11/OpenGL texture interop (MinGW)
-        d3dcompiler  # QtAVPlayer D3DCompile (MinGW; MSVC uses pragma comment)
         dwmapi       # v2 WindowChrome DwmExtendFrameIntoClientArea
     )
     add_custom_command(TARGET MiaCode POST_BUILD
@@ -1087,24 +868,6 @@ if (WIN32)
         VERBATIM
     )
 elseif (APPLE)
-    set(MIACODE_BASS_MACOS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/third_party/bass/lib/macos/universal")
-    set(MIACODE_BASS_MACOS_LIBRARIES
-        "${MIACODE_BASS_MACOS_DIR}/libbass.dylib"
-        "${MIACODE_BASS_MACOS_DIR}/libbassmix.dylib"
-        "${MIACODE_BASS_MACOS_DIR}/libbass_fx.dylib"
-        "${MIACODE_BASS_MACOS_DIR}/libbassopus.dylib"
-        "${MIACODE_BASS_MACOS_DIR}/libbassflac.dylib"
-    )
-    foreach(MIACODE_BASS_LIBRARY IN LISTS MIACODE_BASS_MACOS_LIBRARIES)
-        if (NOT EXISTS "${MIACODE_BASS_LIBRARY}")
-            message(FATAL_ERROR "Missing required macOS BASS runtime: ${MIACODE_BASS_LIBRARY}")
-        endif()
-    endforeach()
-
-    target_link_libraries(MiaCode PRIVATE
-        "${MIACODE_BASS_MACOS_DIR}/libbass.dylib"
-        "${MIACODE_BASS_MACOS_DIR}/libbassmix.dylib"
-    )
     set_target_properties(MiaCode PROPERTIES
         BUILD_RPATH "@executable_path/../Frameworks"
         INSTALL_RPATH "@executable_path/../Frameworks"
@@ -1128,32 +891,6 @@ elseif (APPLE)
         VERBATIM
     )
 elseif (CMAKE_SYSTEM_NAME STREQUAL "Linux")
-    if (CMAKE_SYSTEM_PROCESSOR MATCHES "^(x86_64|amd64|AMD64)$")
-        set(MIACODE_BASS_LINUX_ARCH "x86_64")
-    elseif (CMAKE_SYSTEM_PROCESSOR MATCHES "^(aarch64|arm64|ARM64)$")
-        set(MIACODE_BASS_LINUX_ARCH "aarch64")
-    else()
-        message(FATAL_ERROR "MiaCode's bundled Linux BASS runtime currently supports x86_64 and aarch64 only")
-    endif()
-
-    set(MIACODE_BASS_LINUX_DIR "${CMAKE_CURRENT_SOURCE_DIR}/third_party/bass/lib/linux/${MIACODE_BASS_LINUX_ARCH}")
-    set(MIACODE_BASS_LINUX_LIBRARIES
-        "${MIACODE_BASS_LINUX_DIR}/libbass.so"
-        "${MIACODE_BASS_LINUX_DIR}/libbassmix.so"
-        "${MIACODE_BASS_LINUX_DIR}/libbass_fx.so"
-        "${MIACODE_BASS_LINUX_DIR}/libbassflac.so"
-    )
-    foreach(MIACODE_BASS_LIBRARY IN LISTS MIACODE_BASS_LINUX_LIBRARIES)
-        if (NOT EXISTS "${MIACODE_BASS_LIBRARY}")
-            message(FATAL_ERROR "Missing required Linux BASS runtime: ${MIACODE_BASS_LIBRARY}")
-        endif()
-    endforeach()
-
-    target_link_libraries(MiaCode PRIVATE
-        "${MIACODE_BASS_LINUX_DIR}/libbass.so"
-        "${MIACODE_BASS_LINUX_DIR}/libbassmix.so"
-        ${CMAKE_DL_LIBS}
-    )
     set_target_properties(MiaCode PROPERTIES
         BUILD_RPATH "$ORIGIN"
         INSTALL_RPATH "$ORIGIN"
@@ -1196,127 +933,7 @@ if (APPLE)
     target_link_libraries(MiaCode PRIVATE "-framework AppKit")
 endif()
 
-target_link_libraries(MiaCode PRIVATE Qt6::Multimedia)
-target_compile_definitions(MiaCode PRIVATE HAVE_QT_MULTIMEDIA=1)
-# ---------------------------------------------------------------------------
-# QtAVPlayer (FFmpeg) — preview background-video decode backend.
-#
-# Decodes PV/BG video inside PreviewStageMediaHost; see
-# docs/ops/DEBUG_INDEX.md. QtAVPlayer is the
-# MIT-licensed source vendored under third_party/QtAVPlayer, compiled straight
-# into MiaCode. Windows and macOS use the project-selected FFmpeg SDK through
-# MIACODE_FFMPEG_DEV_DIR. Linux resolves FFmpeg and VA-API from the host
-# toolchain through pkg-config.
-#
-# All desktop platforms use QtAVPlayer. Windows selects D3D11VA, macOS selects
-# VideoToolbox/Metal, and Linux selects VA-API through DRM/EGL.
-# ---------------------------------------------------------------------------
-    if (WIN32)
-        if (CMAKE_SYSTEM_PROCESSOR MATCHES "^(aarch64|arm64|ARM64)$")
-            set(MIACODE_FFMPEG_DEV_DIR_DEFAULT
-                "${CMAKE_CURRENT_SOURCE_DIR}/third_party/ffmpeg/windows/winarm64/dev")
-        else()
-            set(MIACODE_FFMPEG_DEV_DIR_DEFAULT
-                "${CMAKE_CURRENT_SOURCE_DIR}/third_party/ffmpeg/windows/win64/dev")
-        endif()
-    elseif (APPLE)
-        set(MIACODE_FFMPEG_DEV_DIR_DEFAULT
-            "${CMAKE_CURRENT_SOURCE_DIR}/third_party/ffmpeg/macos/dev")
-    endif()
-    if (WIN32 OR APPLE)
-        set(MIACODE_FFMPEG_DEV_DIR "${MIACODE_FFMPEG_DEV_DIR_DEFAULT}"
-            CACHE PATH "FFmpeg shared dev SDK root (include/ + lib/) for the QtAVPlayer preview backend")
-        if (NOT EXISTS "${MIACODE_FFMPEG_DEV_DIR}/include" OR NOT EXISTS "${MIACODE_FFMPEG_DEV_DIR}/lib")
-            if (APPLE)
-                set(MIACODE_FFMPEG_PROVISION_COMMAND
-                    "bash scripts/ffmpeg/ensure-macos-ffmpeg-dev.sh")
-            else()
-                set(MIACODE_FFMPEG_PROVISION_COMMAND
-                    "scripts/ffmpeg/ensure-windows-ffmpeg-dev.ps1")
-            endif()
-            message(FATAL_ERROR
-                "FFmpeg dev SDK not found at '${MIACODE_FFMPEG_DEV_DIR}'. "
-                "Run '${MIACODE_FFMPEG_PROVISION_COMMAND}', or pass "
-                "-DMIACODE_FFMPEG_DEV_DIR=<root containing include/ lib/>.")
-        endif()
-        if (APPLE AND MIACODE_FFMPEG_DEV_DIR MATCHES "^/(opt/homebrew|usr/local)/")
-            message(FATAL_ERROR
-                "macOS release builds must use the project-provisioned FFmpeg SDK, not Homebrew: "
-                "${MIACODE_FFMPEG_DEV_DIR}. Run bash scripts/ffmpeg/ensure-macos-ffmpeg-dev.sh.")
-        endif()
-
-        # find_library() in QtAVPlayer.cmake resolves the FFmpeg import libs from
-        # <prefix>/lib; prepending the dev root makes our SDK win over any system one.
-        list(PREPEND CMAKE_PREFIX_PATH "${MIACODE_FFMPEG_DEV_DIR}")
-    else()
-        find_package(PkgConfig REQUIRED)
-        pkg_check_modules(MIACODE_FFMPEG REQUIRED IMPORTED_TARGET
-            libavfilter libavcodec libavformat libavutil libswresample libswscale)
-        pkg_check_modules(MIACODE_VAAPI REQUIRED IMPORTED_TARGET libva libva-drm libdrm)
-        find_library(AVFILTER_LIBRARY NAMES avfilter
-            HINTS ${MIACODE_FFMPEG_LIBRARY_DIRS} NO_DEFAULT_PATH REQUIRED NO_CACHE)
-        find_library(AVCODEC_LIBRARY NAMES avcodec
-            HINTS ${MIACODE_FFMPEG_LIBRARY_DIRS} NO_DEFAULT_PATH REQUIRED NO_CACHE)
-        find_library(AVFORMAT_LIBRARY NAMES avformat
-            HINTS ${MIACODE_FFMPEG_LIBRARY_DIRS} NO_DEFAULT_PATH REQUIRED NO_CACHE)
-        find_library(AVUTIL_LIBRARY NAMES avutil
-            HINTS ${MIACODE_FFMPEG_LIBRARY_DIRS} NO_DEFAULT_PATH REQUIRED NO_CACHE)
-        find_library(SWRESAMPLE_LIBRARY NAMES swresample
-            HINTS ${MIACODE_FFMPEG_LIBRARY_DIRS} NO_DEFAULT_PATH REQUIRED NO_CACHE)
-        find_library(SWSCALE_LIBRARY NAMES swscale
-            HINTS ${MIACODE_FFMPEG_LIBRARY_DIRS} NO_DEFAULT_PATH REQUIRED NO_CACHE)
-        set(QT_AVPLAYER_VA_DRM ON CACHE BOOL "" FORCE)
-    endif()
-
-    set(QTAVPLAYER_SRC "${CMAKE_CURRENT_SOURCE_DIR}/third_party/QtAVPlayer/src")
-    set(QT_AVPLAYER_DIR "${QTAVPLAYER_SRC}/QtAVPlayer")
-    set(QT_AVPLAYER_MULTIMEDIA ON CACHE BOOL "" FORCE)
-    # Drop avdevice (capture-device I/O only, unused for file playback):
-    # QtAVPlayer skips finding/linking it and qavdemuxer compiles out its lone
-    # avdevice_register_all() call.
-    set(QT_AVPLAYER_NO_AVDEVICE ON)
-    if (APPLE)
-        # QtAVPlayer.cmake uses find_library(). These cache entries otherwise
-        # survive an SDK change and can keep linking an old Homebrew path even
-        # though CMAKE_PREFIX_PATH now starts with the project-local SDK.
-        foreach(MIACODE_QTAVPLAYER_FFMPEG_LIBRARY
-                AVFILTER_LIBRARY AVCODEC_LIBRARY AVFORMAT_LIBRARY AVUTIL_LIBRARY
-                SWRESAMPLE_LIBRARY SWSCALE_LIBRARY)
-            unset(${MIACODE_QTAVPLAYER_FFMPEG_LIBRARY} CACHE)
-            unset(${MIACODE_QTAVPLAYER_FFMPEG_LIBRARY})
-        endforeach()
-    endif()
-    # Sets QtAVPlayer_SOURCES / QtAVPlayer_LIBS (absolute import-lib paths via
-    # find_library) and globally defines QT_BUILD_QTAVPLAYER_LIB.
-    include("${QT_AVPLAYER_DIR}/QtAVPlayer.cmake")
-
-    target_sources(MiaCode PRIVATE ${QtAVPlayer_SOURCES})
-    target_include_directories(MiaCode PRIVATE
-        "${QTAVPLAYER_SRC}"                  # makes <QtAVPlayer/...> resolve
-    )
-    if (WIN32 OR APPLE)
-        target_include_directories(MiaCode PRIVATE
-            "${MIACODE_FFMPEG_DEV_DIR}/include")
-    endif()
-    # QT_AVPLAYER_MULTIMEDIA : build the QAVVideoFrame -> QVideoFrame bridge.
-    # QT_BUILD_QTAVPLAYER_LIB: export QtAVPlayer symbols (sources live in the exe).
-    # Re-asserted per-target because QtAVPlayer.cmake's add_compile_definitions
-    # is directory-scoped and MiaCode is created earlier in this file.
-    target_compile_definitions(MiaCode PRIVATE
-        QT_AVPLAYER_MULTIMEDIA
-        QT_BUILD_QTAVPLAYER_LIB
-        QT_AVPLAYER_NO_AVDEVICE
-    )
-    target_link_libraries(MiaCode PRIVATE
-        Qt6::MultimediaQuickPrivate
-        ${QtAVPlayer_LIBS}
-    )
-    if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
-        target_link_libraries(MiaCode PRIVATE
-            PkgConfig::MIACODE_FFMPEG
-            PkgConfig::MIACODE_VAAPI)
-    endif()
-
+# FFmpeg runtime the preview backend (miacode_stage_media) loads next to MiaCode.
     if (WIN32)
         # Runtime: the preview backend loads these next to MiaCode.exe. Resolve
         # the six families from the project FFmpeg 8.1 SDK; the package contract

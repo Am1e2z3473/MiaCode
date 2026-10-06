@@ -2,12 +2,15 @@
 
 > 归属：[当前应用架构](../specs/ui/CURRENT_ARCHITECTURE_ZH.md)。
 >
-> 本文登记 **`MiaCode` 主程序 target 链接的每一个库**：属于哪一层、在什么平台条件下存在、
-> 代码里的直接使用点在哪、什么时候加载、怎么验证。目标不是把部署包里的 DLL 数量压到最低，
+> 本文登记 **`MiaCode` 主程序及其链接的 `miacode_*` 库链接的每一个外部库**：属于哪一层、
+> 在什么平台条件下存在、代码里的直接使用点在哪、什么时候加载、怎么验证。库的划分见
+> [模块分层](../specs/architecture/MODULE_LAYERING_CURRENT_ZH.md)；`miacode_*` 库之间的边由
+> `scripts/governance/module_layering.py` 检查，不在本文登记。目标不是把部署包里的 DLL 数量压到最低，
 > 而是让每一条依赖都能说明它为谁存在——没有主人的依赖不许留在链接行上。
 >
 > **漂移守卫**：`dependency_allowlist_spec`（`src/tools/deps/DependencyAllowlistSpec.cpp`）
-> 解析 `CMakeLists.txt` 里全部 `target_link_libraries(MiaCode …)` 调用并与下面三张表比对。
+> 解析 `CMakeLists.txt` 与 `cmake/MiaCodeModules.cmake` 里 `MiaCode` 和 `miacode_*` 的全部
+> `target_link_libraries(…)`、`miacode_add_module(… PUBLIC/PRIVATE …)` 链接项，并与下面三张表比对。
 > 新增依赖没写进表、表里留着已删依赖、禁止表里的库被链接、Qt 版本没锁、QtAVPlayer 头文件
 > 泄漏出媒体适配层——五种漂移都会让 `ctest -R dependency_allowlist_spec` 失败。
 > **改依赖和改本文必须同一次提交。**
@@ -36,11 +39,12 @@ Qt 最低版本锁定：`6.10`
 | `Qt6::Core` | 宿主 | 全平台 | 全模块 | 进程启动 | 链接期；全量 CTest |
 | `Qt6::Gui` | 宿主 | 全平台 | `QGuiApplication`、`QImage`/`QPainter`（封面与 HUD 合成）、字体 | 进程启动 | 链接期；`cover_composite_renderer_spec` |
 | `Qt6::Qml` | 宿主 | 全平台 | `QQmlApplicationEngine`（`Bootstrap`）、全部 `Qml*` 模型 | 进程启动 | 链接期；`qml_*_spec` 组 |
-| `Qt6::Quick` | 宿主 | 全平台 | `QQuickWindow`、`src/preview/quick_scene/`、`src/timeline/quick/` | 进程启动 | 链接期；`qml_*_spec` 组 |
+| `Qt6::Quick` | 宿主 | 全平台 | `QQuickWindow`、`src/preview/quick_scene/`（`miacode_preview_quick`）、`src/timeline/quick/`（`miacode_timeline_quick`）、导出会话（`miacode_export`） | 进程启动 | 链接期；`qml_*_spec` 组 |
 | `Qt6::QuickControls2` | 宿主 | 全平台 | `src/app/ui/` 全部 QML 页面与控件 | 首个 QML 组件实例化 | 链接期；`qml_main_menu_spec` 等 |
+| `ScintillaQuick::ScintillaQuick` | 宿主 | 全平台 | `src/app/ui/editor/` 的谱面源码编辑器（`ScintillaEditorBridge`、`ScintillaDocumentAdapter`、`ScintillaDslStyler`）；子模块 `third_party/ScintillaQuick`，只链接进 `MiaCode` | 编辑器页面首次创建 | 链接期；`qml_*_spec` 组；编辑器手工回归 |
 | `Qt6::Quick3D` | 渲染 | 全平台 | `src/app/ui/pet/PetOverlay.qml` 的 `View3D`、`PerspectiveCamera`；`src/app/ui/pet/model/Fox.qml` 的 `Node`、`Model`、`DefaultMaterial`（桌宠狐狸） | 桌宠窗口首次显示（`PetOverlayController` 置 `visible`） | 链接期；桌宠手工回归 |
 | `Qt6::Quick3DHelpers` | 渲染 | 全平台 | `src/app/ui/pet/model/Fox.qml` 的 `ProceduralMesh`：狐狸的盒式几何体在运行时生成（8 处），不走预烘的 `.mesh` 资源 | 同 `Qt6::Quick3D` | 链接期；桌宠手工回归 |
-| `Qt6::Multimedia` | 媒体 | 全平台 | `PreviewAudioDeviceWatcher` 的设备枚举、`PreviewStageMediaHost` 的视频播放与 `QVideoFrame` 桥接 | 音频设备扫描 / 视频首帧解码 | 链接期；`HAVE_QT_MULTIMEDIA=1`；预览手工回归 |
+| `Qt6::Multimedia` | 媒体 | 全平台 | `PreviewAudioDeviceWatcher` 的设备枚举（`miacode_audio`）、`PreviewRuntime` 把 `QVideoFrame` 包成场景的不透明句柄（`miacode_preview_quick`）、`PreviewStageMediaHost` 的视频播放与 `QVideoFrame` 桥接（`miacode_stage_media`） | 音频设备扫描 / 视频首帧解码 | 链接期；`HAVE_QT_MULTIMEDIA=1`；预览手工回归 |
 | `Qt6::MultimediaQuickPrivate` | 媒体 | `WIN32 OR APPLE OR Linux` | **不由 `src/` 直接使用**；仅供 `third_party/QtAVPlayer` 的 `QT_AVPLAYER_MULTIMEDIA` 桥编译 `QAVVideoFrame -> QVideoFrame` | 背景视频首帧解码 | 链接期；`qtavplayer_platform_spec`；本文「QtAVPlayer 媒体适配层」表 |
 | `Qt6::Network` | 更新检查 | 全平台 | `src/app/services/update/NetworkUpdateFetcher`：一次 HTTPS GET 取 GitHub Releases 上的更新 manifest。产品代码中没有第二处网络使用 | 启动后延迟约 8 秒的自动检查，或用户在偏好设置里手动点「立即检查」 | 链接期；`update_service_spec`（离线，注入假 fetcher）；HTTPS 可用性属打包验收（TLS 后端插件） |
 | `${QtAVPlayer_LIBS}` | 媒体 | `WIN32 OR APPLE`（需 `MIACODE_FFMPEG_DEV_DIR`）；Linux 用主机 pkg-config FFmpeg + libva | `PreviewStageMediaHost*`（PV/BG 解码）、`PreviewSharedD3D11Device`（D3D11VA 共享设备） | 背景视频首帧解码 | `qtavplayer_platform_spec`；macOS 打包契约 |
@@ -49,7 +53,6 @@ Qt 最低版本锁定：`6.10`
 | `soundtouch` | 媒体 | 全平台 | 变速播放与音频处理（`src/audio/`、`src/tools/media/`） | 首次变速播放 / 音频处理作业 | 链接期；音频手工回归 |
 | `bass` | 媒体 | 全平台（Win: `bass.lib`，macOS: `libbass.dylib`，Linux: `libbass.so`） | `BassPreviewAudioBackend`、`BassExportAudioBackend`、`OfflineAudioDecoder` | 预览、导出和离线解码初始化 | 链接期；macOS 打包契约校验 dylib 已随包 |
 | `bassmix` | 媒体 | 全平台 | `BassPreviewAudioBackend`、`BassExportAudioBackend` 的混音总线 | 预览或导出混音初始化 | 链接期；打包契约校验原生库已随包 |
-| `bassflac` | 媒体 | 全平台 | 预览、导出和离线解码中的 FLAC 格式支持 | 音频后端初始化或离线解码时加载 | 运行时插件加载；打包契约校验原生库已随包 |
 | `miniz` | 导出 | 全平台 | `ChartZipPackager`（ZIP 打包导出） | 触发 ZIP 导出 | `chart_zip_packager_spec` |
 | `-framework AppKit` | 平台 | `APPLE` | `NativeWindowThemeMac.mm`、`WindowChrome.mm`（原生标题栏/外观） | 根窗口创建 | 链接期；macOS 冷启动走查 |
 | `d3d11` | 平台 | `WIN32` | 共享预览设备、D3D11 导出会话、stage-media host（`src/preview/runtime/`） | 预览首次创建渲染设备 | 链接期；Windows 冷启动走查 |
@@ -65,6 +68,14 @@ Qt 最低版本锁定：`6.10`
 | `rstrtmgr` | 平台 | `WIN32`（MinGW） | 媒体工具的 Restart Manager 占用进程查找 | 媒体工具报「文件被占用」时 | 链接期 |
 | `dwmapi` | 平台 | `WIN32` | `WindowChrome` 的 `DwmExtendFrameIntoClientArea` | 根窗口创建 | 链接期；Windows 冷启动走查 |
 | `${CMAKE_DL_LIBS}` | 平台 | `Linux`（只在 Linux BASS 块里加入链接行；macOS 的 `dl` 由 libSystem 隐式提供，无需显式链接） | `src/audio/bass/BassPreviewAudioBackend_EngineInit.cpp` 用 `dlopen`/`dlsym` 载入 `libbass_fx.so` 并取 `BASS_FX_TempoCreate` | 首次变速播放（BASS FX 引擎初始化） | 链接期（Linux 构建）；音频手工回归 |
+
+## 运行时插件（不在链接行）
+
+下面的库随打包产物发布、在运行时由已链接的库加载，不出现在任何 `target_link_libraries` 里。
+
+| 依赖 | 分层 | 平台条件 | 加载方 | 加载时机 | 验证方式 |
+| --- | --- | --- | --- | --- | --- |
+| `bassflac` | 媒体 | 全平台 | `BASS_PluginLoad`（`src/audio/bass/BassFlacPlugin.h`）：预览、导出和离线解码中的 FLAC 格式支持 | 音频后端初始化或离线解码时加载 | 运行时插件加载；打包契约校验原生库已随包 |
 
 ## 构建期组件
 

@@ -8,10 +8,7 @@ miacode_add_spec(oplog_self_test
     EXECUTION ctest STATUS active PLATFORM all
     SOURCES
         src/tools/oplog/OperationLogSpec.cpp
-        src/common/CrashRecovery.h
-        src/common/CrashRecovery.cpp
-        ${_miacode_log_core}
-    LIBS Qt6::Core
+    LIBS miacode_base Qt6::Core
     INCLUDES src
 )
 
@@ -22,11 +19,7 @@ miacode_add_spec(simai_parser_spec
     EXECUTION ctest STATUS active PLATFORM all
     SOURCES
         src/tools/simai_parser/SimaiParserSpec.cpp
-        ${_miacode_chart_core}
-        ${_miacode_log_core}
-        resources/fonts.qrc
-        resources/slide_data.qrc
-    LIBS Qt6::Core Qt6::Gui Qt6::Widgets
+    LIBS miacode_chart Qt6::Core Qt6::Gui Qt6::Widgets
     INCLUDES src
 )
 
@@ -37,22 +30,7 @@ miacode_add_spec(chart_batch_transform_spec
     EXECUTION ctest STATUS active PLATFORM all
     SOURCES
         src/tools/chart_transform/ChartBatchTransformSpec.cpp
-        src/core/chart/transform/ChartBatchTransform.h
-        src/core/chart/transform/ChartBatchTransform.Parsers.cpp
-        src/core/chart/transform/ChartBatchTransform.Subdivision.cpp
-        src/core/chart/transform/ChartBatchTransform.Selection.cpp
-        src/core/chart/transform/ChartBatchTransform.Transform.cpp
-        src/core/chart/transform/ChartNormalization.h
-        src/core/chart/transform/ChartNormalization.cpp
-        src/core/chart/transform/ChartNormalizationSegmentPolicy.h
-        src/core/chart/transform/ChartNormalizationSegmentPolicy.cpp
-        src/core/chart/transform/Non384SnapTable.h
-        src/core/chart/transform/Non384SnapTable.cpp
-        ${_miacode_chart_core}
-        ${_miacode_log_core}
-        resources/fonts.qrc
-        resources/slide_data.qrc
-    LIBS Qt6::Core Qt6::Gui Qt6::Widgets
+    LIBS miacode_chart Qt6::Core Qt6::Gui Qt6::Widgets
     INCLUDES src
 )
 
@@ -63,11 +41,7 @@ miacode_add_spec(chart_selection_beat_summary_spec
     EXECUTION ctest STATUS active PLATFORM all
     SOURCES
         src/tools/chart_selection/ChartSelectionBeatSummarySpec.cpp
-        src/core/chart/selection/ChartSelectionBeatSummary.h
-        src/core/chart/selection/ChartSelectionBeatSummary.cpp
-        src/core/chart/parser/SimaiCommentScan.h
-        src/core/chart/parser/SimaiCommentScan.cpp
-    LIBS Qt6::Core
+    LIBS miacode_chart Qt6::Core
     INCLUDES src
 )
 
@@ -131,9 +105,7 @@ miacode_add_spec(simai_document_spec
     EXECUTION ctest STATUS active PLATFORM all
     SOURCES
         src/tools/chart_document/SimaiDocumentSpec.cpp
-        src/core/chart/document/SimaiDocument.h
-        src/core/chart/document/SimaiDocument.cpp
-    LIBS Qt6::Core
+    LIBS miacode_chart Qt6::Core
     INCLUDES src
 )
 
@@ -144,17 +116,7 @@ miacode_add_spec(cover_layout_model_spec
     EXECUTION ctest STATUS active PLATFORM all
     SOURCES
         src/tools/cover_export/CoverLayoutModelSpec.cpp
-        src/export/cover_export/CoverLayoutModel.h
-        src/export/cover_export/CoverLayoutModel.cpp
-        src/export/cover_export/CoverFrameExportPlan.h
-        src/export/cover_export/CoverFrameExportPlan.cpp
-        src/export/cover_export/CoverCompositionState.h
-        src/export/cover_export/CoverCompositionState.cpp
-        src/export/cover_export/CoverCompositionPersistenceGuard.h
-        src/export/cover_export/CoverCompositionPersistenceGuard.cpp
-        src/common/PreferenceProvider.h
-        src/common/PreferenceProvider.cpp
-    LIBS Qt6::Core Qt6::Gui Qt6::Widgets
+    LIBS miacode_export Qt6::Core Qt6::Gui Qt6::Widgets
     INCLUDES src
 )
 
@@ -165,9 +127,7 @@ miacode_add_spec(cover_frame_playback_controller_spec
     EXECUTION ctest STATUS active PLATFORM all
     SOURCES
         src/tools/cover_export/CoverFramePlaybackControllerSpec.cpp
-        src/export/cover_export/CoverFramePlaybackController.h
-        src/export/cover_export/CoverFramePlaybackController.cpp
-    LIBS Qt6::Core
+    LIBS miacode_export Qt6::Core
     INCLUDES src
 )
 
@@ -178,9 +138,7 @@ miacode_add_spec(cover_frame_scene_binder_spec
     EXECUTION ctest STATUS active PLATFORM all
     SOURCES
         src/tools/cover_export/CoverFrameSceneBinderSpec.cpp
-        src/export/cover_export/CoverFrameSceneBinder.h
-        src/export/cover_export/CoverFrameSceneBinder.cpp
-    LIBS Qt6::Core Qt6::Gui
+    LIBS miacode_export Qt6::Core Qt6::Gui
     INCLUDES src
 )
 
@@ -191,37 +149,7 @@ miacode_add_spec(muri_spec
     EXECUTION ctest STATUS active PLATFORM all
     SOURCES
         src/tools/muri/MuriSpec.cpp
-        src/core/analysis/MuriTypes.h
-        src/core/analysis/MuriTypes.cpp
-        ${_miacode_chart_core}
-        ${_miacode_log_core}
-        src/core/analysis/MuriAnalyzer.h
-        src/core/analysis/MuriAnalyzer.cpp
-        src/core/analysis/MuriAnalyzerGeometry.h
-        src/core/analysis/MuriAnalyzerGeometry.cpp
-        src/core/analysis/MuriAnalyzerModel.h
-        src/core/analysis/MuriSlideReferenceData.h
-        src/core/analysis/MuriSlideReferenceData.cpp
-        src/core/analysis/MuriAnalyzerInternal.h
-        src/core/analysis/MuriDiagnosticCollector.h
-        src/core/analysis/MuriDiagnosticCollector.cpp
-        src/core/analysis/MuriDiagnosticLabels.h
-        src/core/analysis/MuriDiagnosticLabels.cpp
-        src/core/analysis/MuriRuntimeModelBuilder.h
-        src/core/analysis/MuriRuntimeModelBuilder.cpp
-        src/core/analysis/MuriOverlayBuilder.h
-        src/core/analysis/MuriOverlayBuilder.cpp
-        src/core/analysis/MuriSlideWifiJudge.h
-        src/core/analysis/MuriSlideWifiJudge.cpp
-        src/core/analysis/MuriSimpleNoteJudge.h
-        src/core/analysis/MuriSimpleNoteJudge.cpp
-        src/core/analysis/MuriPanelEntries.h
-        src/core/analysis/MuriPanelEntries.cpp
-        src/core/analysis/MuriStaticChecker.h
-        src/core/analysis/MuriStaticChecker.cpp
-        resources/fonts.qrc
-        resources/slide_data.qrc
-    LIBS Qt6::Core Qt6::Gui Qt6::Widgets
+    LIBS miacode_analysis Qt6::Core Qt6::Gui Qt6::Widgets
     INCLUDES src
 )
 
@@ -232,11 +160,7 @@ miacode_add_spec(touch_pad_authoring_edit_spec
     EXECUTION ctest STATUS active PLATFORM all
     SOURCES
         src/tools/editor/TouchPadAuthoringEditSpec.cpp
-        src/editor/TouchPadAuthoringEdit.h
-        src/editor/TouchPadAuthoringEdit.cpp
-        src/core/chart/parser/SimaiCommentScan.h
-        src/core/chart/parser/SimaiCommentScan.cpp
-    LIBS Qt6::Core Qt6::Gui
+    LIBS miacode_editor_core Qt6::Core Qt6::Gui
     INCLUDES src
 )
 
@@ -247,9 +171,7 @@ miacode_add_spec(simai_completion_catalog_spec
     EXECUTION ctest STATUS active PLATFORM all
     SOURCES
         src/tools/editor/SimaiCompletionCatalogSpec.cpp
-        src/editor/SimaiCompletionCatalog.h
-        src/editor/SimaiCompletionCatalog.cpp
-    LIBS Qt6::Core
+    LIBS miacode_editor_core Qt6::Core
     INCLUDES src
 )
 
@@ -260,11 +182,7 @@ miacode_add_spec(simai_text_edit_policy_spec
     EXECUTION ctest STATUS active PLATFORM all
     SOURCES
         src/tools/editor/SimaiTextEditPolicySpec.cpp
-        src/editor/SimaiTextEditPolicy.h
-        src/editor/SimaiTextEditPolicy.cpp
-        src/editor/SimaiCompletionCatalog.h
-        src/editor/SimaiCompletionCatalog.cpp
-    LIBS Qt6::Core
+    LIBS miacode_editor_core Qt6::Core
     INCLUDES src
 )
 
@@ -275,9 +193,7 @@ miacode_add_spec(video_export_runtime_policy_spec
     EXECUTION ctest STATUS active PLATFORM all
     SOURCES
         src/tools/video_export/VideoExportRuntimePolicySpec.cpp
-        src/export/video_export/VideoExportRuntimePolicy.h
-        src/export/video_export/VideoExportRuntimePolicy.cpp
-    LIBS Qt6::Core
+    LIBS miacode_export Qt6::Core
     INCLUDES src
 )
 
@@ -288,9 +204,7 @@ miacode_add_spec(raw_video_pipe_frame_conservation_spec
     EXECUTION ctest STATUS active PLATFORM all
     SOURCES
         src/tools/video_export/RawVideoPipeFrameConservationSpec.cpp
-        src/export/video_export/RawVideoPipeTransport.h
-        src/export/video_export/RawVideoPipeTransport.cpp
-    LIBS Qt6::Core Qt6::Gui
+    LIBS miacode_export Qt6::Core Qt6::Gui
     INCLUDES src
 )
 
@@ -301,7 +215,6 @@ miacode_add_spec(video_export_pending_frame_redraw_spec
     EXECUTION ctest STATUS active PLATFORM all
     SOURCES
         src/tools/video_export/VideoExportPendingFrameRedrawSpec.cpp
-        src/export/video_export/VideoExportPendingFrameRedraw.h
     LIBS Qt6::Core
     INCLUDES src
 )
@@ -313,8 +226,6 @@ miacode_add_spec(video_export_intro_mode_spec
     EXECUTION ctest STATUS active PLATFORM all
     SOURCES
         src/tools/video_export/VideoExportIntroModeSpec.cpp
-        src/export/video_export/VideoExportController.h
-        src/core/chart/model/TimelineData.h
     LIBS Qt6::Core Qt6::Gui
     INCLUDES src
 )
@@ -326,18 +237,7 @@ miacode_add_spec(video_export_intro_sound_spec
     EXECUTION ctest STATUS active PLATFORM all
     SOURCES
         src/tools/video_export/VideoExportIntroSoundSpec.cpp
-        src/export/video_export/VideoExportSettings.cpp
-        src/export/video_export/VideoExportRuntimePolicy.cpp
-        src/export/video_export/VideoExportSnapshot.cpp
-        src/core/chart/model/TimelineMarkerOffset.h
-        src/audio/PreviewAudioSettings.h
-        src/audio/PreviewAudioSettings.cpp
-        ${_miacode_chart_core}
-        ${_miacode_log_core}
-        ${_miacode_muri_analysis_core}
-        resources/fonts.qrc
-        resources/slide_data.qrc
-    LIBS Qt6::Core Qt6::Gui
+    LIBS miacode_export Qt6::Core Qt6::Gui
     INCLUDES src
 )
 
@@ -348,20 +248,7 @@ miacode_add_spec(video_export_audio_render_plan_spec
     EXECUTION ctest STATUS active PLATFORM all
     SOURCES
         src/tools/video_export/VideoExportAudioRenderPlanSpec.cpp
-        src/export/video_export/VideoExportAudioRenderPlan.h
-        src/export/video_export/VideoExportAudioRenderPlan.cpp
-        src/export/video_export/VideoExportController.h
-        src/audio/PreviewAudioMixConfig.h
-        src/core/video/PreviewTimingSettings.h
-        src/core/scene/PreviewSfxTiming.h
-        src/core/scene/PreviewSfxTimeline.h
-        src/core/scene/PreviewSfxAssets.h
-        src/core/scene/PreviewSfxSemantics.h
-        src/export/video_export/VideoExportConfig.h
-        src/audio/PreviewAudioSettings.h
-        src/audio/PreviewAudioSettings.cpp
-        src/core/chart/model/TimelineData.h
-    LIBS Qt6::Core Qt6::Gui
+    LIBS miacode_export Qt6::Core Qt6::Gui
     INCLUDES src
 )
 
@@ -372,10 +259,7 @@ miacode_add_spec(video_export_media_timeline_spec
     EXECUTION ctest STATUS active PLATFORM all
     SOURCES
         src/tools/video_export/VideoExportMediaTimelineSpec.cpp
-        src/export/video_export/VideoExportMediaTimeline.h
-        src/export/video_export/VideoExportMediaTimeline.cpp
-        src/core/scene/PreviewSfxTimeline.h
-    LIBS Qt6::Core Qt6::Gui
+    LIBS miacode_export Qt6::Core Qt6::Gui
     INCLUDES src
 )
 
@@ -386,10 +270,7 @@ miacode_add_spec(chart_zip_packager_spec
     EXECUTION ctest STATUS active PLATFORM all
     SOURCES
         src/tools/zip_export/ChartZipPackagerSpec.cpp
-        src/media_tools/zip_export/ChartZipPackager.h
-        src/media_tools/zip_export/ChartZipPackager.cpp
-        src/core/chart/ChartAssetPaths.h
-    LIBS Qt6::Core Qt6::Gui miniz
+    LIBS miacode_media_tools Qt6::Core Qt6::Gui miniz
     INCLUDES src
 )
 
@@ -405,22 +286,7 @@ miacode_add_spec(net_client_spec
     EXECUTION ctest STATUS active PLATFORM all
     SOURCES
         src/tools/net/NetClientSpec.cpp
-        src/media_tools/net/NetClient.h
-        src/media_tools/net/NetClient.cpp
-        src/media_tools/net/NetBatchUploadScanner.h
-        src/media_tools/net/NetBatchUploadScanner.cpp
-        src/media_tools/net/NetUploadDiagnostics.h
-        src/media_tools/net/NetUploadDiagnostics.cpp
-        src/media_tools/net/NetBatchDownloadWorker.h
-        src/media_tools/net/NetBatchDownloadWorker.cpp
-        src/media_tools/net/NetBatchUploadWorker.h
-        src/media_tools/net/NetBatchUploadWorker.cpp
-        src/media_tools/media/PvBatchCompressionScanner.h
-        src/media_tools/media/PvBatchCompressionScanner.cpp
-        src/media_tools/zip_export/ChartZipPackager.h
-        src/media_tools/zip_export/ChartZipPackager.cpp
-        src/core/chart/ChartAssetPaths.h
-    LIBS Qt6::Core Qt6::Gui Qt6::Network miniz
+    LIBS miacode_media_tools Qt6::Core Qt6::Gui Qt6::Network miniz
     INCLUDES src
 )
 
@@ -431,9 +297,7 @@ miacode_add_spec(pv_compression_policy_spec
     EXECUTION ctest STATUS active PLATFORM all
     SOURCES
         src/tools/media/PvCompressionPolicySpec.cpp
-        src/media_tools/media/PvCompressionPolicy.h
-        src/media_tools/media/PvCompressionPolicy.cpp
-    LIBS Qt6::Core
+    LIBS miacode_media_tools Qt6::Core
     INCLUDES src
 )
 

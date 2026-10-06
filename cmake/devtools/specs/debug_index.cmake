@@ -26,7 +26,6 @@ miacode_add_spec(debug_options_spec
     EXECUTION ctest STATUS active PLATFORM all
     SOURCES
         src/tools/debug_index/DebugOptionsSpec.cpp
-        src/common/DebugOptions.h
     LIBS Qt6::Core
     INCLUDES src
 )
@@ -60,11 +59,7 @@ miacode_add_spec(ui_hang_watchdog_lifecycle_spec
     EXECUTION ctest STATUS active PLATFORM all
     SOURCES
         src/tools/debug_index/UiHangWatchdogLifecycleSpec.cpp
-        src/common/UiHangWatchdog.h
-        src/common/UiHangWatchdog.cpp
-        src/common/DebugOptions.h
-        ${_miacode_log_core}
-    LIBS Qt6::Core
+    LIBS miacode_base Qt6::Core
     INCLUDES src
 )
 
@@ -75,9 +70,6 @@ miacode_add_spec(log_pruning_policy_spec
     EXECUTION ctest STATUS active PLATFORM all
     SOURCES
         src/tools/debug_index/LogPruningPolicySpec.cpp
-        src/common/LogEmissionPolicy.h
-        src/common/UiHangWatchdogPolicy.h
-        src/audio/bass/BassPreviewSfxSchedulerPolicy.h
     LIBS Qt6::Core
     INCLUDES src
 )
@@ -89,10 +81,7 @@ miacode_add_spec(process_diagnostics_spec
     EXECUTION ctest STATUS active PLATFORM all
     SOURCES
         src/tools/debug_index/ProcessDiagnosticsSpec.cpp
-        src/common/ProcessDiagnostics.h
-        src/common/ProcessDiagnostics.cpp
-        ${_miacode_log_core}
-    LIBS Qt6::Core Qt6::Gui
+    LIBS miacode_base Qt6::Core Qt6::Gui
     INCLUDES src
 )
 if (WIN32)
@@ -109,8 +98,7 @@ miacode_add_spec(window_visibility_diagnostics_spec
         src/tools/debug_index/WindowVisibilityDiagnosticsSpec.cpp
         src/app/platform/WindowVisibilityDiagnostics.h
         src/app/platform/WindowVisibilityDiagnostics.cpp
-        ${_miacode_log_core}
-    LIBS Qt6::Core Qt6::Gui
+    LIBS miacode_base Qt6::Core Qt6::Gui
     INCLUDES src
 )
 

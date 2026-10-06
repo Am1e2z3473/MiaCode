@@ -1,4 +1,5 @@
-// Compare product link dependencies with docs/ops/DEPENDENCY_ALLOWLIST.md.
+// Compare product link dependencies (MiaCode and the miacode_* libraries it
+// links) with docs/ops/DEPENDENCY_ALLOWLIST.md.
 // Check allowed libraries, forbidden libraries, the pinned Qt version,
 // and the source boundary of QtAVPlayer's private media headers.
 
@@ -110,14 +111,23 @@ QString normalizeLinkToken(const QString& raw)
     return base;
 }
 
-// Every target_link_libraries(MiaCode …) call in CMakeLists.txt, normalized.
+// The MiaCode link closure: every target_link_libraries() call on MiaCode or
+// one of its miacode_* libraries, plus the PUBLIC/PRIVATE items of each
+// miacode_add_module() call, normalized. The libraries themselves (miacode_*,
+// including their generated QML plugin targets) are internal and not listed.
 // Paren counting is safe here: no link token contains a parenthesis.
+bool isInternalTarget(const QString& token)
+{
+    return token == QLatin1String("MiaCode") || token.startsWith(QLatin1String("miacode_"));
+}
+
 QSet<QString> collectMiaCodeLinkLibraries(const QString& cmake, bool* parsed)
 {
     QSet<QString> libraries;
     const QString source = stripComments(cmake);
     static const QRegularExpression call(
-        QStringLiteral("target_link_libraries\\s*\\(\\s*MiaCode\\b"));
+        QStringLiteral("(target_link_libraries\\s*\\(\\s*(MiaCode|miacode_\\w+)\\b)"
+                       "|(miacode_add_module\\s*\\()"));
     auto it = call.globalMatch(source);
     bool sawAny = false;
     while (it.hasNext()) {
@@ -144,9 +154,20 @@ QSet<QString> collectMiaCodeLinkLibraries(const QString& cmake, bool* parsed)
         }
         sawAny = true;
         const QString body = source.mid(cursor + 1, end - cursor - 1);
+        const bool moduleCall = !match.captured(3).isEmpty();
+        bool inLinkSection = !moduleCall;
         for (const QString& token : tokenizeArguments(body)) {
-            if (token == QLatin1String("MiaCode") || token == QLatin1String("PRIVATE")
-                || token == QLatin1String("PUBLIC") || token == QLatin1String("INTERFACE")) {
+            if (token == QLatin1String("PRIVATE") || token == QLatin1String("PUBLIC")
+                || token == QLatin1String("INTERFACE")) {
+                inLinkSection = true;
+                continue;
+            }
+            if (moduleCall
+                && (token == QLatin1String("SOURCES") || token == QLatin1String("QRC"))) {
+                inLinkSection = false;
+                continue;
+            }
+            if (!inLinkSection || isInternalTarget(token)) {
                 continue;
             }
             libraries.insert(normalizeLinkToken(token));
@@ -209,8 +230,10 @@ int main()
     bool ok = true;
 
     const QString cmake = readFile(QStringLiteral("CMakeLists.txt"));
+    const QString modules = readFile(QStringLiteral("cmake/MiaCodeModules.cmake"));
     const QString doc = readFile(QStringLiteral("docs/ops/DEPENDENCY_ALLOWLIST.md"));
     ok &= require(!cmake.isEmpty(), QStringLiteral("CMakeLists.txt is readable"));
+    ok &= require(!modules.isEmpty(), QStringLiteral("cmake/MiaCodeModules.cmake is readable"));
     ok &= require(!doc.isEmpty(),
                   QStringLiteral("docs/ops/DEPENDENCY_ALLOWLIST.md is readable"));
     if (!ok) {
@@ -218,9 +241,10 @@ int main()
     }
 
     bool parsedLinkCalls = false;
-    const QSet<QString> linked = collectMiaCodeLinkLibraries(cmake, &parsedLinkCalls);
+    const QSet<QString> linked =
+        collectMiaCodeLinkLibraries(cmake + QLatin1Char('\n') + modules, &parsedLinkCalls);
     ok &= require(parsedLinkCalls,
-                  QStringLiteral("target_link_libraries(MiaCode …) calls are parseable"));
+                  QStringLiteral("MiaCode and library link calls are parseable"));
 
     const QSet<QString> allowed =
         collectDocSectionEntries(doc, QStringLiteral("## 允许链接进 `MiaCode`"));

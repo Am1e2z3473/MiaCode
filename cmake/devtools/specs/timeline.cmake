@@ -7,16 +7,7 @@ miacode_add_spec(timeline_model_spec
     EXECUTION ctest STATUS active PLATFORM all
     SOURCES
         src/tools/timeline/TimelineModelSpec.cpp
-        ${_miacode_chart_core}
-        src/timeline/TimelineQuickModel.h
-        src/timeline/TimelineQuickModel.cpp
-        src/timeline/TimelineQuickModelParser.cpp
-        src/timeline/TimelineQuickModelSnapshot.cpp
-        src/timeline/TimelineQuickModelIndexing.cpp
-        ${_miacode_log_core}
-        resources/fonts.qrc
-        resources/slide_data.qrc
-    LIBS Qt6::Core Qt6::Gui Qt6::Widgets
+    LIBS miacode_timeline Qt6::Core Qt6::Gui Qt6::Widgets
     INCLUDES src
 )
 # Source-contract assertions in TimelineModelSpec must work from both the
@@ -31,8 +22,6 @@ miacode_add_spec(timeline_marker_offset_spec
     EXECUTION ctest STATUS active PLATFORM all
     SOURCES
         src/tools/timeline/TimelineMarkerOffsetSpec.cpp
-        src/core/chart/model/TimelineMarkerOffset.h
-        src/core/chart/model/TimelineData.h
     LIBS Qt6::Core
     INCLUDES src
 )
@@ -44,7 +33,6 @@ miacode_add_spec(timeline_quick_texture_cache_policy_spec
     EXECUTION ctest STATUS active PLATFORM all
     SOURCES
         src/tools/timeline/TimelineQuickTextureCachePolicySpec.cpp
-        src/timeline/quick/TimelineQuickTextureCachePolicy.h
     LIBS Qt6::Core
     INCLUDES src
 )
@@ -56,7 +44,6 @@ miacode_add_spec(timeline_cadence_arbitration_policy_spec
     EXECUTION ctest STATUS active PLATFORM all
     SOURCES
         src/tools/timeline/TimelineCadenceArbitrationPolicySpec.cpp
-        src/timeline/TimelineCadenceArbitrationPolicy.h
     LIBS Qt6::Core
     INCLUDES src
 )
