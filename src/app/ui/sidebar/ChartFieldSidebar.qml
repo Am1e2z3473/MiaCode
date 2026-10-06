@@ -28,20 +28,22 @@ Rectangle {
         anchors.right: parent.right
         anchors.top: heading.bottom
         anchors.bottom: parent.bottom
-        contentHeight: list.implicitHeight + 12
+        contentHeight: list.y + list.implicitHeight + 6
         clip: true
         boundsBehavior: Flickable.StopAtBounds
 
         Column {
             id: list
             x: 6
-            y: 6
+            y: Theme.workspaceSectionTopMargin
             width: parent.width - 12
             spacing: 2
 
             NavRow {
                 width: parent.width
                 text: qsTrId("dialog.unsaved_field_changes.field.metadata")
+                iconSource: Qt.resolvedUrl("icons/metadata.svg")
+                filledIconSource: Qt.resolvedUrl("icons/metadata-fill.svg")
                 selected: root.viewState.metadataEditorActive
                 onClicked: {
                     if (root.pages && root.pages.overlayActive)
@@ -54,6 +56,8 @@ Rectangle {
             NavRow {
                 width: parent.width
                 text: qsTrId("qml.latency_calibration")
+                iconSource: Qt.resolvedUrl("icons/metronome.svg")
+                filledIconSource: Qt.resolvedUrl("icons/metronome-fill.svg")
                 selected: root.viewState.latencyEditorActive
                 onClicked: root.pages.openLatencyPage()
             }

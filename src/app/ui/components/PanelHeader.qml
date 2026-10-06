@@ -9,10 +9,10 @@ Rectangle {
     property bool sidebarTitle: false
     default property alias trailing: trailingRow.data
 
-    readonly property real titleInkTop: {
+    readonly property real titleInkCenter: {
         const sample = root.title.length > 0 ? root.title : "汉"
         const rect = titleMetrics.tightBoundingRect(sample)
-        return Math.max(0, titleMetrics.ascent + rect.y)
+        return titleMetrics.ascent + rect.y + rect.height / 2
     }
 
     implicitHeight: root.sidebarTitle
@@ -32,14 +32,8 @@ Rectangle {
 
         anchors.left: parent.left
         anchors.leftMargin: 10
-        anchors.top: root.sidebarTitle ? parent.top : undefined
-        anchors.topMargin: root.sidebarTitle
-                           ? Math.max(0, Theme.activityIconTop - root.titleInkTop)
-                           : 0
+        y: root.sidebarTitle ? Theme.workspaceHeaderContentCenterY - root.titleInkCenter : 0
         anchors.verticalCenter: root.sidebarTitle ? undefined : parent.verticalCenter
-        transform: Translate {
-            y: root.sidebarTitle ? Theme.workspaceHeaderContentOffsetY : 0
-        }
         text: root.title
         color: root.sidebarTitle ? Theme.colors.text.heading : Theme.colors.text.primary
         font.family: Theme.uiFont
@@ -52,8 +46,7 @@ Rectangle {
         id: trailingRow
         anchors.right: parent.right
         anchors.rightMargin: 10
-        y: (root.sidebarTitle ? Theme.workspaceHeaderHeight : root.height) / 2
-           + (root.sidebarTitle ? Theme.workspaceHeaderContentOffsetY : 0)
+        y: (root.sidebarTitle ? Theme.workspaceHeaderContentCenterY : root.height / 2)
            - height / 2
         spacing: 5
     }
@@ -61,8 +54,7 @@ Rectangle {
     Text {
         anchors.right: parent.right
         anchors.rightMargin: 10
-        y: (root.sidebarTitle ? Theme.workspaceHeaderHeight : root.height) / 2
-           + (root.sidebarTitle ? Theme.workspaceHeaderContentOffsetY : 0)
+        y: (root.sidebarTitle ? Theme.workspaceHeaderContentCenterY : root.height / 2)
            - height / 2
         visible: root.showMore && trailingRow.children.length === 0
         text: "..."

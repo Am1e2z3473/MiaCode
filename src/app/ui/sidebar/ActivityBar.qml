@@ -24,6 +24,7 @@ Rectangle {
         anchors.top: parent.top
 
         ActivityButton {
+            height: 2 * Theme.workspaceHeaderContentCenterY
             iconSource: Qt.resolvedUrl("icons/file.svg")
             filledIconSource: Qt.resolvedUrl("icons/file-fill.svg")
             tooltip: qsTrId("qml.chart")
