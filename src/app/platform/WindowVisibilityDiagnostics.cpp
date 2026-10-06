@@ -1,4 +1,4 @@
-#include "app/WindowVisibilityDiagnostics.h"
+#include "app/platform/WindowVisibilityDiagnostics.h"
 
 #include "common/DebugLog.h"
 #include "common/DebugOptions.h"

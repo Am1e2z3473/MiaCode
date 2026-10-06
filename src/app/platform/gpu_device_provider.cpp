@@ -1,4 +1,4 @@
-#include "app/MainEntrypoints.h"
+#include "app/platform/PlatformDiagnostics.h"
 
 #include "common/DebugLog.h"
 #include "common/DebugOptions.h"

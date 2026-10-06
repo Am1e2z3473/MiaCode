@@ -23,10 +23,10 @@ Owners name production modules; kinds describe the checked boundary, not runtime
 | `src/tools/debug_index/IdleFreezeReproScriptSpec.cpp` | `idle_freeze_repro_script_spec` | `scripts/debug` | `debug-index.idle-freeze-repro-script` | debug_index | source-contract | normal | all | ctest | active |
 | `src/tools/debug_index/LogPruningPolicySpec.cpp` | `log_pruning_policy_spec` | `src/common` | `debug-index.log-pruning-policy` | debug_index | behavior | normal | all | ctest | active |
 | `src/tools/debug_index/ProcessDiagnosticsSpec.cpp` | `process_diagnostics_spec` | `src/common` | `debug-index.process-diagnostics` | debug_index | behavior | normal | all | ctest | active |
-| `src/tools/debug_index/ProcessIdentityFieldsSpec.cpp` | `process_identity_fields_spec` | `src/app` | `debug-index.process-identity-fields` | debug_index | behavior | normal | all | ctest | active |
+| `src/tools/debug_index/ProcessIdentityFieldsSpec.cpp` | `process_identity_fields_spec` | `src/app/platform` | `debug-index.process-identity-fields` | debug_index | behavior | normal | all | ctest | active |
 | `src/tools/debug_index/UiHangWatchdogLifecycleSpec.cpp` | `ui_hang_watchdog_lifecycle_spec` | `src/common` | `debug-index.ui-hang-watchdog-lifecycle` | debug_index | behavior | high | all | ctest | active |
 | `src/tools/debug_index/UiHangWatchdogPolicySpec.cpp` | `ui_hang_watchdog_policy_spec` | `src/common` | `debug-index.ui-hang-watchdog-policy` | debug_index | behavior | normal | all | ctest | active |
-| `src/tools/debug_index/WindowVisibilityDiagnosticsSpec.cpp` | `window_visibility_diagnostics_spec` | `src/app` | `debug-index.window-visibility-diagnostics` | debug_index | behavior | normal | all | ctest | active |
+| `src/tools/debug_index/WindowVisibilityDiagnosticsSpec.cpp` | `window_visibility_diagnostics_spec` | `src/app/platform` | `debug-index.window-visibility-diagnostics` | debug_index | behavior | normal | all | ctest | active |
 | `src/tools/deps/DependencyAllowlistSpec.cpp` | `dependency_allowlist_spec` | `src/common` | `deps.dependency-allowlist` | deps | source-contract | normal | all | ctest | active |
 | `src/tools/editor/SimaiCompletionCatalogSpec.cpp` | `simai_completion_catalog_spec` | `src/editor` | `editor.simai-completion-catalog` | editor | behavior | normal | all | ctest | active |
 | `src/tools/editor/SimaiTextEditPolicySpec.cpp` | `simai_text_edit_policy_spec` | `src/editor` | `editor.simai-text-edit-policy` | editor | behavior | normal | all | ctest | active |

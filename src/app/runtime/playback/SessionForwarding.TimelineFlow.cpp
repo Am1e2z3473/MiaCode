@@ -15,7 +15,7 @@
 #include "core/chart/document/ChartClockCount.h"
 #include "core/video/PreviewInteractionConfig.h"
 #include "audio/WaveformCache.h"
-#include "app/ui/export/ExportSession.h"
+#include "app/services/ExportPagePort.h"
 
 #include <QtCore>
 

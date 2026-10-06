@@ -3,7 +3,7 @@
 #include <QObject>
 #include <QVariantList>
 
-#include "app/ui/document/AnalysisProjection.h"
+#include "app/services/AnalysisProjection.h"
 #include "app/services/AnalysisService.h"
 #include "app/services/ChartWorkspace.h"
 

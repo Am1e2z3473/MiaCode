@@ -134,6 +134,7 @@ add_executable(MiaCode WIN32 MACOSX_BUNDLE
     src/app/services/DocumentBridge.h
     src/app/services/EditorPageRouter.h
     src/app/services/ExportEngine.h
+    src/app/services/ExportPagePort.h
     src/app/services/LatencyEngine.h
     src/app/services/MediaToolsEngine.h
     src/app/services/PreferencesStore.h
@@ -178,11 +179,12 @@ add_executable(MiaCode WIN32 MACOSX_BUNDLE
     src/app/ui/latency/LatencyModel.h
     src/app/startup_diagnostics_win32.cpp
     src/app/graphics_backend.cpp
-    src/app/process_identity.cpp
-    src/app/WindowVisibilityDiagnostics.h
-    src/app/WindowVisibilityDiagnostics.cpp
-    src/app/gpu_adapter_probe.cpp
-    src/app/gpu_device_provider.cpp
+    src/app/platform/PlatformDiagnostics.h
+    src/app/platform/process_identity.cpp
+    src/app/platform/WindowVisibilityDiagnostics.h
+    src/app/platform/WindowVisibilityDiagnostics.cpp
+    src/app/platform/gpu_adapter_probe.cpp
+    src/app/platform/gpu_device_provider.cpp
     src/preview/quick_scene/PreviewQuickGraphicsInfo.h
     src/preview/quick_scene/PreviewQuickGraphicsInfo.cpp
     src/app/gpu_high_performance_hint.cpp
@@ -268,15 +270,15 @@ add_executable(MiaCode WIN32 MACOSX_BUNDLE
     src/app/ui/preferences/AppBackgroundSettings.cpp
     src/app/ui/theme/ThemeVariantResolver.h
     src/app/ui/theme/ThemeVariantResolver.cpp
-    src/app/ui/chrome/ShortcutRegistry.h
-    src/app/ui/chrome/ShortcutRegistry.cpp
+    src/app/services/ShortcutRegistry.h
+    src/app/services/ShortcutRegistry.cpp
     src/app/ui/theme/UiTheme.h
     src/app/ui/theme/UiTheme.cpp
     src/app/ui/chrome/NativeWindowTheme.h
     src/app/ui/chrome/NativeWindowTheme.cpp
     src/app/ui/chrome/NativeWindowThemePolicy.h
-    src/app/ui/chrome/WindowParityMetrics.h
-    src/app/ui/chrome/WindowParityMetrics.cpp
+    src/app/runtime/shell/WindowParityMetrics.h
+    src/app/runtime/shell/WindowParityMetrics.cpp
     src/core/analysis/MuriTypes.h
     src/core/analysis/MuriTypes.cpp
     src/core/analysis/MuriRenderOptions.h
@@ -855,10 +857,10 @@ qt_add_qml_module(MiaCode
         src/app/ui/document/DocumentModel.h
         src/core/chart/selection/ChartSelectionBeatSummary.h
         src/core/chart/selection/ChartSelectionBeatSummary.cpp
-        src/app/ui/document/DocumentProjection.cpp
-        src/app/ui/document/DocumentProjection.h
-        src/app/ui/document/AnalysisProjection.cpp
-        src/app/ui/document/AnalysisProjection.h
+        src/app/services/DocumentProjection.cpp
+        src/app/services/DocumentProjection.h
+        src/app/services/AnalysisProjection.cpp
+        src/app/services/AnalysisProjection.h
         src/app/ui/document/AnalysisModel.cpp
         src/app/ui/document/AnalysisModel.h
         src/app/ui/preview/PreviewModel.cpp

@@ -1,7 +1,7 @@
 #include "app/runtime/playback/PlaybackCoordinator.h"
 #include "app/runtime/Shared.h"
 
-#include "app/ui/export/ExportSession.h"
+#include "app/services/ExportPagePort.h"
 #include "audio/QtPreviewSfxRuntime.h"
 #include "core/chart/parser/SimaiParser.h"
 #include "app/quick_shell/QuickShellPreviewCompositeSurface.h"

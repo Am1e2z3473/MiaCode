@@ -1,7 +1,7 @@
 #include "app/quick_shell/QuickShellPreviewCompositeSurface.h"
 
-#include "app/MainEntrypoints.h"
-#include "app/WindowVisibilityDiagnostics.h"
+#include "app/platform/PlatformDiagnostics.h"
+#include "app/platform/WindowVisibilityDiagnostics.h"
 #include "preview/quick_scene/PreviewQuickHudLayer.h"
 #include "preview/quick_scene/PreviewQuickSceneRoot.h"
 #include "preview/runtime/PreviewRuntime.h"

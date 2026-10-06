@@ -1,7 +1,7 @@
 #include "app/runtime/export/VideoExportHost.h"
 
 #include "app/runtime/shell/ShellHost.h"
-#include "app/ui/export/ExportSession.h"
+#include "app/services/ExportPagePort.h"
 
 #include <QPointer>
 

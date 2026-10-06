@@ -9,6 +9,7 @@
 #include "app/services/UiRequestService.h"
 #include "app/services/JobProgressService.h"
 #include "app/services/ExportEngine.h"
+#include "app/services/ExportPagePort.h"
 #include "app/services/PreviewAppearanceState.h"
 #include "app/services/PreviewSurface.h"
 #include "export/video_export/VideoExportController.h"
@@ -22,7 +23,7 @@
 // remains carries one push signal and nothing else.
 namespace miacode::ui {
 
-class ExportSession final : public QObject
+class ExportSession final : public QObject, public miacode::ExportPagePort
 {
     Q_OBJECT
     // File picking and messaging happen through this boundary so the session
@@ -102,11 +103,11 @@ public:
                      QObject* parent = nullptr);
 
     QObject* uiRequests() { return uiRequests_; }
-    bool pageSessionActive() const { return pageSessionActive_; }
+    bool pageSessionActive() const override { return pageSessionActive_; }
     bool rangePreviewAvailable() const { return pageSessionActive_ && activeTab_ == QLatin1String("export"); }
     bool rangePlaybackEnabled() const { return rangePlaybackEnabled_; }
     void setRangePlaybackEnabled(bool enabled);
-    int selectedDifficultyId() const { return selectedDifficultyId_; }
+    int selectedDifficultyId() const override { return selectedDifficultyId_; }
     QString activeTab() const;
     QString settingsTab() const { return settingsTab_; }
     QString unavailableReason() const { return unavailableReason_; }
@@ -150,7 +151,7 @@ public:
     QString introSoundLabel() const;
     QString introSoundVolumeLabel() const;
     QString introSoundImportLabel() const;
-    IntroBannerSpec previewIntroSpec() const;
+    IntroBannerSpec previewIntroSpec() const override;
 
     double exportStartSeconds() const { return task_.exportStartSeconds; }
     double exportEndSeconds() const;
@@ -162,12 +163,12 @@ public:
     QVariantList batchDifficultyChecks() const;
     QString batchOutputDirectory() const { return batchOutputDirectory_; }
 
-    void enter(int previousActiveDifficultyId);
-    void leave();
+    void enter(int previousActiveDifficultyId) override;
+    void leave() override;
     void replaceDocument(int preferredDifficultyId);
 
-    Q_INVOKABLE void selectDifficulty(int difficultyId);
-    Q_INVOKABLE void setActiveTab(const QString& tabId);
+    Q_INVOKABLE void selectDifficulty(int difficultyId) override;
+    Q_INVOKABLE void setActiveTab(const QString& tabId) override;
     Q_INVOKABLE void setSettingsTab(const QString& tabId);
     Q_INVOKABLE void refreshFromDocument();
     Q_INVOKABLE void browseOutputPath();
@@ -189,7 +190,7 @@ public:
     // the range, on every page entry/difficulty switch, so the range cannot be
     // applied here directly — it is staged and consumed once, right after the
     // next seed completes.
-    void requestSelectionRangeExport(double startSecond, double endSecond);
+    void requestSelectionRangeExport(double startSecond, double endSecond) override;
     // Dropped when the page switch that was meant to consume the staged range
     // is rejected: requestPageSwitch() is asynchronous, so a failure surfaces
     // through navigationRejected() rather than a return value, and without

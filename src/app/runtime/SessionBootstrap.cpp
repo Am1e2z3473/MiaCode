@@ -17,8 +17,8 @@
 #include "audio/PreviewAudioDeviceWatcher.h"
 #include "audio/QtPreviewSfxRuntime.h"
 #include "core/chart/parser/SimaiParser.h"
-#include "app/ui/chrome/ShortcutRegistry.h"
-#include "app/ui/chrome/WindowParityMetrics.h"
+#include "app/services/ShortcutRegistry.h"
+#include "app/runtime/shell/WindowParityMetrics.h"
 #include "app/quick_shell/QuickShellPreviewCompositeSurface.h"
 #include "app/quick_shell/QuickShellPreviewSurfacePolicy.h"
 #include "core/chart/ChartAssetPaths.h"
@@ -31,7 +31,7 @@
 #include "core/chart/transform/ChartBatchTransform.h"
 #include "core/chart/transform/ChartNormalization.h"
 #include "timeline/quick/TimelineQuickStateBridge.h"
-#include "app/ui/export/ExportSession.h"
+#include "app/services/ExportPagePort.h"
 #include "app/services/JobProgressService.h"
 #include "app/services/UiRequestService.h"
 #include "app/runtime/latency/LatencySandboxController.h"
@@ -212,18 +212,9 @@ Session::Session(miacode::ApplicationServices& services, QObject* parent)
                     videoExport_->cancelVideoExportWorker();
                 }
             });
-    ui_.qmlExportSession_ = new miacode::ui::ExportSession(
-        applicationServices_.shellNotifications(), applicationServices_.uiRequests(),
-        applicationServices_.jobProgress(), applicationServices_.previewAppearance(),
-        applicationServices_.exportEngineSlot(), applicationServices_.previewSurfaceSlot(),
-        this);
-    applicationServices_.setExportPageSession(ui_.qmlExportSession_);
-    connect(ui_.qmlExportSession_, &miacode::ui::ExportSession::playbackRangeRequested,
-            this, [this](bool enabled, double startSecond, double endSecond) {
-                if (auto* control = applicationServices_.playbackControl(); control != nullptr) {
-                    control->setPlaybackRangeEnabled(enabled, startSecond, endSecond);
-                }
-            });
+    if (const auto& createExportPage = applicationServices_.exportPageFactory()) {
+        ui_.qmlExportSession_ = createExportPage(this);
+    }
     logStartupStage("runtime_pages_ready");
 
     scene_ = new PreviewRuntime(this);

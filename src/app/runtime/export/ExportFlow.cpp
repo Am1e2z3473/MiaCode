@@ -16,7 +16,7 @@
 #include "common/UiHangWatchdog.h"
 #include "preview/runtime/PreviewRuntime.h"
 #include "preview/stage_media/PreviewStageMediaHost.h"
-#include "app/ui/export/ExportSession.h"
+#include "app/services/ExportPagePort.h"
 #include "core/analysis/MuriAnalyzer.h"
 #include "export/video_export/VideoExportController.h"
 #include "export/video_export/VideoExportPreferences.h"

@@ -1,4 +1,4 @@
-#include "app/ui/chrome/WindowParityMetrics.h"
+#include "app/runtime/shell/WindowParityMetrics.h"
 
 #include <QtMath>
 

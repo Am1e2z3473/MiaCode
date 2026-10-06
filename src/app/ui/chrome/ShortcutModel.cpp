@@ -1,6 +1,6 @@
 #include "app/ui/chrome/ShortcutModel.h"
 
-#include "app/ui/chrome/ShortcutRegistry.h"
+#include "app/services/ShortcutRegistry.h"
 
 #include <QKeySequence>
 
