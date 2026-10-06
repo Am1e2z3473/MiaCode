@@ -1,6 +1,6 @@
 #include "app/services/ImageResourceModel.h"
 
-#include "common/AssetPaths.h"
+#include "core/video/AssetPaths.h"
 #include <QDir>
 #include <QFileInfo>
 #include <QRandomGenerator>

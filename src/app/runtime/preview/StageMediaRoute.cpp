@@ -7,7 +7,7 @@
 #include "core/chart/parser/SimaiParser.h"
 #include "app/quick_shell/QuickShellPreviewCompositeSurface.h"
 #include "app/quick_shell/QuickShellPreviewSurfacePolicy.h"
-#include "common/ChartAssetPaths.h"
+#include "core/chart/ChartAssetPaths.h"
 #include "common/DebugLog.h"
 #include "common/OperationLog.h"
 #include "preview/runtime/PreviewRuntime.h"

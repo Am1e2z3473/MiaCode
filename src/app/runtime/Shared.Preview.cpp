@@ -2,11 +2,11 @@
 
 #include "audio/QtPreviewSfxRuntime.h"
 #include "app/quick_shell/QuickShellPreviewCompositeSurface.h"
-#include "common/AssetPaths.h"
+#include "core/video/AssetPaths.h"
 #include "common/DebugLog.h"
 #include "common/DebugOptions.h"
 #include "common/OperationLog.h"
-#include "common/PreviewSfxAssets.h"
+#include "core/scene/PreviewSfxAssets.h"
 #include "preview/runtime/PreviewRuntime.h"
 #include "preview/runtime/PreviewStageMediaHost.h"
 

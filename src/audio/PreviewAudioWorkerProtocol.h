@@ -2,7 +2,7 @@
 
 #include "audio/PreviewAudioBackend.h"
 #include "audio/PreviewAudioSettings.h"
-#include "common/PreviewTimingSettings.h"
+#include "core/video/PreviewTimingSettings.h"
 #include "core/chart/model/TimelineData.h"
 
 #include <QString>

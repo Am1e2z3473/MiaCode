@@ -1,6 +1,6 @@
 #include "export/cover_export/CoverFramePlaybackController.h"
 
-#include "common/PreviewInteractionConfig.h"
+#include "core/video/PreviewInteractionConfig.h"
 
 #include <QtGlobal>
 

@@ -7,7 +7,7 @@
 #include <QtGlobal>
 #include <QVector>
 
-#include "common/PreviewGameplayConfig.h"
+#include "core/video/PreviewGameplayConfig.h"
 
 enum class TimelineRenderNoteKind {
     Unknown,

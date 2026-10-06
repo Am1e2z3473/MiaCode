@@ -2,7 +2,7 @@
 
 #include <QtGlobal>
 
-#include "common/PreviewTimingSettings.h"
+#include "core/video/PreviewTimingSettings.h"
 
 namespace miacode::preview_sfx_timing {
 

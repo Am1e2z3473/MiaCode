@@ -9,7 +9,7 @@
 #include "common/InputShortcutGesture.h"
 #include "core/chart/parser/SimaiParser.h"
 #include "app/ui/preferences/PreferenceDocument.h"
-#include "common/TimelineThemeConfig.h"
+#include "timeline/TimelineThemeConfig.h"
 #include "timeline/TimelineSceneStateBuilder.h"
 
 #include <QVariant>

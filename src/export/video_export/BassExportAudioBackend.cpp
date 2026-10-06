@@ -3,8 +3,8 @@
 #include "audio/BassFlacPlugin.h"
 
 #include "common/DebugLog.h"
-#include "common/PreviewAudioMixConfig.h"
-#include "common/PreviewSfxAssets.h"
+#include "audio/PreviewAudioMixConfig.h"
+#include "core/scene/PreviewSfxAssets.h"
 
 #include <QCoreApplication>
 #include <QDataStream>

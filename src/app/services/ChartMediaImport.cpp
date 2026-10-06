@@ -1,4 +1,4 @@
-#include "common/ChartMediaImport.h"
+#include "app/services/ChartMediaImport.h"
 
 #include <QDir>
 #include <QFile>

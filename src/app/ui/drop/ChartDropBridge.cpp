@@ -1,6 +1,6 @@
 #include "app/ui/drop/ChartDropBridge.h"
 
-#include "common/ChartAssetPaths.h"
+#include "core/chart/ChartAssetPaths.h"
 
 #include <QDragEnterEvent>
 #include <QDragLeaveEvent>

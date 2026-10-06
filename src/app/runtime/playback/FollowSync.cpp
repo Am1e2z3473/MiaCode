@@ -3,7 +3,7 @@
 
 #include "app/services/ApplicationServices.h"
 #include "app/services/EditorSyncController.h"
-#include "common/PreviewInteractionConfig.h"
+#include "core/video/PreviewInteractionConfig.h"
 
 #include <QtCore>
 

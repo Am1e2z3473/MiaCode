@@ -1,7 +1,7 @@
 #include <QCoreApplication>
 #include <QTextStream>
 
-#include "common/PreviewSfxAssets.h"
+#include "core/scene/PreviewSfxAssets.h"
 #include "audio/PreviewAudioSettings.h"
 
 namespace {

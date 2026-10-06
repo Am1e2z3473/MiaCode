@@ -5,14 +5,14 @@
 #include "audio/BassPreviewRetainedState.h"
 #include "audio/PreviewBassDefaultDevice.h"
 #include "audio/PreviewBassEmergencyPause.h"
-#include "common/ChartAssetPaths.h"
+#include "core/chart/ChartAssetPaths.h"
 #include "common/DebugLog.h"
 #include "common/DebugOptions.h"
 #include "common/FileContentStamp.h"
 #include "common/OperationLog.h"
-#include "common/PreviewAudioMixConfig.h"
-#include "common/PreviewSfxAssets.h"
-#include "common/PreviewSfxTimeline.h"
+#include "audio/PreviewAudioMixConfig.h"
+#include "core/scene/PreviewSfxAssets.h"
+#include "core/scene/PreviewSfxTimeline.h"
 
 #include <QCoreApplication>
 #include <QDir>

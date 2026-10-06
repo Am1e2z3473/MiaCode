@@ -2,8 +2,8 @@
 
 #include "export/video_export/VideoExportController.h"
 
-#include "common/PreviewGameplayConfig.h"
-#include "common/PreviewVideoGeometryConfig.h"
+#include "core/video/PreviewGameplayConfig.h"
+#include "core/video/PreviewVideoGeometryConfig.h"
 #include "core/scene/PreviewLayerOrder.h"
 #include "core/scene/PreviewProgressStatsCache.h"
 #include "preview/quick_scene/PreviewQuickSceneRoot.h"

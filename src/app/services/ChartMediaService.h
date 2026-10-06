@@ -1,6 +1,6 @@
 #pragma once
 
-#include "common/ChartMediaImport.h"
+#include "app/services/ChartMediaImport.h"
 
 #include <QString>
 #include <QStringList>

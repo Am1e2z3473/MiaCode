@@ -9,7 +9,7 @@
 
 #include <array>
 
-#include "common/AssetPaths.h"
+#include "core/video/AssetPaths.h"
 #include "core/scene/PreviewFrameState.h"
 #include "core/video/PreviewRenderSettings.h"
 #include "preview/runtime/PreviewSceneAssetLoader.h"

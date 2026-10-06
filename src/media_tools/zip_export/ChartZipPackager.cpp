@@ -1,6 +1,6 @@
 #include "media_tools/zip_export/ChartZipPackager.h"
 
-#include "common/ChartAssetPaths.h"
+#include "core/chart/ChartAssetPaths.h"
 
 #include <miniz.h>
 

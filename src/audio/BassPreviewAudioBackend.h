@@ -8,7 +8,7 @@
 #include <QHash>
 #include <QMutex>
 
-#include "common/PreviewAudioMixConfig.h"
+#include "audio/PreviewAudioMixConfig.h"
 #include "audio/BassPreviewDebugLogRouting.h"
 #include "audio/BassPreviewSfxCallbackRing.h"
 #include "audio/BassPreviewOutputGlitchProbeState.h"

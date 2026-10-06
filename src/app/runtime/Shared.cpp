@@ -5,7 +5,7 @@
 #include "audio/OfflineAudioDecoder.h"
 #include "common/DebugLog.h"
 #include "common/DebugOptions.h"
-#include "common/WaveformCache.h"
+#include "audio/WaveformCache.h"
 
 #include <QCryptographicHash>
 #include <QFileInfo>

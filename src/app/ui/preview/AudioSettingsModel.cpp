@@ -4,8 +4,8 @@
 #include "audio/PreviewAudioSettings.h"
 #include "audio/PreviewAudioWorkerProtocol.h"
 #include "audio/QtPreviewSfxRuntime.h"
-#include "common/PreviewSfxAssets.h"
-#include "common/PreviewSfxSemantics.h"
+#include "core/scene/PreviewSfxAssets.h"
+#include "core/scene/PreviewSfxSemantics.h"
 
 #include <QDir>
 #include <QTimer>

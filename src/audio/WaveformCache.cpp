@@ -1,4 +1,4 @@
-#include "common/WaveformCache.h"
+#include "audio/WaveformCache.h"
 
 #include <cmath>
 

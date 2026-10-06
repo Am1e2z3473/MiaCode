@@ -1,7 +1,7 @@
 #pragma once
 
 #include "common/LogEmissionPolicy.h"
-#include "common/PreviewVideoGeometryConfig.h"
+#include "core/video/PreviewVideoGeometryConfig.h"
 #include "core/video/PreviewRenderSettings.h"
 #include "preview/runtime/PvMemoryDiagnostics.h"
 

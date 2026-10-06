@@ -6,7 +6,7 @@
 
 #include "app/services/JobProgressService.h"
 #include "app/ui/preferences/LocaleService.h"
-#include "common/PreviewSfxAssets.h"
+#include "core/scene/PreviewSfxAssets.h"
 #include "core/video/PreviewRenderSettings.h"
 #include "export/video_export/VideoExportPreferences.h"
 #include "export/video_export/VideoExportSettings.h"
