@@ -112,7 +112,9 @@ int main(int argc, char** argv)
     const QString composer = readSource(QStringLiteral("src/intro/qml/CoverComposer.qml"));
     const QString mainSplitView = readSource(QStringLiteral("src/app/ui/layout/MainSplitView.qml"));
     const QString labeledSlider = readSource(QStringLiteral("src/app/ui/components/LabeledSlider.qml"));
-    const QString cmake = readSource(QStringLiteral("CMakeLists.txt"));
+    // The product build is the root CMakeLists.txt plus its library manifest.
+    const QString cmake = readSource(QStringLiteral("CMakeLists.txt"))
+        + readSource(QStringLiteral("cmake/MiaCodeModules.cmake"));
 
     expect(!page.isEmpty() && !sessionHeader.isEmpty() && !session.isEmpty()
                && !pageHost.isEmpty() && !mainWindow.isEmpty() && !renderer.isEmpty()

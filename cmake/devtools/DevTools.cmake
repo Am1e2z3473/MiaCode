@@ -1,4 +1,3 @@
-include(${CMAKE_CURRENT_LIST_DIR}/SharedSources.cmake)
 
 # Qt dependencies for diagnostic executables and specs.
 find_package(Qt6 6.10 REQUIRED COMPONENTS Test Network Widgets)

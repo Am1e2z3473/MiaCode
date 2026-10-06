@@ -41,13 +41,11 @@ miacode_add_spec(qml_document_projection_spec
     EXECUTION ctest STATUS active PLATFORM all
     SOURCES
         src/tools/ui/QmlDocumentProjectionSpec.cpp
-        ${_miacode_chart_core}
-        ${_miacode_log_core}
         src/app/services/ChartWorkspace.cpp
         src/app/services/ChartWorkspace.h
         src/app/services/DocumentProjection.cpp
         src/app/services/DocumentProjection.h
-    LIBS Qt6::Core
+    LIBS miacode_chart Qt6::Core
     INCLUDES src
 )
 
@@ -76,18 +74,10 @@ miacode_add_spec(qml_shortcut_binding_spec
         src/app/ui/chrome/ShortcutModel.h
         src/app/ui/chrome/ShortcutCommands.h
         src/app/ui/document/ChartTransformCommands.h
-        src/core/chart/transform/ChartBatchTransform.h
-        src/core/chart/transform/ChartBatchTransform.Parsers.cpp
-        src/core/chart/transform/ChartBatchTransform.Subdivision.cpp
-        src/core/chart/transform/ChartBatchTransform.Selection.cpp
-        src/core/chart/transform/ChartBatchTransform.Transform.cpp
         src/app/services/ShortcutRegistry.cpp
         src/app/services/ShortcutRegistry.h
-        src/common/InputShortcutGesture.h
-        src/common/InputShortcutGesture.cpp
-        ${_miacode_log_core}
         resources/app_icons.qrc
-    LIBS Qt6::Core Qt6::Gui
+    LIBS miacode_chart Qt6::Core Qt6::Gui
     INCLUDES src
 )
 target_compile_definitions(qml_shortcut_binding_spec PRIVATE
@@ -267,8 +257,7 @@ miacode_add_spec(qml_preview_rate_feedback_spec
         src/app/services/ShellNotifications.h
         src/app/services/PlaybackControl.h
         src/app/services/PreviewSurface.h
-        ${_miacode_log_core}
-    LIBS Qt6::Core Qt6::Gui Qt6::Qml Qt6::Test
+    LIBS miacode_base Qt6::Core Qt6::Gui Qt6::Qml Qt6::Test
     INCLUDES src
 )
 
