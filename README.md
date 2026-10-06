@@ -26,8 +26,6 @@ MiaCode 是一款基于 Qt 6 / C++ / QML 的 maimai 谱面创作工具，集成�
   </tr>
 </table>
 
-当前分支为 QML 工作台版本 `2.0.0-alpha`。
-
 ## 快速开始
 
 正式发布包见 [GitHub Releases](https://github.com/Team-MiaCode/MiaCode/releases)。
