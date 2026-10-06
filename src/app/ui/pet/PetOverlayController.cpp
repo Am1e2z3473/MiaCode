@@ -1,6 +1,6 @@
-#include "pet/PetOverlayController.h"
+#include "app/ui/pet/PetOverlayController.h"
 
-#include "ui/preferences/PreferenceDocument.h"
+#include "app/ui/preferences/PreferenceDocument.h"
 
 #include <QGuiApplication>
 #include <QCursor>

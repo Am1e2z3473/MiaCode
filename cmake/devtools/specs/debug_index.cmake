@@ -28,7 +28,7 @@ miacode_add_spec(debug_options_spec
         src/tools/debug_index/DebugOptionsSpec.cpp
         src/common/DebugOptions.h
     LIBS Qt6::Core
-    INCLUDES src src/common
+    INCLUDES src
 )
 
 miacode_add_spec(process_identity_fields_spec

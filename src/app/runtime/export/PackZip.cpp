@@ -1,9 +1,9 @@
 #include "common/LocalizedText.h"
 
-#include "runtime/export/VideoExportHost.h"
-#include "runtime/Shared.h"
-#include "runtime/document/DocumentSessionHost.h"
-#include "runtime/shell/ShellHost.h"
+#include "app/runtime/export/VideoExportHost.h"
+#include "app/runtime/Shared.h"
+#include "app/runtime/document/DocumentSessionHost.h"
+#include "app/runtime/shell/ShellHost.h"
 
 #include "app/services/JobProgressService.h"
 #include "app/services/UiRequestService.h"

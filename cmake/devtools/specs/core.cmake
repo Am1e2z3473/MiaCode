@@ -27,7 +27,7 @@ miacode_add_spec(simai_parser_spec
         resources/fonts.qrc
         resources/slide_data.qrc
     LIBS Qt6::Core Qt6::Gui Qt6::Widgets
-    INCLUDES src src/app/ui src/core/chart src/core/chart/parser src/timeline
+    INCLUDES src
 )
 
 miacode_add_spec(chart_batch_transform_spec
@@ -53,9 +53,7 @@ miacode_add_spec(chart_batch_transform_spec
         resources/fonts.qrc
         resources/slide_data.qrc
     LIBS Qt6::Core Qt6::Gui Qt6::Widgets
-    INCLUDES
-        src src/app/ui src/common src/core/chart
-        src/core/chart/document src/core/chart/parser src/core/chart/transform src/timeline
+    INCLUDES src
 )
 
 miacode_add_spec(chart_selection_beat_summary_spec
@@ -136,7 +134,7 @@ miacode_add_spec(simai_document_spec
         src/core/chart/document/SimaiDocument.h
         src/core/chart/document/SimaiDocument.cpp
     LIBS Qt6::Core
-    INCLUDES src src/core/chart/document
+    INCLUDES src
 )
 
 miacode_add_spec(cover_layout_model_spec
@@ -157,7 +155,7 @@ miacode_add_spec(cover_layout_model_spec
         src/app/ui/preferences/PreferenceDocument.h
         src/app/ui/preferences/PreferenceDocument.cpp
     LIBS Qt6::Core Qt6::Gui Qt6::Widgets
-    INCLUDES src src/app/ui
+    INCLUDES src
 )
 
 miacode_add_spec(cover_frame_playback_controller_spec
@@ -224,7 +222,7 @@ miacode_add_spec(muri_spec
         resources/fonts.qrc
         resources/slide_data.qrc
     LIBS Qt6::Core Qt6::Gui Qt6::Widgets
-    INCLUDES src src/app/ui src/common src/core/chart src/core/chart/parser src/timeline src/tools
+    INCLUDES src
 )
 
 miacode_add_spec(touch_pad_authoring_edit_spec
@@ -239,7 +237,7 @@ miacode_add_spec(touch_pad_authoring_edit_spec
         src/core/chart/parser/SimaiCommentScan.h
         src/core/chart/parser/SimaiCommentScan.cpp
     LIBS Qt6::Core Qt6::Gui
-    INCLUDES src src/editor
+    INCLUDES src
 )
 
 miacode_add_spec(simai_completion_catalog_spec
@@ -252,7 +250,7 @@ miacode_add_spec(simai_completion_catalog_spec
         src/editor/SimaiCompletionCatalog.h
         src/editor/SimaiCompletionCatalog.cpp
     LIBS Qt6::Core
-    INCLUDES src src/editor
+    INCLUDES src
 )
 
 miacode_add_spec(simai_text_edit_policy_spec
@@ -267,7 +265,7 @@ miacode_add_spec(simai_text_edit_policy_spec
         src/editor/SimaiCompletionCatalog.h
         src/editor/SimaiCompletionCatalog.cpp
     LIBS Qt6::Core
-    INCLUDES src src/editor
+    INCLUDES src
 )
 
 miacode_add_spec(video_export_runtime_policy_spec
@@ -280,7 +278,7 @@ miacode_add_spec(video_export_runtime_policy_spec
         src/tools/video_export/VideoExportRuntimePolicy.h
         src/tools/video_export/VideoExportRuntimePolicy.cpp
     LIBS Qt6::Core
-    INCLUDES src src/tools
+    INCLUDES src
 )
 
 miacode_add_spec(raw_video_pipe_frame_conservation_spec
@@ -293,7 +291,7 @@ miacode_add_spec(raw_video_pipe_frame_conservation_spec
         src/tools/video_export/RawVideoPipeTransport.h
         src/tools/video_export/RawVideoPipeTransport.cpp
     LIBS Qt6::Core Qt6::Gui
-    INCLUDES src src/tools src/tools/video_export
+    INCLUDES src
 )
 
 miacode_add_spec(video_export_pending_frame_redraw_spec
@@ -305,7 +303,7 @@ miacode_add_spec(video_export_pending_frame_redraw_spec
         src/tools/video_export/VideoExportPendingFrameRedrawSpec.cpp
         src/tools/video_export/VideoExportPendingFrameRedraw.h
     LIBS Qt6::Core
-    INCLUDES src src/tools src/tools/video_export
+    INCLUDES src
 )
 
 miacode_add_spec(video_export_intro_mode_spec
@@ -318,7 +316,7 @@ miacode_add_spec(video_export_intro_mode_spec
         src/tools/video_export/VideoExportController.h
         src/timeline/TimelineData.h
     LIBS Qt6::Core Qt6::Gui
-    INCLUDES src src/common src/audio src/core/video src/timeline src/tools src/tools/video_export
+    INCLUDES src
 )
 
 miacode_add_spec(video_export_intro_sound_spec
@@ -340,7 +338,7 @@ miacode_add_spec(video_export_intro_sound_spec
         resources/fonts.qrc
         resources/slide_data.qrc
     LIBS Qt6::Core Qt6::Gui
-    INCLUDES src src/app/ui src/common src/audio src/core/chart src/core/chart/document src/core/chart/parser src/core/video src/timeline src/tools src/tools/video_export
+    INCLUDES src
 )
 
 miacode_add_spec(video_export_audio_render_plan_spec
@@ -364,7 +362,7 @@ miacode_add_spec(video_export_audio_render_plan_spec
         src/audio/PreviewAudioSettings.cpp
         src/timeline/TimelineData.h
     LIBS Qt6::Core Qt6::Gui
-    INCLUDES src src/common src/audio src/core/video src/timeline src/tools src/tools/video_export
+    INCLUDES src
 )
 
 miacode_add_spec(video_export_media_timeline_spec
@@ -378,7 +376,7 @@ miacode_add_spec(video_export_media_timeline_spec
         src/tools/video_export/VideoExportMediaTimeline.cpp
         src/common/PreviewSfxTimeline.h
     LIBS Qt6::Core Qt6::Gui
-    INCLUDES src src/common src/timeline src/tools src/tools/video_export
+    INCLUDES src
 )
 
 miacode_add_spec(chart_zip_packager_spec
@@ -392,7 +390,7 @@ miacode_add_spec(chart_zip_packager_spec
         src/tools/zip_export/ChartZipPackager.cpp
         src/common/ChartAssetPaths.h
     LIBS Qt6::Core Qt6::Gui miniz
-    INCLUDES src src/common src/tools
+    INCLUDES src
 )
 
 # The Net engine's only build home. The Net page was removed from the v2
@@ -425,7 +423,7 @@ miacode_add_spec(net_client_spec
         src/app/ui/preferences/PreferenceDocument.cpp
         src/common/ChartAssetPaths.h
     LIBS Qt6::Core Qt6::Gui Qt6::Network miniz
-    INCLUDES src src/common src/tools src/app/ui
+    INCLUDES src
 )
 
 miacode_add_spec(pv_compression_policy_spec
@@ -471,7 +469,7 @@ miacode_add_spec(ui_text_locale_spec
         src/app/ui/preferences/PreferenceDocument.h
         src/app/ui/preferences/PreferenceDocument.cpp
     LIBS Qt6::Core
-    INCLUDES src src/app/ui
+    INCLUDES src
 )
 target_compile_definitions(ui_text_locale_spec PRIVATE
     "MIACODE_SOURCE_ROOT=\"${CMAKE_CURRENT_SOURCE_DIR}\""
@@ -501,5 +499,5 @@ miacode_add_spec(ui_text_preferences_spec
         src/app/ui/preferences/PreferenceDocument.h
         src/app/ui/preferences/PreferenceDocument.cpp
     LIBS Qt6::Core
-    INCLUDES src src/app/ui
+    INCLUDES src
 )

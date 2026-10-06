@@ -1,8 +1,8 @@
 #pragma once
 
-#include "PreviewAudioCommandQueue.h"
-#include "PreviewAudioWorkerFactory.h"
-#include "PreviewAudioWorkerProtocol.h"
+#include "audio/PreviewAudioCommandQueue.h"
+#include "audio/PreviewAudioWorkerFactory.h"
+#include "audio/PreviewAudioWorkerProtocol.h"
 
 #include <atomic>
 #include <chrono>

@@ -1,4 +1,4 @@
-#include "LatencyTestChartBuilder.h"
+#include "tools/latency/LatencyTestChartBuilder.h"
 
 #include <QtMath>
 

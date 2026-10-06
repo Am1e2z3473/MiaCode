@@ -1,6 +1,6 @@
-#include "PreviewAudioWorkerFactory.h"
+#include "audio/PreviewAudioWorkerFactory.h"
 
-#include "BassPreviewAudioBackend.h"
+#include "audio/BassPreviewAudioBackend.h"
 
 namespace miacode::preview_audio {
 

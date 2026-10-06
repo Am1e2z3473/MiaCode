@@ -7,7 +7,7 @@
 
 #include <optional>
 
-#include "ChartWorkspace.h"
+#include "app/services/ChartWorkspace.h"
 #include "common/MuriRenderOptions.h"
 #include "common/MuriTypes.h"
 #include "common/TaskCancellation.h"

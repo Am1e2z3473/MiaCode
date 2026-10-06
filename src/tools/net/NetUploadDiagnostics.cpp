@@ -1,4 +1,4 @@
-#include "NetUploadDiagnostics.h"
+#include "tools/net/NetUploadDiagnostics.h"
 
 #include <QJsonArray>
 #include <QJsonDocument>

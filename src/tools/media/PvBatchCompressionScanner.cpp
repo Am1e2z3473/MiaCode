@@ -1,4 +1,4 @@
-#include "PvBatchCompressionScanner.h"
+#include "tools/media/PvBatchCompressionScanner.h"
 
 #include <QDir>
 #include <QFileInfo>

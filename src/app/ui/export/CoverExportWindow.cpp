@@ -1,4 +1,4 @@
-#include "export/CoverExportWindow.h"
+#include "app/ui/export/CoverExportWindow.h"
 
 #include "app/MainEntrypoints.h"
 #include "app/ui/layout/WorkbenchSettings.h"

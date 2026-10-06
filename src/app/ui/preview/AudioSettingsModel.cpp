@@ -1,5 +1,5 @@
-#include "preview/AudioSettingsModel.h"
-#include "ui/preferences/LocaleService.h"
+#include "app/ui/preview/AudioSettingsModel.h"
+#include "app/ui/preferences/LocaleService.h"
 
 #include "audio/PreviewAudioSettings.h"
 #include "audio/PreviewAudioWorkerProtocol.h"

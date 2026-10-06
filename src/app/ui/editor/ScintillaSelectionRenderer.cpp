@@ -1,4 +1,4 @@
-#include "editor/ScintillaSelectionRenderer.h"
+#include "app/ui/editor/ScintillaSelectionRenderer.h"
 
 #include <QImage>
 #include <QPainter>

@@ -13,7 +13,7 @@ miacode_add_spec(preview_asset_loader_spec
         ${_miacode_log_core}
         resources/preview_judge_effects.qrc
     LIBS Qt6::Core Qt6::Gui
-    INCLUDES src src/common src/preview src/preview/runtime src/core/scene src/core/video src/timeline
+    INCLUDES src
 )
 
 miacode_add_spec(preview_firework_lifecycle_spec
@@ -29,7 +29,7 @@ miacode_add_spec(preview_firework_lifecycle_spec
         src/core/scene/PreviewSceneMath.h
         src/core/scene/PreviewSceneMath.cpp
     LIBS Qt6::Core Qt6::Gui
-    INCLUDES src src/common src/preview src/core/scene src/core/video src/timeline
+    INCLUDES src
 )
 
 miacode_add_spec(preview_end_of_media_policy_spec
@@ -41,7 +41,7 @@ miacode_add_spec(preview_end_of_media_policy_spec
         src/tools/preview/PreviewEndOfMediaPolicySpec.cpp
         src/core/video/PreviewEndOfMediaPolicy.h
     LIBS Qt6::Core
-    INCLUDES src src/common src/core/video
+    INCLUDES src
 )
 
 miacode_add_spec(preview_firework_warmup_policy_spec
@@ -58,7 +58,7 @@ miacode_add_spec(preview_firework_warmup_policy_spec
         src/core/scene/PreviewSceneMath.h
         src/core/scene/PreviewSceneMath.cpp
     LIBS Qt6::Core Qt6::Gui
-    INCLUDES src src/common src/preview src/core/scene src/core/video src/timeline
+    INCLUDES src
 )
 
 miacode_add_spec(preview_head_layer_spec
@@ -98,9 +98,7 @@ miacode_add_spec(preview_head_layer_spec
         resources/fonts.qrc
         resources/slide_data.qrc
     LIBS Qt6::Core Qt6::Gui Qt6::Widgets
-    INCLUDES
-        src src/common src/preview src/core/scene src/core/chart
-        src/core/chart/document src/core/chart/parser src/timeline
+    INCLUDES src
 )
 
 miacode_add_spec(preview_guide_layer_spec
@@ -139,9 +137,7 @@ miacode_add_spec(preview_guide_layer_spec
         resources/fonts.qrc
         resources/slide_data.qrc
     LIBS Qt6::Core Qt6::Gui Qt6::Widgets
-    INCLUDES
-        src src/common src/preview src/core/scene src/core/chart
-        src/core/chart/document src/core/chart/parser src/timeline
+    INCLUDES src
 )
 
 miacode_add_spec(preview_slide_erase_by_area_spec
@@ -161,9 +157,7 @@ miacode_add_spec(preview_slide_erase_by_area_spec
         src/timeline/TimelineData.h
         resources/slide_data.qrc
     LIBS Qt6::Core Qt6::Gui
-    INCLUDES
-        src src/common src/preview src/core/scene src/core/chart
-        src/core/chart/document src/core/chart/parser src/timeline
+    INCLUDES src
 )
 
 miacode_add_spec(preview_realtime_object_hot_path_spec
@@ -209,7 +203,7 @@ miacode_add_spec(preview_realtime_object_hot_path_spec
         src/common/MuriTypes.cpp
         src/timeline/TimelineData.h
     LIBS Qt6::Core Qt6::Gui
-    INCLUDES src src/common src/preview src/core/scene src/timeline
+    INCLUDES src
 )
 
 miacode_add_spec(preview_quick_sprite_batch_spec
@@ -221,7 +215,7 @@ miacode_add_spec(preview_quick_sprite_batch_spec
         src/tools/preview/PreviewQuickSpriteBatchSpec.cpp
         src/preview/quick_scene/PreviewQuickSpriteBatchPolicy.h
     LIBS Qt6::Core
-    INCLUDES src src/common src/preview src/preview/quick_scene
+    INCLUDES src
 )
 
 miacode_add_spec(preview_texture_generation_policy_spec
@@ -233,7 +227,7 @@ miacode_add_spec(preview_texture_generation_policy_spec
         src/tools/preview/PreviewTextureGenerationPolicySpec.cpp
         src/preview/quick_scene/PreviewTextureGenerationPolicy.h
     LIBS Qt6::Core
-    INCLUDES src src/preview src/preview/quick_scene
+    INCLUDES src
 )
 
 miacode_add_spec(preview_sfx_timeline_spec
@@ -249,7 +243,7 @@ miacode_add_spec(preview_sfx_timeline_spec
         src/common/PreviewGameplayConfig.h
         src/timeline/TimelineData.h
     LIBS Qt6::Core
-    INCLUDES src src/common src/timeline
+    INCLUDES src
 )
 
 miacode_add_spec(preview_audio_settings_spec
@@ -264,7 +258,7 @@ miacode_add_spec(preview_audio_settings_spec
         src/common/PreviewSfxAssets.h
         src/common/PreviewSfxSemantics.h
     LIBS Qt6::Core
-    INCLUDES src src/common src/preview src/audio
+    INCLUDES src
 )
 
 miacode_add_spec(preview_audio_command_queue_spec
@@ -278,7 +272,7 @@ miacode_add_spec(preview_audio_command_queue_spec
         src/audio/PreviewAudioCommandQueue.cpp
         src/audio/PreviewAudioWorkerProtocol.h
     LIBS Qt6::Core
-    INCLUDES src src/common src/audio src/timeline
+    INCLUDES src
 )
 
 miacode_add_spec(preview_audio_worker_protocol_spec
@@ -290,7 +284,7 @@ miacode_add_spec(preview_audio_worker_protocol_spec
         src/tools/preview/PreviewAudioWorkerProtocolSpec.cpp
         src/audio/PreviewAudioWorkerProtocol.h
     LIBS Qt6::Core
-    INCLUDES src src/common src/audio src/timeline
+    INCLUDES src
 )
 
 miacode_add_spec(preview_audio_playback_flow_policy_spec
@@ -302,14 +296,14 @@ miacode_add_spec(preview_audio_playback_flow_policy_spec
         src/tools/preview/PreviewAudioPlaybackFlowPolicySpec.cpp
         src/audio/PreviewAudioPlaybackFlowPolicy.h
     LIBS Qt6::Core
-    INCLUDES src src/common src/audio src/timeline
+    INCLUDES src
 )
 add_library(preview_audio_worker_spec_production_factory OBJECT
     src/audio/PreviewAudioWorkerFactory.cpp
 )
 target_link_libraries(preview_audio_worker_spec_production_factory PRIVATE Qt6::Core)
 target_include_directories(preview_audio_worker_spec_production_factory PRIVATE
-    src src/audio third_party/bass/include)
+    src third_party/bass/include)
 
 miacode_add_spec(preview_audio_worker_spec
     OWNER src/audio
@@ -338,7 +332,7 @@ miacode_add_spec(preview_audio_worker_spec
         src/audio/PreviewBassDeviceLease.h
         src/audio/PreviewBassDeviceLease.cpp
     LIBS Qt6::Core soundtouch
-    INCLUDES src src/audio src/common src/preview src/timeline
+    INCLUDES src
 )
 target_sources(preview_audio_worker_spec PRIVATE
     $<TARGET_OBJECTS:preview_audio_worker_spec_production_factory>
@@ -408,7 +402,7 @@ miacode_add_spec(preview_audio_non_gui_barrier_spec
         src/audio/PreviewAudioWorker.h
         src/audio/PreviewAudioWorker.cpp
     LIBS Qt6::Core
-    INCLUDES src src/audio src/common src/timeline
+    INCLUDES src
 )
 if (WIN32)
     target_link_libraries(preview_audio_non_gui_barrier_spec PRIVATE avrt)
@@ -438,7 +432,7 @@ miacode_add_spec(bass_preview_retained_state_spec
         src/audio/BassPreviewRetainedState.h
         src/audio/PreviewAudioBackend.h
     LIBS Qt6::Core
-    INCLUDES src src/common src/preview src/audio
+    INCLUDES src
 )
 
 miacode_add_spec(bass_preview_debug_log_routing_spec
@@ -450,7 +444,7 @@ miacode_add_spec(bass_preview_debug_log_routing_spec
         src/tools/preview/BassPreviewDebugLogRoutingSpec.cpp
         src/audio/BassPreviewDebugLogRouting.h
     LIBS Qt6::Core
-    INCLUDES src src/common src/preview src/audio
+    INCLUDES src
 )
 
 miacode_add_spec(preview_bass_device_lease_spec
@@ -463,7 +457,7 @@ miacode_add_spec(preview_bass_device_lease_spec
         src/audio/PreviewBassDeviceLease.h
         src/audio/PreviewBassDeviceLease.cpp
     LIBS Qt6::Core
-    INCLUDES src src/audio
+    INCLUDES src
 )
 
 miacode_add_spec(preview_audio_health_spec
@@ -475,7 +469,7 @@ miacode_add_spec(preview_audio_health_spec
         src/tools/preview/PreviewAudioHealthSpec.cpp
         src/audio/PreviewAudioHealth.h
     LIBS Qt6::Core
-    INCLUDES src src/common src/preview src/audio
+    INCLUDES src
 )
 
 miacode_add_spec(preview_audio_output_glitch_probe_spec
@@ -488,7 +482,7 @@ miacode_add_spec(preview_audio_output_glitch_probe_spec
         src/audio/PreviewAudioOutputGlitchProbe.h
         src/audio/PreviewAudioOutputGlitchRing.h
     LIBS Qt6::Core
-    INCLUDES src src/common src/preview src/audio
+    INCLUDES src
 )
 
 miacode_add_spec(preview_audio_device_change_policy_spec
@@ -500,7 +494,7 @@ miacode_add_spec(preview_audio_device_change_policy_spec
         src/tools/preview/PreviewAudioDeviceChangePolicySpec.cpp
         src/audio/PreviewAudioDeviceChangePolicy.h
     LIBS Qt6::Core
-    INCLUDES src src/common src/preview src/audio
+    INCLUDES src
 )
 
 miacode_add_spec(bass_preview_sfx_scheduler_policy_spec
@@ -514,7 +508,7 @@ miacode_add_spec(bass_preview_sfx_scheduler_policy_spec
         src/audio/BassPreviewSfxCallbackRing.h
         src/audio/BassPreviewSfxSchedulerPolicy.h
     LIBS Qt6::Core
-    INCLUDES src src/common src/preview src/audio
+    INCLUDES src
 )
 target_compile_definitions(bass_preview_sfx_scheduler_policy_spec PRIVATE
     "MIACODE_SOURCE_ROOT=\"${CMAKE_CURRENT_SOURCE_DIR}\"")
@@ -533,7 +527,7 @@ miacode_add_spec(preview_media_cache_stamp_spec
         src/common/FileContentStamp.h
         src/common/ChartAssetPaths.h
     LIBS Qt6::Core Qt6::Gui
-    INCLUDES src src/common
+    INCLUDES src
 )
 
 miacode_add_spec(pv_memory_diagnostics_spec
@@ -546,7 +540,7 @@ miacode_add_spec(pv_memory_diagnostics_spec
         src/preview/runtime/PvMemoryDiagnostics.h
         src/preview/runtime/PvMemoryDiagnostics.cpp
     LIBS Qt6::Core
-    INCLUDES src src/preview src/preview/runtime
+    INCLUDES src
 )
 target_compile_definitions(pv_memory_diagnostics_spec PRIVATE
     "MIACODE_SOURCE_ROOT=\"${CMAKE_CURRENT_SOURCE_DIR}\"")
@@ -559,7 +553,7 @@ miacode_add_spec(pv_memory_host_contract_spec
     SOURCES
         src/tools/preview/PvMemoryHostContractSpec.cpp
     LIBS Qt6::Core
-    INCLUDES src src/preview src/preview/runtime
+    INCLUDES src
 )
 target_compile_definitions(pv_memory_host_contract_spec PRIVATE
     "MIACODE_SOURCE_ROOT=\"${CMAKE_CURRENT_SOURCE_DIR}\"")
@@ -573,7 +567,7 @@ miacode_add_spec(quickshell_preview_surface_policy_spec
         src/tools/preview/QuickShellPreviewSurfacePolicySpec.cpp
         src/app/quick_shell/QuickShellPreviewSurfacePolicy.h
     LIBS Qt6::Core
-    INCLUDES src src/app/quick_shell
+    INCLUDES src
 )
 target_compile_definitions(quickshell_preview_surface_policy_spec PRIVATE
     "MIACODE_SOURCE_ROOT=\"${CMAKE_CURRENT_SOURCE_DIR}\"")

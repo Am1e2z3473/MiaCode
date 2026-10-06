@@ -15,7 +15,7 @@
 #include "common/DebugOptions.h"
 #include "core/scene/PreviewOpacityCurves.h"
 #include "timeline/TimelineData.h"
-#include "runtime/Session.h"
+#include "app/runtime/Session.h"
 
 namespace miacode::runtime::playback_detail {
 

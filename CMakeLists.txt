@@ -989,25 +989,10 @@ target_include_directories(MiaCode PRIVATE
     ${CMAKE_CURRENT_BINARY_DIR}/generated
     third_party/bass/include
     src
-    src/app
-    src/app/quick_shell
-    src/app/ui
+    # qmltyperegistrar includes QML_ELEMENT headers by file name only; project
+    # code includes them by their src-rooted path.
     src/app/ui/editor
-    src/app/ui/pet
     src/app/ui/timeline
-    src/core/video
-    src/editor
-    src/preview
-    src/audio
-    src/preview/quick_scene
-    src/preview/runtime
-    src/core/scene
-    src/core/chart
-    src/core/chart/document
-    src/core/chart/parser
-    src/timeline
-    src/tools/latency
-    src/tools/video_export
 )
 
 target_sources(MiaCode PRIVATE

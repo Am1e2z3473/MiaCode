@@ -1,6 +1,6 @@
-#include "runtime/Shared.h"
+#include "app/runtime/Shared.h"
 
-#include "QtPreviewSfxRuntime.h"
+#include "audio/QtPreviewSfxRuntime.h"
 #include "app/quick_shell/QuickShellPreviewCompositeSurface.h"
 #include "common/AssetPaths.h"
 #include "common/DebugLog.h"

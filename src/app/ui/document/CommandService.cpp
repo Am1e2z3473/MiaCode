@@ -1,7 +1,7 @@
-#include "document/CommandService.h"
-#include "chrome/ShortcutCommands.h"
+#include "app/ui/document/CommandService.h"
+#include "app/ui/chrome/ShortcutCommands.h"
 
-#include "document/DocumentModel.h"
+#include "app/ui/document/DocumentModel.h"
 
 
 namespace miacode::ui {

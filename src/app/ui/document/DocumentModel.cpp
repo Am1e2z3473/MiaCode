@@ -1,11 +1,11 @@
 #include "common/LocalizedText.h"
 
-#include "document/ChartTransformCommands.h"
+#include "app/ui/document/ChartTransformCommands.h"
 #include "core/chart/transform/ChartBatchTransform.h"
 #include "core/chart/transform/ChartNormalization.h"
 #include "core/chart/selection/ChartSelectionBeatSummary.h"
-#include "document/DocumentModel.h"
-#include "ui/preferences/LocaleService.h"
+#include "app/ui/document/DocumentModel.h"
+#include "app/ui/preferences/LocaleService.h"
 
 #include "editor/BookmarkCommentSyntax.h"
 

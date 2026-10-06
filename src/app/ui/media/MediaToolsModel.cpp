@@ -1,7 +1,7 @@
 #include "common/LocalizedText.h"
 
-#include "media/MediaToolsModel.h"
-#include "ui/preferences/LocaleService.h"
+#include "app/ui/media/MediaToolsModel.h"
+#include "app/ui/preferences/LocaleService.h"
 
 #include "app/services/MediaToolsEngine.h"
 

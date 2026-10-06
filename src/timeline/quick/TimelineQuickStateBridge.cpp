@@ -7,8 +7,8 @@
 #include "common/DebugLog.h"
 #include "common/DebugOptions.h"
 #include "common/InputShortcutGesture.h"
-#include "SimaiParser.h"
-#include "preferences/PreferenceDocument.h"
+#include "core/chart/parser/SimaiParser.h"
+#include "app/ui/preferences/PreferenceDocument.h"
 #include "common/TimelineThemeConfig.h"
 #include "timeline/TimelineSceneStateBuilder.h"
 

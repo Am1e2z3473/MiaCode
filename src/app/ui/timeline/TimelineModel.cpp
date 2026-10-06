@@ -1,6 +1,6 @@
-#include "timeline/TimelineModel.h"
+#include "app/ui/timeline/TimelineModel.h"
 
-#include "ui/preferences/LocaleService.h"
+#include "app/ui/preferences/LocaleService.h"
 #include <QCoreApplication>
 
 namespace miacode::ui {

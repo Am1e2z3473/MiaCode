@@ -1,4 +1,4 @@
-#include "PreviewBassDefaultDevice.h"
+#include "audio/PreviewBassDefaultDevice.h"
 
 #include <QtGlobal>
 

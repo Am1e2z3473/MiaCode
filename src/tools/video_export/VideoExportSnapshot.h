@@ -5,7 +5,7 @@
 
 #include "common/MuriConfig.h"
 #include "common/MuriRenderOptions.h"
-#include "VideoExportController.h"
+#include "tools/video_export/VideoExportController.h"
 
 // IntroBannerSpec is defined in VideoExportController.h (so VideoExportTask can
 // carry it too); VideoExportSnapshot just serializes one.

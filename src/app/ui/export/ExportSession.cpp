@@ -1,11 +1,11 @@
 #include "common/LocalizedText.h"
 
-#include "export/ExportSession.h"
+#include "app/ui/export/ExportSession.h"
 
 #include "core/chart/document/SimaiDocument.h"
 
 #include "app/services/JobProgressService.h"
-#include "ui/preferences/LocaleService.h"
+#include "app/ui/preferences/LocaleService.h"
 #include "common/PreviewSfxAssets.h"
 #include "core/video/PreviewRenderSettings.h"
 #include "tools/video_export/VideoExportPreferences.h"

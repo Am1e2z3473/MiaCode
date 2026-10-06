@@ -18,7 +18,7 @@ miacode_add_spec(qml_app_background_model_spec
         src/app/services/UiRequestService.h
         src/app/services/UiRequestService.cpp
     LIBS Qt6::Core Qt6::Gui Qt6::Qml
-    INCLUDES src src/app/ui
+    INCLUDES src
 )
 
 miacode_add_spec(qml_chart_drop_bridge_spec
@@ -31,7 +31,7 @@ miacode_add_spec(qml_chart_drop_bridge_spec
         src/app/ui/drop/ChartDropBridge.h
         src/app/ui/drop/ChartDropBridge.cpp
     LIBS Qt6::Core Qt6::Gui Qt6::Quick
-    INCLUDES src src/app/ui
+    INCLUDES src
 )
 
 miacode_add_spec(qml_document_projection_spec
@@ -48,7 +48,7 @@ miacode_add_spec(qml_document_projection_spec
         src/app/ui/document/DocumentProjection.cpp
         src/app/ui/document/DocumentProjection.h
     LIBS Qt6::Core
-    INCLUDES src src/app/ui
+    INCLUDES src
 )
 
 miacode_add_spec(qml_analysis_model_spec
@@ -62,7 +62,7 @@ miacode_add_spec(qml_analysis_model_spec
         src/app/ui/document/AnalysisProjection.h
         src/app/ui/document/DocumentProjection.h
     LIBS Qt6::Core
-    INCLUDES src src/app/ui
+    INCLUDES src
 )
 
 miacode_add_spec(qml_shortcut_binding_spec
@@ -88,7 +88,7 @@ miacode_add_spec(qml_shortcut_binding_spec
         ${_miacode_log_core}
         resources/app_icons.qrc
     LIBS Qt6::Core Qt6::Gui
-    INCLUDES src src/app/ui src/app/ui src/app/ui src/core/chart src/core/chart/transform
+    INCLUDES src
 )
 target_compile_definitions(qml_shortcut_binding_spec PRIVATE
     "MIACODE_SOURCE_ROOT=\"${CMAKE_CURRENT_SOURCE_DIR}\"")
@@ -101,7 +101,7 @@ miacode_add_spec(v1_shell_removal_spec
     SOURCES
         src/tools/ui/V1ShellRemovalSpec.cpp
     LIBS Qt6::Core
-    INCLUDES src src/app/ui
+    INCLUDES src
 )
 target_compile_definitions(v1_shell_removal_spec PRIVATE
     "MIACODE_SOURCE_ROOT=\"${CMAKE_CURRENT_SOURCE_DIR}\"")
@@ -114,7 +114,7 @@ miacode_add_spec(preview_transport_push_spec
     SOURCES
         src/tools/ui/PreviewTransportPushSpec.cpp
     LIBS Qt6::Core
-    INCLUDES src src/app/ui
+    INCLUDES src
 )
 target_compile_definitions(preview_transport_push_spec PRIVATE
     "MIACODE_SOURCE_ROOT=\"${CMAKE_CURRENT_SOURCE_DIR}\"")
@@ -140,7 +140,7 @@ miacode_add_spec(timeline_surface_ready_spec
         src/app/ui/preferences/LocaleService.cpp
         src/app/ui/preferences/LocaleService.h
     LIBS Qt6::Core Qt6::Qml
-    INCLUDES src src/app/ui src/app src/app/ui
+    INCLUDES src
 )
 target_compile_definitions(timeline_surface_ready_spec PRIVATE
     "MIACODE_SOURCE_ROOT=\"${CMAKE_CURRENT_SOURCE_DIR}\"")
@@ -154,7 +154,7 @@ miacode_add_spec(qml_ui_bootstrap_lifecycle_spec
         src/tools/ui/QmlUiBootstrapLifecycleSpec.cpp
         src/app/ui/shell/RootLifecycle.h
     LIBS Qt6::Core
-    INCLUDES src src/app/ui
+    INCLUDES src
 )
 target_compile_definitions(qml_ui_bootstrap_lifecycle_spec PRIVATE
     "MIACODE_SOURCE_ROOT=\"${CMAKE_CURRENT_SOURCE_DIR}\"")
@@ -167,7 +167,7 @@ miacode_add_spec(qml_document_lifecycle_contract_spec
     SOURCES
         src/tools/ui/QmlDocumentLifecycleContractSpec.cpp
     LIBS Qt6::Core
-    INCLUDES src src/app/ui
+    INCLUDES src
 )
 target_compile_definitions(qml_document_lifecycle_contract_spec PRIVATE
     "MIACODE_SOURCE_ROOT=\"${CMAKE_CURRENT_SOURCE_DIR}\"")
@@ -180,7 +180,7 @@ miacode_add_spec(qml_export_intro_sound_contract_spec
     SOURCES
         src/tools/ui/QmlExportIntroSoundContractSpec.cpp
     LIBS Qt6::Core
-    INCLUDES src src/app/ui
+    INCLUDES src
 )
 target_compile_definitions(qml_export_intro_sound_contract_spec PRIVATE
     "MIACODE_SOURCE_ROOT=\"${CMAKE_CURRENT_SOURCE_DIR}\"")
@@ -193,7 +193,7 @@ miacode_add_spec(qml_export_font_contract_spec
     SOURCES
         src/tools/ui/QmlExportFontContractSpec.cpp
     LIBS Qt6::Core
-    INCLUDES src src/app/ui
+    INCLUDES src
 )
 target_compile_definitions(qml_export_font_contract_spec PRIVATE
     "MIACODE_SOURCE_ROOT=\"${CMAKE_CURRENT_SOURCE_DIR}\"")
@@ -206,7 +206,7 @@ miacode_add_spec(qml_selection_range_export_contract_spec
     SOURCES
         src/tools/ui/QmlSelectionRangeExportContractSpec.cpp
     LIBS Qt6::Core
-    INCLUDES src src/app/ui
+    INCLUDES src
 )
 target_compile_definitions(qml_selection_range_export_contract_spec PRIVATE
     "MIACODE_SOURCE_ROOT=\"${CMAKE_CURRENT_SOURCE_DIR}\"")
@@ -219,7 +219,7 @@ miacode_add_spec(qml_cover_export_contract_spec
     SOURCES
         src/tools/ui/QmlCoverExportContractSpec.cpp
     LIBS Qt6::Core
-    INCLUDES src src/app/ui
+    INCLUDES src
 )
 target_compile_definitions(qml_cover_export_contract_spec PRIVATE
     "MIACODE_SOURCE_ROOT=\"${CMAKE_CURRENT_SOURCE_DIR}\"")
@@ -232,7 +232,7 @@ miacode_add_spec(qml_export_video_page_spec
     SOURCES
         src/tools/ui/QmlExportVideoPageSpec.cpp
     LIBS Qt6::Core Qt6::Gui Qt6::Qml Qt6::Quick Qt6::QuickControls2 Qt6::Test
-    INCLUDES src src/app/ui
+    INCLUDES src
 )
 target_compile_definitions(qml_export_video_page_spec PRIVATE
     "MIACODE_QML_SPEC_IMPORT_ROOT=\"${MIACODE_QML_SPEC_IMPORT_ROOT}\"")
@@ -245,7 +245,7 @@ miacode_add_spec(qml_preview_rate_spec
     SOURCES
         src/tools/ui/QmlPreviewRateSpec.cpp
     LIBS Qt6::Core Qt6::Gui Qt6::Qml Qt6::Quick Qt6::QuickControls2
-    INCLUDES src src/app/ui
+    INCLUDES src
 )
 target_compile_definitions(qml_preview_rate_spec PRIVATE
     "MIACODE_QML_SPEC_IMPORT_ROOT=\"${MIACODE_QML_SPEC_IMPORT_ROOT}\"")
@@ -269,7 +269,7 @@ miacode_add_spec(qml_preview_rate_feedback_spec
         src/app/services/PreviewSurface.h
         ${_miacode_log_core}
     LIBS Qt6::Core Qt6::Gui Qt6::Qml Qt6::Test
-    INCLUDES src src/app/ui src/app
+    INCLUDES src
 )
 
 miacode_add_spec(qml_main_menu_spec
@@ -280,7 +280,7 @@ miacode_add_spec(qml_main_menu_spec
     SOURCES
         src/tools/ui/QmlMainMenuSpec.cpp
     LIBS Qt6::Core
-    INCLUDES src src/app/ui
+    INCLUDES src
 )
 target_compile_definitions(qml_main_menu_spec PRIVATE
     "MIACODE_SOURCE_ROOT=\"${CMAKE_CURRENT_SOURCE_DIR}\"")
@@ -293,7 +293,7 @@ miacode_add_spec(qml_document_replacement_sequence_spec
     SOURCES
         src/tools/ui/QmlDocumentReplacementSequenceSpec.cpp
     LIBS Qt6::Core Qt6::Qml Qt6::Quick
-    INCLUDES src src/app/ui
+    INCLUDES src
 )
 target_compile_definitions(qml_document_replacement_sequence_spec PRIVATE
     "MIACODE_SOURCE_ROOT=\"${CMAKE_CURRENT_SOURCE_DIR}\"")

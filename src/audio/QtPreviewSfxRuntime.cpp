@@ -1,6 +1,6 @@
-#include "QtPreviewSfxRuntime.h"
+#include "audio/QtPreviewSfxRuntime.h"
 
-#include "PreviewBassEmergencyPause.h"
+#include "audio/PreviewBassEmergencyPause.h"
 
 #include <QMetaObject>
 

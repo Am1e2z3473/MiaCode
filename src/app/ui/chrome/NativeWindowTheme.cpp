@@ -1,9 +1,9 @@
-#include "chrome/NativeWindowTheme.h"
+#include "app/ui/chrome/NativeWindowTheme.h"
 
-#include "theme/UiTheme.h"
+#include "app/ui/theme/UiTheme.h"
 
 #ifdef Q_OS_MACOS
-#include "chrome/NativeWindowThemeMac.h"
+#include "app/ui/chrome/NativeWindowThemeMac.h"
 #endif
 
 #include <QWindow>

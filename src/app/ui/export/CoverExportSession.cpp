@@ -1,7 +1,7 @@
 #include "common/LocalizedText.h"
 
-#include "export/CoverExportSession.h"
-#include "ui/preferences/LocaleService.h"
+#include "app/ui/export/CoverExportSession.h"
+#include "app/ui/preferences/LocaleService.h"
 
 #include "common/ChartAssetPaths.h"
 #include "core/chart/document/SimaiDocument.h"

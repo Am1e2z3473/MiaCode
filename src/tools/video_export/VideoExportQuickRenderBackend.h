@@ -5,8 +5,8 @@
 
 #include <limits>
 
-#include "PreviewRenderSettings.h"
-#include "VideoExportController.h"
+#include "core/video/PreviewRenderSettings.h"
+#include "tools/video_export/VideoExportController.h"
 #include "preview/runtime/PreviewQuickD3D11ExportSession.h"
 #include "preview/runtime/PreviewQuickExportSession.h"
 #include "preview/runtime/PreviewSceneAssetRepository.h"

@@ -1,4 +1,4 @@
-#include "NetClient.h"
+#include "tools/net/NetClient.h"
 
 #include "tools/zip_export/ChartZipPackager.h"
 

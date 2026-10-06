@@ -1,4 +1,4 @@
-#include "latency/LatencyModel.h"
+#include "app/ui/latency/LatencyModel.h"
 
 #include "tools/latency/LatencySandboxController.h"
 

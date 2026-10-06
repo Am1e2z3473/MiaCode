@@ -2,7 +2,7 @@
 
 #include <QJsonObject>
 
-#include "preferences/PreferenceDocument.h"
+#include "app/ui/preferences/PreferenceDocument.h"
 
 namespace miacode::video_export {
 

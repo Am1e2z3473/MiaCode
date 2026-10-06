@@ -1,10 +1,10 @@
-#include "VideoExportController.h"
+#include "tools/video_export/VideoExportController.h"
 
-#include "BassExportAudioBackend.h"
-#include "RawVideoPipeTransport.h"
-#include "VideoExportAudioRenderPlan.h"
-#include "VideoExportQuickRenderBackend.h"
-#include "VideoExportRuntimePolicy.h"
+#include "tools/video_export/BassExportAudioBackend.h"
+#include "tools/video_export/RawVideoPipeTransport.h"
+#include "tools/video_export/VideoExportAudioRenderPlan.h"
+#include "tools/video_export/VideoExportQuickRenderBackend.h"
+#include "tools/video_export/VideoExportRuntimePolicy.h"
 #include "common/AssetPaths.h"
 #include "common/ChartAssetPaths.h"
 #include "common/IntroConfig.h"
@@ -57,7 +57,7 @@
 #ifdef Q_OS_WIN
 #include <windows.h>
 #endif
-#include "VideoExportControllerInternal.h"
+#include "tools/video_export/VideoExportControllerInternal.h"
 
 // VideoExportDiagnostics.cpp — render-backend fallback detail, diagnostic tap/slide sampling, visible-object trace, per-layer activity estimation, FNV hashing, and frame-signature / mean-abs-diff comparisons.
 //

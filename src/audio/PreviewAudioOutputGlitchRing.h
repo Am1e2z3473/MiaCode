@@ -6,7 +6,7 @@
 
 #include <QtGlobal>
 
-#include "PreviewAudioOutputGlitchProbe.h"
+#include "audio/PreviewAudioOutputGlitchProbe.h"
 
 // Lock-free single-producer/single-consumer ring buffer carrying
 // output_glitch::GlitchEvent from the BASS DSP callback (producer, BASS's own

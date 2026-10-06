@@ -16,7 +16,7 @@
 //
 // The repo root is injected at configure time via MIACODE_SOURCE_ROOT.
 
-#include "preferences/PreferenceDocument.h"
+#include "app/ui/preferences/PreferenceDocument.h"
 
 #include <QCoreApplication>
 #include <QDir>

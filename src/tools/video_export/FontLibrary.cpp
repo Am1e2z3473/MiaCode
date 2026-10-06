@@ -1,6 +1,6 @@
 #include "tools/video_export/FontLibrary.h"
 
-#include "preferences/PreferenceDocument.h"
+#include "app/ui/preferences/PreferenceDocument.h"
 
 #include <QDateTime>
 #include <QDir>

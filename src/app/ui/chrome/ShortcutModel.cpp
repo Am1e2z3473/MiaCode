@@ -1,4 +1,4 @@
-#include "chrome/ShortcutModel.h"
+#include "app/ui/chrome/ShortcutModel.h"
 
 #include "app/ui/chrome/ShortcutRegistry.h"
 

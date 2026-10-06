@@ -1,6 +1,6 @@
 #pragma once
 
-#include "NetBatchUploadScanner.h"
+#include "tools/net/NetBatchUploadScanner.h"
 
 #include <QObject>
 #include <QString>

@@ -1,4 +1,4 @@
-#include "document/AnalysisModel.h"
+#include "app/ui/document/AnalysisModel.h"
 
 #include "common/MuriTypes.h"
 #include "tools/muri/MuriPanelEntries.h"

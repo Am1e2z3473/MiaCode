@@ -1,6 +1,6 @@
 #pragma once
 
-#include "VideoExportAudioBackend.h"
+#include "tools/video_export/VideoExportAudioBackend.h"
 #include "audio/PreviewBassDeviceLease.h"
 
 namespace miacode::video_export {

@@ -1,6 +1,6 @@
-#include "preferences/LocaleService.h"
+#include "app/ui/preferences/LocaleService.h"
 
-#include "preferences/PreferenceDocument.h"
+#include "app/ui/preferences/PreferenceDocument.h"
 
 #include <QCoreApplication>
 #include <QQmlEngine>

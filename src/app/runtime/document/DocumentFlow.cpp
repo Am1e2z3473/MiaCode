@@ -1,11 +1,11 @@
-﻿#include "runtime/document/DocumentSessionHost.h"
+﻿#include "app/runtime/document/DocumentSessionHost.h"
 #include "app/services/UiRequestService.h"
-#include "runtime/Shared.h"
-#include "runtime/export/VideoExportHost.h"
-#include "runtime/shell/ShellHost.h"
+#include "app/runtime/Shared.h"
+#include "app/runtime/export/VideoExportHost.h"
+#include "app/runtime/shell/ShellHost.h"
 
-#include "QtPreviewSfxRuntime.h"
-#include "SimaiParser.h"
+#include "audio/QtPreviewSfxRuntime.h"
+#include "core/chart/parser/SimaiParser.h"
 #include "app/quick_shell/QuickShellPreviewCompositeSurface.h"
 #include "app/quick_shell/QuickShellPreviewSurfacePolicy.h"
 #include "common/ChartAssetPaths.h"
@@ -28,7 +28,7 @@
 #include <QtCore>
 #include <QtGui>
 using namespace miacode::runtime::shared;
-#include "runtime/document/DocumentFlow.Internal.h"
+#include "app/runtime/document/DocumentFlow.Internal.h"
 
 miacode::runtime::DocumentSessionHost::DocumentSessionHost(
     ::Session& session,

@@ -1,12 +1,12 @@
-#include "runtime/export/VideoExportHost.h"
-#include "runtime/Shared.h"
+#include "app/runtime/export/VideoExportHost.h"
+#include "app/runtime/Shared.h"
 
 #include "app/services/PlaybackStateAuthority.h"
 
-#include "QtPreviewSfxRuntime.h"
-#include "SimaiParser.h"
-#include "TimelineQuickModel.h"
-#include "TimelineSlowRefresh.h"
+#include "audio/QtPreviewSfxRuntime.h"
+#include "core/chart/parser/SimaiParser.h"
+#include "timeline/TimelineQuickModel.h"
+#include "timeline/TimelineSlowRefresh.h"
 #include "timeline/quick/TimelineQuickStateBridge.h"
 #include "common/ChartClockCount.h"
 #include "common/ChartAssetPaths.h"

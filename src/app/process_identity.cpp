@@ -1,7 +1,7 @@
-#include "MainEntrypoints.h"
+#include "app/MainEntrypoints.h"
 
 #include "AppVersion.h"
-#include "ProcessIdentityFields.h"
+#include "app/ProcessIdentityFields.h"
 
 #include "common/DebugLog.h"
 #include "common/DebugOptions.h"

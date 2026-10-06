@@ -6,11 +6,11 @@
 #include <QtCore>
 #include <QtGui>
 
-#include "PreviewAudioSettings.h"
-#include "PreviewRenderSettings.h"
-#include "SimaiDocument.h"
-#include "SimaiParser.h"
-#include "SimaiTimingMetadata.h"
+#include "audio/PreviewAudioSettings.h"
+#include "core/video/PreviewRenderSettings.h"
+#include "core/chart/document/SimaiDocument.h"
+#include "core/chart/parser/SimaiParser.h"
+#include "core/chart/document/SimaiTimingMetadata.h"
 #include "common/MuriRenderOptions.h"
 #include "common/MuriTypes.h"
 #include "common/PreviewGameplayConfig.h"
@@ -171,7 +171,7 @@ public:
     };
 
 #define MIACODE_RUNTIME_CONTEXT_TYPES 1
-#include "runtime/SessionMembers.inc"
+#include "app/runtime/SessionMembers.inc"
 #undef MIACODE_RUNTIME_CONTEXT_TYPES
 
     // Declaration order is load-bearing: `state` binds compatibility references

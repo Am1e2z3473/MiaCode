@@ -1,7 +1,7 @@
-#include "DebugLog.h"
+#include "common/DebugLog.h"
 
-#include "DebugOptions.h"
-#include "OperationLog.h"
+#include "common/DebugOptions.h"
+#include "common/OperationLog.h"
 
 #include <QByteArray>
 #include <QCoreApplication>

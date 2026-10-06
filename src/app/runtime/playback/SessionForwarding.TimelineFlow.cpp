@@ -9,8 +9,8 @@
 // left in place); this file holds the latency-sandbox document accessors and
 // the editor/timeline cursor-sync group that used to share that TU.
 
-#include "runtime/playback/PlaybackCoordinator.h"
-#include "runtime/Session.h"
+#include "app/runtime/playback/PlaybackCoordinator.h"
+#include "app/runtime/Session.h"
 
 #include "common/ChartClockCount.h"
 #include "common/PreviewInteractionConfig.h"

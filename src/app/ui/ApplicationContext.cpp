@@ -1,4 +1,4 @@
-#include "ApplicationContext.h"
+#include "app/ui/ApplicationContext.h"
 
 #include "app/services/update/UpdateService.h"
 

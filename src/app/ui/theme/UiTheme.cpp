@@ -1,6 +1,6 @@
-#include "theme/UiTheme.h"
+#include "app/ui/theme/UiTheme.h"
 
-#include "theme/ThemeVariantResolver.h"
+#include "app/ui/theme/ThemeVariantResolver.h"
 
 // UiTheme 只保留 QML 与原生窗口仍共享的明暗配色源。
 

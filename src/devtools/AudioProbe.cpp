@@ -1,5 +1,5 @@
-#include "PreviewAudioSettings.h"
-#include "QtPreviewSfxRuntime.h"
+#include "audio/PreviewAudioSettings.h"
+#include "audio/QtPreviewSfxRuntime.h"
 #include "common/DebugLog.h"
 
 #include <QCoreApplication>

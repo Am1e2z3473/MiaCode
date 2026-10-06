@@ -4,8 +4,8 @@
 
 #include <QtGlobal>
 
-#include "PreviewAudioOutputGlitchProbe.h"
-#include "PreviewAudioOutputGlitchRing.h"
+#include "audio/PreviewAudioOutputGlitchProbe.h"
+#include "audio/PreviewAudioOutputGlitchRing.h"
 
 // Audio-thread-owned state for the master-mixer output-glitch DSP callback
 // (see PreviewAudioOutputGlitchProbe.h for what it measures and why). This

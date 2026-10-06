@@ -1,7 +1,7 @@
 #pragma once
 
-#include "shell/RootLifecycle.h"
-#include "chrome/WindowChrome.h"
+#include "app/ui/shell/RootLifecycle.h"
+#include "app/ui/chrome/WindowChrome.h"
 
 #include <memory>
 

@@ -1,4 +1,4 @@
-#include "preferences/PreferenceDocument.h"
+#include "app/ui/preferences/PreferenceDocument.h"
 
 #include <QCoreApplication>
 #include <QDir>

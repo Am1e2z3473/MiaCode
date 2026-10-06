@@ -1,7 +1,7 @@
 #pragma once
 
-#include "PreviewAudioBackend.h"
-#include "PreviewAudioSettings.h"
+#include "audio/PreviewAudioBackend.h"
+#include "audio/PreviewAudioSettings.h"
 #include "common/PreviewTimingSettings.h"
 #include "timeline/TimelineData.h"
 

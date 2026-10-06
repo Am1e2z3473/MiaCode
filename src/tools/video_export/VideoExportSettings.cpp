@@ -1,6 +1,6 @@
-#include "VideoExportSettings.h"
+#include "tools/video_export/VideoExportSettings.h"
 
-#include "VideoExportRuntimePolicy.h"
+#include "tools/video_export/VideoExportRuntimePolicy.h"
 
 #include <QRegularExpression>
 #include <QtNumeric>

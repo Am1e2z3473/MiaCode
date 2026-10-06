@@ -1,4 +1,4 @@
-#include "ImageResourceModel.h"
+#include "app/services/ImageResourceModel.h"
 
 #include "common/AssetPaths.h"
 #include <QDir>

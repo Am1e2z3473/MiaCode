@@ -1,4 +1,4 @@
-#include "Id3TagReader.h"
+#include "common/Id3TagReader.h"
 
 #include <QFile>
 

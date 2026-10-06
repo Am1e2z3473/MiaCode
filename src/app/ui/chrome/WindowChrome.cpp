@@ -1,6 +1,6 @@
-#include "chrome/WindowChrome.h"
-#include "chrome/NativeWindowTheme.h"
-#include "preferences/PreferenceDocument.h"
+#include "app/ui/chrome/WindowChrome.h"
+#include "app/ui/chrome/NativeWindowTheme.h"
+#include "app/ui/preferences/PreferenceDocument.h"
 #include "common/DebugLog.h"
 
 #include <QtGlobal>

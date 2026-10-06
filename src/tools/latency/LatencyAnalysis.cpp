@@ -1,4 +1,4 @@
-#include "LatencyAnalysis.h"
+#include "tools/latency/LatencyAnalysis.h"
 
 #include <QtMath>
 #include <algorithm>

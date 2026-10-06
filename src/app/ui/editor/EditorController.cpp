@@ -1,4 +1,4 @@
-#include "editor/EditorController.h"
+#include "app/ui/editor/EditorController.h"
 
 #include "editor/SimaiCompletionCatalog.h"
 #include "editor/BookmarkCommentSyntax.h"

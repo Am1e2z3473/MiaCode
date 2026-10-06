@@ -1,4 +1,4 @@
-#include "ChartZipPackager.h"
+#include "tools/zip_export/ChartZipPackager.h"
 
 #include "common/ChartAssetPaths.h"
 

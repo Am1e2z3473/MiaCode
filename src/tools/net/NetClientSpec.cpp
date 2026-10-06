@@ -1,6 +1,6 @@
-#include "NetClient.h"
-#include "NetBatchUploadScanner.h"
-#include "NetUploadDiagnostics.h"
+#include "tools/net/NetClient.h"
+#include "tools/net/NetBatchUploadScanner.h"
+#include "tools/net/NetUploadDiagnostics.h"
 #include "tools/media/PvBatchCompressionScanner.h"
 
 #include <miniz.h>

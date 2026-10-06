@@ -1,7 +1,7 @@
 #include "app/ui/document/ChartTransformCommands.h"
 #include "app/ui/chrome/ShortcutCommands.h"
 #include "app/ui/chrome/ShortcutModel.h"
-#include "chrome/ShortcutRegistry.h"
+#include "app/ui/chrome/ShortcutRegistry.h"
 
 #include <QDirIterator>
 #include <QFile>

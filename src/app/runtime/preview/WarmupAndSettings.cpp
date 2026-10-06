@@ -1,8 +1,8 @@
-#include "runtime/preview/StageMediaHost.h"
-#include "runtime/Shared.h"
+#include "app/runtime/preview/StageMediaHost.h"
+#include "app/runtime/Shared.h"
 
-#include "QtPreviewSfxRuntime.h"
-#include "SimaiParser.h"
+#include "audio/QtPreviewSfxRuntime.h"
+#include "core/chart/parser/SimaiParser.h"
 #include "app/quick_shell/QuickShellPreviewCompositeSurface.h"
 #include "app/quick_shell/QuickShellPreviewSurfacePolicy.h"
 #include "common/ChartAssetPaths.h"

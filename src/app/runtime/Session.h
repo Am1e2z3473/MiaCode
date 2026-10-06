@@ -19,12 +19,12 @@
 #include <QVariantMap>
 #include <QVector>
 
-#include "PreviewAudioSettings.h"
+#include "audio/PreviewAudioSettings.h"
 #include "common/PreviewTimingSettings.h"
-#include "PreviewRenderSettings.h"
-#include "SimaiDocument.h"
-#include "SimaiTimingMetadata.h"
-#include "SimaiParser.h"
+#include "core/video/PreviewRenderSettings.h"
+#include "core/chart/document/SimaiDocument.h"
+#include "core/chart/document/SimaiTimingMetadata.h"
+#include "core/chart/parser/SimaiParser.h"
 #include "timeline/TimelineData.h"
 #include "timeline/TimelineQuickModel.h"
 #include "timeline/TimelineSlowRefresh.h"
@@ -41,7 +41,7 @@
 #include "app/services/PlaybackPreviewPort.h"
 #include "app/services/EditorSyncController.h"
 #include "core/chart/transform/ChartNormalization.h"
-#include "runtime/RuntimeContext.h"
+#include "app/runtime/RuntimeContext.h"
 
 class QByteArray;
 class QChronoTimer;
@@ -410,7 +410,7 @@ private:
         qint64 totalElapsedMs = 0;
     };
 
-    #include "SessionPrivate.inc"
+    #include "app/runtime/SessionPrivate.inc"
     double previewDurationSeconds() const;
     double previewPlaybackEndSeconds() const;
     void applyPreviewPlaybackRate(double rate);
@@ -606,6 +606,6 @@ private:
     std::unique_ptr<miacode::runtime::PreviewHost> previewHost_;
 
     #define MIACODE_SESSION_RUNTIME_MEMBERS 1
-    #include "SessionMembers.inc"
+    #include "app/runtime/SessionMembers.inc"
     #undef MIACODE_SESSION_RUNTIME_MEMBERS
 };

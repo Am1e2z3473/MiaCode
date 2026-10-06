@@ -1,5 +1,5 @@
-#include "runtime/playback/PlaybackCoordinator.h"
-#include "runtime/Session.h"
+#include "app/runtime/playback/PlaybackCoordinator.h"
+#include "app/runtime/Session.h"
 
 #include "app/services/ApplicationServices.h"
 #include "app/services/EditorSyncController.h"
