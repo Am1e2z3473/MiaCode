@@ -1,6 +1,7 @@
 #include "AppVersion.h"
 #include "app/ui/Bootstrap.h"
-#include "app/ui/preferences/PreferenceDocument.h"
+#include "app/services/PreferenceDocument.h"
+#include "app/runtime/settings/PreferenceDocumentProvider.h"
 #include "app/ui/preferences/LocaleService.h"
 #include "common/CrashRecovery.h"
 #include "common/DebugLog.h"
@@ -575,6 +576,9 @@ int main(int argc, char* argv[])
     // CLI export / worker runs above must never touch it (they open
     // charts through the same MainWindow code paths).
     miacode::crash_recovery::setSessionMarkerEnabled(true);
+
+    // Library code reaches preferences.json only through this provider.
+    miacode::runtime::installPreferenceDocumentProvider();
 
     QQuickStyle::setStyle(QStringLiteral("Basic"));
 

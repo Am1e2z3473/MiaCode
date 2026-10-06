@@ -1,6 +1,6 @@
 #pragma once
 
-#include "app/ui/preferences/PreferenceDocument.h"
+#include "app/services/PreferenceDocument.h"
 
 namespace NativeWindowThemePolicy {
 

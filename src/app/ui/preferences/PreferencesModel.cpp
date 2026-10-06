@@ -4,7 +4,7 @@
 #include "app/services/PreferencesStore.h"
 #include "app/runtime/Shared.h"
 #include "app/ui/preferences/LocaleService.h"
-#include "app/ui/preferences/PreferenceDocument.h"
+#include "app/services/PreferenceDocument.h"
 
 #include <QVariantMap>
 #include <QCoreApplication>

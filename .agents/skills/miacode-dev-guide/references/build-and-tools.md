@@ -11,7 +11,7 @@
 | Spec 目标与契约索引 | `docs/tests/SPEC_CATALOG.md` |
 | 调试开关与日志 | `docs/ops/DEBUG_INDEX.md`、`src/common/DebugLog.h` |
 | 资源解析 | `src/core/video/AssetPaths.h`、`src/core/chart/ChartAssetPaths.h`、ChartMediaService |
-| 翻译与偏好 | `translations/`、`src/app/ui/preferences/PreferenceDocument.h` |
+| 翻译与偏好 | `translations/`、`src/app/services/PreferenceDocument.h` |
 | 公开规范和验收清单 | `docs/INDEX.md`、`docs/README.md` |
 
 新增 Spec 在所属领域 manifest 使用 `miacode_add_spec` 登记 owner、contract ID、类别和执行方式。

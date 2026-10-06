@@ -106,7 +106,7 @@ miacode_add_spec(theme_variant_resolver_spec
         src/tools/ui/ThemeVariantResolverSpec.cpp
         src/app/ui/theme/ThemeVariantResolver.h
         src/app/ui/theme/ThemeVariantResolver.cpp
-        src/app/ui/preferences/PreferenceDocument.h
+        src/app/services/PreferenceDocument.h
     LIBS Qt6::Core Qt6::Gui
     INCLUDES src
 )
@@ -152,8 +152,8 @@ miacode_add_spec(cover_layout_model_spec
         src/export/cover_export/CoverCompositionState.cpp
         src/export/cover_export/CoverCompositionPersistenceGuard.h
         src/export/cover_export/CoverCompositionPersistenceGuard.cpp
-        src/app/ui/preferences/PreferenceDocument.h
-        src/app/ui/preferences/PreferenceDocument.cpp
+        src/common/PreferenceProvider.h
+        src/common/PreferenceProvider.cpp
     LIBS Qt6::Core Qt6::Gui Qt6::Widgets
     INCLUDES src
 )
@@ -419,8 +419,6 @@ miacode_add_spec(net_client_spec
         src/media_tools/media/PvBatchCompressionScanner.cpp
         src/media_tools/zip_export/ChartZipPackager.h
         src/media_tools/zip_export/ChartZipPackager.cpp
-        src/app/ui/preferences/PreferenceDocument.h
-        src/app/ui/preferences/PreferenceDocument.cpp
         src/core/chart/ChartAssetPaths.h
     LIBS Qt6::Core Qt6::Gui Qt6::Network miniz
     INCLUDES src
@@ -466,8 +464,8 @@ miacode_add_spec(ui_text_locale_spec
     EXECUTION ctest STATUS active PLATFORM all
     SOURCES
         src/tools/ui_text/UiTextLocaleSpec.cpp
-        src/app/ui/preferences/PreferenceDocument.h
-        src/app/ui/preferences/PreferenceDocument.cpp
+        src/app/services/PreferenceDocument.h
+        src/app/services/PreferenceDocument.cpp
     LIBS Qt6::Core
     INCLUDES src
 )
@@ -496,8 +494,8 @@ miacode_add_spec(ui_text_preferences_spec
     EXECUTION ctest STATUS active PLATFORM all
     SOURCES
         src/tools/ui_text/UiTextPreferencesSpec.cpp
-        src/app/ui/preferences/PreferenceDocument.h
-        src/app/ui/preferences/PreferenceDocument.cpp
+        src/app/services/PreferenceDocument.h
+        src/app/services/PreferenceDocument.cpp
     LIBS Qt6::Core
     INCLUDES src
 )

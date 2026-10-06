@@ -2,7 +2,7 @@
 
 #include "app/runtime/Shared.h"
 #include "AppVersion.h"
-#include "app/ui/preferences/PreferenceDocument.h"
+#include "app/services/PreferenceDocument.h"
 #include "app/ui/theme/ThemeVariantResolver.h"
 
 #include <QCoreApplication>

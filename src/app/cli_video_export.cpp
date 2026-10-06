@@ -1,4 +1,5 @@
 #include "app/MainEntrypoints.h"
+#include "app/runtime/settings/PreferenceDocumentProvider.h"
 
 #include "app/runtime/Session.h"
 #include "app/services/ApplicationServices.h"
@@ -63,6 +64,9 @@ namespace miacode::app::entry {
 int runCliVideoExport(QGuiApplication& app, QString* errorMessage)
 {
     MC_OP("runCliVideoExport");
+    // The export renders the HUD and reads export settings through the
+    // preference port, exactly as the GUI process does.
+    miacode::runtime::installPreferenceDocumentProvider();
     try {
     QCommandLineParser parser;
     parser.setApplicationDescription(qtTrId("cli.video_export.description"));

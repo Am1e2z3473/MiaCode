@@ -125,8 +125,8 @@ miacode_add_spec(editor_page_router_spec
         ${_miacode_muri_analysis_core}
         src/core/analysis/TimelineSlowRefresh.h
         src/core/analysis/TimelineSlowRefresh.cpp
-        src/app/ui/preferences/PreferenceDocument.h
-        src/app/ui/preferences/PreferenceDocument.cpp
+        src/app/services/PreferenceDocument.h
+        src/app/services/PreferenceDocument.cpp
         src/app/services/ApplicationServices.h
         src/app/services/ApplicationServices.cpp
         src/app/services/AnalysisService.h
@@ -169,8 +169,8 @@ miacode_add_spec(export_engine_spec
         ${_miacode_muri_analysis_core}
         src/core/analysis/TimelineSlowRefresh.h
         src/core/analysis/TimelineSlowRefresh.cpp
-        src/app/ui/preferences/PreferenceDocument.h
-        src/app/ui/preferences/PreferenceDocument.cpp
+        src/app/services/PreferenceDocument.h
+        src/app/services/PreferenceDocument.cpp
         src/app/services/ApplicationServices.h
         src/app/services/ApplicationServices.cpp
         src/app/services/AnalysisService.h
@@ -230,8 +230,8 @@ miacode_add_spec(application_services_spec
         ${_miacode_muri_analysis_core}
         src/core/analysis/TimelineSlowRefresh.h
         src/core/analysis/TimelineSlowRefresh.cpp
-        src/app/ui/preferences/PreferenceDocument.h
-        src/app/ui/preferences/PreferenceDocument.cpp
+        src/app/services/PreferenceDocument.h
+        src/app/services/PreferenceDocument.cpp
         src/app/services/ApplicationServices.h
         src/app/services/ApplicationServices.cpp
         src/app/services/AnalysisService.h
