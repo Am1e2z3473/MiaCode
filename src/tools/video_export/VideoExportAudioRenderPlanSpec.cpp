@@ -2,8 +2,8 @@
 #include <QTemporaryDir>
 #include <QFile>
 
-#include "tools/video_export/VideoExportAudioRenderPlan.h"
-#include "tools/video_export/VideoExportController.h"
+#include "export/video_export/VideoExportAudioRenderPlan.h"
+#include "export/video_export/VideoExportController.h"
 #include "common/ChartClockCount.h"
 #include "common/PreviewAudioMixConfig.h"
 

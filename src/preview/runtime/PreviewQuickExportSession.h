@@ -65,7 +65,7 @@ public:
 
     // Intro overlay (pre-roll maimai track-start). Loads a QML scene from the
     // given qrc/file URL and mounts it above the chart + HUD. Banner data is
-    // generic (no tools/video_export dependency); the caller maps its own spec
+    // generic (no export/video_export dependency); the caller maps its own spec
     // into the QVariantMap track + URLs. The overlay is hidden unless the most
     // recent setIntroFrame() set it active, so normal frames are unaffected.
     bool setupIntroOverlay(const QUrl& qmlUrl, QString* errorMessage = nullptr);

@@ -15,7 +15,7 @@
 #include "common/PreviewGameplayConfig.h"
 #include "common/WaveformCache.h"
 #include "preview/runtime/PreviewRuntime.h"
-#include "tools/latency/LatencyAnalysis.h"
+#include "app/runtime/latency/LatencyAnalysis.h"
 
 #include <QDesktopServices>
 #include <QUrl>

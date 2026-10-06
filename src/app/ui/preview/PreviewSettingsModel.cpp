@@ -6,7 +6,7 @@
 #include "core/scene/PreviewHudState.h"
 #include "core/video/PreviewRenderSettings.h"
 #include "preview/runtime/PreviewRuntime.h"
-#include "tools/video_export/FontLibrary.h"
+#include "export/video_export/FontLibrary.h"
 #include "app/ui/preferences/LocaleService.h"
 
 #include <QDesktopServices>

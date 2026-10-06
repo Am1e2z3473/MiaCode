@@ -1,7 +1,7 @@
-#include "tools/cover_export/CoverCompositionState.h"
-#include "tools/cover_export/CoverCompositionPersistenceGuard.h"
-#include "tools/cover_export/CoverLayoutModel.h"
-#include "tools/cover_export/CoverFrameExportPlan.h"
+#include "export/cover_export/CoverCompositionState.h"
+#include "export/cover_export/CoverCompositionPersistenceGuard.h"
+#include "export/cover_export/CoverLayoutModel.h"
+#include "export/cover_export/CoverFrameExportPlan.h"
 #include "app/ui/preferences/PreferenceDocument.h"
 
 #include <QCoreApplication>

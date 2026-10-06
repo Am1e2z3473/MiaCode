@@ -1,6 +1,6 @@
 #include "app/MainEntrypoints.h"
 
-#include "tools/video_export/VideoExportSnapshot.h"
+#include "export/video_export/VideoExportSnapshot.h"
 #include "common/DebugLog.h"
 #include "common/OperationLog.h"
 #include "common/WaveformCache.h"

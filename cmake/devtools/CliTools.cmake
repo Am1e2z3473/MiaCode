@@ -108,8 +108,8 @@ miacode_link_dev_audio(miacode_audio_probe MIXER)
 miacode_add_dev_tool(miacode_latency_offset_batch
     SOURCES
         src/devtools/LatencyOffsetBatch.cpp
-        src/tools/latency/LatencyAnalysis.h
-        src/tools/latency/LatencyAnalysis.cpp
+        src/app/runtime/latency/LatencyAnalysis.h
+        src/app/runtime/latency/LatencyAnalysis.cpp
         src/audio/OfflineAudioDecoder.h
         src/audio/OfflineAudioDecoder.cpp
         src/audio/PreviewBassDeviceLease.h

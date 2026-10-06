@@ -1,4 +1,4 @@
-#include "tools/cover_export/CoverFramePlaybackController.h"
+#include "export/cover_export/CoverFramePlaybackController.h"
 
 #include <QCoreApplication>
 #include <QTextStream>

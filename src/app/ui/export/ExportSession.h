@@ -11,7 +11,7 @@
 #include "app/services/ExportEngine.h"
 #include "app/services/PreviewAppearanceState.h"
 #include "app/services/PreviewSurface.h"
-#include "tools/video_export/VideoExportController.h"
+#include "export/video_export/VideoExportController.h"
 
 #include "app/services/ShellNotifications.h"
 

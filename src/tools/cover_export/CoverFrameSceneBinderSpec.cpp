@@ -1,4 +1,4 @@
-#include "tools/cover_export/CoverFrameSceneBinder.h"
+#include "export/cover_export/CoverFrameSceneBinder.h"
 
 #include "core/scene/PreviewFrameState.h"
 

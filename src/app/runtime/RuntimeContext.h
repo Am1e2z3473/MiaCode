@@ -21,7 +21,7 @@
 #include "core/chart/model/TimelineData.h"
 #include "timeline/TimelineQuickModel.h"
 #include "core/analysis/TimelineSlowRefresh.h"
-#include "tools/video_export/VideoExportSnapshot.h"
+#include "export/video_export/VideoExportSnapshot.h"
 
 class IntroBannerSpec;
 class PreviewAudioDeviceWatcher;

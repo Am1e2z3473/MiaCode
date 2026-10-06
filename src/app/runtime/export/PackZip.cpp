@@ -9,7 +9,7 @@
 #include "app/services/UiRequestService.h"
 #include "common/DebugLog.h"
 #include "common/OperationLog.h"
-#include "tools/zip_export/ChartZipPackager.h"
+#include "media_tools/zip_export/ChartZipPackager.h"
 
 #include <QCoreApplication>
 #include <QDesktopServices>

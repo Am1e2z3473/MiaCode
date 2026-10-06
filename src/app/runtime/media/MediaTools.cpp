@@ -1,6 +1,6 @@
 #include "common/LocalizedText.h"
 
-#include "tools/media/PvCompressionPolicy.h"
+#include "media_tools/media/PvCompressionPolicy.h"
 #include "app/services/UiRequestService.h"
 #include "app/services/JobProgressService.h"
 #include "app/runtime/media/MediaJobsHost.h"
@@ -17,7 +17,7 @@
 #include "common/PreviewGameplayConfig.h"
 #include "common/WaveformCache.h"
 #include "preview/runtime/PreviewRuntime.h"
-#include "tools/latency/LatencyAnalysis.h"
+#include "app/runtime/latency/LatencyAnalysis.h"
 
 #include <QDesktopServices>
 #include <QTemporaryDir>

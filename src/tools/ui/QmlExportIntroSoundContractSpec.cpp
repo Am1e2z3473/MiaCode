@@ -32,7 +32,7 @@ bool verifySessionContract(QTextStream& err)
     const QString implementation = readSource(
         QStringLiteral("src/app/ui/export/ExportSession.cpp"));
     const QString settings = readSource(
-        QStringLiteral("src/tools/video_export/VideoExportSettings.cpp"));
+        QStringLiteral("src/export/video_export/VideoExportSettings.cpp"));
     bool ok = require(!header.isEmpty() && !implementation.isEmpty() && !settings.isEmpty(),
                       QStringLiteral("export intro-sound contract sources are readable"), err);
 

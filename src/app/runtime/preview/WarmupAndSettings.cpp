@@ -17,7 +17,7 @@
 #include "core/chart/transform/ChartBatchTransform.h"
 #include "core/chart/transform/ChartNormalization.h"
 #include "timeline/quick/TimelineQuickStateBridge.h"
-#include "tools/latency/LatencySandboxController.h"
+#include "app/runtime/latency/LatencySandboxController.h"
 #include "core/analysis/MuriAnalyzer.h"
 #include "core/analysis/MuriPanelEntries.h"
 #include "core/analysis/MuriStaticChecker.h"

@@ -8,9 +8,9 @@
 #include "app/ui/preferences/LocaleService.h"
 #include "common/PreviewSfxAssets.h"
 #include "core/video/PreviewRenderSettings.h"
-#include "tools/video_export/VideoExportPreferences.h"
-#include "tools/video_export/VideoExportSettings.h"
-#include "tools/video_export/FontLibrary.h"
+#include "export/video_export/VideoExportPreferences.h"
+#include "export/video_export/VideoExportSettings.h"
+#include "export/video_export/FontLibrary.h"
 
 #include <QCoreApplication>
 #include <QDir>

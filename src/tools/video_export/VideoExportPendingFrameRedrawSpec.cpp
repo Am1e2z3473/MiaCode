@@ -5,7 +5,7 @@
 #include <deque>
 #include <vector>
 
-#include "tools/video_export/VideoExportPendingFrameRedraw.h"
+#include "export/video_export/VideoExportPendingFrameRedraw.h"
 
 namespace {
 

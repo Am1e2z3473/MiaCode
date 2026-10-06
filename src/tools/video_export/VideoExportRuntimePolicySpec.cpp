@@ -3,7 +3,7 @@
 
 #include <optional>
 
-#include "tools/video_export/VideoExportRuntimePolicy.h"
+#include "export/video_export/VideoExportRuntimePolicy.h"
 
 namespace {
 

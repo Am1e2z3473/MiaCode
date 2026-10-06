@@ -9,8 +9,8 @@
 | 文档替换、编辑与导航 | ChartWorkspace → revision → AnalysisService / EditorSyncController → runtime 与 QML 投影；完整文档保存点、difficulty 和过期结果丢弃一起验证 |
 | 播放/seek/设备切换 | `src/app/runtime/playback/` ↔ `src/app/runtime/preview/` ↔ `src/app/runtime/timeline/` ↔ `src/audio/`；保持单一音频时钟、代次校验和 worker barrier |
 | 图层、皮肤、绘制顺序 | `src/core/scene/` ↔ `src/preview/quick_scene/` ↔ `src/timeline/quick/` ↔ `src/tools/video_export/`；导出使用显式帧时间 |
-| SFX 事件与混音 | `src/common/PreviewSfxTimeline.h`、`src/common/PreviewSfxTiming.h` ↔ `src/audio/` ↔ `src/tools/video_export/VideoExportAudioRenderPlan.cpp` |
-| 导出选项与素材 | QML session / preferences → runtime export snapshot → `src/tools/video_export/VideoExportSnapshot.cpp` 序列化 → worker task；预览、视频及封面检查适用的同一设置 |
+| SFX 事件与混音 | `src/common/PreviewSfxTimeline.h`、`src/common/PreviewSfxTiming.h` ↔ `src/audio/` ↔ `src/export/video_export/VideoExportAudioRenderPlan.cpp` |
+| 导出选项与素材 | QML session / preferences → runtime export snapshot → `src/export/video_export/VideoExportSnapshot.cpp` 序列化 → worker task；预览、视频及封面检查适用的同一设置 |
 | 文件、媒体与资源解析 | `src/common/AssetPaths.h`、`src/common/ChartAssetPaths.h`、ChartMediaService ↔ 预览/导出/导入/打包 |
 
 谱面信息保存由 `DocumentModel::publishWorkspaceCommit` 通过单次事件定时器合并字段修改，
