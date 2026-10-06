@@ -1,9 +1,9 @@
 #include "export/video_export/VideoExportQuickRenderBackend.h"
 
-#include "common/ChartAssetPaths.h"
-#include "common/IntroConfig.h"
-#include "common/PreviewGameplayConfig.h"
-#include "common/PreviewVideoGeometryConfig.h"
+#include "core/chart/ChartAssetPaths.h"
+#include "core/chart/IntroConfig.h"
+#include "core/video/PreviewGameplayConfig.h"
+#include "core/video/PreviewVideoGeometryConfig.h"
 #include "core/scene/PreviewProgressStatsCache.h"
 #include "export/video_export/FontLibrary.h"
 

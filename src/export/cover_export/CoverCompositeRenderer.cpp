@@ -1,6 +1,6 @@
 #include "export/cover_export/CoverCompositeRenderer.h"
 
-#include "common/ChartAssetPaths.h"
+#include "core/chart/ChartAssetPaths.h"
 #include "export/cover_export/CoverLayoutModel.h"
 #include "preview/quick_scene/PreviewQuickSceneRoot.h"
 

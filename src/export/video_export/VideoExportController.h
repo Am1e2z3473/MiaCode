@@ -9,13 +9,13 @@
 
 #include "core/video/PreviewRenderSettings.h"
 #include "audio/PreviewAudioSettings.h"
-#include "common/PreviewTimingSettings.h"
+#include "core/video/PreviewTimingSettings.h"
 #include "core/chart/model/TimelineData.h"
 #include "core/analysis/MuriConfig.h"
 #include "core/analysis/MuriRenderOptions.h"
 #include "core/analysis/MuriTypes.h"
-#include "common/PreviewVideoGeometryConfig.h"
-#include "common/PreviewGameplayConfig.h"
+#include "core/video/PreviewVideoGeometryConfig.h"
+#include "core/video/PreviewGameplayConfig.h"
 #include "export/video_export/VideoExportRuntimePolicy.h"
 enum class VideoExportPreset {
     Fast,

@@ -152,8 +152,8 @@ add_executable(MiaCode WIN32 MACOSX_BUNDLE
     src/app/services/ChartWorkspace.h
     src/app/services/ChartMediaService.cpp
     src/app/services/ChartMediaService.h
-    src/common/ChartMediaImport.cpp
-    src/common/ChartMediaImport.h
+    src/app/services/ChartMediaImport.cpp
+    src/app/services/ChartMediaImport.h
     src/app/services/ChartWorkspaceFileService.cpp
     src/app/services/ChartWorkspaceFileService.h
     src/app/services/AnalysisService.cpp
@@ -296,20 +296,20 @@ add_executable(MiaCode WIN32 MACOSX_BUNDLE
     src/common/Mmcss.cpp
     src/common/InputShortcutGesture.h
     src/common/InputShortcutGesture.cpp
-    src/common/ChartAssetPaths.h
+    src/core/chart/ChartAssetPaths.h
     src/audio/OfflineAudioDecoder.h
     src/audio/OfflineAudioDecoder.cpp
-    src/common/Id3TagReader.h
-    src/common/Id3TagReader.cpp
-    src/common/TimelineThemeConfig.h
-    src/common/WaveformCache.h
-    src/common/WaveformCache.cpp
-    src/common/ProjectPreferences.h
-    src/common/ProjectPreferences.cpp
-    src/common/PreviewTimingSettings.h
-    src/common/ChartClockCount.h
-    src/common/PreviewSfxTiming.h
-    src/common/PreviewSfxTimeline.h
+    src/app/services/Id3TagReader.h
+    src/app/services/Id3TagReader.cpp
+    src/timeline/TimelineThemeConfig.h
+    src/audio/WaveformCache.h
+    src/audio/WaveformCache.cpp
+    src/app/services/ProjectPreferences.h
+    src/app/services/ProjectPreferences.cpp
+    src/core/video/PreviewTimingSettings.h
+    src/core/chart/document/ChartClockCount.h
+    src/core/scene/PreviewSfxTiming.h
+    src/core/scene/PreviewSfxTimeline.h
     src/editor/BookmarkCommentSyntax.h
     src/editor/BookmarkCommentSyntax.cpp
     src/editor/TouchPadAuthoringEdit.h
@@ -996,7 +996,7 @@ target_include_directories(MiaCode PRIVATE
 )
 
 target_sources(MiaCode PRIVATE
-    src/common/PreviewAudioMixConfig.h
+    src/audio/PreviewAudioMixConfig.h
     src/audio/PreviewAudioWorkerFactory.h
     src/audio/PreviewAudioWorkerFactory.cpp
     src/audio/PreviewAudioWorker.h

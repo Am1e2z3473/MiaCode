@@ -4,8 +4,8 @@
 
 #include "export/video_export/VideoExportAudioRenderPlan.h"
 #include "export/video_export/VideoExportController.h"
-#include "common/ChartClockCount.h"
-#include "common/PreviewAudioMixConfig.h"
+#include "core/chart/document/ChartClockCount.h"
+#include "audio/PreviewAudioMixConfig.h"
 
 namespace {
 

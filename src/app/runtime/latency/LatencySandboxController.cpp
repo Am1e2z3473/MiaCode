@@ -3,7 +3,7 @@
 #include "app/runtime/latency/LatencyTestChartBuilder.h"
 
 #include "app/services/PlaybackStateAuthority.h"
-#include "common/ChartClockCount.h"
+#include "core/chart/document/ChartClockCount.h"
 #include "app/runtime/Session.h"
 #include "app/runtime/Shared.h"
 #include "audio/QtPreviewSfxRuntime.h"

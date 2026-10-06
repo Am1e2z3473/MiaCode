@@ -1,6 +1,6 @@
 #include "preview/quick_scene/PreviewQuickStageBackgroundLayer.h"
 
-#include "common/PreviewVideoGeometryConfig.h"
+#include "core/video/PreviewVideoGeometryConfig.h"
 #include "preview/quick_scene/PreviewTextureRepository.h"
 #include "core/scene/PreviewSceneGeometry.h"
 

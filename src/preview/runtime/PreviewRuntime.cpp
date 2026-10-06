@@ -5,8 +5,8 @@
 #include "common/DebugLog.h"
 #include "common/DebugOptions.h"
 #include "common/Mmcss.h"
-#include "common/PreviewGameplayConfig.h"
-#include "common/PreviewVideoGeometryConfig.h"
+#include "core/video/PreviewGameplayConfig.h"
+#include "core/video/PreviewVideoGeometryConfig.h"
 #include "preview/quick_scene/PreviewTextureRepository.h"
 
 #include <QDateTime>

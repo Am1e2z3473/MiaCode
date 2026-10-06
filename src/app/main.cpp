@@ -8,7 +8,7 @@
 #include "common/ProcessDiagnostics.h"
 #include "common/UiHangWatchdog.h"
 #include "common/DebugOptions.h"
-#include "common/WaveformCache.h"
+#include "audio/WaveformCache.h"
 #include "audio/PreviewBassDefaultDevice.h"
 #include "core/chart/parser/SimaiParser.h"
 

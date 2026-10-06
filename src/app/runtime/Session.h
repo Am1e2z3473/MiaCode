@@ -20,7 +20,7 @@
 #include <QVector>
 
 #include "audio/PreviewAudioSettings.h"
-#include "common/PreviewTimingSettings.h"
+#include "core/video/PreviewTimingSettings.h"
 #include "core/video/PreviewRenderSettings.h"
 #include "core/chart/document/SimaiDocument.h"
 #include "core/chart/document/SimaiTimingMetadata.h"
@@ -31,8 +31,8 @@
 #include "core/analysis/MuriRenderOptions.h"
 #include "core/analysis/MuriTypes.h"
 #include "export/video_export/VideoExportSnapshot.h"
-#include "common/PreviewGameplayConfig.h"
-#include "common/PreviewVideoGeometryConfig.h"
+#include "core/video/PreviewGameplayConfig.h"
+#include "core/video/PreviewVideoGeometryConfig.h"
 #include "app/ui/document/DocumentProjection.h"
 #include "app/ui/document/AnalysisProjection.h"
 #include "app/services/ApplicationServices.h"

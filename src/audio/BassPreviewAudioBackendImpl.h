@@ -18,8 +18,8 @@
 #include "audio/PreviewAudioBackend.h"
 #include "common/DebugLog.h"
 #include "common/DebugOptions.h"
-#include "common/PreviewAudioMixConfig.h"
-#include "common/PreviewSfxTimeline.h"
+#include "audio/PreviewAudioMixConfig.h"
+#include "core/scene/PreviewSfxTimeline.h"
 
 #include <QCoreApplication>
 #include <QDir>

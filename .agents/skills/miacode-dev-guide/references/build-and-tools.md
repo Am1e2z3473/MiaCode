@@ -10,7 +10,7 @@
 | Spec 注册与源码分组 | `cmake/devtools/specs/`、`cmake/devtools/MiaCodeSpecRegistry.cmake` |
 | Spec 目标与契约索引 | `docs/tests/SPEC_CATALOG.md` |
 | 调试开关与日志 | `docs/ops/DEBUG_INDEX.md`、`src/common/DebugLog.h` |
-| 资源解析 | `src/common/AssetPaths.h`、`src/common/ChartAssetPaths.h`、ChartMediaService |
+| 资源解析 | `src/core/video/AssetPaths.h`、`src/core/chart/ChartAssetPaths.h`、ChartMediaService |
 | 翻译与偏好 | `translations/`、`src/app/ui/preferences/PreferenceDocument.h` |
 | 公开规范和验收清单 | `docs/INDEX.md`、`docs/README.md` |
 

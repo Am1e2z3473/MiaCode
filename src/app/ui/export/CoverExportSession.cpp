@@ -3,7 +3,7 @@
 #include "app/ui/export/CoverExportSession.h"
 #include "app/ui/preferences/LocaleService.h"
 
-#include "common/ChartAssetPaths.h"
+#include "core/chart/ChartAssetPaths.h"
 #include "core/chart/document/SimaiDocument.h"
 #include "app/services/PlaybackControl.h"
 #include "export/cover_export/CoverCompositionState.h"

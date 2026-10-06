@@ -6,7 +6,7 @@
 #include "core/scene/PreviewActiveMarkerView.h"
 #include "core/scene/PreviewFrameState.h"
 #include "core/scene/PreviewJudgeFireworkLayerState.h"
-#include "common/PreviewGameplayConfig.h"
+#include "core/video/PreviewGameplayConfig.h"
 
 namespace {
 

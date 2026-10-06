@@ -7,8 +7,8 @@
 #include <algorithm>
 #include <tuple>
 
-#include "common/PreviewSkinConfig.h"
-#include "common/TimelineThemeConfig.h"
+#include "core/video/PreviewSkinConfig.h"
+#include "timeline/TimelineThemeConfig.h"
 #include "timeline/TimelineNoteAssets.h"
 
 namespace {

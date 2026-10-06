@@ -1,6 +1,6 @@
 #include "preview/runtime/PreviewStageMediaHost.h"
 
-#include "common/ChartAssetPaths.h"
+#include "core/chart/ChartAssetPaths.h"
 #include "common/DebugLog.h"
 #include "common/DebugOptions.h"
 #include "common/FileContentStamp.h"

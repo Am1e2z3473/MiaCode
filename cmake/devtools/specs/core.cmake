@@ -351,13 +351,13 @@ miacode_add_spec(video_export_audio_render_plan_spec
         src/export/video_export/VideoExportAudioRenderPlan.h
         src/export/video_export/VideoExportAudioRenderPlan.cpp
         src/export/video_export/VideoExportController.h
-        src/common/PreviewAudioMixConfig.h
-        src/common/PreviewTimingSettings.h
-        src/common/PreviewSfxTiming.h
-        src/common/PreviewSfxTimeline.h
-        src/common/PreviewSfxAssets.h
-        src/common/PreviewSfxSemantics.h
-        src/common/VideoExportConfig.h
+        src/audio/PreviewAudioMixConfig.h
+        src/core/video/PreviewTimingSettings.h
+        src/core/scene/PreviewSfxTiming.h
+        src/core/scene/PreviewSfxTimeline.h
+        src/core/scene/PreviewSfxAssets.h
+        src/core/scene/PreviewSfxSemantics.h
+        src/export/video_export/VideoExportConfig.h
         src/audio/PreviewAudioSettings.h
         src/audio/PreviewAudioSettings.cpp
         src/core/chart/model/TimelineData.h
@@ -374,7 +374,7 @@ miacode_add_spec(video_export_media_timeline_spec
         src/tools/video_export/VideoExportMediaTimelineSpec.cpp
         src/export/video_export/VideoExportMediaTimeline.h
         src/export/video_export/VideoExportMediaTimeline.cpp
-        src/common/PreviewSfxTimeline.h
+        src/core/scene/PreviewSfxTimeline.h
     LIBS Qt6::Core Qt6::Gui
     INCLUDES src
 )
@@ -388,7 +388,7 @@ miacode_add_spec(chart_zip_packager_spec
         src/tools/zip_export/ChartZipPackagerSpec.cpp
         src/media_tools/zip_export/ChartZipPackager.h
         src/media_tools/zip_export/ChartZipPackager.cpp
-        src/common/ChartAssetPaths.h
+        src/core/chart/ChartAssetPaths.h
     LIBS Qt6::Core Qt6::Gui miniz
     INCLUDES src
 )
@@ -421,7 +421,7 @@ miacode_add_spec(net_client_spec
         src/media_tools/zip_export/ChartZipPackager.cpp
         src/app/ui/preferences/PreferenceDocument.h
         src/app/ui/preferences/PreferenceDocument.cpp
-        src/common/ChartAssetPaths.h
+        src/core/chart/ChartAssetPaths.h
     LIBS Qt6::Core Qt6::Gui Qt6::Network miniz
     INCLUDES src
 )

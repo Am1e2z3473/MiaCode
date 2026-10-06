@@ -3,7 +3,7 @@
 #include "export/video_export/VideoExportSnapshot.h"
 #include "common/DebugLog.h"
 #include "common/OperationLog.h"
-#include "common/WaveformCache.h"
+#include "audio/WaveformCache.h"
 
 #include <QGuiApplication>
 #include <QCommandLineOption>

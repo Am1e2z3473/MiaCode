@@ -1,6 +1,6 @@
-#include "common/ProjectPreferences.h"
+#include "app/services/ProjectPreferences.h"
 
-#include "common/WaveformCache.h"
+#include "audio/WaveformCache.h"
 
 #include <QDir>
 #include <QFile>

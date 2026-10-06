@@ -1,6 +1,6 @@
 #pragma once
 
-#include "common/AssetPaths.h"
+#include "core/video/AssetPaths.h"
 
 #include <QByteArray>
 #include <QCoreApplication>

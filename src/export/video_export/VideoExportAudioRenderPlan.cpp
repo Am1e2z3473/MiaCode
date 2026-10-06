@@ -2,12 +2,12 @@
 
 #include "export/video_export/VideoExportController.h"
 
-#include "common/PreviewAudioMixConfig.h"
-#include "common/PreviewSfxAssets.h"
-#include "common/PreviewSfxSemantics.h"
-#include "common/PreviewSfxTimeline.h"
-#include "common/IntroConfig.h"
-#include "common/VideoExportConfig.h"
+#include "audio/PreviewAudioMixConfig.h"
+#include "core/scene/PreviewSfxAssets.h"
+#include "core/scene/PreviewSfxSemantics.h"
+#include "core/scene/PreviewSfxTimeline.h"
+#include "core/chart/IntroConfig.h"
+#include "export/video_export/VideoExportConfig.h"
 #include "audio/PreviewAudioSettings.h"
 
 #include <QDir>

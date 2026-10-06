@@ -10,10 +10,10 @@
 #include "editor/BookmarkCommentSyntax.h"
 
 #include "app/services/UiRequestService.h"
-#include "common/ChartAssetPaths.h"
+#include "core/chart/ChartAssetPaths.h"
 #include "common/DebugLog.h"
-#include "common/Id3TagReader.h"
-#include "common/ProjectPreferences.h"
+#include "app/services/Id3TagReader.h"
+#include "app/services/ProjectPreferences.h"
 #include "core/chart/document/SimaiDocument.h"
 
 #include <algorithm>

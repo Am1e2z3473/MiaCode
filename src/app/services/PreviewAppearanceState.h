@@ -1,6 +1,6 @@
 #pragma once
 
-#include "common/PreviewGameplayConfig.h"
+#include "core/video/PreviewGameplayConfig.h"
 #include "core/video/PreviewRenderSettings.h"
 
 #include <QObject>

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "common/IntroConfig.h"
+#include "core/chart/IntroConfig.h"
 
 #include <QDir>
 #include <QFileInfo>

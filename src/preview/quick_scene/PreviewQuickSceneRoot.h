@@ -8,7 +8,7 @@
 #include <QQueue>
 #include <QQuickItem>
 #include <QSet>
-#include "common/PreviewGameplayConfig.h"
+#include "core/video/PreviewGameplayConfig.h"
 #include <QSize>
 #include <QString>
 #include <atomic>

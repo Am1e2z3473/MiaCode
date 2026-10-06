@@ -12,9 +12,9 @@
 #include "app/runtime/playback/PlaybackCoordinator.h"
 #include "app/runtime/Session.h"
 
-#include "common/ChartClockCount.h"
-#include "common/PreviewInteractionConfig.h"
-#include "common/WaveformCache.h"
+#include "core/chart/document/ChartClockCount.h"
+#include "core/video/PreviewInteractionConfig.h"
+#include "audio/WaveformCache.h"
 #include "app/ui/export/ExportSession.h"
 
 #include <QtCore>

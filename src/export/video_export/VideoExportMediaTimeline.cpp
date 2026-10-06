@@ -1,6 +1,6 @@
 #include "export/video_export/VideoExportMediaTimeline.h"
 
-#include "common/PreviewSfxTimeline.h"
+#include "core/scene/PreviewSfxTimeline.h"
 
 #include <QString>
 

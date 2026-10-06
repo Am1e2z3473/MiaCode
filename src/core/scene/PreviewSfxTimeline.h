@@ -7,9 +7,9 @@
 
 #include <algorithm>
 
-#include "common/PreviewGameplayConfig.h"
-#include "common/PreviewSfxSemantics.h"
-#include "common/PreviewSfxTiming.h"
+#include "core/video/PreviewGameplayConfig.h"
+#include "core/scene/PreviewSfxSemantics.h"
+#include "core/scene/PreviewSfxTiming.h"
 #include "core/chart/model/TimelineData.h"
 
 namespace miacode::preview_sfx_timeline {

@@ -231,16 +231,16 @@ miacode_add_spec(preview_texture_generation_policy_spec
 )
 
 miacode_add_spec(preview_sfx_timeline_spec
-    OWNER src/common
+    OWNER src/core/scene
     CONTRACT preview.preview-sfx-timeline
     DOMAIN preview KIND behavior RISK high
     EXECUTION ctest STATUS active PLATFORM all
     SOURCES
         src/tools/preview/PreviewSfxTimelineSpec.cpp
-        src/common/PreviewTimingSettings.h
-        src/common/PreviewSfxTiming.h
-        src/common/PreviewSfxTimeline.h
-        src/common/PreviewGameplayConfig.h
+        src/core/video/PreviewTimingSettings.h
+        src/core/scene/PreviewSfxTiming.h
+        src/core/scene/PreviewSfxTimeline.h
+        src/core/video/PreviewGameplayConfig.h
         src/core/chart/model/TimelineData.h
     LIBS Qt6::Core
     INCLUDES src
@@ -255,8 +255,8 @@ miacode_add_spec(preview_audio_settings_spec
         src/tools/preview/PreviewAudioSettingsSpec.cpp
         src/audio/PreviewAudioSettings.h
         src/audio/PreviewAudioSettings.cpp
-        src/common/PreviewSfxAssets.h
-        src/common/PreviewSfxSemantics.h
+        src/core/scene/PreviewSfxAssets.h
+        src/core/scene/PreviewSfxSemantics.h
     LIBS Qt6::Core
     INCLUDES src
 )
@@ -349,7 +349,7 @@ target_sources(preview_audio_worker_spec PRIVATE
     src/audio/BassPreviewAudioBackend_EventDrain.cpp
 )
 target_include_directories(preview_audio_worker_spec PRIVATE third_party/bass/include)
-# The BASS backend resolves track paths through common/ChartAssetPaths.h, whose
+# The BASS backend resolves track paths through core/chart/ChartAssetPaths.h, whose
 # background helpers include <QImage>.
 target_link_libraries(preview_audio_worker_spec PRIVATE Qt6::Gui)
 if (WIN32)
@@ -525,7 +525,7 @@ miacode_add_spec(preview_media_cache_stamp_spec
     SOURCES
         src/tools/preview/PreviewMediaCacheStampSpec.cpp
         src/common/FileContentStamp.h
-        src/common/ChartAssetPaths.h
+        src/core/chart/ChartAssetPaths.h
     LIBS Qt6::Core Qt6::Gui
     INCLUDES src
 )

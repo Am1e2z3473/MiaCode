@@ -3,8 +3,8 @@
 
 #include "core/chart/document/SimaiDocument.h"
 #include "core/chart/parser/SimaiParser.h"
-#include "common/ChartClockCount.h"
-#include "common/ChartAssetPaths.h"
+#include "core/chart/document/ChartClockCount.h"
+#include "core/chart/ChartAssetPaths.h"
 #include "core/chart/model/TimelineMarkerOffset.h"
 #include "core/analysis/MuriAnalyzer.h"
 

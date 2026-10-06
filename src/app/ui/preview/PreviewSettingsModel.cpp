@@ -2,7 +2,7 @@
 
 #include "app/ui/preview/PreviewSettingsModel.h"
 
-#include "common/PreviewGameplayConfig.h"
+#include "core/video/PreviewGameplayConfig.h"
 #include "core/scene/PreviewHudState.h"
 #include "core/video/PreviewRenderSettings.h"
 #include "preview/runtime/PreviewRuntime.h"

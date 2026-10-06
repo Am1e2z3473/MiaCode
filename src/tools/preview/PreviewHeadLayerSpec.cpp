@@ -3,7 +3,7 @@
 #include <QRectF>
 #include <QTextStream>
 
-#include "common/PreviewGameplayConfig.h"
+#include "core/video/PreviewGameplayConfig.h"
 #include "core/scene/PreviewActiveMarkerView.h"
 #include "core/scene/PreviewChartReviewLayerState.h"
 #include "core/scene/PreviewHeadLayerState.h"

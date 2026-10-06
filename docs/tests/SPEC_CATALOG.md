@@ -59,7 +59,7 @@ Owners name production modules; kinds describe the checked boundary, not runtime
 | `src/tools/preview/PreviewQuickSpriteBatchSpec.cpp` | `preview_quick_sprite_batch_spec` | `src/preview/quick_scene` | `preview.preview-quick-sprite-batch` | preview | behavior | high | all | ctest | active |
 | `src/tools/preview/PreviewRealtimeObjectHotPathSpec.cpp` | `preview_realtime_object_hot_path_spec` | `src/core/scene` | `preview.preview-realtime-object-hot-path` | preview | behavior | high | all | ctest | active |
 | `src/tools/preview/PreviewSceneAssetLoaderSpec.cpp` | `preview_asset_loader_spec` | `src/preview/runtime` | `preview.preview-asset-loader` | preview | behavior | high | all | ctest | active |
-| `src/tools/preview/PreviewSfxTimelineSpec.cpp` | `preview_sfx_timeline_spec` | `src/common` | `preview.preview-sfx-timeline` | preview | behavior | high | all | ctest | active |
+| `src/tools/preview/PreviewSfxTimelineSpec.cpp` | `preview_sfx_timeline_spec` | `src/core/scene` | `preview.preview-sfx-timeline` | preview | behavior | high | all | ctest | active |
 | `src/tools/preview/PreviewSlideEraseByAreaSpec.cpp` | `preview_slide_erase_by_area_spec` | `src/core/scene` | `preview.preview-slide-erase-by-area` | preview | behavior | high | all | ctest | active |
 | `src/tools/preview/PreviewTextureGenerationPolicySpec.cpp` | `preview_texture_generation_policy_spec` | `src/preview/quick_scene` | `preview.preview-texture-generation-policy` | preview | behavior | high | all | ctest | active |
 | `src/tools/preview/PvMemoryDiagnosticsSpec.cpp` | `pv_memory_diagnostics_spec` | `src/preview/runtime` | `preview.pv-memory-diagnostics` | preview | behavior | high | all | ctest | active |

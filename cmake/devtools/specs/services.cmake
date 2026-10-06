@@ -24,8 +24,8 @@ miacode_add_spec(chart_media_service_spec
         src/tools/services/ChartMediaServiceSpec.cpp
         src/app/services/ChartMediaService.cpp
         src/app/services/ChartMediaService.h
-        src/common/ChartMediaImport.cpp
-        src/common/ChartMediaImport.h
+        src/app/services/ChartMediaImport.cpp
+        src/app/services/ChartMediaImport.h
     LIBS Qt6::Core Qt6::Gui
     INCLUDES src
 )
@@ -273,8 +273,8 @@ miacode_add_spec(preferences_port_spec
         src/app/services/PlaybackPreferencesPort.h
         src/audio/PreviewAudioSettings.h
         src/audio/PreviewAudioSettings.cpp
-        src/common/PreviewSfxAssets.h
-        src/common/PreviewSfxSemantics.h
+        src/core/scene/PreviewSfxAssets.h
+        src/core/scene/PreviewSfxSemantics.h
     LIBS Qt6::Core Qt6::Test
     INCLUDES src
 )
