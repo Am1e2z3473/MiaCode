@@ -85,6 +85,13 @@ jobs:
         with:
           lfs: false
 
+      # Library layering (scripts/governance/module_layering.py): include
+      # direction, third-party and Qt private header owners, CMake link edges.
+      - name: Module layering
+        run: |
+          python scripts/governance/module_layering.py
+          python scripts/governance/module_layering_test.py
+
       - name: Cache keys
         id: keys
         run: python scripts/build/package.py keys
