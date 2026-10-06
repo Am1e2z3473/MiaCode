@@ -10,6 +10,8 @@ Item {
     property bool pressed: false
     property bool focused: false
     property color baseColor: "transparent"
+    property color borderColor: "transparent"
+    property real borderWidth: 0
     property real cornerRadius: Theme.controlRadius
     property var stateColors: Theme.colors.state
     property real contentWidth: width
@@ -33,5 +35,8 @@ Item {
                 + 2 * Theme.chromeHighlightOutset
         radius: root.cornerRadius
         color: Theme.overlayColor(root.fillColor)
+        border.color: root.borderColor
+        border.width: root.borderWidth
+        border.pixelAligned: false
     }
 }

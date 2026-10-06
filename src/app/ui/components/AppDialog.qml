@@ -40,7 +40,14 @@ Dialog {
     }
     Overlay.modal: Rectangle {
         color: Theme.modalScrimColor
-        opacity: root.opacity
+        Behavior on opacity {
+            id: dimmerFade
+            NumberAnimation {
+                duration: dimmerFade.targetValue > 0
+                    ? Theme.popupEnterDuration : Theme.popupExitDuration
+                easing.type: dimmerFade.targetValue > 0 ? Easing.OutCubic : Easing.InCubic
+            }
+        }
     }
     onAboutToShow: {
         enterTransition.initialOpacity = root.closing ? root.opacity : 0

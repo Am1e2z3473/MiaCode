@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Controls
 import MiaCode.UI
 
 // The playback-rate HUD v1 drew over the preview: 当前倍速 + the rate as a
@@ -10,20 +11,16 @@ import MiaCode.UI
 // timeline panel, where the eyes already are while editing and where nothing is
 // obscured; fullscreen preview anchors it to the stage, having no timeline.
 //
-// Overlay only: it declares no input handler, so clicks and drags reach
-// whatever is underneath. Mount it AFTER the content it covers — QML stacking
-// is declaration order.
+// The notification uses the shared popup surface and lets input reach the
+// timeline or fullscreen stage underneath.
 Item {
     id: root
 
     required property var previewSession
-    // 900ms hold then a 240ms fade, matching the v1 timings.
+    // Keep the notification visible briefly after the latest rate change.
     property int holdMilliseconds: 900
 
     readonly property real rate: root.previewSession ? root.previewSession.rate : 1
-    // Coerced once: the theme stores these as strings, which have no channels.
-    readonly property color hudText: Theme.colors.previewHud.text
-    readonly property color hudPlate: Theme.colors.previewHud.shadow
     property int percent: 100
     property bool showing: false
     // The first evaluation of `rate` is the session's current speed, not a
@@ -53,50 +50,49 @@ Item {
         onTriggered: root.showing = false
     }
 
-    Rectangle {
+    AppDropdownPanel {
         id: card
-        anchors.centerIn: parent
-        // Never wider than the stage it floats on: the preview pane can be
-        // dragged narrower than the HUD's natural size, and the stage clips.
+        parent: root
+        x: (root.width - width) / 2
+        y: (root.height - height) / 2
         width: Math.min(Math.max(1, root.width - 16), Math.max(196, body.implicitWidth + 48))
         height: Math.min(Math.max(1, root.height - 16), Math.max(96, body.implicitHeight + 36))
-        radius: 18
-        // previewHud is the theme's contrast pair for chrome drawn over the
-        // stage: an opaque-enough plate in both themes, with text that reads
-        // against it. Ordinary panel colors would vanish into the canvas.
-        color: root.hudPlate
-        border.width: 1
-        border.color: Qt.rgba(root.hudText.r, root.hudText.g, root.hudText.b, 0.22)
-        opacity: root.showing ? 1 : 0
-        visible: opacity > 0
+        visible: root.showing && root.visible
+        enabled: false
+        modal: false
+        dim: false
+        focus: false
+        closePolicy: Popup.NoAutoClose
+        padding: Theme.panelPadding
 
-        Behavior on opacity {
-            NumberAnimation { duration: 240; easing.type: Easing.OutCubic }
-        }
+        contentItem: Item {
+            implicitWidth: body.implicitWidth
+            implicitHeight: body.implicitHeight
 
-        Column {
-            id: body
-            anchors.centerIn: parent
-            spacing: 6
+            Column {
+                id: body
+                anchors.centerIn: parent
+                spacing: 6
 
-            Text {
-                anchors.horizontalCenter: parent.horizontalCenter
-                text: qsTrId("timeline.playback_speed")
-                color: root.hudText
-                font.family: Theme.uiFont
-                font.pixelSize: Theme.uiFontSize + 1
-                font.weight: Font.DemiBold
-                horizontalAlignment: Text.AlignHCenter
-            }
+                Text {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    text: qsTrId("timeline.playback_speed")
+                    color: Theme.colors.text.primary
+                    font.family: Theme.uiFont
+                    font.pixelSize: Theme.uiFontSize + 1
+                    font.weight: Font.DemiBold
+                    horizontalAlignment: Text.AlignHCenter
+                }
 
-            Text {
-                anchors.horizontalCenter: parent.horizontalCenter
-                text: root.percent + "%"
-                color: root.hudText
-                font.family: Theme.uiFont
-                font.pixelSize: Theme.uiFontSize * 2
-                font.weight: Font.Bold
-                horizontalAlignment: Text.AlignHCenter
+                Text {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    text: root.percent + "%"
+                    color: Theme.colors.text.heading
+                    font.family: Theme.uiFont
+                    font.pixelSize: Theme.uiFontSize * 2
+                    font.weight: Font.Bold
+                    horizontalAlignment: Text.AlignHCenter
+                }
             }
         }
     }

@@ -11,6 +11,8 @@ layout(std140, binding = 0) uniform buf {
     float nativeMaterial;
     vec4 nativeTintColor;
     vec4 panelBaseColor;
+    vec4 separatorColor;
+    float separatorWidth;
 };
 layout(binding = 1) uniform sampler2D source;
 layout(binding = 2) uniform sampler2D panelSource;
@@ -32,4 +34,9 @@ void main()
     } else {
         fragColor = backing * coverage * qt_Opacity;
     }
+    float separatorCoverage = smoothstep(1.0 - separatorWidth - edgeWidth * 0.5,
+                                        1.0 - separatorWidth + edgeWidth * 0.5,
+                                        distanceToCenter) * (1.0 - coverage);
+    vec4 separator = separatorColor * separatorCoverage * qt_Opacity;
+    fragColor = separator + fragColor * (1.0 - separator.a);
 }
