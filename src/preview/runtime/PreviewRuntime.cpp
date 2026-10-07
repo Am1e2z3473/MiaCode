@@ -861,6 +861,13 @@ void PreviewRuntime::setSuppressDebugInfo(bool suppress)
     update();
 }
 
+void PreviewRuntime::setHudFontSettings(const miacode::preview::scene::PreviewHudFontSettings& settings)
+{
+    if (frameState_.hudFontSettings == settings) return;
+    frameState_.hudFontSettings = settings;
+    update();
+}
+
 void PreviewRuntime::setShowTimestamp(bool show)
 {
     const bool oldShow = frameState_.render.showTimestamp;

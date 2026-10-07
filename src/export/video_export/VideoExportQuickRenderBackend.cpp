@@ -56,6 +56,7 @@ bool VideoExportQuickRenderBackend::bootstrap(
     }
 
     frameState_ = miacode::preview::scene::PreviewFrameState();
+    frameState_.hudFontSettings = task.hudFontSettings;
     frameState_.noteMarkers = noteMarkers;
     frameState_.progressStatsCache = buildProgressStatsCache(noteMarkers);
     frameState_.muriAnalysisReport = muriAnalysisReport;

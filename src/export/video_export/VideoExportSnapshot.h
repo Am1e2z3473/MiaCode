@@ -11,6 +11,7 @@
 // carry it too); VideoExportSnapshot just serializes one.
 
 struct VideoExportSnapshot {
+    miacode::preview::scene::PreviewHudFontSettings hudFontSettings;
     QString schema = QStringLiteral("miacode_export_snapshot_v1");
     QString jobId;
     QString createdAtUtc;
