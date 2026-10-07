@@ -23,9 +23,6 @@ bool require(bool condition, const char* message, QTextStream& err)
 class AmbientPreferences final : public miacode::preferences::PreferenceProvider {
 public:
     QJsonObject values;
-    QJsonObject appSection(const QString&) const override { return values; }
-    bool setAppSection(const QString&, const QJsonObject& value) override { values = value; return true; }
-    QString preferencesDirectoryPath() const override { return {}; }
     QString resolvedLanguageToken() const override { return {}; }
 };
 

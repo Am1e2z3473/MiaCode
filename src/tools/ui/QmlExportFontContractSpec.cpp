@@ -75,7 +75,7 @@ bool verifyQmlFontContract(QTextStream& err)
         QStringLiteral("src/app/runtime/playback/SurfaceContract.cpp"));
     ok &= require(
         implementation.contains(QStringLiteral("fontLibraryEntries("))
-            && implementation.contains(QStringLiteral("importFontFileIntoLibrary(selectedPath)"))
+            && implementation.contains(QStringLiteral("importFontFileIntoLibrary(selectedPath, miacode::app_preferences::fontLibraryDirectory())"))
             && implementation.contains(QStringLiteral("refreshIntroState()"))
             && playbackSurfaceContract.contains(
                 QStringLiteral("void miacode::runtime::PlaybackCoordinator::refreshSurfaces()"))

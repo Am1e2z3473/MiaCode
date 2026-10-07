@@ -11,6 +11,7 @@
 #include "app/services/VideoExportPreferences.h"
 #include "export/video_export/VideoExportSettings.h"
 #include "export/video_export/FontLibrary.h"
+#include "app/services/UserFontLibrary.h"
 
 #include <QCoreApplication>
 #include <QDir>
@@ -239,7 +240,7 @@ QVariantList ExportSession::fontLibraryOptions() const
     }
     QVariantList list;
     const QVector<miacode::video_export::FontLibraryEntry> entries =
-        miacode::video_export::fontLibraryEntries(true, defaultLabel);
+        miacode::video_export::fontLibraryEntries(miacode::app_preferences::fontLibraryDirectory(), true, defaultLabel);
     for (const miacode::video_export::FontLibraryEntry& entry : entries) {
         list.append(QVariantMap{
             {QStringLiteral("label"), entry.label},
@@ -891,7 +892,7 @@ void ExportSession::applyFontImport(const QString& selectedPath)
         return;
     }
     const miacode::video_export::FontImportResult result =
-        miacode::video_export::importFontFileIntoLibrary(selectedPath);
+        miacode::video_export::importFontFileIntoLibrary(selectedPath, miacode::app_preferences::fontLibraryDirectory());
     if (result.path.isEmpty()) {
         const miacode::LocalizedText text = result.failure == miacode::video_export::FontImportFailure::CopyFailed
             ? miacode::localizedText("card_font.copy_failed")

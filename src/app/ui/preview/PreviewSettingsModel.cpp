@@ -8,6 +8,7 @@
 #include "core/video/PreviewRenderSettings.h"
 #include "preview/runtime/PreviewRuntime.h"
 #include "export/video_export/FontLibrary.h"
+#include "app/services/UserFontLibrary.h"
 #include "app/ui/preferences/LocaleService.h"
 
 #include <QDesktopServices>
@@ -322,7 +323,7 @@ QVariantList PreviewSettingsModel::fontLibraryOptions() const
     bool selectedListed = selectedPath.isEmpty();
     const QVector<miacode::video_export::FontLibraryEntry> entries =
         miacode::video_export::fontLibraryEntries(
-            true, text("card_font.default"));
+            miacode::app_preferences::fontLibraryDirectory(), true, text("card_font.default"));
     for (const miacode::video_export::FontLibraryEntry& entry : entries) {
         list.append(QVariantMap{
             {QStringLiteral("label"), entry.label},
@@ -508,7 +509,7 @@ void PreviewSettingsModel::applyHudFontImport(const QString& selectedPath)
         return;
     }
     const miacode::video_export::FontImportResult result =
-        miacode::video_export::importFontFileIntoLibrary(selectedPath);
+        miacode::video_export::importFontFileIntoLibrary(selectedPath, miacode::app_preferences::fontLibraryDirectory());
     if (result.path.isEmpty()) {
         if (uiRequests_ != nullptr) {
             uiRequests_->postNotice(

@@ -55,6 +55,7 @@ struct PreviewHudFontAreaChoice {
 
 PreviewHudStats computePreviewHudStats(const QVector<TimelineNoteMarker>& noteMarkers, double second);
 QString formatPreviewHudTimeLabel(double seconds);
+QString previewHudFontFamilyForFile(const QString& path);
 QFont previewHudDefaultFontForArea(
     PreviewHudFontArea area,
     int pointSize,

@@ -590,7 +590,7 @@ int main(int argc, char* argv[])
     // charts through the same MainWindow code paths).
     miacode::crash_recovery::setSessionMarkerEnabled(true);
 
-    // Library code reaches preferences.json only through this provider.
+    // Install timeline language and encoder probe cache adapters.
     miacode::runtime::installPreferenceDocumentProvider();
 
     QQuickStyle::setStyle(QStringLiteral("Basic"));
