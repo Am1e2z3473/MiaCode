@@ -75,8 +75,17 @@ Rectangle {
         const source = root.session ? root.session.fontLibraryOptions : []
         const options = []
         for (let index = 0; index < source.length; ++index)
-            options.push({ value: source[index].path, label: source[index].label })
+            options.push({ value: source[index].path, label: source[index].label, family: source[index].family })
         return options
+    }
+
+    FontLoader {
+        id: defaultDisplayFont
+        source: "qrc:/intro/assets/fonts/ResourceHanRoundedCN-Heavy.ttf"
+    }
+    FontLoader {
+        id: defaultBodyFont
+        source: "qrc:/intro/assets/fonts/ResourceHanRoundedCN-Bold.ttf"
     }
 
     // 检查器标签列。标签都是短词，88px 容得下中/英/日三种文案而不折行。
@@ -998,6 +1007,8 @@ Rectangle {
 
                                         LabeledCombo {
                                             objectName: "coverCardDisplayFontCombo"
+                                            fontFamilyRole: "family"
+                                            defaultFontFamily: defaultDisplayFont.name
                                             label: qsTrId("cover.title_font")
                                             labelWidth: root.labelWidth
                                             options: root.fontOptions
@@ -1012,6 +1023,8 @@ Rectangle {
                                         }
                                         LabeledCombo {
                                             objectName: "coverCardBodyFontCombo"
+                                            fontFamilyRole: "family"
+                                            defaultFontFamily: defaultBodyFont.name
                                             label: qsTrId("cover.body_font")
                                             labelWidth: root.labelWidth
                                             options: root.fontOptions

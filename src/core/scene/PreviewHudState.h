@@ -51,6 +51,10 @@ QFont previewHudMonoFont(int pointSize, QFont::Weight weight = QFont::Medium);
 QString previewHudFontDisplayName();
 void setPreviewHudCustomFontPath(const QString& fontPath);
 QString previewHudCustomFontPath(PreviewHudFontArea area);
+QFont previewHudDefaultFontForArea(
+    PreviewHudFontArea area,
+    int pointSize,
+    QFont::Weight weight = QFont::Medium);
 QFont previewHudTimestampFontForArea(
     PreviewHudFontArea area,
     int pointSize,
