@@ -125,6 +125,31 @@ int main(int argc, char** argv)
     expect(firstFailure.replace(firstPending) && read(missingPath).object == firstPending,
            "first-load pending defaults retry successfully");
 
+    const QString primaryPath = temporary.filePath(QStringLiteral("primary-unreadable.json"));
+    const QByteArray primaryOriginal("{\"schema\":\"miacode_preferences_v4\",\"vendor\":{\"keep\":42},\"ui\":{\"theme\":\"light\"},\"app\":{\"other\":73}}");
+    expect(QDir().mkdir(primaryPath), "block initial primary preference reading");
+    Repository primaryFailure(primaryPath);
+    QJsonObject primaryPending = withUi(primaryFailure.snapshot(), QStringLiteral("language"), QStringLiteral("en"));
+    expect(!primaryFailure.replace(primaryPending) && primaryFailure.isDirty(),
+           "unread primary accepts runtime edits while persistence stays dirty");
+    expect(QDir().rmdir(primaryPath) && put(primaryPath, primaryOriginal), "restore unread primary original");
+    expect(!primaryFailure.flush() && !primaryFailure.replace(primaryPending)
+               && primaryFailure.isDirty() && primaryFailure.snapshot() == primaryPending,
+           "recovered primary cannot be overwritten by a lifetime fallback snapshot");
+    QFile primaryFile(primaryPath);
+    expect(primaryFile.open(QIODevice::ReadOnly) && primaryFile.readAll() == primaryOriginal,
+           "blocked save preserves complete original primary bytes");
+    primaryFile.close();
+    Repository recoveredPrimary(primaryPath);
+    const QJsonObject recoveredRoot = recoveredPrimary.snapshot();
+    expect(recoveredRoot.value("vendor").toObject().value("keep") == 42
+               && recoveredRoot.value("app").toObject().value("other") == 73
+               && recoveredRoot.value("ui").toObject().value("theme") == "light",
+           "new repository loads unread original fields after IO recovery");
+    expect(recoveredPrimary.replace(withUi(recoveredRoot, QStringLiteral("language"), QStringLiteral("ja")))
+               && read(primaryPath).object.value("vendor").toObject().value("keep") == 42,
+           "new repository can persist edits without losing original fields");
+
     const QString legacyPath = temporary.filePath(QStringLiteral("legacy-unreadable"));
     const QString migratedPath = temporary.filePath(QStringLiteral("migrated.json"));
     expect(QDir().mkdir(legacyPath), "block legacy preference reading");

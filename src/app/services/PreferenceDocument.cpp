@@ -634,7 +634,8 @@ void PreferenceDocument::Repository::initializeLocked()
     const ReadResult primary = read(path_);
     const ReadResult source = primary.status == ReadStatus::Missing && !legacyPath_.isEmpty()
         ? read(legacyPath_) : primary;
-    legacyReadBlocked_ = primary.status == ReadStatus::Missing && source.status == ReadStatus::ReadError;
+    sourceReadBlocked_ = source.status == ReadStatus::ReadError;
+    unreadSourcePath_ = primary.status == ReadStatus::Missing ? legacyPath_ : path_;
     unsupportedSchema_ = !supportedPreferencesSchema(source.object);
     if (unsupportedSchema_) {
         miacode::preference_json_file::log(primary.status == ReadStatus::Missing ? legacyPath_ : path_,
@@ -645,7 +646,7 @@ void PreferenceDocument::Repository::initializeLocked()
     dirty_ = primary.status != ReadStatus::Valid || root_ != primary.object;
     // First-run/legacy migration and corruption recovery share the guarded
     // writer. Read errors remain pending and never cause a blind replacement.
-    if (!legacyReadBlocked_
+    if (!sourceReadBlocked_
         && (primary.status == ReadStatus::Missing || primary.status == ReadStatus::Corrupt)) {
         flushLocked();
     }
@@ -699,11 +700,11 @@ bool PreferenceDocument::Repository::flushLocked()
     if (!dirty_) {
         return true;
     }
-    if (legacyReadBlocked_) {
-        // The missing primary must not hide a legacy source that this lifetime
-        // never read. A new repository can retry loading after IO recovers.
-        miacode::preference_json_file::log(legacyPath_,
-            QStringLiteral("legacy-read-unavailable save-blocked-for-session"));
+    if (sourceReadBlocked_) {
+        // IO recovery cannot make the fallback snapshot a complete copy of an
+        // unread source. A new repository must load it before writes resume.
+        miacode::preference_json_file::log(unreadSourcePath_,
+            QStringLiteral("source-read-unavailable save-blocked-for-session"));
         return false;
     }
     if (!miacode::preference_json_file::write(path_, root_)) {

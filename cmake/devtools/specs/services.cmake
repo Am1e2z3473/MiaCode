@@ -457,6 +457,19 @@ miacode_add_spec(preference_json_file_spec
     INCLUDES src
 )
 
+miacode_add_spec(project_preference_read_recovery_spec
+    OWNER src/app/services
+    CONTRACT preferences.project-unread-source
+    DOMAIN services KIND behavior RISK high
+    EXECUTION ctest STATUS active PLATFORM all
+    SOURCES
+        src/tools/services/ProjectPreferenceReadRecoverySpec.cpp
+        src/app/services/ProjectPreferences.cpp
+        src/app/services/ProjectPreferences.h
+    LIBS miacode_base miacode_audio Qt6::Core
+    INCLUDES src
+)
+
 miacode_add_spec(preference_repository_spec
     OWNER src/app/services
     CONTRACT preferences.runtime-document

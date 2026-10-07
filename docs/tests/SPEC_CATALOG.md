@@ -3,7 +3,7 @@
 Generated from `cmake/devtools/specs/` by `cmake -P cmake/devtools/SpecCatalog.cmake`.
 Check without writing: `cmake -DMIACODE_SPEC_CATALOG_CHECK=ON -P cmake/devtools/SpecCatalog.cmake`.
 
-126 independent specs; source lists and link dependencies are maintained only in CMake.
+127 independent specs; source lists and link dependencies are maintained only in CMake.
 
 `platform:all` means the target is registered on every platform, not that all platforms
 have been tested. Platform-specific source branches and link additions remain in their manifests.
@@ -89,6 +89,7 @@ Owners name production modules; kinds describe the checked boundary, not runtime
 | `src/tools/services/PreviewAppearanceStateSpec.cpp` | `preview_appearance_state_spec` | `src/app/services` | `v2.preview-appearance-state` | services | behavior | high | all | ctest | active |
 | `src/tools/services/PreviewHostSpec.cpp` | `preview_host_spec` | `src/app/runtime` | `v2.preview-host` | services | source-contract | high | all | ctest | active |
 | `src/tools/services/PreviewPortSpec.cpp` | `preview_port_spec` | `src/app/services` | `v2.preview-port` | services | boundary | high | all | ctest | active |
+| `src/tools/services/ProjectPreferenceReadRecoverySpec.cpp` | `project_preference_read_recovery_spec` | `src/app/services` | `preferences.project-unread-source` | services | behavior | high | all | ctest | active |
 | `src/tools/services/RuntimeContextBoundarySpec.cpp` | `runtime_context_boundary_spec` | `src/app/runtime` | `v2.runtime-context-boundary` | services | boundary | high | all | ctest | active |
 | `src/tools/services/ShortcutPreferencePersistenceSpec.cpp` | `shortcut_preference_persistence_spec` | `src/app/services` | `shortcuts.persistence-state` | services | behavior | high | all | ctest | active |
 | `src/tools/services/TimelineHostSpec.cpp` | `timeline_host_spec` | `src/app/runtime` | `v2.timeline-host` | services | behavior | high | all | ctest | active |
