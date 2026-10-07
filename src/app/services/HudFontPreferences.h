@@ -1,6 +1,6 @@
 #pragma once
 
-#include "app/services/PreferenceDocument.h"
+#include "app/services/VideoExportPreferences.h"
 #include "core/scene/PreviewHudState.h"
 #include "common/DebugLog.h"
 
@@ -25,6 +25,7 @@ inline QString validPath(const QString& path)
 
 inline QJsonObject migrateSection(QJsonObject section)
 {
+    if (!app_preferences::supportsNumericVersion(section, QStringLiteral("schema_version"), app_preferences::kDialogPreferencesSchemaVersion)) return section;
     const QString legacyKey = QStringLiteral("hud_font_path");
     if (!section.contains(legacyKey)) return section;
     const QString legacy = validPath(section.value(legacyKey).toString());
@@ -77,6 +78,7 @@ inline preview::scene::PreviewHudFontSettings load()
 
 inline QJsonObject withPath(QJsonObject video, preview::scene::PreviewHudFontArea area, const QString& path)
 {
+    if (!app_preferences::supportsNumericVersion(video, QStringLiteral("schema_version"), app_preferences::kDialogPreferencesSchemaVersion)) return video;
     video = migrateSection(video);
     QJsonObject paths = video.value(QStringLiteral("hud_font_paths")).toObject();
     paths.insert(areaKey(area), path.isEmpty() ? QString() : QFileInfo(path).absoluteFilePath());
@@ -86,12 +88,9 @@ inline QJsonObject withPath(QJsonObject video, preview::scene::PreviewHudFontAre
 
 inline bool setPath(preview::scene::PreviewHudFontArea area, const QString& path)
 {
-    QJsonObject root = PreferenceDocument::loadPreferencesObject();
-    QJsonObject app = root.value(QStringLiteral("app")).toObject();
-    const QJsonObject video = withPath(app.value(QStringLiteral("video_export")).toObject(), area, path);
-    app.insert(QStringLiteral("video_export"), video);
-    root.insert(QStringLiteral("app"), app);
-    return PreferenceDocument::savePreferencesObject(root);
+    QJsonObject video = app_preferences::videoExportPreferences().load();
+    if (!app_preferences::allowVersionWrite(video, QStringLiteral("schema_version"), app_preferences::kDialogPreferencesSchemaVersion, QStringLiteral("hud-font"))) return false;
+    return app_preferences::videoExportPreferences().save(withPath(video, area, path));
 }
 
 } // namespace miacode::hud_preferences

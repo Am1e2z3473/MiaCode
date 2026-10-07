@@ -16,7 +16,7 @@ QString readSource(const QString& relativePath)
 {
     QFile file(sourceRoot() + QLatin1Char('/') + relativePath);
     if (!file.open(QIODevice::ReadOnly)) return {};
-    return QString::fromUtf8(file.readAll());
+    return QString::fromUtf8(file.readAll()).replace(QStringLiteral("\r\n"), QStringLiteral("\n"));
 }
 
 int matchingBrace(const QString& source, int openBrace)
@@ -165,7 +165,8 @@ int main(int argc, char** argv)
                && page.contains(QStringLiteral("LabeledCombo"))
                && page.contains(QStringLiteral("PanelHeader"))
                && page.contains(QStringLiteral("SplitHandle"))
-               && page.contains(QStringLiteral("panelTab: true"))
+               && page.contains(QStringLiteral("AppTabBar {"))
+               && page.contains(QStringLiteral("AppTabPages {"))
                && !page.contains(QStringLiteral("AppSlider {")),
            QStringLiteral("the page is built from the shared v2 chrome"), out, &failed);
     for (const QString& contract : {
@@ -345,11 +346,21 @@ int main(int argc, char** argv)
                && composer.contains(QStringLiteral("onChartSceneBinderChanged"))
                && composer.contains(QStringLiteral("onItemChanged")),
            QStringLiteral("the live chart loader synchronizes binder and item lifetimes"), out, &failed);
+    const int inspectorPages = page.indexOf(QStringLiteral("AppTabPages {"));
+    const int layerPageMarker = page.indexOf(QStringLiteral("// ---- 图层 ----"), inspectorPages);
+    const int layerPageOpen = page.indexOf(QLatin1Char('{'), layerPageMarker);
+    const int layerPageClose = matchingBrace(page, layerPageOpen);
+    const int cardSettings = page.indexOf(QStringLiteral("id: cardSettings"));
+    const int cardSettingsOpen = page.lastIndexOf(QLatin1Char('{'), cardSettings);
+    const QString cardSettingsBody = page.mid(cardSettingsOpen, matchingBrace(page, cardSettingsOpen) - cardSettingsOpen + 1);
+    const int showInspector = page.indexOf(QStringLiteral("function showLayerInspector(key)"));
+    const int showInspectorOpen = page.indexOf(QLatin1Char('{'), showInspector);
+    const QString showInspectorBody = page.mid(showInspectorOpen, matchingBrace(page, showInspectorOpen) - showInspectorOpen + 1);
     expect(!page.contains(QStringLiteral("text: UiText.text(\"cover.difficulty_card\")"))
-               && page.contains(QStringLiteral("id: cardSettings"))
-               && page.contains(QStringLiteral("visible: root.cardLayerActive"))
-               && page.contains(QStringLiteral("visible: root.inspectorTab === \"layer\""))
-               && page.contains(QStringLiteral("root.inspectorTab = \"layer\"")),
+               && cardSettings > layerPageOpen && cardSettings < layerPageClose
+               && cardSettingsBody.contains(QStringLiteral("visible: root.cardLayerActive"))
+               && showInspectorBody.contains(QStringLiteral("inspectorTabs.setCurrentIndex(1)"))
+               && page.contains(QStringLiteral("root.showLayerInspector(key)")),
            QStringLiteral("difficulty-card settings show in the layer inspector only for the card layer, and layer selection opens it"),
            out, &failed);
     expect(session.contains(QStringLiteral("QString::fromUtf8(preset.label)"))
@@ -365,7 +376,12 @@ int main(int argc, char** argv)
     const int presetMenu = page.indexOf(QStringLiteral("id: presetMenu"));
     const int builtinApply = page.indexOf(QStringLiteral("applyBuiltinPreset("));
     const int presetMenuItem = page.indexOf(QStringLiteral("qsTrId(\"cover.manage_presets\")"));
-    expect(page.count(QStringLiteral("panelTab: true")) == 2
+    const int tabsStart = page.indexOf(QStringLiteral("tabs: ["), page.indexOf(QStringLiteral("id: inspectorTabs")));
+    const int tabsEnd = page.indexOf(QLatin1Char(']'), tabsStart);
+    const QString inspectorTabList = page.mid(tabsStart, tabsEnd - tabsStart + 1);
+    expect(inspectorTabList.count(QStringLiteral("id:")) == 2
+               && inspectorTabList.contains(QStringLiteral("id: \"canvas\""))
+               && inspectorTabList.contains(QStringLiteral("id: \"layer\""))
                && canvasTab >= 0 && canvasTab < layerTab
                && layoutMenu >= 0 && presetMenu > layoutMenu
                && builtinApply > presetMenu && builtinApply < canvasTab
@@ -385,16 +401,20 @@ int main(int argc, char** argv)
            QStringLiteral("cover exposes the four built-in layouts and user preset rename"), out,
            &failed);
 
-    const int layerSection = page.indexOf(QStringLiteral("// ---- 图层 ----"));
-    const int inspectorOpen = page.indexOf(QStringLiteral("ColumnLayout {\n                            id: inspector"));
+    const int layerSection = layerPageMarker;
+    const int inspectorOpen = page.indexOf(QStringLiteral("AppTabPages {\n                            id: inspector"));
     const int inspectorClose = matchingBrace(page, page.indexOf(QLatin1Char('{'), inspectorOpen));
     const int cardSection = page.indexOf(QStringLiteral("id: cardSettings"));
     const int presetSection = page.indexOf(QStringLiteral("id: presetDialog"));
     const int layerRowSelection = page.indexOf(
         QStringLiteral("root.selectLayerFromUi(layerRow.modelData.key)"));
     const int layerRowTabRoute = page.lastIndexOf(
-        QStringLiteral("root.inspectorTab = \"layer\""), layerRowSelection);
+        QStringLiteral("root.showLayerInspector(key)"), layerRowSelection);
+    const QString tabPages = readSource(QStringLiteral("src/app/ui/components/AppTabPages.qml"));
     expect(page.count(QStringLiteral("Flickable {")) == 1
+               && page.contains(QStringLiteral("currentIndex: inspectorTabs.currentIndex"))
+               && tabPages.contains(QStringLiteral("StackLayout {"))
+               && tabPages.contains(QStringLiteral("children[currentIndex].implicitHeight"))
                && layerSection >= 0 && inspectorOpen >= 0 && inspectorClose > inspectorOpen
                && cardSection > layerSection && cardSection < inspectorClose
                && presetSection > inspectorClose
@@ -463,6 +483,24 @@ int main(int argc, char** argv)
                && cmake.contains(QStringLiteral("CoverExportSession"))
                && cmakeLeftovers.isEmpty(),
            QStringLiteral("the build contains only the QML cover surface"), out, &failed);
+
+    expect(session.contains(QStringLiteral("compositionSaveTimer_.setSingleShot(true)"))
+               && session.contains(QStringLiteral("compositionSaveTimer_.setInterval(500)"))
+               && session.contains(QStringLiteral("&QTimer::timeout, this, &CoverExportSession::flushComposition")),
+           QStringLiteral("continuous cover edits use a 500 ms session-owned trailing save"), out, &failed);
+    const int flushStart = session.indexOf(QStringLiteral("void CoverExportSession::flushComposition()"));
+    const QString flushBody = session.mid(flushStart, matchingBrace(session, session.indexOf(QLatin1Char('{'), flushStart)) - flushStart + 1);
+    expect(flushBody.contains(QStringLiteral("savePreferences(compositionJson())"))
+               && flushBody.contains(QStringLiteral("if (!compositionDirty_) return"))
+               && flushBody.contains(QStringLiteral("compositionDirty_ = false")),
+           QStringLiteral("flush serializes current composition and clears dirty only after success"), out, &failed);
+    expect(session.contains(QStringLiteral("CoverExportSession::~CoverExportSession()\n{\n    flushComposition();"))
+               && session.contains(QStringLiteral("persistComposition();\n    flushComposition();\n    pageSessionActive_ = false;")),
+           QStringLiteral("leaving and destruction flush pending cover edits"), out, &failed);
+    const QString audioSettings = readSource(QStringLiteral("src/app/runtime/preview/WarmupAndSettings.cpp"));
+    expect(audioSettings.contains(QStringLiteral("if (appPreferenceChanged) savePortableState();"))
+               && audioSettings.contains(QStringLiteral("saveProjectAudioPreferences();")),
+           QStringLiteral("project mix edits only save global preferences when the app sound flag changes"), out, &failed);
 
     if (failed != 0) {
         out << "QmlCoverExportContract spec failed: " << failed << '\n';

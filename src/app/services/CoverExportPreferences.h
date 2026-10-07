@@ -1,6 +1,8 @@
 #pragma once
 
 #include "app/services/PreferenceDocument.h"
+#include "app/services/PreferenceVersionGuard.h"
+#include "export/cover_export/CoverCompositionState.h"
 #include <QJsonArray>
 #include <QJsonObject>
 #include <QList>
@@ -32,6 +34,10 @@ public:
     void renameUserPreset(const QString& oldName, const QString& newName);
 private:
     static QString normalizedPresetName(QString name) { return name.trimmed(); }
+    bool writable(const QJsonObject& section) const
+    {
+        return allowVersionWrite(section, QStringLiteral("version"), cover_export::CoverCompositionState::kCurrentVersion, QStringLiteral("cover-export"));
+    }
     Reader reader_;
     Writer writer_;
 };
@@ -45,6 +51,7 @@ inline bool CoverExportPreferences::savePreferences(const QJsonObject& preferenc
 {
     const QJsonObject existing =
         reader_();
+    if (!writable(existing) || !writable(preferences)) return false;
     QJsonObject merged = existing;
     for (const char* ownedKey : {"kind", "version", "size", "background", "card", "layout", "output", "chartFrame"}) {
         merged.remove(QString::fromLatin1(ownedKey));
@@ -76,6 +83,7 @@ inline void CoverExportPreferences::pushRecentFile(const QString& path)
         return;
     }
     QJsonObject cover = reader_();
+    if (!writable(cover)) return;
 
     QStringList list;
     list.append(trimmed);
@@ -97,6 +105,7 @@ inline void CoverExportPreferences::pushRecentFile(const QString& path)
 inline void CoverExportPreferences::clearRecentFiles()
 {
     QJsonObject cover = reader_();
+    if (!writable(cover)) return;
     cover.insert(QStringLiteral("recentFiles"), QJsonArray());
     writer_(cover);
 }
@@ -120,12 +129,23 @@ inline QList<CoverUserPreset> CoverExportPreferences::loadUserPresets()
 inline void CoverExportPreferences::saveUserPreset(const QString& name, const QJsonObject& composition)
 {
     const QString trimmed = normalizedPresetName(name);
+    if (!writable(composition)) return;
     if (trimmed.isEmpty() || composition.isEmpty()) {
         return;
     }
 
     QJsonObject cover = reader_();
+    if (!writable(cover)) return;
 
+    const QJsonArray prior = cover.value(QStringLiteral("presets")).toArray();
+    for (const QJsonValue& value : prior) {
+        const QJsonObject existing = value.toObject();
+        if (normalizedPresetName(existing.value(QStringLiteral("name")).toString()) == trimmed
+            && (!allowVersionWrite(existing, QStringLiteral("version"), 1, QStringLiteral("cover-preset wrapper"))
+                || !writable(existing.value(QStringLiteral("composition")).toObject()))) {
+            return;
+        }
+    }
     QJsonArray arr;
     QJsonObject saved;
     saved.insert(QStringLiteral("name"), trimmed);
@@ -133,7 +153,6 @@ inline void CoverExportPreferences::saveUserPreset(const QString& name, const QJ
     saved.insert(QStringLiteral("composition"), composition);
     arr.append(saved);
 
-    const QJsonArray prior = cover.value(QStringLiteral("presets")).toArray();
     for (const QJsonValue& value : prior) {
         const QJsonObject obj = value.toObject();
         const QString existingName = normalizedPresetName(obj.value(QStringLiteral("name")).toString());
@@ -154,6 +173,7 @@ inline void CoverExportPreferences::removeUserPreset(const QString& name)
     }
 
     QJsonObject cover = reader_();
+    if (!writable(cover)) return;
     QJsonArray arr;
     const QJsonArray prior = cover.value(QStringLiteral("presets")).toArray();
     for (const QJsonValue& value : prior) {
@@ -175,6 +195,7 @@ inline void CoverExportPreferences::renameUserPreset(const QString& oldName, con
     }
 
     QJsonObject cover = reader_();
+    if (!writable(cover)) return;
     QJsonArray arr;
     const QJsonArray prior = cover.value(QStringLiteral("presets")).toArray();
     for (const QJsonValue& value : prior) {

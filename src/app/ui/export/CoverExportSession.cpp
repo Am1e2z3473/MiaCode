@@ -80,6 +80,9 @@ CoverExportSession::CoverExportSession(miacode::ExportEngine& exportEngine,
     , bannerTemplate_(loadBannerTemplate())
 {
 
+    compositionSaveTimer_.setSingleShot(true);
+    compositionSaveTimer_.setInterval(500);
+    connect(&compositionSaveTimer_, &QTimer::timeout, this, &CoverExportSession::flushComposition);
     connect(&miacode::LocaleService::instance(), &miacode::LocaleService::languageChanged,
             this, [this](const QString&) {
         emit localeLabelsChanged();
@@ -99,6 +102,7 @@ CoverExportSession::CoverExportSession(miacode::ExportEngine& exportEngine,
 
 CoverExportSession::~CoverExportSession()
 {
+    flushComposition();
     stopAndDetachLiveChartScene();
     if (auto* scene = qobject_cast<PreviewQuickSceneRoot*>(lastLiveChartScene_.data())) {
         scene->setFrameState(nullptr);
@@ -235,6 +239,7 @@ void CoverExportSession::leave()
     commitActiveLayerFrameSeconds();
     stopAndDetachLiveChartScene();
     persistComposition();
+    flushComposition();
     pageSessionActive_ = false;
     emit pageSessionActiveChanged();
 }
@@ -1226,7 +1231,19 @@ bool CoverExportSession::applyCompositionJson(const QJsonObject& root, bool repo
 
 void CoverExportSession::persistComposition()
 {
-    miacode::app_preferences::coverExportPreferences().savePreferences(compositionJson());
+    compositionDirty_ = true;
+    compositionSaveTimer_.start();
+}
+
+void CoverExportSession::flushComposition()
+{
+    compositionSaveTimer_.stop();
+    if (!compositionDirty_) return;
+    // Build from live session state at flush time. The adapter merges into the
+    // latest section so an intervening preset/recent-file edit survives.
+    if (miacode::app_preferences::coverExportPreferences().savePreferences(compositionJson())) {
+        compositionDirty_ = false;
+    }
 }
 
 void CoverExportSession::saveLayout()

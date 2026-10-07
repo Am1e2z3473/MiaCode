@@ -5,6 +5,7 @@
 #include <utility>
 
 #include "app/services/PreferenceDocument.h"
+#include "app/services/PreferenceVersionGuard.h"
 
 namespace miacode::app_preferences {
 
@@ -18,6 +19,7 @@ inline constexpr int kDialogPreferencesSchemaVersion = 2;
 // saveDialogPreferences().
 inline QJsonObject migrateDialogPreferences(QJsonObject preferences)
 {
+    if (!supportsNumericVersion(preferences, QStringLiteral("schema_version"), kDialogPreferencesSchemaVersion)) return preferences;
     const int version = preferences.value(QStringLiteral("schema_version")).toInt(1);
 
     // v1 -> v2: the intro card type gained an "Auto" default that detects SD/DX
@@ -43,6 +45,8 @@ public:
     QJsonObject load() const { return migrateDialogPreferences(reader_()); }
     bool save(QJsonObject preferences)
     {
+        if (!allowVersionWrite(reader_(), QStringLiteral("schema_version"), kDialogPreferencesSchemaVersion, QStringLiteral("video-export latest"))
+            || !allowVersionWrite(preferences, QStringLiteral("schema_version"), kDialogPreferencesSchemaVersion, QStringLiteral("video-export incoming"))) return false;
         preferences.insert(QStringLiteral("schema_version"), kDialogPreferencesSchemaVersion);
         return writer_(preferences);
     }

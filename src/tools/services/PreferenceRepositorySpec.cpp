@@ -2,6 +2,7 @@
 #include "app/services/PreferenceJsonFile.h"
 
 #include <QCoreApplication>
+#include <QJsonArray>
 #include <QStandardPaths>
 #include <QSemaphore>
 #include <QTemporaryDir>
@@ -42,13 +43,13 @@ int main(int argc, char** argv)
     Repository repository(path);
     const QJsonObject initial = repository.snapshot();
     expect(!repository.isDirty() && read(path).object == initial, "first load persists initial defaults");
-    expect(put(path, "{\"schema\":\"old\",\"ui\":{\"theme\":\"light\"}}"), "external update fixture");
+    expect(put(path, "{\"schema\":\"miacode_preferences_v1\",\"ui\":{\"theme\":\"light\"}}"), "external update fixture");
     expect(repository.snapshot() == initial, "ordinary reads retain the lifetime snapshot");
     expect(repository.replace(initial) && read(path).object != initial,
            "unchanged successfully persisted snapshot skips another write");
     Repository nextLifetime(path);
     expect(nextLifetime.snapshot().value("ui").toObject().value("theme") == "light"
-               && nextLifetime.storedSchema() == "old", "new repository observes file and original schema");
+               && nextLifetime.storedSchema() == "miacode_preferences_v1", "new repository observes file and original schema");
 
     expect(QFile::remove(path) && QDir().mkdir(path), "block persistence at existing path");
     QJsonObject pending = withUi(repository.snapshot(), QStringLiteral("theme"), QStringLiteral("light"));
@@ -60,6 +61,33 @@ int main(int argc, char** argv)
     expect(QDir().rmdir(path), "remove persistence obstacle");
     expect(repository.replace(repository.snapshot()) && !repository.isDirty() && read(path).object == pending,
            "equal dirty snapshot retries and persists all pending edits");
+
+    int futureIndex = 0;
+    for (const QJsonValue token : {QJsonValue(99), QJsonValue(0), QJsonValue(1.5), QJsonValue(QStringLiteral("miacode_preferences_v5")), QJsonValue(QStringLiteral("future")), QJsonValue(true), QJsonValue(QJsonValue::Null), QJsonValue(QJsonArray{1}), QJsonValue(QJsonObject{{QStringLiteral("v"), 2}})}) {
+        QJsonObject raw{{QStringLiteral("schema"), token},
+            {QStringLiteral("extensions"), QJsonObject{{QStringLiteral("future"), true}}},
+            {QStringLiteral("ui_theme"), QStringLiteral("light")}};
+        const QString futurePath = temporary.filePath(QStringLiteral("future-%1.json").arg(futureIndex++));
+        const QByteArray original = QJsonDocument(raw).toJson();
+        expect(put(futurePath, original), "unknown root fixture");
+        Repository future(futurePath);
+        expect(future.snapshot() == raw && PreferenceDocument::normalizePreferencesObject(raw) == raw,
+               "unknown schema preserves raw keys and types without normalization");
+        QJsonObject edited = withUi(raw, QStringLiteral("theme"), QStringLiteral("dark"));
+        edited.insert(QStringLiteral("schema"), PreferenceDocument::currentPreferencesSchema());
+        expect(!future.replace(edited) && future.isDirty()
+                   && future.snapshot().value("schema") == token
+                   && future.snapshot().value("ui").toObject().value("theme") == "dark",
+               "unknown root accepts runtime edits but preserves schema and remains pending");
+        QFile originalFile(futurePath);
+        expect(originalFile.open(QIODevice::ReadOnly), "read protected root bytes");
+        expect(!future.flush() && originalFile.readAll() == original,
+               "unknown root cannot be overwritten or relabeled by a current-version caller");
+    }
+    QJsonObject futureNamed{{QStringLiteral("schema"), QStringLiteral("miacode_preferences_v5")},
+                           {QStringLiteral("extensions"), 42}};
+    expect(PreferenceDocument::normalizePreferencesObject(futureNamed) == futureNamed,
+           "future named schema remains raw");
 
     std::atomic<bool> stop{false};
     std::atomic<bool> consistent{true};
