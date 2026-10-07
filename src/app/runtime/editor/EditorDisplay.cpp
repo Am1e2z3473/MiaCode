@@ -20,6 +20,7 @@
 #include "core/scene/PreviewProgressStatsCache.h"
 #include "core/chart/transform/ChartBatchTransform.h"
 #include "core/chart/transform/ChartNormalization.h"
+#include "app/services/ChartNormalizationPreferences.h"
 #include "timeline/quick/TimelineQuickStateBridge.h"
 #include "core/analysis/MuriAnalyzer.h"
 #include "core/analysis/MuriPanelEntries.h"
@@ -476,7 +477,7 @@ void miacode::runtime::EditorHost::applyPortablePreviewSettings(const QJsonObjec
         state_.timelineSyncEnabled_ = preview.value("timeline_sync").toBool(false);
     }
     const miacode::chart_transform::ChartNormalizationOptions normalizationOptions =
-        miacode::chart_transform::chartNormalizationOptionsFromPreferences(
+        miacode::app_preferences::chartNormalizationOptionsFromPreferences(
             preview,
             miacode::chart_transform::ChartNormalizationOptions{true, false, true});
     state_.chartNormalizeStartAtNewMeasure_ = true;
@@ -640,7 +641,7 @@ void miacode::runtime::EditorHost::savePortableState() const
             ? state_.timelineQuickStateBridge_->measureLineBrightness()
             : miacode::timeline::kTimelineMeasureLineBrightnessDefault
     );
-    miacode::chart_transform::saveChartNormalizationOptionsToPreferences(
+    miacode::app_preferences::saveChartNormalizationOptionsToPreferences(
         &preview,
         miacode::chart_transform::ChartNormalizationOptions{
             true,

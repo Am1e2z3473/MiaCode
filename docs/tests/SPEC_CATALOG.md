@@ -3,7 +3,7 @@
 Generated from `cmake/devtools/specs/` by `cmake -P cmake/devtools/SpecCatalog.cmake`.
 Check without writing: `cmake -DMIACODE_SPEC_CATALOG_CHECK=ON -P cmake/devtools/SpecCatalog.cmake`.
 
-121 independent specs; source lists and link dependencies are maintained only in CMake.
+122 independent specs; source lists and link dependencies are maintained only in CMake.
 
 `platform:all` means the target is registered on every platform, not that all platforms
 have been tested. Platform-specific source branches and link additions remain in their manifests.
@@ -77,6 +77,7 @@ Owners name production modules; kinds describe the checked boundary, not runtime
 | `src/tools/services/EditorPageRouterSpec.cpp` | `editor_page_router_spec` | `src/app/services` | `v2.editor-page-router` | services | integration | high | all | ctest | active |
 | `src/tools/services/EditorSyncControllerSpec.cpp` | `editor_sync_controller_spec` | `src/app/services` | `v2.editor-sync-controller` | services | integration | high | all | ctest | active |
 | `src/tools/services/ExportEngineSpec.cpp` | `export_engine_spec` | `src/app/services` | `v2.export-engine` | services | integration | high | all | ctest | active |
+| `src/tools/services/ExportPreferencesSpec.cpp` | `export_preferences_spec` | `src/app/services` | `preferences.export-storage-boundary` | services | behavior | normal | all | ctest | active |
 | `src/tools/services/JobProgressServiceSpec.cpp` | `job_progress_service_spec` | `src/app/services` | `v2.job-progress-service` | services | behavior | high | all | ctest | active |
 | `src/tools/services/PlaybackCoordinatorSpec.cpp` | `playback_coordinator_spec` | `src/app/runtime` | `v2.playback-coordinator` | services | source-contract | high | all | ctest | active |
 | `src/tools/services/PlaybackStateAuthoritySpec.cpp` | `playback_state_authority_spec` | `src/app/services` | `v2.playback-state-authority` | services | behavior | high | all | ctest | active |

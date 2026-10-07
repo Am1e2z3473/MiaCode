@@ -1872,54 +1872,6 @@ ChartNormalizationResult normalizeChartFragment(
     return result;
 }
 
-ChartNormalizationOptions chartNormalizationOptionsFromPreferences(
-    const QJsonObject& preview,
-    const ChartNormalizationOptions& defaults)
-{
-    ChartNormalizationOptions options = defaults;
-    if (preview.value(kChartNormalizeStartAtNewMeasurePreferenceKey).isBool()) {
-        options.startAtNewMeasure =
-            preview.value(kChartNormalizeStartAtNewMeasurePreferenceKey).toBool(options.startAtNewMeasure);
-    }
-    if (preview.value(kChartNormalizeReduceTo384GridPreferenceKey).isBool()) {
-        options.reduceTo384Grid =
-            preview.value(kChartNormalizeReduceTo384GridPreferenceKey).toBool(options.reduceTo384Grid);
-    }
-    if (preview.value(kChartNormalizeSplitEveryFourMeasuresPreferenceKey).isBool()) {
-        options.splitEveryFourMeasures =
-            preview.value(kChartNormalizeSplitEveryFourMeasuresPreferenceKey).toBool(options.splitEveryFourMeasures);
-    }
-    const QString syntax = preview.value(kChartNormalizeSyntaxPreferenceKey).toString().trimmed().toLower();
-    if (syntax == QStringLiteral("compact_single_line") || syntax == QStringLiteral("hinata")) {
-        options.syntax = ChartNormalizationSyntax::CompactSingleLine;
-    } else if (syntax == QStringLiteral("segment_preserving") || syntax == QStringLiteral("fpd")) {
-        options.syntax = ChartNormalizationSyntax::SegmentPreserving;
-    }
-    options.sectionMeasureCount = options.splitEveryFourMeasures ? 4 : 0;
-    if (preview.value(kChartNormalizeSectionMeasureCountPreferenceKey).isDouble()) {
-        options.sectionMeasureCount = qMax(0, preview.value(kChartNormalizeSectionMeasureCountPreferenceKey).toInt(4));
-    }
-    return options;
-}
-
-void saveChartNormalizationOptionsToPreferences(
-    QJsonObject* preview,
-    const ChartNormalizationOptions& options)
-{
-    if (preview == nullptr) {
-        return;
-    }
-    preview->insert(kChartNormalizeStartAtNewMeasurePreferenceKey, options.startAtNewMeasure);
-    preview->insert(kChartNormalizeReduceTo384GridPreferenceKey, options.reduceTo384Grid);
-    preview->insert(kChartNormalizeSplitEveryFourMeasuresPreferenceKey, options.splitEveryFourMeasures);
-    preview->insert(
-        kChartNormalizeSyntaxPreferenceKey,
-        options.syntax == ChartNormalizationSyntax::CompactSingleLine
-            ? QStringLiteral("compact_single_line")
-            : QStringLiteral("segment_preserving"));
-    preview->insert(kChartNormalizeSectionMeasureCountPreferenceKey, options.sectionMeasureCount);
-}
-
 ChartNormalizationResult normalizeChartText(
     const QString& input,
     const miacode::simai::SimaiTimingMetadata& timingMetadata,

@@ -536,13 +536,14 @@ miacode_add_module(miacode_export
         src/export/video_export/VideoExportController.h
         src/export/video_export/VideoExportControllerInternal.h
         src/export/video_export/VideoExportDiagnostics.cpp
+        src/export/video_export/EncoderProbeCache.h
+        src/export/video_export/EncoderProbeCache.cpp
         src/export/video_export/VideoExportEncoder.cpp
         src/export/video_export/VideoExportFrameRender.cpp
         src/export/video_export/VideoExportMediaTimeline.cpp
         src/export/video_export/VideoExportMediaTimeline.h
         src/export/video_export/VideoExportPendingFrameRedraw.h
         src/export/video_export/VideoExportPipeline.cpp
-        src/export/video_export/VideoExportPreferences.h
         src/export/video_export/VideoExportPreparedTask.cpp
         src/export/video_export/VideoExportQuickRenderBackend.cpp
         src/export/video_export/VideoExportQuickRenderBackend.h
