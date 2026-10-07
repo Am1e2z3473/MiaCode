@@ -479,3 +479,19 @@ miacode_add_spec(export_preferences_spec
     LIBS miacode_export Qt6::Core
     INCLUDES src
 )
+
+miacode_add_spec(shortcut_preference_persistence_spec
+    OWNER src/app/services
+    CONTRACT shortcuts.persistence-state
+    DOMAIN services KIND behavior RISK high
+    EXECUTION ctest STATUS active PLATFORM all
+    SOURCES
+        src/tools/services/ShortcutPreferencePersistenceSpec.cpp
+        src/app/services/ShortcutRegistry.cpp
+        src/app/services/ShortcutRegistry.h
+        src/app/ui/chrome/ShortcutModel.cpp
+        src/app/ui/chrome/ShortcutModel.h
+        resources/app_icons.qrc
+    LIBS miacode_base Qt6::Core Qt6::Gui
+    INCLUDES src
+)

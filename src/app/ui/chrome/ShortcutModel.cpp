@@ -7,27 +7,33 @@
 namespace miacode::ui {
 namespace {
 
-QKeySequence resolve(const QString& id, const QString& fallback)
+QKeySequence resolve(const ShortcutRegistry& registry, const QString& id, const QString& fallback)
 {
     const QKeySequence fallbackSequence =
         fallback.isEmpty() ? QKeySequence() : QKeySequence(fallback, QKeySequence::PortableText);
-    return ShortcutRegistry::instance().sequence(id, fallbackSequence);
+    return registry.sequence(id, fallbackSequence);
 }
 
 } // namespace
 
-ShortcutModel::ShortcutModel(QObject* parent) : QObject(parent) {}
+ShortcutModel::ShortcutModel(QObject* parent)
+    : ShortcutModel(ShortcutRegistry::instance(), parent)
+{}
+
+ShortcutModel::ShortcutModel(ShortcutRegistry& registry, QObject* parent)
+    : QObject(parent), registry_(registry)
+{}
 
 qulonglong ShortcutModel::revision() const { return revision_; }
 
 QString ShortcutModel::sequence(const QString& id, const QString& fallback) const
 {
-    return resolve(id, fallback).toString(QKeySequence::PortableText);
+    return resolve(registry_, id, fallback).toString(QKeySequence::PortableText);
 }
 
 QString ShortcutModel::displayText(const QString& id, const QString& fallback) const
 {
-    return resolve(id, fallback).toString(QKeySequence::NativeText);
+    return resolve(registry_, id, fallback).toString(QKeySequence::NativeText);
 }
 
 QString ShortcutModel::standardDisplayText(int standardKey) const
@@ -38,7 +44,12 @@ QString ShortcutModel::standardDisplayText(int standardKey) const
 
 void ShortcutModel::reload()
 {
-    ShortcutRegistry::instance().reload();
+    registry_.reload();
+    publishRevision();
+}
+
+void ShortcutModel::publishRevision()
+{
     ++revision_;
     emit revisionChanged();
 }
@@ -50,7 +61,7 @@ namespace miacode::ui {
 QVariantList ShortcutModel::editableShortcuts() const
 {
     QVariantList rows;
-    ShortcutRegistry& registry = ShortcutRegistry::instance();
+    ShortcutRegistry& registry = registry_;
     for (const ShortcutRegistry::ShortcutDefinition& definition : registry.editableShortcuts()) {
         const QString current = registry.shortcutText(definition.id);
         const QString defaults = registry.defaultShortcutText(definition.id);
@@ -75,17 +86,17 @@ QVariantList ShortcutModel::editableShortcuts() const
 
 bool ShortcutModel::setShortcutText(const QString& id, const QString& shortcutText)
 {
-    if (!ShortcutRegistry::instance().setUserShortcutText(id, shortcutText)) {
+    if (!registry_.setUserShortcutText(id, shortcutText)) {
         return false;
     }
-    reload();
+    publishRevision();
     return true;
 }
 
 void ShortcutModel::resetShortcut(const QString& id)
 {
-    if (ShortcutRegistry::instance().resetUserShortcut(id)) {
-        reload();
+    if (registry_.resetUserShortcut(id)) {
+        publishRevision();
     }
 }
 
@@ -99,8 +110,8 @@ QString ShortcutModel::shortcutTextForKeyEvent(int key, int modifiers) const
 
 void ShortcutModel::resetAllShortcuts()
 {
-    if (ShortcutRegistry::instance().resetEditableShortcuts()) {
-        reload();
+    if (registry_.resetEditableShortcuts()) {
+        publishRevision();
     }
 }
 

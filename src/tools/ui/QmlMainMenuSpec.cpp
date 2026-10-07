@@ -1,5 +1,6 @@
 #include <QFile>
 #include <QString>
+#include <QStringList>
 #include <QTextStream>
 
 #ifndef MIACODE_SOURCE_ROOT
@@ -48,9 +49,19 @@ bool verifyAdjustMenuContract(QTextStream& err)
                   QStringLiteral("dynamic Adjust rows do not use non-visual Action delegates"), err);
     ok &= require(adjust.count(QStringLiteral("delegate: AppMenuItem")) == 4,
                   QStringLiteral("all four Adjust-menu Repeaters create visual menu rows"), err);
-    ok &= require(adjust.contains(QStringLiteral("shortcutText: root.shortcuts.displayText(modelData.id)"))
-                      && adjust.contains(QStringLiteral("objectName: \"adjustTransform_\" + modelData.id")),
-                  QStringLiteral("every dynamic transform row receives its shortcut spelling and identity"), err);
+    const QStringList rows = adjust.split(QStringLiteral("delegate: AppMenuItem"));
+    for (int index = 1; index < rows.size(); ++index) {
+        const QString& row = rows.at(index);
+        ok &= require(row.contains(QStringLiteral("id: transformItem"))
+                          && row.contains(QStringLiteral("required property var modelData"))
+                          && row.contains(QStringLiteral("objectName: \"adjustTransform_\" + modelData.id"))
+                          && row.contains(QStringLiteral("text: qsTrId(transformItem.modelData.labelKey)"))
+                          && row.contains(QStringLiteral("root.shortcuts.sequence(transformItem.modelData.id)"))
+                          && row.contains(QStringLiteral("shortcutText: root.shortcuts.displayText(transformItem.modelData.id)"))
+                          && row.contains(QStringLiteral("root.commands.chartTransformRequested("))
+                          && row.contains(QStringLiteral("transformItem.modelData.id)")),
+                      QStringLiteral("dynamic transform row %1 keeps its label, binding and dispatch in delegate scope").arg(index), err);
+    }
     ok &= require(item.contains(QStringLiteral("property string shortcutText"))
                       && item.contains(QStringLiteral("root.shortcutText.length > 0")),
                   QStringLiteral("AppMenuItem renders shortcuts supplied by a dynamic visual row"), err);

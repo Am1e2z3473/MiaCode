@@ -7,6 +7,8 @@
 
 namespace miacode::ui {
 
+class ShortcutRegistry;
+
 // QML's view of ShortcutRegistry. The registry itself is QtCore + QtGui only —
 // its QtWidgets-looking helpers take QAction / QShortcut, both of which moved to
 // QtGui in Qt 6 — so v2 reuses it rather than growing a second binding table
@@ -24,6 +26,7 @@ class ShortcutModel final : public QObject
 
 public:
     explicit ShortcutModel(QObject* parent = nullptr);
+    explicit ShortcutModel(ShortcutRegistry& registry, QObject* parent = nullptr);
 
     qulonglong revision() const;
 
@@ -50,6 +53,8 @@ signals:
     void revisionChanged();
 
 private:
+    void publishRevision();
+    ShortcutRegistry& registry_;
     qulonglong revision_ = 1;
 };
 

@@ -2,6 +2,7 @@
 
 #include <QHash>
 #include <QKeySequence>
+#include <QJsonObject>
 #include <QList>
 #include <QString>
 #include <QStringList>
@@ -21,6 +22,9 @@ public:
     };
 
     static ShortcutRegistry& instance();
+    // Explicit storage paths allow a host to own a registry without changing
+    // the process singleton's portable app/CWD configuration policy.
+    explicit ShortcutRegistry(QString overridePath, QString cwdOverridePath = {});
 
     QKeySequence sequence(const QString& id, const QKeySequence& fallback = QKeySequence()) const;
     QString shortcutText(const QString& id, const QString& fallback = QString()) const;
@@ -33,6 +37,8 @@ public:
         const QString& label,
         const QKeySequence& defaultSequence);
     bool setUserShortcut(const QString& id, const QKeySequence& sequence);
+    // Return whether the input was accepted; persistence failure stays pending
+    // while the accepted shortcut takes effect in this session.
     bool setUserShortcutText(const QString& id, const QString& shortcutText);
     bool resetUserShortcut(const QString& id);
     bool resetEditableShortcuts();
@@ -40,11 +46,21 @@ public:
 
 private:
     ShortcutRegistry();
-
+    struct PendingShortcut {
+        QString text;
+        bool reset = false;
+    };
     void loadDefaults();
-    void loadOverrideFile(const QString& path);
-    void mergeJsonBytes(const QByteArray& bytes);
-    bool saveUserOverrides() const;
+    void loadOverrideFile(const QString& path, bool recoverCorruption = false);
+    void mergeJsonObject(const QJsonObject& root);
+    void applyRuntimeShortcut(const QString& id, const PendingShortcut& change);
+    bool saveUserOverrides();
+
+    QString overridePath_;
+    QString cwdOverridePath_;
+    bool useCurrentCwd_ = false;
+    QHash<QString, PendingShortcut> pendingChanges_;
+    QHash<QString, ShortcutDefinition> extensionDefinitions_;
 
     QHash<QString, ShortcutDefinition> definitions_;
     QHash<QString, QKeySequence> defaultShortcuts_;
