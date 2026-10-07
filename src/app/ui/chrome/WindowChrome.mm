@@ -1,9 +1,59 @@
 #include "app/ui/chrome/WindowChrome.h"
 
+#include <QRectF>
+#include <QVariantMap>
 #include <QWindow>
+#include <QQuickWindow>
+#include <cfloat>
 
 #import <AppKit/AppKit.h>
+#import <QuartzCore/QuartzCore.h>
 
+@interface MiaCodeMaterialHostView : NSView
+@property(nonatomic, strong) NSView* surfaces;
+@property(nonatomic, strong) NSMutableArray<NSView*>* effects;
+@property(nonatomic, strong) NSMutableArray<NSArray<NSLayoutConstraint*>*>* placements;
+@end
+
+@implementation MiaCodeMaterialHostView
+- (NSView*)hitTest:(NSPoint)point
+{
+    Q_UNUSED(point);
+    return nil;
+}
+
+- (instancetype)initWithFrame:(NSRect)frame
+{
+    self = [super initWithFrame:frame];
+    if (self) {
+        self.effects = [NSMutableArray array];
+        self.placements = [NSMutableArray array];
+    }
+    return self;
+}
+#if !__has_feature(objc_arc)
+- (void)dealloc
+{
+    [_surfaces release];
+    [_effects release];
+    [_placements release];
+    [super dealloc];
+}
+#endif
+@end
+
+namespace {
+void pinMaterialContent(NSView* content, NSView* owner)
+{
+    content.translatesAutoresizingMaskIntoConstraints = NO;
+    [NSLayoutConstraint activateConstraints:@[
+        [content.leadingAnchor constraintEqualToAnchor:owner.leadingAnchor],
+        [content.trailingAnchor constraintEqualToAnchor:owner.trailingAnchor],
+        [content.topAnchor constraintEqualToAnchor:owner.topAnchor],
+        [content.bottomAnchor constraintEqualToAnchor:owner.bottomAnchor]
+    ]];
+}
+}
 
 namespace miacode::ui {
 namespace {
@@ -38,6 +88,131 @@ void configureNativeTitleBar(NSWindow* window)
 }
 }
 
+void WindowChrome::refreshMacOsMaterial(QWindow* window)
+{
+    if (window == nullptr) {
+        return;
+    }
+    NSView* view = (__bridge NSView*)reinterpret_cast<void*>(window->winId());
+    NSWindow* nativeWindow = view.window;
+    if (nativeWindow == nil) {
+        return;
+    }
+    const bool materialWanted = blurMaterialsEnabled_ && !materialRegions_.isEmpty();
+    if (nativeWindow.opaque) {
+        nativeWindow.opaque = NO;
+    }
+    if (![nativeWindow.backgroundColor isEqual:NSColor.clearColor]) {
+        nativeWindow.backgroundColor = NSColor.clearColor;
+    }
+    if (!materialWanted) {
+        releaseMacOsMaterial();
+        setNativeMaterialAvailable(false);
+        return;
+    }
+
+    // Qt's native effect integration requires its backing container layer.
+    // Wait for scene-graph initialization before adding the backdrop.
+    auto* quickWindow = qobject_cast<QQuickWindow*>(window);
+    if (quickWindow != nullptr && !quickWindow->isSceneGraphInitialized()) {
+        return;
+    }
+    if (![view.layer respondsToSelector:NSSelectorFromString(@"contentLayer")]) {
+        return;
+    }
+
+    // Keep Qt's content view identity and place the native backdrop beneath
+    // its Metal layer. Material geometry belongs to AppKit's layout system.
+    [CATransaction begin];
+    [CATransaction setDisableActions:YES];
+    MiaCodeMaterialHostView* material = (__bridge MiaCodeMaterialHostView*)macMaterialView_;
+    bool layoutChanged = false;
+    if (material == nil) {
+        layoutChanged = true;
+        material = [[MiaCodeMaterialHostView alloc] initWithFrame:view.bounds];
+        material.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
+        material.wantsLayer = YES;
+        material.layer.zPosition = -FLT_MAX;
+        NSView* surfaces = [[NSView alloc] initWithFrame:material.bounds];
+        [material addSubview:surfaces];
+        pinMaterialContent(surfaces, material);
+        material.surfaces = surfaces;
+#if !__has_feature(objc_arc)
+        [surfaces release];
+#endif
+#if __has_feature(objc_arc)
+        macMaterialView_ = (__bridge_retained void*)material;
+#else
+        macMaterialView_ = material;
+#endif
+    }
+    if (material.superview != view) {
+        layoutChanged = true;
+        [material removeFromSuperview];
+        [view addSubview:material];
+    }
+    if (!NSEqualRects(material.frame, view.bounds)) {
+        layoutChanged = true;
+        material.frame = view.bounds;
+    }
+
+    NSView* surfaces = material.surfaces;
+    const NSUInteger regionCount = static_cast<NSUInteger>(materialRegions_.size());
+    while (material.effects.count > regionCount) {
+        layoutChanged = true;
+        [NSLayoutConstraint deactivateConstraints:material.placements.lastObject];
+        [material.placements removeLastObject];
+        [material.effects.lastObject removeFromSuperview];
+        [material.effects removeLastObject];
+    }
+    for (NSUInteger i = 0; i < regionCount; ++i) {
+        const QVariantMap region = materialRegions_.at(i).toMap();
+        const QRectF rect = region.value(QStringLiteral("rect")).toRectF();
+        NSView* effect = i < material.effects.count ? material.effects[i] : nil;
+        if (effect == nil) {
+            layoutChanged = true;
+            NSVisualEffectView* visualEffect = [[NSVisualEffectView alloc] initWithFrame:NSZeroRect];
+            visualEffect.material = NSVisualEffectMaterialSidebar;
+            visualEffect.blendingMode = NSVisualEffectBlendingModeBehindWindow;
+            visualEffect.state = NSVisualEffectStateFollowsWindowActiveState;
+            effect = visualEffect;
+            effect.translatesAutoresizingMaskIntoConstraints = NO;
+            [surfaces addSubview:effect];
+            [material.effects addObject:effect];
+            NSArray<NSLayoutConstraint*>* placement = @[
+                [effect.leadingAnchor constraintEqualToAnchor:surfaces.leadingAnchor],
+                [effect.topAnchor constraintEqualToAnchor:surfaces.topAnchor],
+                i == 0 ? [effect.trailingAnchor constraintEqualToAnchor:surfaces.trailingAnchor]
+                       : [effect.widthAnchor constraintEqualToConstant:0],
+                i == 1 ? [effect.bottomAnchor constraintEqualToAnchor:surfaces.bottomAnchor]
+                       : [effect.heightAnchor constraintEqualToConstant:0]
+            ];
+            [material.placements addObject:placement];
+            [NSLayoutConstraint activateConstraints:placement];
+#if !__has_feature(objc_arc)
+            [effect release];
+#endif
+        }
+        NSArray<NSLayoutConstraint*>* placement = material.placements[i];
+        const CGFloat constants[] = {
+            rect.x(), rect.y(),
+            i == 0 ? rect.right() - NSWidth(view.bounds) : rect.width(),
+            i == 1 ? rect.bottom() - NSHeight(view.bounds) : rect.height()
+        };
+        for (NSUInteger j = 0; j < placement.count; ++j) {
+            if (placement[j].constant != constants[j]) {
+                placement[j].constant = constants[j];
+                layoutChanged = true;
+            }
+        }
+    }
+    if (layoutChanged) {
+        [material layoutSubtreeIfNeeded];
+    }
+    [CATransaction commit];
+    setNativeMaterialAvailable(true);
+}
+
 void WindowChrome::applyMacOs(QWindow* window)
 {
     if (window == nullptr) {
@@ -56,40 +231,7 @@ void WindowChrome::applyMacOs(QWindow* window)
         nativeWindow.toolbar.visible = NO;
     }
 
-    if (blurMaterialsEnabled_) {
-        // Qt identifies top-level windows by contentView identity. Place the
-        // material beside that view so visibility and geometry remain Qt-owned.
-        if (view.superview == nil) {
-            return;
-        }
-        NSVisualEffectView* material = (__bridge NSVisualEffectView*)macMaterialView_;
-        if (material == nil) {
-            material = [[NSVisualEffectView alloc] initWithFrame:view.frame];
-            material.material = NSVisualEffectMaterialSidebar;
-            material.blendingMode = NSVisualEffectBlendingModeBehindWindow;
-            material.state = NSVisualEffectStateFollowsWindowActiveState;
-            material.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
-
-#if __has_feature(objc_arc)
-            macMaterialView_ = (__bridge_retained void*)material;
-
-#else
-            macMaterialView_ = material;
-
-#endif
-        }
-        if (material.superview != view.superview) {
-            [material removeFromSuperview];
-            [view.superview addSubview:material positioned:NSWindowBelow relativeTo:view];
-        }
-        material.frame = view.frame;
-        nativeWindow.opaque = NO;
-        nativeWindow.backgroundColor = NSColor.clearColor;
-    } else {
-        releaseMacOsMaterial();
-        nativeWindow.opaque = YES;
-    }
-    setNativeMaterialAvailable(blurMaterialsEnabled_);
+    refreshMacOsMaterial(window);
 
     NSView* contentView = nativeWindow.contentView;
     if (contentView == nil) {
@@ -233,9 +375,9 @@ void WindowChrome::releaseMacOsMaterial()
         return;
     }
 #if __has_feature(objc_arc)
-    NSVisualEffectView* material = (__bridge_transfer NSVisualEffectView*)macMaterialView_;
+    NSView* material = (__bridge_transfer NSView*)macMaterialView_;
 #else
-    NSVisualEffectView* material = static_cast<NSVisualEffectView*>(macMaterialView_);
+    NSView* material = static_cast<NSView*>(macMaterialView_);
 #endif
     [material removeFromSuperview];
 #if !__has_feature(objc_arc)

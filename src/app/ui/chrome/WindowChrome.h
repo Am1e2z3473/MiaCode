@@ -1,11 +1,13 @@
 #pragma once
 
+#include "app/ui/chrome/NativeWindowTheme.h"
 #include <QAbstractNativeEventFilter>
 #include <QObject>
 #include <QPointer>
 #include <QRect>
 #include <QString>
 #include <QTimer>
+#include <QVariantList>
 
 class QWindow;
 class QEvent;
@@ -23,6 +25,7 @@ class WindowChrome final : public QObject, public QAbstractNativeEventFilter
     Q_PROPERTY(qreal titleBarLeadingInset READ titleBarLeadingInset NOTIFY titleBarLeadingInsetChanged FINAL)
     Q_PROPERTY(qreal titleBarHeight READ titleBarHeight NOTIFY titleBarHeightChanged FINAL)
     Q_PROPERTY(bool nativeMaterialAvailable READ nativeMaterialAvailable NOTIFY nativeMaterialAvailableChanged FINAL)
+    Q_PROPERTY(QVariantList materialRegions READ materialRegions WRITE setMaterialRegions NOTIFY materialRegionsChanged FINAL)
 
 public:
     explicit WindowChrome(QObject* parent = nullptr);
@@ -37,6 +40,8 @@ public:
     qreal titleBarLeadingInset() const { return titleBarLeadingInset_; }
     qreal titleBarHeight() const { return titleBarHeight_; }
     bool nativeMaterialAvailable() const { return nativeMaterialAvailable_; }
+    QVariantList materialRegions() const { return materialRegions_; }
+    void setMaterialRegions(const QVariantList& regions);
     bool blurMaterialsEnabled() const { return blurMaterialsEnabled_; }
     void setBlurMaterialsEnabled(bool enabled);
     void refreshNativeTheme();
@@ -47,12 +52,14 @@ signals:
     void titleBarLeadingInsetChanged();
     void titleBarHeightChanged();
     void nativeMaterialAvailableChanged();
+    void materialRegionsChanged();
 
 private:
     bool eventFilter(QObject* watched, QEvent* event) override;
     void refreshNativeMaterial();
     bool extendDwmFrame() const;
     void applyMacOs(QWindow* window);
+    void refreshMacOsMaterial(QWindow* window);
     void observeMacOsFullScreen(QWindow* window);
     void stopObservingMacOsFullScreen();
     void releaseMacOsMaterial();
@@ -69,7 +76,11 @@ private:
     QTimer stateCaptureTimer_;
     QTimer materialUpdateTimer_;
     quintptr nativeHandle_ = 0;
+#ifdef Q_OS_WIN
+    NativeWindowTheme::AppliedState dwmState_;
+#endif
     bool nativeMaterialAvailable_ = false;
+    QVariantList materialRegions_;
     bool blurMaterialsEnabled_ = true;
     qreal titleBarLeadingInset_ = 0;
     qreal titleBarHeight_ = 0;

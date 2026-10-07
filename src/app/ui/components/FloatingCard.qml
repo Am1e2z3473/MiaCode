@@ -5,7 +5,7 @@ import QtQuick.Window
 import MiaCode.UI
 
 // 卡片填满浮层背景，内容留白由浮层 padding 决定。
-// 阴影通过效果的自动扩边绘制在卡片外侧。
+// 阴影按圆角矩形绘制，独立于实时背景采样。
 Item {
     id: root
 
@@ -17,6 +17,15 @@ Item {
     property real shadowOpacity: Theme.popupShadowOpacity
     property real shadowVerticalOffset: 2
     readonly property Item backdropSource: root.Window.window?.backdropSource ?? null
+
+    RectangularShadow {
+        anchors.fill: parent
+        radius: root.cornerRadius
+        blur: 32 * root.shadowBlur
+        offset: Qt.vector2d(0, root.shadowVerticalOffset)
+        color: Qt.rgba(0, 0, 0, root.shadowOpacity)
+        visible: root.shadowOpacity > 0
+    }
 
     Loader {
         id: backdrop
@@ -48,16 +57,5 @@ Item {
         border.width: 1
         border.color: Theme.floatingBorderColor
         border.pixelAligned: false
-    }
-
-    layer.enabled: true
-    layer.effect: MultiEffect {
-        autoPaddingEnabled: true
-        shadowEnabled: true
-        shadowBlur: root.shadowBlur
-        shadowColor: "#000000"
-        shadowOpacity: root.shadowOpacity
-        shadowVerticalOffset: root.shadowVerticalOffset
-        shadowHorizontalOffset: 0
     }
 }

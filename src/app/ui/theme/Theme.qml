@@ -541,7 +541,7 @@ QtObject {
         ? (darkTheme ? 0.83 : 0.72)
         : (darkTheme ? 0.65 : 0.50)
     readonly property color chromeSeparatorColor: darkTheme
-        ? Qt.rgba(1, 1, 1, 0.04) : Qt.rgba(0, 0, 0, 0.08)
+        ? Qt.rgba(1, 1, 1, 0.08) : Qt.rgba(0, 0, 0, 0.16)
     readonly property color chromeHighlightBaseColor: {
         const c = Qt.color(colors.background.activityBar)
         return darkTheme
@@ -609,11 +609,15 @@ QtObject {
         return Qt.rgba(c.r * scale, c.g * scale, c.b * scale, alpha)
     }
 
+    function nativeMaterialColor(baseColor) {
+        const c = Qt.color(activeThemeToken === "dark" ? "#0C0D0E" : baseColor)
+        return Qt.rgba(c.r, c.g, c.b, c.a * nativeMaterialTintOpacity)
+    }
+
     function chromeSurfaceColor(baseColor) {
         if (!nativeMaterialActive)
             return surfaceColor(baseColor)
-        const c = Qt.color(activeThemeToken === "dark" ? "#0C0D0E" : baseColor)
-        return Qt.rgba(c.r, c.g, c.b, c.a * nativeMaterialTintOpacity)
+        return nativeMaterialColor(baseColor)
     }
 
     function chromeHighlightColor(amount) {

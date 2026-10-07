@@ -65,10 +65,11 @@ ApplicationWindow {
               : "")
     font.family: Theme.uiFont
     font.pixelSize: Theme.uiFontSize
-    color: Theme.nativeMaterialActive ? "transparent" : Theme.colors.background.surface
-    background: Rectangle {
-        color: window.color
-    }
+    // Allocate an alpha-capable surface at startup and retain it across
+    // wallpaper/material switches. Opaque modes are painted by the base layer.
+    color: Qt.platform.os === "osx" || Qt.platform.os === "windows"
+        ? "transparent" : Theme.colors.background.surface
+    background: null
     topPadding: 0
     leftPadding: 0
     rightPadding: 0
@@ -148,10 +149,18 @@ ApplicationWindow {
     }
 
     // Popups live in ApplicationWindow's overlay, outside the sampled scene.
-    Rectangle {
+    Item {
         id: sceneContent
         anchors.fill: parent
-        color: window.color
+
+        // Wallpaper and plain modes share one opaque base inside the sampled
+        // scene; native material mode exposes the transparent window surface.
+        Rectangle {
+            anchors.fill: parent
+            visible: Theme.backgroundActive
+                || (window.color.a < 1 && !Theme.nativeMaterialActive)
+            color: Theme.colors.background.surface
+        }
 
         // Direct children establish paint order: wallpaper, UI, drag hint.
         Item {
@@ -186,7 +195,8 @@ ApplicationWindow {
                     return value.indexOf("top") >= 0 ? Image.AlignTop
                          : value.indexOf("bottom") >= 0 ? Image.AlignBottom : Image.AlignVCenter
                 }
-                layer.enabled: Theme.blurMaterialsEnabled && window.applicationContext.appBackground.blur > 0
+                layer.enabled: Theme.backgroundActive && Theme.blurMaterialsEnabled
+                    && window.applicationContext.appBackground.blur > 0
                 layer.effect: MultiEffect {
                     blurEnabled: Theme.blurMaterialsEnabled
                     blurMax: 64

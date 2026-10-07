@@ -18,7 +18,7 @@ ShaderEffect {
     readonly property color surfaceColor: Theme.surfaceColor(baseColor)
     readonly property real nativeMaterial: Theme.nativeMaterialActive ? 1.0 : 0.0
     readonly property color nativeTintColor: Theme.chromeSurfaceColor(baseColor)
-    readonly property color panelBaseColor: Theme.colors.background.surface
+    property color panelBaseColor: Theme.colors.background.surface
     readonly property color separatorColor: Theme.chromeSeparatorColor
     readonly property real separatorWidth: 1 / (Screen.devicePixelRatio * radius)
     // Replace only this corner-sized patch in the Quick surface. Its outside

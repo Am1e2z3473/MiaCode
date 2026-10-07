@@ -946,7 +946,7 @@ if (APPLE)
         src/app/ui/chrome/WindowChrome.mm
         src/app/ui/pet/PetNativeWindowMac.mm
     )
-    target_link_libraries(MiaCode PRIVATE "-framework AppKit")
+    target_link_libraries(MiaCode PRIVATE "-framework AppKit" "-framework QuartzCore")
 endif()
 
 # FFmpeg runtime the preview backend (miacode_stage_media) loads next to MiaCode.

@@ -9,6 +9,7 @@ Rectangle {
     required property var documentSession
     required property var commands
     property var pages
+    readonly property alias cornerSourceItem: heading
 
     color: Theme.surfaceColor(Theme.colors.background.panel)
     clip: true
