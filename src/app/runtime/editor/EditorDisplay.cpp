@@ -76,11 +76,8 @@ void miacode::runtime::EditorHost::loadPortableState()
     }
     state_.editorHalfWidthInputEnabled_ = ui.value("editor_half_width_input").toBool(true);
     state_.editorOverwriteModeEnabled_ = ui.value("editor_overwrite_mode").toBool(false);
-    // Unified preference. Migrate from the three legacy keys: a saved
-    // "editor_auto_completion" wins; otherwise fall back to the old auto-close
-    // key (the primary of the three) so existing users keep their setting.
-    state_.editorAutoCompletionEnabled_ = ui.value("editor_auto_completion").toBool(
-        ui.value("editor_auto_close_brackets").toBool(true));
+    // PreferenceDocument owns legacy migration and canonical defaults.
+    state_.editorAutoCompletionEnabled_ = ui.value("editor_auto_completion").toBool(true);
     QSettings legacySettings;
     const bool hasLegacyBottomPanelHeight =
         legacySettings.contains(QStringLiteral("ui/bottomPanelHeight"));

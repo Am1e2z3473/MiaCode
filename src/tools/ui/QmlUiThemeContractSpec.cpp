@@ -8,7 +8,7 @@
 //   * the OS changes its colour scheme -> QStyleHints::colorSchemeChanged ->
 //     WorkbenchSettings::reloadTheme() -> darkTheme_ updated -> themeChanged()
 //     -> every QML component rebinds.
-//   * the user picks a theme -> WorkbenchSettings::setThemeToken() ->
+//   * the user picks a theme -> WorkbenchSettings::setThemeModeToken()/setLightThemeToken()/setDarkThemeToken() ->
 //     PreferenceDocument::setPreferredTheme() ... and nothing else. PreferenceDocument only stores and
 //     persists the preference; it notifies no one.
 //
@@ -97,34 +97,54 @@ int main(int argc, char** argv)
     const QString reloadTheme =
         functionBody(settings, QStringLiteral("void WorkbenchSettings::reloadTheme()"));
     ok &= require(reloadTheme.contains(QStringLiteral("darkTheme_ = next"))
-                      && reloadTheme.contains(QStringLiteral("publishedThemeToken_ = nextToken"))
                       && reloadTheme.contains(QStringLiteral("emit themeChanged()")),
-                  QStringLiteral("reloadTheme updates the bound value and publishes it"), err);
+                  QStringLiteral("reloadTheme updates the bound appearance and publishes it"), err);
 
-    // Dark and 旧版 are both dark appearances. The boolean alone cannot tell
-    // QML to rebind palettes, so the stored token must be part of the publish.
-    ok &= require(reloadTheme.contains(QStringLiteral("publishedThemeToken_ == nextToken")),
-                  QStringLiteral("reloadTheme also publishes when the palette token changes "
-                                 "without flipping darkTheme"), err);
-    ok &= require(settingsHeader.contains(QStringLiteral("themeToken READ themeToken NOTIFY themeChanged")),
-                  QStringLiteral("themeToken is bindable so QML can select the 旧版 palette live"), err);
+    // Changing a palette within the same appearance must also notify QML.
+    const struct { const char* published; const char* next; } tokenSlots[] = {
+        {"publishedThemeModeToken_", "nextModeToken"},
+        {"publishedLightThemeToken_", "nextLightThemeToken"},
+        {"publishedDarkThemeToken_", "nextDarkThemeToken"},
+    };
+    for (const auto& slot : tokenSlots) {
+        const QString published = QString::fromLatin1(slot.published);
+        const QString next = QString::fromLatin1(slot.next);
+        ok &= require(reloadTheme.contains(published + QStringLiteral(" == ") + next)
+                          && reloadTheme.contains(published + QStringLiteral(" = ") + next),
+                      published + QStringLiteral(" participates in change detection and publication"), err);
+    }
+    for (const char* property : {"themeModeToken", "lightThemeToken", "darkThemeToken", "activeThemeToken"}) {
+        const QString name = QString::fromLatin1(property);
+        ok &= require(settingsHeader.contains(name + QStringLiteral(" READ ") + name
+                                                  + QStringLiteral(" NOTIFY themeChanged")),
+                      name + QStringLiteral(" is bindable through the shared theme notification"), err);
+    }
+    const QString activeTheme =
+        functionBody(settings, QStringLiteral("QString WorkbenchSettings::activeThemeToken() const"));
+    ok &= require(activeTheme.contains(QStringLiteral("ThemeVariantResolver::resolve("))
+                      && activeTheme.contains(QStringLiteral("darkAppearance ? darkThemeToken() : lightThemeToken()")),
+                  QStringLiteral("resolved appearance selects the user's dark or light palette slot"), err);
+    ok &= require(themeQml.contains(QStringLiteral("\"legacy\": { id: \"legacy\", dark: true, colors: legacyDarkColors }"))
+                      && themeQml.contains(QStringLiteral("\"legacy_light\": { id: \"legacy_light\", dark: false, colors: legacyLightColors }"))
+                      && themeQml.contains(QStringLiteral("preferences.activeThemeToken"))
+                      && themeQml.contains(QStringLiteral("themeCatalog[activeThemeToken]"))
+                      && themeQml.contains(QStringLiteral("colors: activeTheme.colors")),
+                  QStringLiteral("QML binds the active palette through the catalog, with independent legacy palettes"), err);
 
-    ok &= require(themeQml.contains(QStringLiteral("legacyColors"))
-                      && themeQml.contains(QStringLiteral("themeToken === \"legacy\"")),
-                  QStringLiteral("Theme.qml keeps 旧版 as a standalone palette, not a dark/light alias"), err);
-
-    // The user-initiated path has to end in the same place. Without this the
-    // preference is stored, the timeline repaints from it, and every QML
-    // surface keeps the old palette until the next restart.
-    const QString setThemeToken =
-        functionBody(settings, QStringLiteral("void WorkbenchSettings::setThemeToken("));
-    ok &= require(setThemeToken.contains(QStringLiteral("PreferenceDocument::setPreferredTheme(next)")),
-                  QStringLiteral("picking a theme stores the preference"), err);
-    ok &= require(setThemeToken.contains(QStringLiteral("reloadTheme()")),
-                  QStringLiteral("picking a theme also publishes it — the user-initiated path "
-                                 "must end in the same notification as the OS-initiated one, "
-                                 "or only the timeline repaints"), err);
-
+    // Every user writer must finish at the same notification as the OS path.
+    const struct { const char* setter; const char* store; } writers[] = {
+        {"setThemeModeToken", "setPreferredTheme"},
+        {"setLightThemeToken", "setPreferredLightTheme"},
+        {"setDarkThemeToken", "setPreferredDarkTheme"},
+    };
+    for (const auto& writer : writers) {
+        const QString setter = QString::fromLatin1(writer.setter);
+        const QString body = functionBody(settings, QStringLiteral("void WorkbenchSettings::") + setter + QLatin1Char('('));
+        ok &= require(body.contains(QStringLiteral("PreferenceDocument::")
+                                        + QString::fromLatin1(writer.store) + QStringLiteral("(next)"))
+                          && body.contains(QStringLiteral("reloadTheme()")),
+                      setter + QStringLiteral(" stores its own preference and publishes the theme"), err);
+    }
     if (ok) {
         QTextStream(stdout) << "qml_ui_theme_contract_spec: OK" << Qt::endl;
     }

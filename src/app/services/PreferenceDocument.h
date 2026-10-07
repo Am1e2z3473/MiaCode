@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QJsonObject>
+#include <QMutex>
 #include <QVector>
 #include <QString>
 #include <QStringList>
@@ -36,6 +37,31 @@ struct LanguageOption {
     bool builtIn = false;
 };
 
+// One in-memory document for a repository lifetime. External file changes are
+// observed by a new repository, never by ordinary UI reads. Access is serialized;
+// snapshots are values suitable for passing to workers.
+class Repository {
+public:
+    explicit Repository(QString path, QString legacyPath = {});
+    QJsonObject snapshot();
+    QString storedSchema();
+    bool replace(const QJsonObject& root);
+    bool flush();
+    bool isDirty();
+
+private:
+    void initializeLocked();
+    bool flushLocked();
+    QMutex mutex_;
+    QString path_;
+    QString legacyPath_;
+    QString storedSchema_;
+    QJsonObject root_;
+    bool initialized_ = false;
+    bool dirty_ = false;
+    bool legacyReadBlocked_ = false;
+};
+
 LanguagePreference resolvedLanguage();
 LanguagePreference preferredLanguage();
 void setPreferredLanguage(LanguagePreference preference);
@@ -60,6 +86,7 @@ QString preferencesFilePath();
 QString currentPreferencesSchema();
 QString storedPreferencesSchema();
 QJsonObject loadPreferencesObject();
+// Applies the new runtime value even if disk persistence returns false.
 bool savePreferencesObject(const QJsonObject& root);
 QJsonObject normalizePreferencesObject(const QJsonObject& root);
 QString themeTokenFromPreferencesObject(const QJsonObject& root);
