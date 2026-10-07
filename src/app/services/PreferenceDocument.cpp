@@ -1,14 +1,11 @@
 #include "app/services/PreferenceDocument.h"
+#include "app/services/PreferenceJsonFile.h"
 
 #include <QCoreApplication>
 #include <QDir>
 #include <QFile>
-#include <QFileInfo>
-#include <QIODevice>
-#include <QJsonDocument>
 #include <QJsonObject>
 #include <QLocale>
-#include <QSaveFile>
 #include <QStandardPaths>
 #include <QStringList>
 
@@ -40,45 +37,6 @@ QString legacyPreferencesFilePath()
 {
     const QDir appDir(QCoreApplication::applicationDirPath());
     return appDir.filePath(".miacode_preferences.json");
-}
-
-QJsonObject loadJsonObjectFromFile(const QString& path)
-{
-    QFile file(path);
-    if (!file.exists() || !file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        return QJsonObject();
-    }
-
-    QJsonParseError parseError;
-    const QJsonDocument doc = QJsonDocument::fromJson(file.readAll(), &parseError);
-    if (parseError.error != QJsonParseError::NoError || !doc.isObject()) {
-        return QJsonObject();
-    }
-    return doc.object();
-}
-
-bool saveJsonObjectToFile(const QString& path, const QJsonObject& root)
-{
-    if (path.isEmpty()) {
-        return false;
-    }
-
-    const QFileInfo fileInfo(path);
-    const QDir parentDir = fileInfo.dir();
-    if (!parentDir.exists() && !QDir().mkpath(parentDir.absolutePath())) {
-        return false;
-    }
-
-    QSaveFile file(path);
-    if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
-        return false;
-    }
-
-    const QByteArray payload = QJsonDocument(root).toJson(QJsonDocument::Indented);
-    if (file.write(payload) != payload.size()) {
-        return false;
-    }
-    return file.commit();
 }
 
 QJsonObject normalizedPreferencesRoot(const QJsonObject& raw)
@@ -699,29 +657,34 @@ QString PreferenceDocument::storedPreferencesSchema()
     // defeat the upgrade-detection gate in main(). An empty string (no readable
     // preferences file) compares unequal to the current token, so callers treat
     // it as "needs onboarding".
-    QJsonObject root = loadJsonObjectFromFile(preferencesPath());
-    if (root.isEmpty()) {
-        root = loadJsonObjectFromFile(legacyPreferencesFilePath());
-    }
+    const auto primary = miacode::preference_json_file::read(preferencesPath());
+    const QJsonObject root = primary.status == miacode::preference_json_file::ReadStatus::Missing
+        ? miacode::preference_json_file::read(legacyPreferencesFilePath()).object : primary.object;
     return root.value(QStringLiteral("schema")).toString();
 }
 
 QJsonObject PreferenceDocument::loadPreferencesObject()
 {
-    const QJsonObject primary = loadJsonObjectFromFile(preferencesPath());
-    if (!primary.isEmpty()) {
-        return normalizedPreferencesRoot(primary);
+    using namespace miacode::preference_json_file;
+    const ReadResult primary = read(preferencesPath());
+    if (primary.status == ReadStatus::Valid) {
+        return normalizedPreferencesRoot(primary.object);
     }
-    const QJsonObject legacy = loadJsonObjectFromFile(legacyPreferencesFilePath());
-    if (!legacy.isEmpty()) {
-        return normalizedPreferencesRoot(legacy);
+    const QJsonObject defaults = normalizedPreferencesRoot({});
+    if (primary.status == ReadStatus::Corrupt) {
+        write(preferencesPath(), defaults);
     }
-    return normalizedPreferencesRoot(QJsonObject());
+    // A present primary file is authoritative, even when empty or unreadable.
+    // Only absence enables migration from the legacy location.
+    if (primary.status == ReadStatus::Missing) {
+        return normalizedPreferencesRoot(load(legacyPreferencesFilePath()));
+    }
+    return defaults;
 }
 
 bool PreferenceDocument::savePreferencesObject(const QJsonObject& root)
 {
-    return saveJsonObjectToFile(preferencesPath(), normalizedPreferencesRoot(root));
+    return miacode::preference_json_file::write(preferencesPath(), normalizedPreferencesRoot(root));
 }
 
 QJsonObject PreferenceDocument::normalizePreferencesObject(const QJsonObject& root)

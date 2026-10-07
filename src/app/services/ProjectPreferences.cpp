@@ -1,11 +1,9 @@
 #include "app/services/ProjectPreferences.h"
+#include "app/services/PreferenceJsonFile.h"
 
 #include "audio/WaveformCache.h"
 
 #include <QDir>
-#include <QFile>
-#include <QFileInfo>
-#include <QJsonDocument>
 
 namespace miacode::project_preferences {
 
@@ -20,52 +18,13 @@ QString projectPreferencesFilePath(const QString& chartFilePath)
 
 QJsonObject load(const QString& chartFilePath)
 {
-    const QString path = projectPreferencesFilePath(chartFilePath);
-    if (path.isEmpty() || !QFileInfo::exists(path)) {
-        return QJsonObject();
-    }
-    QFile file(path);
-    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        return QJsonObject();
-    }
-    const QByteArray raw = file.readAll();
-    file.close();
-    if (raw.isEmpty()) {
-        return QJsonObject();
-    }
-    QJsonParseError parseError{};
-    const QJsonDocument doc = QJsonDocument::fromJson(raw, &parseError);
-    if (parseError.error != QJsonParseError::NoError || !doc.isObject()) {
-        return QJsonObject();
-    }
-    return doc.object();
+    return preference_json_file::load(projectPreferencesFilePath(chartFilePath));
 }
 
 bool save(const QString& chartFilePath, const QJsonObject& preferences)
 {
     const QString path = projectPreferencesFilePath(chartFilePath);
-    if (path.isEmpty()) {
-        return false;
-    }
-    const QFileInfo info(path);
-    QDir parentDir = info.dir();
-    if (!parentDir.exists()) {
-        // .miacode/ is created lazily by other subsystems (logs, autosave,
-        // waveform cache). Make it ourselves rather than failing the save
-        // — preferences should not depend on those subsystems having run.
-        if (!parentDir.mkpath(QStringLiteral("."))) {
-            return false;
-        }
-    }
-    QFile file(path);
-    if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate | QIODevice::Text)) {
-        return false;
-    }
-    const QJsonDocument doc(preferences);
-    const QByteArray payload = doc.toJson(QJsonDocument::Indented);
-    const qint64 written = file.write(payload);
-    file.close();
-    return written == payload.size();
+    return !path.isEmpty() && preference_json_file::write(path, preferences);
 }
 
 }  // namespace miacode::project_preferences

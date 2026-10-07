@@ -453,6 +453,7 @@ add_executable(MiaCode WIN32 MACOSX_BUNDLE
     src/app/runtime/playback/SurfaceContract.cpp
     src/app/runtime/playback/SessionForwarding.SurfaceContract.cpp
     src/app/runtime/shell/ShellHost.cpp
+    src/app/services/PreferenceJsonFile.h
     src/app/services/PreferenceDocument.h
     src/app/services/PreferenceDocument.cpp
     src/app/ui/preferences/LocaleService.h
