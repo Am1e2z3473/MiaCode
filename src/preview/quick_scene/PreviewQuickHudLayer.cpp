@@ -693,6 +693,7 @@ void paintPreviewHudOverlay(
     );
     const int debugFontPointSize = qMax(1, qRound(static_cast<qreal>(kHudReferenceDebugFontPointSize) * hudScale));
     QFont timestampFont = miacode::preview::scene::previewHudTimestampFontForArea(
+        state->hudFontSettings,
         miacode::preview::scene::PreviewHudFontArea::Timestamp,
         timeFontPointSize,
         QFont::DemiBold);
@@ -703,6 +704,7 @@ void paintPreviewHudOverlay(
     // path the default configuration never draws with.
     const auto chartInfoFont = [&] {
         return miacode::preview::scene::previewHudTimestampFontForArea(
+            state->hudFontSettings,
             miacode::preview::scene::PreviewHudFontArea::ChartInfo,
             timeFontPointSize,
             QFont::DemiBold);
@@ -713,6 +715,7 @@ void paintPreviewHudOverlay(
             QStringLiteral("branch_enter"),
             [&] { return QStringLiteral("branch=debug state=%1").arg(pointerHex(state)); });
         QFont fpsFont = miacode::preview::scene::previewHudMonoFontForArea(
+            state->hudFontSettings,
             miacode::preview::scene::PreviewHudFontArea::DebugInfo,
             debugFontPointSize,
             QFont::Medium);
@@ -1106,14 +1109,17 @@ void paintPreviewHudOverlay(
 
     while (baseFontPointSize >= kHudMinimumReadableStatsFontPointSize) {
         titleFont = miacode::preview::scene::previewHudTimestampFontForArea(
+            state->hudFontSettings,
             miacode::preview::scene::PreviewHudFontArea::ObjectStats,
             baseFontPointSize,
             QFont::DemiBold);
         rateFont = miacode::preview::scene::previewHudTimestampFontForArea(
+            state->hudFontSettings,
             miacode::preview::scene::PreviewHudFontArea::ObjectStats,
             baseFontPointSize + 1,
             QFont::DemiBold);
         statFont = miacode::preview::scene::previewHudTimestampFontForArea(
+            state->hudFontSettings,
             miacode::preview::scene::PreviewHudFontArea::ObjectStats,
             baseFontPointSize,
             QFont::DemiBold);
@@ -1336,11 +1342,13 @@ void paintCenterDisplay(
     const qreal headerCenterOffsetY = (137.3 * 2.0 / 3.0) / 1080.0 * playShort;
 
     QFont titleFont = miacode::preview::scene::previewHudTimestampFontForArea(
+        state.hudFontSettings,
         miacode::preview::scene::PreviewHudFontArea::CenterDisplay,
         titlePixelSize,
         QFont::Black);
     titleFont.setPixelSize(titlePixelSize);
     QFont valueFont = miacode::preview::scene::previewHudTimestampFontForArea(
+        state.hudFontSettings,
         miacode::preview::scene::PreviewHudFontArea::CenterDisplay,
         valuePixelSize,
         QFont::Black);

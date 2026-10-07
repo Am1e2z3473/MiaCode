@@ -16,6 +16,7 @@
 #include "app/quick_shell/QuickShellPreviewSurfacePolicy.h"
 #include "core/chart/ChartAssetPaths.h"
 #include "common/DebugLog.h"
+#include "app/services/HudFontPreferences.h"
 #include "common/DebugOptions.h"
 #include "core/video/PreviewInteractionConfig.h"
 #include "preview/runtime/PreviewRuntime.h"
@@ -272,6 +273,7 @@ void Session::finishFrameBootstrap(const std::function<void(const QString&)>& lo
         scene_->setTapJudgeTextDistance(previewTapJudgeTextDistance_);
         scene_->setJudgeEffectStyle(previewJudgeEffectStyle_);
         scene_->setShowDebugInfo(previewShowDebugInfo_);
+        scene_->setHudFontSettings(miacode::hud_preferences::load());
         scene_->setShowTimestamp(previewShowTimestamp_);
         scene_->setShowObjectStatsHud(previewShowObjectStatsHud_);
         // Chart info HUD only ever activates inside the export-preview

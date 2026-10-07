@@ -2,6 +2,7 @@
 #include "app/runtime/Shared.h"
 
 #include "app/services/PlaybackStateAuthority.h"
+#include "app/services/HudFontPreferences.h"
 
 #include "audio/QtPreviewSfxRuntime.h"
 #include "core/chart/parser/SimaiParser.h"
@@ -594,6 +595,7 @@ bool miacode::runtime::VideoExportHost::buildVideoExportSnapshot(
     }
 
     VideoExportSnapshot built;
+    built.hudFontSettings = miacode::hud_preferences::load();
     built.jobId = QUuid::createUuid().toString(QUuid::WithoutBraces);
     built.createdAtUtc = QDateTime::currentDateTimeUtc().toString(Qt::ISODate);
     built.chartTextUtf8 = session_.applicationServices_.workspace().document().toText();
@@ -815,6 +817,7 @@ bool miacode::runtime::VideoExportHost::buildVideoExportSnapshotForChartDirector
     const QString defaultOutputName = QStringLiteral("%1_%2.mp4").arg(exportStem, difficultyName);
 
     VideoExportSnapshot built;
+    built.hudFontSettings = miacode::hud_preferences::load();
     built.jobId = QUuid::createUuid().toString(QUuid::WithoutBraces);
     built.createdAtUtc = QDateTime::currentDateTimeUtc().toString(Qt::ISODate);
     built.chartTextUtf8 = chartText;

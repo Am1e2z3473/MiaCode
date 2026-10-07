@@ -1,12 +1,8 @@
 #include "core/scene/PreviewHudState.h"
 
-#include "common/PreferenceProvider.h"
-
-#include <QFileInfo>
 #include <QFontDatabase>
 #include <QFontInfo>
 #include <QHash>
-#include <QJsonObject>
 #include <QtMath>
 
 namespace {
@@ -37,74 +33,21 @@ bool eventPlayed(double second, double judgeSecond)
     return judgeSecond <= (second + 1e-6);
 }
 
-QString hudFontAreaKey(miacode::preview::scene::PreviewHudFontArea area)
-{
-    using miacode::preview::scene::PreviewHudFontArea;
-    switch (area) {
-    case PreviewHudFontArea::ChartInfo:
-        return QStringLiteral("chart_info");
-    case PreviewHudFontArea::Timestamp:
-        return QStringLiteral("timestamp");
-    case PreviewHudFontArea::CenterDisplay:
-        return QStringLiteral("center_display");
-    case PreviewHudFontArea::ObjectStats:
-        return QStringLiteral("object_stats");
-    case PreviewHudFontArea::DebugInfo:
-        return QStringLiteral("debug_info");
-    }
-    return QStringLiteral("timestamp");
-}
-
-QString normalizedHudFontPath(const QString& path)
-{
-    if (path.isEmpty()) {
-        return QString();
-    }
-    const QFileInfo info(path);
-    const QString suffix = info.suffix().toLower();
-    if (!info.isFile() || (suffix != QStringLiteral("ttf") && suffix != QStringLiteral("otf"))) {
-        return QString();
-    }
-    return info.absoluteFilePath();
-}
-
-QString persistedHudFontPath(miacode::preview::scene::PreviewHudFontArea area)
-{
-    const QJsonObject videoExport =
-        miacode::preferences::appPreferenceSection(QStringLiteral("video_export"));
-    const QJsonObject areaPaths = videoExport.value(QStringLiteral("hud_font_paths")).toObject();
-    const QString areaPath = normalizedHudFontPath(areaPaths.value(hudFontAreaKey(area)).toString());
-    if (!areaPath.isEmpty()) {
-        return areaPath;
-    }
-    return normalizedHudFontPath(videoExport.value(QStringLiteral("hud_font_path")).toString());
-}
-
 struct CachedHudFont {
-    bool initialized = false;
     QString path;
     QString family;
 };
 
-QHash<int, CachedHudFont>& cachedHudFonts()
+QHash<QString, CachedHudFont>& cachedHudFonts()
 {
-    static QHash<int, CachedHudFont> fonts;
+    static QHash<QString, CachedHudFont> fonts;
     return fonts;
 }
 
-CachedHudFont& cachedHudFont(miacode::preview::scene::PreviewHudFontArea area)
+QString customHudFontFamily(const QString& path)
 {
-    return cachedHudFonts()[static_cast<int>(area)];
-}
-
-QString customHudFontFamily(miacode::preview::scene::PreviewHudFontArea area)
-{
-    CachedHudFont& cached = cachedHudFont(area);
-
-    if (!cached.initialized) {
-        cached.path = persistedHudFontPath(area);
-        cached.initialized = true;
-    }
+    CachedHudFont& cached = cachedHudFonts()[path];
+    cached.path = path;
 
     if (cached.path.isEmpty()) {
         cached.family.clear();
@@ -297,11 +240,6 @@ QString formatPreviewHudTimeLabel(double seconds)
         .arg(ms, 3, 10, QChar('0'));
 }
 
-QString previewHudCustomFontPath(PreviewHudFontArea area)
-{
-    return persistedHudFontPath(area);
-}
-
 QFont previewHudDefaultFontForArea(PreviewHudFontArea area, int pointSize, QFont::Weight weight)
 {
     if (area == PreviewHudFontArea::DebugInfo) {
@@ -344,9 +282,10 @@ QFont previewHudDefaultFontForArea(PreviewHudFontArea area, int pointSize, QFont
     return font;
 }
 
-QFont previewHudTimestampFontForArea(PreviewHudFontArea area, int pointSize, QFont::Weight weight)
+QFont previewHudTimestampFontForArea(
+    const PreviewHudFontSettings& settings, PreviewHudFontArea area, int pointSize, QFont::Weight weight)
 {
-    const QString customFamily = customHudFontFamily(area);
+    const QString customFamily = customHudFontFamily(settings.path(area));
     if (!customFamily.isEmpty()) {
         QFont font(customFamily);
         font.setPointSize(pointSize);
@@ -356,14 +295,10 @@ QFont previewHudTimestampFontForArea(PreviewHudFontArea area, int pointSize, QFo
     return previewHudDefaultFontForArea(PreviewHudFontArea::Timestamp, pointSize, weight);
 }
 
-QFont previewHudTimestampFont(int pointSize, QFont::Weight weight)
+QFont previewHudMonoFontForArea(
+    const PreviewHudFontSettings& settings, PreviewHudFontArea area, int pointSize, QFont::Weight weight)
 {
-    return previewHudTimestampFontForArea(PreviewHudFontArea::Timestamp, pointSize, weight);
-}
-
-QFont previewHudMonoFontForArea(PreviewHudFontArea area, int pointSize, QFont::Weight weight)
-{
-    const QString customFamily = customHudFontFamily(area);
+    const QString customFamily = customHudFontFamily(settings.path(area));
     if (!customFamily.isEmpty()) {
         QFont font(customFamily);
         font.setPointSize(pointSize);
@@ -372,22 +307,6 @@ QFont previewHudMonoFontForArea(PreviewHudFontArea area, int pointSize, QFont::W
     }
 
     return previewHudDefaultFontForArea(PreviewHudFontArea::DebugInfo, pointSize, weight);
-}
-
-QFont previewHudMonoFont(int pointSize, QFont::Weight weight)
-{
-    return previewHudMonoFontForArea(PreviewHudFontArea::Timestamp, pointSize, weight);
-}
-
-QString previewHudFontDisplayName(PreviewHudFontArea area)
-{
-    const QString customFamily = customHudFontFamily(area);
-    return customFamily.isEmpty() ? QStringLiteral("Default") : customFamily;
-}
-
-QString previewHudFontDisplayName()
-{
-    return previewHudFontDisplayName(PreviewHudFontArea::Timestamp);
 }
 
 QVector<PreviewHudFontAreaChoice> previewHudFontAreaChoices()
@@ -436,40 +355,6 @@ int previewHudFontAreaIndex(PreviewHudFontArea area)
         }
     }
     return 0;
-}
-
-void setPreviewHudCustomFontPath(PreviewHudFontArea area, const QString& fontPath)
-{
-    QJsonObject videoExport = miacode::preferences::appPreferenceSection(QStringLiteral("video_export"));
-    const QString normalizedPath = fontPath.isEmpty() ? QString() : QFileInfo(fontPath).absoluteFilePath();
-    QJsonObject areaPaths = videoExport.value(QStringLiteral("hud_font_paths")).toObject();
-    if (normalizedPath.isEmpty()) {
-        areaPaths.remove(hudFontAreaKey(area));
-    } else {
-        areaPaths.insert(hudFontAreaKey(area), normalizedPath);
-    }
-    videoExport.insert(QStringLiteral("hud_font_paths"), areaPaths);
-    miacode::preferences::setAppPreferenceSection(QStringLiteral("video_export"), videoExport);
-
-    CachedHudFont& cached = cachedHudFont(area);
-    cached.path = persistedHudFontPath(area);
-    cached.family.clear();
-    cached.initialized = true;
-    customHudFontFamily(area);
-}
-
-void setPreviewHudCustomFontPath(const QString& fontPath)
-{
-    QJsonObject videoExport = miacode::preferences::appPreferenceSection(QStringLiteral("video_export"));
-    const QString normalizedPath = fontPath.isEmpty() ? QString() : QFileInfo(fontPath).absoluteFilePath();
-    if (normalizedPath.isEmpty()) {
-        videoExport.remove(QStringLiteral("hud_font_path"));
-    } else {
-        videoExport.insert(QStringLiteral("hud_font_path"), normalizedPath);
-    }
-    miacode::preferences::setAppPreferenceSection(QStringLiteral("video_export"), videoExport);
-
-    cachedHudFonts().clear();
 }
 
 }  // namespace miacode::preview::scene

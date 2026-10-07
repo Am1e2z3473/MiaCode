@@ -185,6 +185,7 @@ public:
     void setTouchPadAuthoringEnabled(bool enabled);
     void setShowDebugInfo(bool show);
     void setSuppressDebugInfo(bool suppress);
+    void setHudFontSettings(const miacode::preview::scene::PreviewHudFontSettings& settings);
     void setShowTimestamp(bool show);
     void setShowObjectStatsHud(bool show);
     void setFixHudTextLayout(bool enabled);

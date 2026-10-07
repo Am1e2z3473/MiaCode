@@ -15,6 +15,7 @@
 #include "core/analysis/MuriRenderOptions.h"
 #include "core/analysis/MuriTypes.h"
 #include "core/scene/PreviewProgressStatsCache.h"
+#include "core/scene/PreviewHudState.h"
 #include "core/video/PreviewRenderSettings.h"
 #include "core/chart/model/TimelineData.h"
 
@@ -240,6 +241,7 @@ struct PreviewRenderState {
 };
 
 struct PreviewFrameState {
+    PreviewHudFontSettings hudFontSettings;
     QVector<TimelineNoteMarker> noteMarkers;
     std::shared_ptr<const PreviewProgressStatsCache> progressStatsCache;
     MuriAnalysisReport muriAnalysisReport;

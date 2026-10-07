@@ -1,5 +1,7 @@
 #pragma once
 
+#include "core/scene/PreviewHudState.h"
+
 #include <functional>
 #include <QFileInfo>
 #include <QString>
@@ -170,6 +172,7 @@ inline QVariantMap introBannerStyleMap(const IntroBannerSpec& intro)
 }
 
 struct VideoExportTask {
+    miacode::preview::scene::PreviewHudFontSettings hudFontSettings;
     QString outputPath;
     QString chartPath;
     QString backgroundMediaPath;

@@ -8,6 +8,7 @@
 
 #include "audio/QtPreviewSfxRuntime.h"
 #include "common/DebugLog.h"
+#include "app/services/HudFontPreferences.h"
 #include "core/scene/PreviewProgressStatsCache.h"
 #include "preview/runtime/PreviewRuntime.h"
 #include "preview/stage_media/PreviewStageMediaHost.h"
@@ -484,6 +485,7 @@ void miacode::runtime::PlaybackCoordinator::setRenderSetting(const QString& key,
 void miacode::runtime::PlaybackCoordinator::refreshSurfaces()
 {
     if (state_.scene_ != nullptr) {
+        state_.scene_->setHudFontSettings(miacode::hud_preferences::load());
         state_.scene_->update();
     }
 }

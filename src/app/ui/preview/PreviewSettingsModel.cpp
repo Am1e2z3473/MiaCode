@@ -1,5 +1,5 @@
 #include "common/LocalizedText.h"
-#include "common/PreferenceProvider.h"
+#include "app/services/HudFontPreferences.h"
 
 #include "app/ui/preview/PreviewSettingsModel.h"
 
@@ -312,7 +312,7 @@ QVariantList PreviewSettingsModel::fontLibraryOptions() const
 {
     QVariantList list;
     const auto area = miacode::preview::scene::previewHudFontAreaFromId(hudFontAreaId_);
-    const QString globalPath = miacode::preferences::appPreferenceSection(QStringLiteral("video_export"))
+    const QString globalPath = miacode::hud_preferences::section()
                                    .value(QStringLiteral("hud_font_path")).toString();
     const QString globalFamily = miacode::video_export::fontFamilyForFile(globalPath);
     const QString defaultFamily = globalFamily.isEmpty()
@@ -367,7 +367,7 @@ int PreviewSettingsModel::hudFontAreaIndex() const
 
 QString PreviewSettingsModel::hudFontPath() const
 {
-    return miacode::preview::scene::previewHudCustomFontPath(
+    return miacode::hud_preferences::load().path(
         miacode::preview::scene::previewHudFontAreaFromId(hudFontAreaId_));
 }
 
@@ -382,8 +382,8 @@ QFont PreviewSettingsModel::hudFont() const
 {
     const auto area = miacode::preview::scene::previewHudFontAreaFromId(hudFontAreaId_);
     return area == miacode::preview::scene::PreviewHudFontArea::DebugInfo
-        ? miacode::preview::scene::previewHudMonoFontForArea(area, 14)
-        : miacode::preview::scene::previewHudTimestampFontForArea(area, 14, QFont::DemiBold);
+        ? miacode::preview::scene::previewHudMonoFontForArea(miacode::hud_preferences::load(), area, 14)
+        : miacode::preview::scene::previewHudTimestampFontForArea(miacode::hud_preferences::load(), area, 14, QFont::DemiBold);
 }
 
 void PreviewSettingsModel::setSkinIndex(int index)
@@ -454,10 +454,10 @@ void PreviewSettingsModel::setHudFontAreaIndex(int index)
 void PreviewSettingsModel::setHudFontPath(const QString& path)
 {
     const auto area = miacode::preview::scene::previewHudFontAreaFromId(hudFontAreaId_);
-    if (miacode::preview::scene::previewHudCustomFontPath(area) == path) {
+    if (miacode::hud_preferences::load().path(area) == path) {
         return;
     }
-    miacode::preview::scene::setPreviewHudCustomFontPath(area, path);
+    miacode::hud_preferences::setPath(area, path);
     if (surface() != nullptr) {
         surface()->refreshSurfaces();
     }

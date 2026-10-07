@@ -157,6 +157,12 @@ QJsonObject VideoExportSnapshot::toJson() const
     chart.insert(QStringLiteral("project_dir"), projectDir);
     root.insert(QStringLiteral("chart"), chart);
 
+    QJsonObject hudFonts;
+    for (int area = 0; area < static_cast<int>(hudFontSettings.paths.size()); ++area) {
+        hudFonts.insert(QString::number(area), hudFontSettings.paths[area]);
+    }
+    root.insert(QStringLiteral("hud_fonts"), hudFonts);
+
     QJsonObject resources;
     resources.insert(QStringLiteral("track_path"), trackPath);
     resources.insert(QStringLiteral("background_media_path"), backgroundMediaPath);
@@ -285,6 +291,11 @@ bool VideoExportSnapshot::fromJson(
     parsed.difficultyName = chart.value(QStringLiteral("difficulty_name")).toString();
     parsed.originalChartPath = chart.value(QStringLiteral("original_chart_path")).toString();
     parsed.projectDir = chart.value(QStringLiteral("project_dir")).toString();
+
+    const QJsonObject hudFonts = object.value(QStringLiteral("hud_fonts")).toObject();
+    for (int area = 0; area < static_cast<int>(parsed.hudFontSettings.paths.size()); ++area) {
+        parsed.hudFontSettings.paths[area] = hudFonts.value(QString::number(area)).toString();
+    }
 
     const QJsonObject resources = object.value(QStringLiteral("resources")).toObject();
     parsed.trackPath = jsonString(resources, "track_path");
@@ -472,6 +483,7 @@ bool buildVideoExportTaskFromSnapshot(
     }
 
     VideoExportTask built;
+    built.hudFontSettings = snapshot.hudFontSettings;
     built.outputPath = snapshot.outputPath;
     built.chartPath = snapshot.originalChartPath;
     built.backgroundMediaPath = miacode::chart_assets::resolvePreferredBackgroundMediaPath(

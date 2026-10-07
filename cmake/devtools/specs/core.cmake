@@ -230,6 +230,18 @@ miacode_add_spec(video_export_intro_mode_spec
     INCLUDES src
 )
 
+miacode_add_spec(video_export_hud_font_snapshot_spec
+    OWNER src/export/video_export
+    CONTRACT video-export.hud-font-snapshot
+    DOMAIN video_export KIND integration RISK high
+    EXECUTION ctest STATUS active PLATFORM all
+    SOURCES src/tools/video_export/VideoExportHudFontSnapshotSpec.cpp
+    LIBS miacode_export Qt6::Core Qt6::Gui
+    INCLUDES src
+)
+target_compile_definitions(video_export_hud_font_snapshot_spec PRIVATE
+    "MIACODE_SOURCE_ROOT=\"${CMAKE_CURRENT_SOURCE_DIR}\"")
+
 miacode_add_spec(video_export_intro_sound_spec
     OWNER src/export/video_export
     CONTRACT video-export.video-export-intro-sound

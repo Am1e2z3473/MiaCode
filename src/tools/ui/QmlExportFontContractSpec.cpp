@@ -131,7 +131,7 @@ bool verifyQmlFontContract(QTextStream& err)
     }
     ok &= require(
         previewSettingsImplementation.contains(
-            QStringLiteral("setPreviewHudCustomFontPath(area, path)"))
+            QStringLiteral("hud_preferences::setPath(area, path)"))
             // The preview settings page reaches the live surfaces through
             // miacode::PreviewSurface now; it no longer knows MainWindow.
             && previewSettingsImplementation.contains(
