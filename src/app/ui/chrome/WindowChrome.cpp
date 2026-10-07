@@ -10,6 +10,9 @@
 #include <QPlatformSurfaceEvent>
 #include <QPointer>
 #include <QScreen>
+#ifdef Q_OS_MACOS
+#include <QQuickWindow>
+#endif
 #include <QWindow>
 
 #ifdef Q_OS_WIN
@@ -68,6 +71,25 @@ void WindowChrome::setNativeMaterialAvailable(bool available)
     emit nativeMaterialAvailableChanged();
 }
 
+void WindowChrome::setMaterialRegions(const QVariantList& regions)
+{
+    if (materialRegions_ == regions) {
+        return;
+    }
+#ifdef Q_OS_WIN
+    const bool materialVisibilityChanged = materialRegions_.isEmpty() != regions.isEmpty();
+#endif
+    materialRegions_ = regions;
+    emit materialRegionsChanged();
+#ifdef Q_OS_WIN
+    if (materialVisibilityChanged) {
+        materialUpdateTimer_.start();
+    }
+#elif defined(Q_OS_MACOS)
+    materialUpdateTimer_.start();
+#endif
+}
+
 void WindowChrome::attach(QWindow* window)
 {
     if (window == nullptr) {
@@ -81,7 +103,6 @@ void WindowChrome::attach(QWindow* window)
     const auto handle = reinterpret_cast<HWND>(nativeHandle_);
     window->installEventFilter(this);
     QCoreApplication::instance()->installNativeEventFilter(this);
-    refreshNativeMaterial();
 
     SetWindowPos(
         handle,
@@ -91,9 +112,31 @@ void WindowChrome::attach(QWindow* window)
         0,
         0,
         SWP_FRAMECHANGED | SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
+    refreshNativeMaterial();
     setTitleBarLeadingInset(0);
 #elif defined(Q_OS_MACOS)
     window->installEventFilter(this);
+    if (auto* quickWindow = qobject_cast<QQuickWindow*>(window)) {
+        // Attach after the first scene-graph presentation, and repeat this
+        // step when Qt recreates the rendering resources.
+        const auto refreshAfterPresentation = [this, quickWindow] {
+            QObject::connect(quickWindow, &QQuickWindow::frameSwapped, this,
+                [this] { materialUpdateTimer_.start(); },
+                Qt::ConnectionType(Qt::QueuedConnection | Qt::SingleShotConnection));
+            quickWindow->update();
+        };
+        QObject::connect(quickWindow, &QQuickWindow::sceneGraphInitialized, this,
+            refreshAfterPresentation, Qt::QueuedConnection);
+        QObject::connect(quickWindow, &QQuickWindow::sceneGraphInvalidated, this,
+            [this] {
+                materialUpdateTimer_.stop();
+                releaseMacOsMaterial();
+                setNativeMaterialAvailable(false);
+            }, Qt::QueuedConnection);
+        if (quickWindow->isSceneGraphInitialized()) {
+            refreshAfterPresentation();
+        }
+    }
     applyMacOs(window);
     observeMacOsFullScreen(window);
     QObject::connect(
@@ -107,8 +150,7 @@ void WindowChrome::attach(QWindow* window)
             }
             setTitleBarLeadingInset(windowedTitleBarLeadingInset_);
             setTitleBarHeight(windowedTitleBarHeight_);
-        },
-        static_cast<Qt::ConnectionType>(Qt::UniqueConnection));
+        });
 #else
     Q_UNUSED(window);
     setTitleBarLeadingInset(0);
@@ -163,7 +205,11 @@ void WindowChrome::setBlurMaterialsEnabled(bool enabled)
 
 void WindowChrome::refreshNativeTheme()
 {
+#ifdef Q_OS_WIN
+    NativeWindowTheme::applyAppearanceToWindow(window_.data(), &dwmState_);
+#else
     NativeWindowTheme::applyAppearanceToWindow(window_.data());
+#endif
 }
 
 void WindowChrome::refreshNativeMaterial()
@@ -173,12 +219,19 @@ void WindowChrome::refreshNativeMaterial()
     }
 #ifdef Q_OS_WIN
     nativeHandle_ = window_->winId();
-    const bool frameApplied = extendDwmFrame();
+    if (dwmState_.nativeHandle != nativeHandle_) {
+        dwmState_ = {};
+        dwmState_.nativeHandle = nativeHandle_;
+    }
+    if (!dwmState_.frameExtended) {
+        dwmState_.frameExtended = extendDwmFrame();
+    }
     const bool backdropApplied = NativeWindowTheme::applyToWindow(
-        window_.data(), blurMaterialsEnabled_, NativeWindowTheme::BackdropMaterial::Acrylic);
-    setNativeMaterialAvailable(frameApplied && backdropApplied);
+        window_.data(), blurMaterialsEnabled_ && !materialRegions_.isEmpty(),
+        NativeWindowTheme::BackdropMaterial::Acrylic, &dwmState_);
+    setNativeMaterialAvailable(dwmState_.frameExtended && backdropApplied);
 #elif defined(Q_OS_MACOS)
-    applyMacOs(window_.data());
+    refreshMacOsMaterial(window_.data());
 #endif
 }
 
@@ -189,6 +242,12 @@ bool WindowChrome::eventFilter(QObject* watched, QEvent* event)
         if (event->type() == QEvent::Show) {
             // Apply after Qt has completed the native show operation.
             materialUpdateTimer_.start();
+#ifdef Q_OS_MACOS
+        } else if (event->type() == QEvent::Expose
+                || event->type() == QEvent::WindowStateChange
+                || event->type() == QEvent::ScreenChangeInternal) {
+            materialUpdateTimer_.start();
+#endif
         } else if (event->type() == QEvent::PlatformSurface) {
             const auto* surfaceEvent = static_cast<QPlatformSurfaceEvent*>(event);
             if (surfaceEvent->surfaceEventType() == QPlatformSurfaceEvent::SurfaceCreated) {
@@ -197,6 +256,8 @@ bool WindowChrome::eventFilter(QObject* watched, QEvent* event)
                 materialUpdateTimer_.stop();
 #ifdef Q_OS_MACOS
                 releaseMacOsMaterial();
+#elif defined(Q_OS_WIN)
+                dwmState_ = {};
 #endif
                 nativeHandle_ = 0;
                 setNativeMaterialAvailable(false);
@@ -402,6 +463,7 @@ bool WindowChrome::nativeEventFilter(const QByteArray& eventType, void* message,
 
     if (nativeMessage->message == WM_DWMCOMPOSITIONCHANGED) {
         // Qt also updates composition settings while handling this message.
+        dwmState_ = {};
         materialUpdateTimer_.start();
     }
 #else
@@ -431,6 +493,11 @@ bool WindowChrome::extendDwmFrame() const
 }
 
 #ifndef Q_OS_MACOS
+void WindowChrome::refreshMacOsMaterial(QWindow* window)
+{
+    Q_UNUSED(window);
+}
+
 void WindowChrome::applyMacOs(QWindow* window)
 {
     Q_UNUSED(window);

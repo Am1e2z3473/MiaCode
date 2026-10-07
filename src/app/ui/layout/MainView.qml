@@ -50,6 +50,41 @@ Item {
 
     ViewState { id: state }
 
+    Binding {
+        target: root.applicationContext.windowChrome
+        property: "materialRegions"
+        when: (Qt.platform.os === "osx" || Qt.platform.os === "windows") && target !== null
+        value: {
+            if (!Theme.blurMaterialsEnabled || Theme.backgroundActive || !root.visible)
+                return []
+            if (Qt.platform.os === "windows")
+                return [{ rect: Qt.rect(0, 0, root.width, root.height) }]
+            const top = root.mapToItem(null, 0, 0)
+            const regions = [{
+                rect: Qt.rect(top.x, top.y, root.width, chromeHost.height)
+            }]
+            const strip = splitView.activityBarMaterialRect
+            if (strip.width > 0 && strip.height > 0) {
+                // Column positions its children after their sizes change.
+                // Read those positions as binding dependencies before mapping
+                // to the window scene, rather than snapshotting mapToItem().
+                const origin = root.mapToItem(null,
+                    mainViewHost.x + splitView.x + strip.x,
+                    mainViewHost.y + splitView.y + strip.y)
+                regions.push({
+                    rect: Qt.rect(origin.x, origin.y,
+                        strip.width, strip.height)
+                })
+                regions.push({
+                    rect: Qt.rect(origin.x + strip.width, origin.y,
+                        Theme.workspaceRadius, Theme.workspaceRadius)
+                })
+            }
+            return regions
+        }
+        restoreMode: Binding.RestoreNone
+    }
+
     // 保存 means "save what I am working in", so the document model has to know
     // whether the view in front is one difficulty or the whole source.
     Binding {

@@ -3,6 +3,7 @@ import QtQuick.Controls
 import QtQuick.Templates as T
 import QtQuick.Effects
 import QtQuick.Window
+import QtQml.Models
 import MiaCode.UI
 
 Item {
@@ -29,6 +30,24 @@ Item {
     }
     property rect sceneRect
     property rect overlayRect
+    // Geometry signals cover popup placement and ancestor movement without
+    // running coordinate mapping on every animation frame.
+    readonly property var geometryItems: {
+        const items = []
+        for (const start of [root, root.sourceItem, root.overlaySource]) {
+            let item = start
+            while (item) {
+                if (items.indexOf(item) < 0)
+                    items.push(item)
+                item = item.parent
+            }
+        }
+        return items
+    }
+
+    function queueSourceRectUpdate() {
+        Qt.callLater(root.updateSourceRects)
+    }
 
     function sampleRect(item) {
         const p = root.mapToItem(item, -padding, -padding)
@@ -42,11 +61,22 @@ Item {
     }
 
     Component.onCompleted: updateSourceRects()
-    // Follow anchor movement and final popup placement on frames the window
-    // already renders. Unchanged rects keep the source textures clean.
-    Connections {
-        target: root.Window.window
-        function onAfterAnimating() { root.updateSourceRects() }
+    onGeometryItemsChanged: queueSourceRectUpdate()
+    onPaddingChanged: queueSourceRectUpdate()
+    onOverlaySourceChanged: queueSourceRectUpdate()
+    Instantiator {
+        model: root.geometryItems
+        delegate: Connections {
+            required property var modelData
+            target: modelData
+            function onXChanged() { root.queueSourceRectUpdate() }
+            function onYChanged() { root.queueSourceRectUpdate() }
+            function onWidthChanged() { root.queueSourceRectUpdate() }
+            function onHeightChanged() { root.queueSourceRectUpdate() }
+            function onScaleChanged() { root.queueSourceRectUpdate() }
+            function onRotationChanged() { root.queueSourceRectUpdate() }
+            function onTransformOriginChanged() { root.queueSourceRectUpdate() }
+        }
     }
 
     Rectangle {
@@ -57,6 +87,7 @@ Item {
         color: Theme.colors.background.surface
 
         ShaderEffectSource {
+            id: sceneSample
             anchors.fill: parent
             sourceItem: root.sourceItem
             sourceRect: root.sceneRect
@@ -74,7 +105,7 @@ Item {
         id: sample
         width: capture.width
         height: capture.height
-        sourceItem: capture
+        sourceItem: root.overlaySource ? capture : null
         textureSize: Qt.size(capture.width, capture.height)
         visible: false
     }
@@ -95,12 +126,23 @@ Item {
         }
     }
 
+    // Compositing a blurred premultiplied scene over a constant opaque base
+    // preserves the interior color without a separate composition texture.
+    Rectangle {
+        anchors.fill: parent
+        radius: root.cornerRadius
+        color: Theme.colors.background.surface
+        visible: !root.overlaySource
+    }
+
     MultiEffect {
         x: -root.padding
         y: -root.padding
         width: root.sampleWidth
         height: root.sampleHeight
-        source: sample
+        // Ordinary popups can blur the scene texture itself. Only a popup
+        // inside a dialog needs the extra scene/dialog composition texture.
+        source: root.overlaySource ? sample : sceneSample
         autoPaddingEnabled: false
         blurEnabled: true
         blurMax: root.blurRadius * Theme.popupBlurScale

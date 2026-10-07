@@ -36,6 +36,7 @@ Item {
     property var pendingActivationCancellation: null
 
     signal openRequested()
+    readonly property Item cornerSourceItem: tabs.visible ? tabs : null
 
     function undo() {
         if (sourceVisible)

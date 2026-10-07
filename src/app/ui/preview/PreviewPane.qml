@@ -21,6 +21,7 @@ Rectangle {
                                           + statistics.implicitHeight + 64
     readonly property real minimumWidth: transport.minimumWidth
     signal fullscreenRequested()
+    readonly property alias cornerSourceItem: heading
 
     // Export page still uses the backend ratio. Edit mode defaults to 1:1;
     // free aspect sizes the surface to the live stage geometry.

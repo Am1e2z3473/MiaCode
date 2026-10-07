@@ -1,5 +1,8 @@
 #pragma once
 
+#include <QtGlobal>
+#include <optional>
+
 class QWindow;
 
 // Native (non-client) window theming. Windows uses DWM attributes for its
@@ -13,13 +16,22 @@ enum class BackdropMaterial {
     Acrylic,
 };
 
+// Successful DWM settings, owned by the window's chrome lifecycle.
+struct AppliedState {
+    quintptr nativeHandle = 0;
+    std::optional<bool> darkMode;
+    std::optional<int> backdropType;
+    bool frameExtended = false;
+};
+
 // Updates appearance without rebuilding the window's backdrop.
-void applyAppearanceToWindow(QWindow* window);
+void applyAppearanceToWindow(QWindow* window, AppliedState* state = nullptr);
 
 // QWindow variant for QML / QQuickWindow top-levels. Frame geometry belongs
 // to the window chrome; this helper only sets appearance and backdrop.
 // Returns whether the requested native backdrop was accepted.
 bool applyToWindow(QWindow* window, bool backdropEnabled = true,
-                   BackdropMaterial material = BackdropMaterial::Mica);
+                   BackdropMaterial material = BackdropMaterial::Mica,
+                   AppliedState* state = nullptr);
 
 }  // namespace NativeWindowTheme

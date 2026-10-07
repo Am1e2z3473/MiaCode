@@ -12,6 +12,7 @@ Rectangle {
     required property var previewSession
     required property var previewSettings
     readonly property var session: pages && pages.exportSession ? pages.exportSession : null
+    readonly property alias cornerSourceItem: heading
     readonly property bool introSettingsEnabled: !!root.session
                                                   && root.session.introEnabled
                                                   && (root.session.activeTab === "batch"
@@ -79,6 +80,7 @@ Rectangle {
         spacing: 0
 
         PanelHeader {
+            id: heading
             Layout.fillWidth: true
             title: qsTrId("export_page.export_video")
             sidebarTitle: true

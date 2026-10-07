@@ -41,23 +41,46 @@ bool setDwmWindowAttribute(HWND hwnd, DWORD attribute, const void* value, DWORD 
     return SUCCEEDED(setWindowAttribute(hwnd, attribute, value, size));
 }
 
-void applyAppearanceToNativeHandle(HWND hwnd)
+void syncAppliedState(HWND hwnd, AppliedState* state)
+{
+    const auto handle = reinterpret_cast<quintptr>(hwnd);
+    if (state != nullptr && state->nativeHandle != handle) {
+        *state = {};
+        state->nativeHandle = handle;
+    }
+}
+
+void applyAppearanceToNativeHandle(HWND hwnd, AppliedState* state)
 {
     if (hwnd == nullptr) {
         return;
     }
 
     const BOOL darkMode = UiTheme::isDarkTheme() ? TRUE : FALSE;
-    setDwmWindowAttribute(hwnd, kDwmwaUseImmersiveDarkMode, &darkMode, sizeof(darkMode));
-
+    syncAppliedState(hwnd, state);
+    if (state != nullptr && state->darkMode == (darkMode != FALSE)) {
+        return;
+    }
+    if (setDwmWindowAttribute(hwnd, kDwmwaUseImmersiveDarkMode, &darkMode, sizeof(darkMode))
+            && state != nullptr) {
+        state->darkMode = darkMode != FALSE;
+    }
 }
 
-bool applyBackdropToNativeHandle(HWND hwnd, bool backdropEnabled, BackdropMaterial material)
+bool applyBackdropToNativeHandle(HWND hwnd, bool backdropEnabled, BackdropMaterial material,
+                                AppliedState* state)
 {
     const int backdropType = backdropEnabled
         ? (material == BackdropMaterial::Acrylic ? kDwmsbtTransientWindow : kDwmsbtMainWindow)
         : kDwmsbtNone;
+    syncAppliedState(hwnd, state);
+    if (state != nullptr && state->backdropType == backdropType) {
+        return backdropEnabled;
+    }
     const bool backdropApplied = setDwmWindowAttribute(hwnd, kDwmwaSystemBackdropType, &backdropType, sizeof(backdropType));
+    if (backdropApplied && state != nullptr) {
+        state->backdropType = backdropType;
+    }
 
     return backdropEnabled && backdropApplied;
 }
@@ -66,14 +89,17 @@ bool applyBackdropToNativeHandle(HWND hwnd, bool backdropEnabled, BackdropMateri
 
 }  // namespace
 
-void applyAppearanceToWindow(QWindow* window)
+void applyAppearanceToWindow(QWindow* window, AppliedState* state)
 {
+#ifndef Q_OS_WIN
+    Q_UNUSED(state);
+#endif
     if (window == nullptr) {
         return;
     }
 #ifdef Q_OS_WIN
     const HWND hwnd = reinterpret_cast<HWND>(window->winId());
-    applyAppearanceToNativeHandle(hwnd);
+    applyAppearanceToNativeHandle(hwnd, state);
 #elif defined(Q_OS_MACOS)
     NativeWindowThemeMac::applyToNativeView(
         reinterpret_cast<void*>(window->winId()),
@@ -85,14 +111,16 @@ void applyAppearanceToWindow(QWindow* window)
 #endif
 }
 
-bool applyToWindow(QWindow* window, bool backdropEnabled, BackdropMaterial material)
+bool applyToWindow(QWindow* window, bool backdropEnabled, BackdropMaterial material,
+                   AppliedState* state)
 {
     if (window == nullptr) {
         return false;
     }
-    applyAppearanceToWindow(window);
+    applyAppearanceToWindow(window, state);
 #ifdef Q_OS_WIN
-    return applyBackdropToNativeHandle(reinterpret_cast<HWND>(window->winId()), backdropEnabled, material);
+    return applyBackdropToNativeHandle(reinterpret_cast<HWND>(window->winId()), backdropEnabled,
+                                      material, state);
 #else
     Q_UNUSED(backdropEnabled);
     Q_UNUSED(material);

@@ -12,6 +12,8 @@ Item {
     property bool compact: false
     readonly property bool primarySidebarVisible: compact || viewState.sidebarVisible
     readonly property real activityBarWidth: activityBar.width
+    readonly property Item cornerSourceItem: root.viewState.activeSidebarView === "export"
+        ? exportSidebar.cornerSourceItem : chartSidebar.cornerSourceItem
 
     signal settingsRequested()
 
@@ -81,6 +83,7 @@ Item {
         visible: root.primarySidebarVisible
 
         ChartFieldSidebar {
+            id: chartSidebar
             color: root.compact ? "transparent" : Theme.surfaceColor(Theme.colors.background.panel)
             anchors.fill: parent
             visible: root.viewState.activeSidebarView === "chart"
@@ -92,6 +95,7 @@ Item {
         }
 
         ExportSidebarPage {
+            id: exportSidebar
             color: root.compact ? "transparent" : Theme.surfaceColor(Theme.colors.background.panel)
             anchors.fill: parent
             visible: root.viewState.activeSidebarView === "export"

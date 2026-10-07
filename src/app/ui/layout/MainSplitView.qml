@@ -27,6 +27,9 @@ Item {
     property bool compact: false
     property real sidebarDragWidth: 0
     property bool sidebarResizing: false
+    readonly property rect activityBarMaterialRect: Qt.rect(0, 0,
+        root.compact || !horizontalSplit.visible ? 0 : sidebar.activityBarWidth,
+        horizontalSplit.height)
     // 现有紧凑工作区的可用宽度；展开侧栏所需空间单独计算。
     readonly property real minimumWorkspaceWidth: Math.max(620,
         bottomPanel.minimumWidth + preview.minimumWidth + Theme.splitDividerThickness)
@@ -216,15 +219,6 @@ Item {
             onSettingsRequested: root.settingsRequested()
         }
 
-        // Keep the workspace opaque while native material shows through chrome.
-        Rectangle {
-            x: workspaceSplit.x
-            width: workspaceSplit.width
-            height: parent.height
-            visible: Theme.nativeMaterialActive
-            color: Theme.colors.background.surface
-        }
-
         SplitView {
             id: workspaceSplit
             orientation: Qt.Horizontal
@@ -277,6 +271,7 @@ Item {
 
                     // v2 video export center: QML chrome + ExportVideoController panel surface.
                     ExportVideoPage {
+                        id: exportVideoPage
                         anchors.fill: parent
                         visible: root.exportVideoActive
                         pages: root.pages
@@ -337,8 +332,14 @@ Item {
             x: root.compact ? 0 : sidebar.activityBarWidth
             backgroundSource: root.backgroundSource
             backgroundOffset: Qt.point(root.backgroundOffset.x + x, root.backgroundOffset.y)
-            panelItem: !root.compact && root.viewState.sidebarVisible ? sidebar : workspaceSplit
-            panelOffset: Qt.point(x - panelItem.x, 0)
+            panelItem: !root.compact && root.viewState.sidebarVisible
+                ? sidebar.cornerSourceItem
+                : root.preferencesModel.previewOnLeft && preview.visible
+                    ? preview.cornerSourceItem
+                    : root.exportVideoActive ? exportVideoPage.cornerSourceItem
+                        : editorPane.cornerSourceItem
+            panelOffset: Qt.point(0, 0)
+            panelBaseColor: Theme.colors.background.panel
         }
 
         Rectangle {
