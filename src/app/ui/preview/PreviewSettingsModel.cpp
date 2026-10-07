@@ -313,12 +313,7 @@ QVariantList PreviewSettingsModel::fontLibraryOptions() const
 {
     QVariantList list;
     const auto area = miacode::preview::scene::previewHudFontAreaFromId(hudFontAreaId_);
-    const QString globalPath = miacode::hud_preferences::section()
-                                   .value(QStringLiteral("hud_font_path")).toString();
-    const QString globalFamily = miacode::video_export::fontFamilyForFile(globalPath);
-    const QString defaultFamily = globalFamily.isEmpty()
-        ? miacode::preview::scene::previewHudDefaultFontForArea(area, 14).family()
-        : globalFamily;
+    const QString defaultFamily = miacode::preview::scene::previewHudDefaultFontForArea(area, 14).family();
     const QString selectedPath = hudFontPath();
     bool selectedListed = selectedPath.isEmpty();
     const QVector<miacode::video_export::FontLibraryEntry> entries =
@@ -332,7 +327,7 @@ QVariantList PreviewSettingsModel::fontLibraryOptions() const
         });
         selectedListed |= entry.path == selectedPath;
     }
-    // Legacy global/area paths can be outside the imported font library.
+    // Stored area paths can be outside the imported font library.
     // Keep their real selection visible rather than mislabelling them Default.
     if (!selectedListed) {
         const QString family = miacode::video_export::fontFamilyForFile(selectedPath);
