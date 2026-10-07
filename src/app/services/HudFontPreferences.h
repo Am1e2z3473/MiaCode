@@ -2,6 +2,7 @@
 
 #include "app/services/PreferenceDocument.h"
 #include "core/scene/PreviewHudState.h"
+#include "common/DebugLog.h"
 
 #include <QFileInfo>
 
@@ -22,24 +23,51 @@ inline QString validPath(const QString& path)
         ? file.absoluteFilePath() : QString();
 }
 
+inline QJsonObject migrateSection(QJsonObject section)
+{
+    const QString legacyKey = QStringLiteral("hud_font_path");
+    if (!section.contains(legacyKey)) return section;
+    const QString legacy = validPath(section.value(legacyKey).toString());
+    if (!legacy.isEmpty()) {
+        QJsonObject paths = section.value(QStringLiteral("hud_font_paths")).toObject();
+        for (const auto& choice : preview::scene::previewHudFontAreaChoices()) {
+            const QString key = areaKey(choice.area);
+            // A present empty value is an explicit bundled-default choice.
+            if (!paths.contains(key)) paths.insert(key, legacy);
+        }
+        section.insert(QStringLiteral("hud_font_paths"), paths);
+    }
+    section.remove(legacyKey);
+    return section;
+}
+
 inline preview::scene::PreviewHudFontSettings fromSection(const QJsonObject& section)
 {
     preview::scene::PreviewHudFontSettings settings;
     const QJsonObject paths = section.value(QStringLiteral("hud_font_paths")).toObject();
-    const QString legacy = validPath(section.value(QStringLiteral("hud_font_path")).toString());
     for (const auto& choice : preview::scene::previewHudFontAreaChoices()) {
         const QString key = areaKey(choice.area);
-        // A present empty value explicitly selects this area's bundled default.
-        settings.paths[static_cast<int>(choice.area)] = paths.contains(key)
-            ? validPath(paths.value(key).toString()) : legacy;
+        settings.paths[static_cast<int>(choice.area)] = validPath(paths.value(key).toString());
     }
     return settings;
 }
 
 inline QJsonObject section()
 {
-    return PreferenceDocument::loadPreferencesObject().value(QStringLiteral("app")).toObject()
-        .value(QStringLiteral("video_export")).toObject();
+    QJsonObject root = PreferenceDocument::loadPreferencesObject();
+    QJsonObject app = root.value(QStringLiteral("app")).toObject();
+    const QJsonObject previous = app.value(QStringLiteral("video_export")).toObject();
+    const QJsonObject migrated = migrateSection(previous);
+    if (migrated != previous) {
+        app.insert(QStringLiteral("video_export"), migrated);
+        root.insert(QStringLiteral("app"), app);
+        // Repository accepts the migrated runtime value even if disk save fails.
+        const bool saved = PreferenceDocument::savePreferencesObject(root);
+        debug_log::appendLine(debug_log::Channel::Runtime, QStringLiteral("hud_font_migration"),
+            QStringLiteral("legacy-key-removed saved=%1").arg(saved), true,
+            saved ? debug_log::Level::Info : debug_log::Level::Warn);
+    }
+    return migrated;
 }
 
 inline preview::scene::PreviewHudFontSettings load()
@@ -47,14 +75,20 @@ inline preview::scene::PreviewHudFontSettings load()
     return fromSection(section());
 }
 
+inline QJsonObject withPath(QJsonObject video, preview::scene::PreviewHudFontArea area, const QString& path)
+{
+    video = migrateSection(video);
+    QJsonObject paths = video.value(QStringLiteral("hud_font_paths")).toObject();
+    paths.insert(areaKey(area), path.isEmpty() ? QString() : QFileInfo(path).absoluteFilePath());
+    video.insert(QStringLiteral("hud_font_paths"), paths);
+    return video;
+}
+
 inline bool setPath(preview::scene::PreviewHudFontArea area, const QString& path)
 {
     QJsonObject root = PreferenceDocument::loadPreferencesObject();
     QJsonObject app = root.value(QStringLiteral("app")).toObject();
-    QJsonObject video = app.value(QStringLiteral("video_export")).toObject();
-    QJsonObject paths = video.value(QStringLiteral("hud_font_paths")).toObject();
-    paths.insert(areaKey(area), path.isEmpty() ? QString() : QFileInfo(path).absoluteFilePath());
-    video.insert(QStringLiteral("hud_font_paths"), paths);
+    const QJsonObject video = withPath(app.value(QStringLiteral("video_export")).toObject(), area, path);
     app.insert(QStringLiteral("video_export"), video);
     root.insert(QStringLiteral("app"), app);
     return PreferenceDocument::savePreferencesObject(root);

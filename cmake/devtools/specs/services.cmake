@@ -495,3 +495,18 @@ miacode_add_spec(shortcut_preference_persistence_spec
     LIBS miacode_base Qt6::Core Qt6::Gui
     INCLUDES src
 )
+
+miacode_add_spec(hud_font_preference_migration_spec
+    OWNER src/app/services
+    CONTRACT preferences.hud-font-legacy-migration
+    DOMAIN services KIND behavior RISK normal
+    EXECUTION ctest STATUS active PLATFORM all
+    SOURCES
+        src/tools/services/HudFontPreferenceMigrationSpec.cpp
+        src/app/services/PreferenceDocument.cpp
+        src/app/services/PreferenceDocument.h
+    LIBS miacode_scene miacode_base Qt6::Core Qt6::Gui
+    INCLUDES src
+)
+target_compile_definitions(hud_font_preference_migration_spec PRIVATE
+    "MIACODE_SOURCE_ROOT=\"${CMAKE_CURRENT_SOURCE_DIR}\"")
