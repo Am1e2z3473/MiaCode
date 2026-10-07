@@ -3,7 +3,7 @@
 Generated from `cmake/devtools/specs/` by `cmake -P cmake/devtools/SpecCatalog.cmake`.
 Check without writing: `cmake -DMIACODE_SPEC_CATALOG_CHECK=ON -P cmake/devtools/SpecCatalog.cmake`.
 
-120 independent specs; source lists and link dependencies are maintained only in CMake.
+121 independent specs; source lists and link dependencies are maintained only in CMake.
 
 `platform:all` means the target is registered on every platform, not that all platforms
 have been tested. Platform-specific source branches and link additions remain in their manifests.
@@ -82,6 +82,7 @@ Owners name production modules; kinds describe the checked boundary, not runtime
 | `src/tools/services/PlaybackStateAuthoritySpec.cpp` | `playback_state_authority_spec` | `src/app/services` | `v2.playback-state-authority` | services | behavior | high | all | ctest | active |
 | `src/tools/services/PlaybackStorageBoundarySpec.cpp` | `playback_storage_boundary_spec` | `src/app/runtime` | `v2.playback-storage-boundary` | services | boundary | high | all | ctest | active |
 | `src/tools/services/PreferenceJsonFileSpec.cpp` | `preference_json_file_spec` | `src/app/services` | `preferences.json-file-recovery` | services | behavior | high | all | ctest | active |
+| `src/tools/services/PreferenceRepositorySpec.cpp` | `preference_repository_spec` | `src/app/services` | `preferences.runtime-document` | services | behavior | high | all | ctest | active |
 | `src/tools/services/PreferencesPortSpec.cpp` | `preferences_port_spec` | `src/app/services` | `v2.preferences-port` | services | boundary | high | all | ctest | active |
 | `src/tools/services/PreviewAppearanceStateSpec.cpp` | `preview_appearance_state_spec` | `src/app/services` | `v2.preview-appearance-state` | services | behavior | high | all | ctest | active |
 | `src/tools/services/PreviewHostSpec.cpp` | `preview_host_spec` | `src/app/runtime` | `v2.preview-host` | services | source-contract | high | all | ctest | active |

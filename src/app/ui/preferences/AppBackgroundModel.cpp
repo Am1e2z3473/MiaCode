@@ -1,4 +1,5 @@
 #include "common/LocalizedText.h"
+#include "common/DebugLog.h"
 
 #include "app/ui/preferences/AppBackgroundModel.h"
 
@@ -265,9 +266,9 @@ bool AppBackgroundModel::commit(const Settings& candidate)
     ui.insert(QStringLiteral("app_background"), miacode::ui::appBackgroundSettingsToJson(next));
     root.insert(QStringLiteral("ui"), ui);
     if (!savePreferences_ || !savePreferences_(root)) {
-        errorMessage_ = miacode::localizedText("dialog.preferences.background.save_error");
-        emit errorChanged();
-        return false;
+        miacode::debug_log::appendLine(miacode::debug_log::Channel::Runtime,
+            QStringLiteral("preferences"), QStringLiteral("background-save-pending"), true,
+            miacode::debug_log::Level::Warn);
     }
 
     const Settings old = settings_;

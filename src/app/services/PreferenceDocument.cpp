@@ -6,8 +6,11 @@
 #include <QFile>
 #include <QJsonObject>
 #include <QLocale>
+#include <QMutexLocker>
 #include <QStandardPaths>
 #include <QStringList>
+
+#include <utility>
 
 namespace {
 
@@ -88,6 +91,14 @@ QJsonObject normalizedPreferencesRoot(const QJsonObject& raw)
     if (!ui.contains(kDarkThemeKey)) {
         ui.insert(kDarkThemeKey, QStringLiteral("dark"));
     }
+    // Migrate once at the document boundary so the editor runtime and shell
+    // consume the same canonical value and defaults.
+    ui.insert("editor_auto_completion", ui.value("editor_auto_completion").toBool(
+        ui.value("editor_auto_close_brackets").toBool(true)));
+    ui.insert("editor_half_width_input", ui.value("editor_half_width_input").toBool(true));
+    ui.insert("editor_overwrite_mode", ui.value("editor_overwrite_mode").toBool(false));
+    ui.insert("editor_ime_input_disabled", ui.value("editor_ime_input_disabled").toBool(true));
+    ui.remove("editor_auto_close_brackets");
     normalized.insert(kUiSectionKey, ui);
 
     QJsonObject app = raw.value(kAppSectionKey).toObject();
@@ -271,29 +282,6 @@ QString languagePreferenceToken(PreferenceDocument::LanguagePreference preferenc
     }
 }
 
-PreferenceDocument::LanguagePreference loadStoredLanguagePreference()
-{
-    const bool hasMergedPreferences = QFile::exists(preferencesPath());
-    const QJsonObject root = PreferenceDocument::loadPreferencesObject();
-    if (!hasMergedPreferences) {
-        PreferenceDocument::savePreferencesObject(root);
-    }
-
-    return parseLanguagePreference(root.value(kUiSectionKey).toObject().value(kLanguageKey).toString("system"));
-}
-
-PreferenceDocument::ThemePreference loadStoredThemePreference()
-{
-    const bool hasMergedPreferences = QFile::exists(preferencesPath());
-    const QJsonObject root = PreferenceDocument::loadPreferencesObject();
-    if (!hasMergedPreferences) {
-        PreferenceDocument::savePreferencesObject(root);
-    }
-
-    const QString raw = root.value(kUiSectionKey).toObject().value(kThemeKey).toString("system");
-    return PreferenceDocument::themePreferenceFromToken(raw);
-}
-
 PreferenceDocument::ThemePalette loadStoredThemePalette(const char* key)
 {
     const QJsonObject ui = PreferenceDocument::loadPreferencesObject()
@@ -442,31 +430,11 @@ QString resolvedLanguageTokenFromStorage()
     }
 }
 
-PreferenceDocument::LanguagePreference& preferredLanguageStorage()
+PreferenceDocument::Repository& preferencesRepository()
 {
-    static PreferenceDocument::LanguagePreference preference = loadStoredLanguagePreference();
-    return preference;
+    static PreferenceDocument::Repository repository(preferencesPath(), legacyPreferencesFilePath());
+    return repository;
 }
-
-PreferenceDocument::ThemePreference& preferredThemeStorage()
-{
-    static PreferenceDocument::ThemePreference preference = loadStoredThemePreference();
-    return preference;
-}
-
-
-PreferenceDocument::ThemePalette& preferredLightThemeStorage()
-{
-    static PreferenceDocument::ThemePalette palette = loadStoredThemePalette(kLightThemeKey);
-    return palette;
-}
-
-PreferenceDocument::ThemePalette& preferredDarkThemeStorage()
-{
-    static PreferenceDocument::ThemePalette palette = loadStoredThemePalette(kDarkThemeKey);
-    return palette;
-}
-
 }  // namespace
 
 QString PreferenceDocument::themePreferenceToken(ThemePreference preference)
@@ -537,12 +505,11 @@ bool PreferenceDocument::themePaletteIsDark(ThemePalette palette)
 
 PreferenceDocument::LanguagePreference PreferenceDocument::preferredLanguage()
 {
-    return preferredLanguageStorage();
+    return parseLanguagePreference(preferredLanguageToken());
 }
 
 void PreferenceDocument::setPreferredLanguage(LanguagePreference preference)
 {
-    preferredLanguageStorage() = preference;
     saveStoredLanguagePreference(preference);
 }
 QString PreferenceDocument::preferredLanguageToken()
@@ -562,7 +529,6 @@ void PreferenceDocument::setPreferredLanguageToken(const QString& token)
     root.insert(QString::fromLatin1(kUiSectionKey), ui);
     root.insert(QStringLiteral("schema"), QString::fromLatin1(kPreferencesSchema));
     savePreferencesObject(root);
-    preferredLanguageStorage() = parseLanguagePreference(preferredLanguageToken());
 }
 
 QString PreferenceDocument::resolvedLanguageToken()
@@ -601,35 +567,32 @@ bool PreferenceDocument::ensurePreferredLanguageAvailable()
 
 PreferenceDocument::ThemePreference PreferenceDocument::preferredTheme()
 {
-    return preferredThemeStorage();
+    return themePreferenceFromToken(themeTokenFromPreferencesObject(loadPreferencesObject()));
 }
 
 void PreferenceDocument::setPreferredTheme(ThemePreference preference)
 {
-    preferredThemeStorage() = preference;
     saveStoredThemePreference(preference);
 }
 
 
 PreferenceDocument::ThemePalette PreferenceDocument::preferredLightTheme()
 {
-    return preferredLightThemeStorage();
+    return loadStoredThemePalette(kLightThemeKey);
 }
 
 void PreferenceDocument::setPreferredLightTheme(ThemePalette palette)
 {
-    preferredLightThemeStorage() = palette;
     saveStoredThemePalette(kLightThemeKey, palette);
 }
 
 PreferenceDocument::ThemePalette PreferenceDocument::preferredDarkTheme()
 {
-    return preferredDarkThemeStorage();
+    return loadStoredThemePalette(kDarkThemeKey);
 }
 
 void PreferenceDocument::setPreferredDarkTheme(ThemePalette palette)
 {
-    preferredDarkThemeStorage() = palette;
     saveStoredThemePalette(kDarkThemeKey, palette);
 }
 
@@ -649,42 +612,102 @@ QString PreferenceDocument::currentPreferencesSchema()
     return QString::fromLatin1(kPreferencesSchema);
 }
 
+PreferenceDocument::Repository::Repository(QString path, QString legacyPath)
+    : path_(std::move(path)), legacyPath_(std::move(legacyPath))
+{}
+
+void PreferenceDocument::Repository::initializeLocked()
+{
+    if (initialized_) {
+        return;
+    }
+    initialized_ = true;
+    using namespace miacode::preference_json_file;
+    const ReadResult primary = read(path_);
+    const ReadResult source = primary.status == ReadStatus::Missing && !legacyPath_.isEmpty()
+        ? read(legacyPath_) : primary;
+    legacyReadBlocked_ = primary.status == ReadStatus::Missing && source.status == ReadStatus::ReadError;
+    storedSchema_ = source.object.value(QStringLiteral("schema")).toString();
+    root_ = normalizedPreferencesRoot(source.object);
+    dirty_ = primary.status != ReadStatus::Valid || root_ != primary.object;
+    // First-run/legacy migration and corruption recovery share the guarded
+    // writer. Read errors remain pending and never cause a blind replacement.
+    if (!legacyReadBlocked_
+        && (primary.status == ReadStatus::Missing || primary.status == ReadStatus::Corrupt)) {
+        flushLocked();
+    }
+}
+
+QJsonObject PreferenceDocument::Repository::snapshot()
+{
+    const QMutexLocker lock(&mutex_);
+    initializeLocked();
+    return root_;
+}
+
+QString PreferenceDocument::Repository::storedSchema()
+{
+    const QMutexLocker lock(&mutex_);
+    initializeLocked();
+    return storedSchema_;
+}
+
+bool PreferenceDocument::Repository::replace(const QJsonObject& root)
+{
+    const QMutexLocker lock(&mutex_);
+    initializeLocked();
+    const QJsonObject next = normalizedPreferencesRoot(root);
+    dirty_ = dirty_ || root_ != next;
+    root_ = next;
+    return flushLocked();
+}
+
+bool PreferenceDocument::Repository::flush()
+{
+    const QMutexLocker lock(&mutex_);
+    initializeLocked();
+    return flushLocked();
+}
+
+bool PreferenceDocument::Repository::flushLocked()
+{
+    if (!dirty_) {
+        return true;
+    }
+    if (legacyReadBlocked_) {
+        // The missing primary must not hide a legacy source that this lifetime
+        // never read. A new repository can retry loading after IO recovers.
+        miacode::preference_json_file::log(legacyPath_,
+            QStringLiteral("legacy-read-unavailable save-blocked-for-session"));
+        return false;
+    }
+    if (!miacode::preference_json_file::write(path_, root_)) {
+        return false;
+    }
+    dirty_ = false;
+    return true;
+}
+
+bool PreferenceDocument::Repository::isDirty()
+{
+    const QMutexLocker lock(&mutex_);
+    initializeLocked();
+    return dirty_;
+}
+
 QString PreferenceDocument::storedPreferencesSchema()
 {
-    // Raw read mirroring loadPreferencesObject()'s file precedence (primary then
-    // legacy), but WITHOUT normalizedPreferencesRoot() — that helper always
-    // injects the current token, which would hide an outdated on-disk schema and
-    // defeat the upgrade-detection gate in main(). An empty string (no readable
-    // preferences file) compares unequal to the current token, so callers treat
-    // it as "needs onboarding".
-    const auto primary = miacode::preference_json_file::read(preferencesPath());
-    const QJsonObject root = primary.status == miacode::preference_json_file::ReadStatus::Missing
-        ? miacode::preference_json_file::read(legacyPreferencesFilePath()).object : primary.object;
-    return root.value(QStringLiteral("schema")).toString();
+    return preferencesRepository().storedSchema();
 }
 
 QJsonObject PreferenceDocument::loadPreferencesObject()
 {
-    using namespace miacode::preference_json_file;
-    const ReadResult primary = read(preferencesPath());
-    if (primary.status == ReadStatus::Valid) {
-        return normalizedPreferencesRoot(primary.object);
-    }
-    const QJsonObject defaults = normalizedPreferencesRoot({});
-    if (primary.status == ReadStatus::Corrupt) {
-        write(preferencesPath(), defaults);
-    }
-    // A present primary file is authoritative, even when empty or unreadable.
-    // Only absence enables migration from the legacy location.
-    if (primary.status == ReadStatus::Missing) {
-        return normalizedPreferencesRoot(load(legacyPreferencesFilePath()));
-    }
-    return defaults;
+    return preferencesRepository().snapshot();
 }
 
 bool PreferenceDocument::savePreferencesObject(const QJsonObject& root)
 {
-    return miacode::preference_json_file::write(preferencesPath(), normalizedPreferencesRoot(root));
+    return preferencesRepository().replace(root);
 }
 
 QJsonObject PreferenceDocument::normalizePreferencesObject(const QJsonObject& root)

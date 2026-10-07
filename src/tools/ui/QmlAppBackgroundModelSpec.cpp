@@ -1,4 +1,5 @@
 #include "app/ui/preferences/AppBackgroundModel.h"
+#include "common/DebugLog.h"
 
 #include <QCoreApplication>
 #include <QFile>
@@ -85,14 +86,14 @@ bool testSaveFailure(QTextStream& out)
     miacode::ui::AppBackgroundModel model(
         nullptr,
         [&root] { return root; },
-        [](const QJsonObject&) { return false; });
-    const double original = model.opacity();
+        [&root](const QJsonObject& next) { root = next; return false; });
     int errorChanges = 0;
     QObject::connect(&model, &miacode::ui::AppBackgroundModel::errorChanged,
                      [&errorChanges] { ++errorChanges; });
     model.setOpacity(0.7);
-    return require(model.opacity() == original && errorChanges == 1 && !model.errorMessage().isEmpty(),
-                   QStringLiteral("save failure retains old value and only changes error"), out);
+    model.reload();
+    return require(model.opacity() == 0.7 && errorChanges == 0 && model.errorMessage().isEmpty(),
+                   QStringLiteral("save failure applies the runtime value, survives reload and stays silent"), out);
 }
 
 } // namespace
@@ -100,10 +101,13 @@ bool testSaveFailure(QTextStream& out)
 int main(int argc, char** argv)
 {
     QCoreApplication app(argc, argv);
+    QTemporaryDir logDirectory;
+    miacode::debug_log::setSessionProjectLogDirectory(logDirectory.path());
     QTextStream out(stdout);
     const bool ok = testImageStatesAndMerge(out) && testSaveFailure(out);
     if (ok) {
         out << "qml_app_background_model_spec ok" << Qt::endl;
     }
+    miacode::debug_log::shutdownAsyncLogWriter();
     return ok ? 0 : 1;
 }

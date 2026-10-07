@@ -456,3 +456,16 @@ miacode_add_spec(preference_json_file_spec
     LIBS miacode_base Qt6::Core
     INCLUDES src
 )
+
+miacode_add_spec(preference_repository_spec
+    OWNER src/app/services
+    CONTRACT preferences.runtime-document
+    DOMAIN services KIND behavior RISK high
+    EXECUTION ctest STATUS active PLATFORM all
+    SOURCES
+        src/tools/services/PreferenceRepositorySpec.cpp
+        src/app/services/PreferenceDocument.cpp
+        src/app/services/PreferenceDocument.h
+    LIBS miacode_base Qt6::Core
+    INCLUDES src
+)
