@@ -2,7 +2,7 @@
 #include "export/cover_export/CoverCompositionPersistenceGuard.h"
 #include "export/cover_export/CoverLayoutModel.h"
 #include "export/cover_export/CoverFrameExportPlan.h"
-#include "common/PreferenceProvider.h"
+#include "app/services/CoverExportPreferences.h"
 
 #include <QCoreApplication>
 #include <QFile>
@@ -18,6 +18,11 @@ using miacode::cover_export::CoverLayoutModel;
 using miacode::cover_export::CoverFrameExportPlan;
 
 namespace {
+
+QJsonObject coverPreferenceSection;
+miacode::app_preferences::CoverExportPreferences coverPreferences(
+    [] { return coverPreferenceSection; },
+    [](const QJsonObject& section) { coverPreferenceSection = section; return true; });
 
 bool require(bool condition, const QString& message, QTextStream& err)
 {
@@ -53,13 +58,25 @@ bool testCompositionPersistenceLifecycle(QTextStream& err)
     if (!require(writes.size() == 1,
                  QStringLiteral("unchanged teardown payload is content-idempotent"), err)) return false;
 
+    coverPreferenceSection = {
+        {QStringLiteral("recentFiles"), QJsonArray{QStringLiteral("recent.miacover")}},
+        {QStringLiteral("presets"), QJsonArray{QJsonObject{{QStringLiteral("name"), QStringLiteral("kept")}}}},
+        {QStringLiteral("unknown_sibling"), QJsonObject{{QStringLiteral("payload"), 9}}},
+        {QStringLiteral("output"), QStringLiteral("stale-folder")},
+    };
+    const QJsonObject prior = coverPreferenceSection;
     const QJsonObject preferences{
         {QStringLiteral("kind"), QStringLiteral("miacode-cover-composition")},
         {QStringLiteral("revision"), 3},
     };
-    if (!require(CoverCompositionState::savePreferences(preferences),
+    if (!require(coverPreferences.savePreferences(preferences),
                  QStringLiteral("cover composition preference save reports success"), err)) return false;
-    const QJsonObject restored = CoverCompositionState::loadPreferences();
+    const QJsonObject restored = coverPreferences.loadPreferences();
+    if (!require(restored.value(QStringLiteral("recentFiles")) == prior.value(QStringLiteral("recentFiles"))
+                     && restored.value(QStringLiteral("presets")) == prior.value(QStringLiteral("presets"))
+                     && restored.value(QStringLiteral("unknown_sibling")) == prior.value(QStringLiteral("unknown_sibling"))
+                     && !restored.contains(QStringLiteral("output")),
+                 QStringLiteral("composition save preserves all sibling data and removes cleared owned fields"), err)) return false;
     return require(restored.value(QStringLiteral("kind")) == preferences.value(QStringLiteral("kind"))
                        && restored.value(QStringLiteral("revision")) == preferences.value(QStringLiteral("revision")),
                    QStringLiteral("cover composition preferences round-trip in the isolated test path"), err);
@@ -392,10 +409,10 @@ bool testCoverPresetPersistence(QTextStream& err)
     layout.insert(QStringLiteral("layers"), QJsonArray());
     composition.insert(QStringLiteral("layout"), layout);
 
-    CoverCompositionState::saveUserPreset(QStringLiteral("Spec preset A"), composition);
-    QList<miacode::cover_export::CoverUserPreset> presets = CoverCompositionState::loadUserPresets();
+    coverPreferences.saveUserPreset(QStringLiteral("Spec preset A"), composition);
+    QList<miacode::app_preferences::CoverUserPreset> presets = coverPreferences.loadUserPresets();
     bool found = false;
-    for (const miacode::cover_export::CoverUserPreset& preset : presets) {
+    for (const miacode::app_preferences::CoverUserPreset& preset : presets) {
         if (preset.name == QStringLiteral("Spec preset A")
             && preset.composition.value(QStringLiteral("kind")).toString() == QStringLiteral("miacode-cover-composition")) {
             found = true;
@@ -404,10 +421,10 @@ bool testCoverPresetPersistence(QTextStream& err)
     }
     bool ok = require(found, QStringLiteral("user preset saves and loads"), err);
 
-    CoverCompositionState::renameUserPreset(QStringLiteral("Spec preset A"), QStringLiteral("Spec preset B"));
-    presets = CoverCompositionState::loadUserPresets();
+    coverPreferences.renameUserPreset(QStringLiteral("Spec preset A"), QStringLiteral("Spec preset B"));
+    presets = coverPreferences.loadUserPresets();
     bool renamed = false;
-    for (const miacode::cover_export::CoverUserPreset& preset : presets) {
+    for (const miacode::app_preferences::CoverUserPreset& preset : presets) {
         if (preset.name == QStringLiteral("Spec preset B")) {
             renamed = true;
             break;
@@ -415,10 +432,10 @@ bool testCoverPresetPersistence(QTextStream& err)
     }
     ok = require(renamed, QStringLiteral("user preset renames"), err) && ok;
 
-    CoverCompositionState::removeUserPreset(QStringLiteral("Spec preset B"));
-    presets = CoverCompositionState::loadUserPresets();
+    coverPreferences.removeUserPreset(QStringLiteral("Spec preset B"));
+    presets = coverPreferences.loadUserPresets();
     bool removed = true;
-    for (const miacode::cover_export::CoverUserPreset& preset : presets) {
+    for (const miacode::app_preferences::CoverUserPreset& preset : presets) {
         if (preset.name == QStringLiteral("Spec preset B")) {
             removed = false;
             break;
@@ -426,8 +443,8 @@ bool testCoverPresetPersistence(QTextStream& err)
     }
     ok = require(removed, QStringLiteral("user preset removes"), err) && ok;
 
-    CoverCompositionState::removeUserPreset(QStringLiteral("Spec preset A"));
-    CoverCompositionState::removeUserPreset(QStringLiteral("Spec preset B"));
+    coverPreferences.removeUserPreset(QStringLiteral("Spec preset A"));
+    coverPreferences.removeUserPreset(QStringLiteral("Spec preset B"));
     return ok;
 }
 
@@ -528,25 +545,6 @@ bool testExportPlanPreservesFrameTimes(QTextStream& err)
 
 namespace {
 
-// In-memory stand-in for the application's preference document: the spec
-// exercises the cover export's own `app.cover_export` handling through the
-// same port the application installs.
-class MemoryPreferenceProvider final : public miacode::preferences::PreferenceProvider
-{
-public:
-    QJsonObject appSection(const QString& name) const override { return app_.value(name).toObject(); }
-    bool setAppSection(const QString& name, const QJsonObject& section) override
-    {
-        app_.insert(name, section);
-        return true;
-    }
-    QString preferencesDirectoryPath() const override { return QString(); }
-    QString resolvedLanguageToken() const override { return QStringLiteral("en_US"); }
-
-private:
-    QJsonObject app_;
-};
-
 }  // namespace
 
 int main(int argc, char** argv)
@@ -554,8 +552,6 @@ int main(int argc, char** argv)
     QStandardPaths::setTestModeEnabled(true);
     QCoreApplication app(argc, argv);
     QCoreApplication::setApplicationName(QStringLiteral("MiaCodeCoverLayoutModelSpec"));
-    MemoryPreferenceProvider preferences;
-    miacode::preferences::installPreferenceProvider(&preferences);
     QTextStream err(stderr);
     if (!testCompositionPersistenceLifecycle(err)) return 1;
     if (!testMultiFrameModel(err)) return 1;
@@ -572,6 +568,5 @@ int main(int argc, char** argv)
     if (!testExportPlanPreservesFrameTimes(err)) return 1;
     if (!testCoverPresetPersistence(err)) return 1;
     if (!testOutputDirectoryRoundTrip(err)) return 1;
-    miacode::preferences::installPreferenceProvider(nullptr);
     return 0;
 }

@@ -5,6 +5,7 @@
 #include "export/video_export/VideoExportAudioRenderPlan.h"
 #include "export/video_export/VideoExportQuickRenderBackend.h"
 #include "export/video_export/VideoExportRuntimePolicy.h"
+#include "export/video_export/EncoderProbeCache.h"
 #include "core/video/AssetPaths.h"
 #include "core/chart/ChartAssetPaths.h"
 #include "core/chart/IntroConfig.h"
@@ -37,7 +38,6 @@
 #include <QProcess>
 #include <QRect>
 #include <QRegularExpression>
-#include <QSettings>
 #include <QSet>
 #include <QStandardPaths>
 #include <QSurfaceFormat>
@@ -73,31 +73,18 @@ namespace miacode::video_export::detail {
 
 namespace {
 
-constexpr auto kPreferredHardwareEncoderSettingsKey =
-    "video_export/runtime_probe/preferred_hardware_encoder";
-
-QSettings encoderRuntimeSettings()
-{
-    return QSettings(
-        QSettings::IniFormat,
-        QSettings::UserScope,
-        QStringLiteral("MiaCode"),
-        QStringLiteral("VideoExportRuntime"));
-}
-
 QString preferredHardwareEncoder()
 {
-    QSettings settings = encoderRuntimeSettings();
-    return settings.value(QLatin1String(kPreferredHardwareEncoderSettingsKey)).toString().trimmed();
+    const auto cache = miacode::video_export::encoderProbeCache();
+    return cache ? cache->preferredHardwareEncoder().trimmed() : QString();
 }
 
 void rememberPreferredHardwareEncoder(const QString& codec)
 {
-    if (codec.isEmpty()) {
-        return;
+    const auto cache = miacode::video_export::encoderProbeCache();
+    if (cache && !codec.isEmpty()) {
+        cache->rememberPreferredHardwareEncoder(codec);
     }
-    QSettings settings = encoderRuntimeSettings();
-    settings.setValue(QLatin1String(kPreferredHardwareEncoderSettingsKey), codec);
 }
 
 }  // namespace

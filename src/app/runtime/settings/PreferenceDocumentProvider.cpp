@@ -1,6 +1,7 @@
 #include "app/runtime/settings/PreferenceDocumentProvider.h"
 
 #include "app/services/PreferenceDocument.h"
+#include "app/runtime/settings/EncoderProbeCache.h"
 
 #include <QDir>
 #include <QFileInfo>
@@ -41,6 +42,8 @@ QString PreferenceDocumentProvider::resolvedLanguageToken() const
 void installPreferenceDocumentProvider()
 {
     static PreferenceDocumentProvider provider;
+    miacode::video_export::installEncoderProbeCache(
+        std::make_shared<SettingsEncoderProbeCache>());
     miacode::preferences::installPreferenceProvider(&provider);
 }
 

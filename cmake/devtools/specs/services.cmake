@@ -469,3 +469,13 @@ miacode_add_spec(preference_repository_spec
     LIBS miacode_base Qt6::Core
     INCLUDES src
 )
+
+miacode_add_spec(export_preferences_spec
+    OWNER src/app/services
+    CONTRACT preferences.export-storage-boundary
+    DOMAIN services KIND behavior RISK normal
+    EXECUTION ctest STATUS active PLATFORM all
+    SOURCES src/tools/services/ExportPreferencesSpec.cpp
+    LIBS miacode_export Qt6::Core
+    INCLUDES src
+)

@@ -19,7 +19,6 @@
 #include "app/services/ExportPagePort.h"
 #include "core/analysis/MuriAnalyzer.h"
 #include "export/video_export/VideoExportController.h"
-#include "export/video_export/VideoExportPreferences.h"
 
 #include <QtCore>
 #include <QtGui>

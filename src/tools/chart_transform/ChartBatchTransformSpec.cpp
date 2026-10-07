@@ -20,6 +20,7 @@
 #include "core/chart/document/SimaiDocument.h"
 #include "core/chart/parser/SimaiParser.h"
 #include "core/chart/transform/ChartNormalization.h"
+#include "app/services/ChartNormalizationPreferences.h"
 #include "core/chart/transform/Non384SnapTable.h"
 
 namespace {
@@ -2269,7 +2270,7 @@ void runInlineSpecs(QTextStream& err, int* failed)
     {
         const miacode::chart_transform::ChartNormalizationOptions defaults;
         const miacode::chart_transform::ChartNormalizationOptions loaded =
-            miacode::chart_transform::chartNormalizationOptionsFromPreferences(QJsonObject(), defaults);
+            miacode::app_preferences::chartNormalizationOptionsFromPreferences(QJsonObject(), defaults);
         expectTrue(
             loaded.startAtNewMeasure && loaded.reduceTo384Grid && loaded.splitEveryFourMeasures,
             QStringLiteral("chart normalization preferences default core options to enabled"),
@@ -2278,11 +2279,11 @@ void runInlineSpecs(QTextStream& err, int* failed)
         );
 
         QJsonObject preview;
-        miacode::chart_transform::saveChartNormalizationOptionsToPreferences(
+        miacode::app_preferences::saveChartNormalizationOptionsToPreferences(
             &preview,
             miacode::chart_transform::ChartNormalizationOptions{false, false, false});
         const miacode::chart_transform::ChartNormalizationOptions restored =
-            miacode::chart_transform::chartNormalizationOptionsFromPreferences(preview, defaults);
+            miacode::app_preferences::chartNormalizationOptionsFromPreferences(preview, defaults);
         expectTrue(
             !restored.startAtNewMeasure
                 && !restored.reduceTo384Grid
@@ -2306,19 +2307,19 @@ void runInlineSpecs(QTextStream& err, int* failed)
         const auto legacySegmentResult = miacode::chart_transform::normalizeChartText(
             normalizationFixture,
             miacode::simai::SimaiTimingMetadata(),
-            miacode::chart_transform::chartNormalizationOptionsFromPreferences(legacyFpd, defaults));
+            miacode::app_preferences::chartNormalizationOptionsFromPreferences(legacyFpd, defaults));
         const auto canonicalSegmentResult = miacode::chart_transform::normalizeChartText(
             normalizationFixture,
             miacode::simai::SimaiTimingMetadata(),
-            miacode::chart_transform::chartNormalizationOptionsFromPreferences(canonicalSegment, defaults));
+            miacode::app_preferences::chartNormalizationOptionsFromPreferences(canonicalSegment, defaults));
         const auto legacyCompactResult = miacode::chart_transform::normalizeChartText(
             normalizationFixture,
             miacode::simai::SimaiTimingMetadata(),
-            miacode::chart_transform::chartNormalizationOptionsFromPreferences(legacyHinata, defaults));
+            miacode::app_preferences::chartNormalizationOptionsFromPreferences(legacyHinata, defaults));
         const auto canonicalCompactResult = miacode::chart_transform::normalizeChartText(
             normalizationFixture,
             miacode::simai::SimaiTimingMetadata(),
-            miacode::chart_transform::chartNormalizationOptionsFromPreferences(canonicalCompact, defaults));
+            miacode::app_preferences::chartNormalizationOptionsFromPreferences(canonicalCompact, defaults));
         expectTrue(
             legacySegmentResult.ok && canonicalSegmentResult.ok
                 && legacySegmentResult.text == canonicalSegmentResult.text,
@@ -2332,7 +2333,7 @@ void runInlineSpecs(QTextStream& err, int* failed)
             failed,
             err);
         QJsonObject saved;
-        miacode::chart_transform::saveChartNormalizationOptionsToPreferences(
+        miacode::app_preferences::saveChartNormalizationOptionsToPreferences(
             &saved, miacode::chart_transform::ChartNormalizationOptions{
                 true, true, true, miacode::chart_transform::ChartNormalizationSyntax::CompactSingleLine, 4});
         expectTrue(

@@ -8,7 +8,7 @@
 #include "app/ui/preferences/LocaleService.h"
 #include "core/scene/PreviewSfxAssets.h"
 #include "core/video/PreviewRenderSettings.h"
-#include "export/video_export/VideoExportPreferences.h"
+#include "app/services/VideoExportPreferences.h"
 #include "export/video_export/VideoExportSettings.h"
 #include "export/video_export/FontLibrary.h"
 
@@ -526,7 +526,7 @@ void ExportSession::refreshFromDocument()
 
 void ExportSession::applyPreferences()
 {
-    const QJsonObject settings = miacode::video_export::loadDialogPreferences();
+    const QJsonObject settings = miacode::app_preferences::loadDialogPreferences();
     // Keep the established first-run defaults shared with the Widgets dialog.
     task_.clockCountEnabled = false;
     task_.fixHudTextLayout = false;
@@ -552,9 +552,9 @@ void ExportSession::applyPreferences()
 
 void ExportSession::savePreferences() const
 {
-    QJsonObject settings = miacode::video_export::loadDialogPreferences();
+    QJsonObject settings = miacode::app_preferences::loadDialogPreferences();
     miacode::video_export::appendVideoExportPreferences(&settings, task_);
-    miacode::video_export::saveDialogPreferences(settings);
+    miacode::app_preferences::saveDialogPreferences(settings);
 }
 
 void ExportSession::seedFromDifficulty(int difficultyId)

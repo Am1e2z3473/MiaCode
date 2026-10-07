@@ -7,6 +7,7 @@
 #include "core/chart/document/SimaiDocument.h"
 #include "app/services/PlaybackControl.h"
 #include "export/cover_export/CoverCompositionState.h"
+#include "app/services/CoverExportPreferences.h"
 #include "export/cover_export/CoverFramePlaybackController.h"
 #include "export/cover_export/CoverFrameExportPlan.h"
 #include "export/cover_export/CoverFrameSceneBinder.h"
@@ -321,7 +322,7 @@ void CoverExportSession::seedFromDifficulty(int difficultyId)
     chartFrameDuration_ = chartFrameAvailable_ ? frameRenderer_->contentDurationSeconds() : 0.0;
 
     if (!hasLoadedPreferences_) {
-        const QJsonObject saved = miacode::cover_export::CoverCompositionState::loadPreferences();
+        const QJsonObject saved = miacode::app_preferences::coverExportPreferences().loadPreferences();
         if (!saved.isEmpty()) {
             applyCompositionJson(saved, false);
         }
@@ -1224,7 +1225,7 @@ bool CoverExportSession::applyCompositionJson(const QJsonObject& root, bool repo
 
 void CoverExportSession::persistComposition()
 {
-    miacode::cover_export::CoverCompositionState::savePreferences(compositionJson());
+    miacode::app_preferences::coverExportPreferences().savePreferences(compositionJson());
 }
 
 void CoverExportSession::saveLayout()
@@ -1244,7 +1245,7 @@ void CoverExportSession::saveLayout()
                         miacode::localizedText("cover.could_not_write_the_layout"), path);
             return;
         }
-        miacode::cover_export::CoverCompositionState::pushRecentFile(path);
+        miacode::app_preferences::coverExportPreferences().pushRecentFile(path);
         refreshSavedLists();
     });
 }
@@ -1274,7 +1275,7 @@ void CoverExportSession::openRecentLayout(const QString& path)
         return;
     }
     if (applyCompositionJson(document.object(), true)) {
-        miacode::cover_export::CoverCompositionState::pushRecentFile(path);
+        miacode::app_preferences::coverExportPreferences().pushRecentFile(path);
         persistComposition();
         refreshSavedLists();
     }
@@ -1282,9 +1283,9 @@ void CoverExportSession::openRecentLayout(const QString& path)
 
 void CoverExportSession::refreshSavedLists()
 {
-    recentLayoutFiles_ = miacode::cover_export::CoverCompositionState::loadRecentFiles();
+    recentLayoutFiles_ = miacode::app_preferences::coverExportPreferences().loadRecentFiles();
     presets_.clear();
-    for (const auto& preset : miacode::cover_export::CoverCompositionState::loadUserPresets()) {
+    for (const auto& preset : miacode::app_preferences::coverExportPreferences().loadUserPresets()) {
         presets_.append(QVariantMap{{QStringLiteral("name"), preset.name}});
     }
     emit recentLayoutFilesChanged();
@@ -1293,12 +1294,12 @@ void CoverExportSession::refreshSavedLists()
 
 void CoverExportSession::clearRecentLayouts()
 {
-    miacode::cover_export::CoverCompositionState::clearRecentFiles();
+    miacode::app_preferences::coverExportPreferences().clearRecentFiles();
     refreshSavedLists();
 }
 void CoverExportSession::savePreset(const QString& name)
 {
-    miacode::cover_export::CoverCompositionState::saveUserPreset(name, presetCompositionJson());
+    miacode::app_preferences::coverExportPreferences().saveUserPreset(name, presetCompositionJson());
     refreshSavedLists();
 }
 
@@ -1322,12 +1323,12 @@ void CoverExportSession::renamePreset(const QString& oldName, const QString& new
     if (trimmedOld.isEmpty() || trimmedNew.isEmpty() || trimmedOld == trimmedNew) {
         return;
     }
-    miacode::cover_export::CoverCompositionState::renameUserPreset(trimmedOld, trimmedNew);
+    miacode::app_preferences::coverExportPreferences().renameUserPreset(trimmedOld, trimmedNew);
     refreshSavedLists();
 }
 void CoverExportSession::applyPreset(const QString& name)
 {
-    for (const auto& preset : miacode::cover_export::CoverCompositionState::loadUserPresets()) {
+    for (const auto& preset : miacode::app_preferences::coverExportPreferences().loadUserPresets()) {
         if (preset.name == name && applyCompositionJson(preset.composition, true)) {
             persistComposition();
             return;
@@ -1336,7 +1337,7 @@ void CoverExportSession::applyPreset(const QString& name)
 }
 void CoverExportSession::removePreset(const QString& name)
 {
-    miacode::cover_export::CoverCompositionState::removeUserPreset(name);
+    miacode::app_preferences::coverExportPreferences().removeUserPreset(name);
     refreshSavedLists();
 }
 

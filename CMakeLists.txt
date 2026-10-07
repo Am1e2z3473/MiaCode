@@ -412,6 +412,7 @@ add_executable(MiaCode WIN32 MACOSX_BUNDLE
     src/app/runtime/SessionBootstrap.cpp
     src/app/runtime/SessionBootstrapFinalize.cpp
     src/app/runtime/settings/Settings.cpp
+    src/app/runtime/settings/EncoderProbeCache.h
     src/app/runtime/settings/PreferenceDocumentProvider.h
     src/app/runtime/settings/PreferenceDocumentProvider.cpp
     src/app/runtime/preview/StageMediaRoute.cpp
@@ -454,6 +455,9 @@ add_executable(MiaCode WIN32 MACOSX_BUNDLE
     src/app/runtime/playback/SessionForwarding.SurfaceContract.cpp
     src/app/runtime/shell/ShellHost.cpp
     src/app/services/PreferenceJsonFile.h
+    src/app/services/CoverExportPreferences.h
+    src/app/services/VideoExportPreferences.h
+    src/app/services/ChartNormalizationPreferences.h
     src/app/services/PreferenceDocument.h
     src/app/services/PreferenceDocument.cpp
     src/app/ui/preferences/LocaleService.h
