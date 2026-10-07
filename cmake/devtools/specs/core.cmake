@@ -230,6 +230,18 @@ miacode_add_spec(video_export_intro_mode_spec
     INCLUDES src
 )
 
+miacode_add_spec(font_library_isolation_spec
+    OWNER src/export/video_export
+    CONTRACT video-export.font-library-isolation
+    DOMAIN video_export KIND integration RISK normal
+    EXECUTION ctest STATUS active PLATFORM all
+    SOURCES src/tools/video_export/FontLibraryIsolationSpec.cpp
+    LIBS miacode_export Qt6::Core Qt6::Gui
+    INCLUDES src
+)
+target_compile_definitions(font_library_isolation_spec PRIVATE
+    "MIACODE_SOURCE_ROOT=\"${CMAKE_CURRENT_SOURCE_DIR}\"")
+
 miacode_add_spec(video_export_hud_font_snapshot_spec
     OWNER src/export/video_export
     CONTRACT video-export.hud-font-snapshot

@@ -52,8 +52,8 @@ namespace miacode::app::entry {
 int runCliVideoExportWorker(QGuiApplication& app, QString* errorMessage)
 {
     MC_OP("runCliVideoExportWorker");
-    // The export renders the HUD and reads export settings through the
-    // preference port, exactly as the GUI process does.
+    // Install the timeline language provider and encoder probe cache.
+    // HUD/render settings come from app-created task snapshots.
     miacode::runtime::installPreferenceDocumentProvider();
     QString workerJobId;
     try {

@@ -55,9 +55,8 @@ int main(int argc, char** argv)
 
     // base: no provider is installed in a host that keeps no preferences.
     expect(miacode::preferences::preferenceProvider() == nullptr
-               && miacode::preferences::appPreferenceSection(QStringLiteral("video_export")).isEmpty()
-               && !miacode::preferences::setAppPreferenceSection(QStringLiteral("video_export"), {}),
-           "base: preferences come only from an installed provider", out);
+               && miacode::preferences::resolvedLanguageToken().isEmpty(),
+           "base: language overrides come only from an installed provider", out);
 
     // chart: parser and its slide reference data resource.
     expect(QFile::exists(QStringLiteral(":/data/slide_data.json")),

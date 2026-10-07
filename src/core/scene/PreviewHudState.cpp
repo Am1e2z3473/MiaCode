@@ -3,6 +3,11 @@
 #include <QFontDatabase>
 #include <QFontInfo>
 #include <QHash>
+#include <QFileInfo>
+#include <QDateTime>
+#include <QMutex>
+#include <QMutexLocker>
+#include "common/DebugLog.h"
 #include <QtMath>
 
 namespace {
@@ -34,42 +39,70 @@ bool eventPlayed(double second, double judgeSecond)
 }
 
 struct CachedHudFont {
-    QString path;
+    qint64 modifiedMs = 0;
+    qint64 size = -1;
+    bool readable = false;
+    int fontId = -1;
     QString family;
 };
 
-QHash<QString, CachedHudFont>& cachedHudFonts()
+struct HudFontCache {
+    QMutex mutex;
+    QHash<QString, CachedHudFont> fonts;
+};
+
+HudFontCache& hudFontCache()
 {
-    static QHash<QString, CachedHudFont> fonts;
-    return fonts;
-}
-
-QString customHudFontFamily(const QString& path)
-{
-    CachedHudFont& cached = cachedHudFonts()[path];
-    cached.path = path;
-
-    if (cached.path.isEmpty()) {
-        cached.family.clear();
-        return QString();
-    }
-    if (!cached.family.isEmpty()) {
-        return cached.family;
-    }
-
-    const int fontId = QFontDatabase::addApplicationFont(cached.path);
-    if (fontId < 0) {
-        cached.path.clear();
-        return QString();
-    }
-    const QStringList families = QFontDatabase::applicationFontFamilies(fontId);
-    cached.family = families.isEmpty() ? QString() : families.first();
-    return cached.family;
+    // Registrations remain alive while their file is unchanged, including while
+    // other scene snapshots use them. QFontDatabase owns process shutdown.
+    static HudFontCache cache;
+    return cache;
 }
 
 }  // namespace
 
 namespace miacode::preview::scene {
+
+QString previewHudFontFamilyForFile(const QString& path)
+{
+    if (path.isEmpty()) return {};
+    HudFontCache& cache = hudFontCache();
+    const QMutexLocker lock(&cache.mutex);
+    const QFileInfo file(path);
+    const QString absolute = file.absoluteFilePath();
+    const bool readable = file.isFile() && file.isReadable();
+    const qint64 modifiedMs = file.lastModified().toMSecsSinceEpoch();
+    const qint64 size = readable ? file.size() : -1;
+    const auto found = cache.fonts.constFind(absolute);
+    if (found != cache.fonts.constEnd() && found->modifiedMs == modifiedMs
+        && found->size == size && found->readable == readable) return found->family;
+
+    if (found != cache.fonts.constEnd() && found->fontId >= 0) {
+        QFontDatabase::removeApplicationFont(found->fontId);
+    }
+    CachedHudFont entry;
+    entry.modifiedMs = modifiedMs;
+    entry.size = size;
+    entry.readable = readable;
+    if (readable) {
+        entry.fontId = QFontDatabase::addApplicationFont(absolute);
+        if (entry.fontId >= 0) {
+            const QStringList families = QFontDatabase::applicationFontFamilies(entry.fontId);
+            entry.family = families.isEmpty() ? QString() : families.first();
+        }
+    }
+    if (entry.family.isEmpty()) {
+        if (entry.fontId >= 0) QFontDatabase::removeApplicationFont(entry.fontId);
+        entry.fontId = -1;
+        miacode::debug_log::appendLine(miacode::debug_log::Channel::Runtime,
+            QStringLiteral("hud_font_unavailable"),
+            QStringLiteral("path=%1 reason=%2").arg(absolute, readable
+                ? QStringLiteral("font-registration-failed") : QStringLiteral("file-unreadable-or-missing")),
+            true, miacode::debug_log::Level::Warn);
+    }
+    cache.fonts.insert(absolute, entry);
+    return entry.family;
+}
 
 PreviewHudStats computePreviewHudStats(const QVector<TimelineNoteMarker>& noteMarkers, double second)
 {
@@ -285,7 +318,7 @@ QFont previewHudDefaultFontForArea(PreviewHudFontArea area, int pointSize, QFont
 QFont previewHudTimestampFontForArea(
     const PreviewHudFontSettings& settings, PreviewHudFontArea area, int pointSize, QFont::Weight weight)
 {
-    const QString customFamily = customHudFontFamily(settings.path(area));
+    const QString customFamily = previewHudFontFamilyForFile(settings.path(area));
     if (!customFamily.isEmpty()) {
         QFont font(customFamily);
         font.setPointSize(pointSize);
@@ -298,7 +331,7 @@ QFont previewHudTimestampFontForArea(
 QFont previewHudMonoFontForArea(
     const PreviewHudFontSettings& settings, PreviewHudFontArea area, int pointSize, QFont::Weight weight)
 {
-    const QString customFamily = customHudFontFamily(settings.path(area));
+    const QString customFamily = previewHudFontFamilyForFile(settings.path(area));
     if (!customFamily.isEmpty()) {
         QFont font(customFamily);
         font.setPointSize(pointSize);

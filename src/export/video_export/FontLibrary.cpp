@@ -1,66 +1,26 @@
 #include "export/video_export/FontLibrary.h"
 
-#include "common/PreferenceProvider.h"
+#include "core/scene/PreviewHudState.h"
+#include "common/DebugLog.h"
 
 #include <QDateTime>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
-#include <QFontDatabase>
-#include <QHash>
 #include <QUrl>
 
 namespace miacode::video_export {
 
-QString fontLibraryDirPath()
-{
-    return QDir(miacode::preferences::preferencesDirectoryPath()).filePath(QStringLiteral("fonts"));
-}
-
 QString fontFamilyForFile(const QString& path)
 {
-    if (path.isEmpty()) {
-        return QString();
-    }
-    // Resolving a family means QFontDatabase::addApplicationFont(path) — a disk
-    // read + font parse. The export page rebuilds its font combos on every page
-    // entry AND every badge switch (each combo re-enumerates the whole library,
-    // several times per dialog), so the same files were re-parsed dozens of
-    // times per switch — a dominant slice of the "切换到导出页很慢" cost. The
-    // family name is a pure function of the file's content, so cache it keyed by
-    // absolute path + (mtime, size); an import always writes a fresh unique path
-    // (cache miss), and an edited file changes mtime/size (auto-invalidated).
-    // GUI-thread only, so no locking is needed.
-    struct CacheEntry {
-        qint64 mtimeMs = 0;
-        qint64 sizeBytes = -1;
-        QString family;
-    };
-    static QHash<QString, CacheEntry> cache;
-
-    const QFileInfo info(path);
-    const QString absPath = info.absoluteFilePath();
-    const qint64 mtimeMs = info.lastModified().toMSecsSinceEpoch();
-    const qint64 sizeBytes = info.size();
-    const auto it = cache.constFind(absPath);
-    if (it != cache.constEnd() && it->mtimeMs == mtimeMs && it->sizeBytes == sizeBytes) {
-        return it->family;
-    }
-
-    QString family;
-    const int fontId = QFontDatabase::addApplicationFont(path);
-    if (fontId >= 0) {
-        const QStringList families = QFontDatabase::applicationFontFamilies(fontId);
-        family = families.isEmpty() ? QString() : families.first();
-    }
-    cache.insert(absPath, CacheEntry{mtimeMs, sizeBytes, family});
-    return family;
+    return miacode::preview::scene::previewHudFontFamilyForFile(path);
 }
 
-QVector<FontLibraryEntry> fontLibraryEntries(bool includeDefault, const QString& defaultLabel)
+QVector<FontLibraryEntry> fontLibraryEntries(const QString& libraryDirectory, bool includeDefault, const QString& defaultLabel)
 {
-    QDir dir(fontLibraryDirPath());
-    const QFileInfoList files = dir.entryInfoList(
+    const bool validDirectory = !libraryDirectory.isEmpty() && QDir::isAbsolutePath(libraryDirectory);
+    QDir dir(libraryDirectory);
+    const QFileInfoList files = !validDirectory ? QFileInfoList{} : dir.entryInfoList(
         QStringList{QStringLiteral("*.ttf"), QStringLiteral("*.otf")},
         QDir::Files | QDir::Readable,
         QDir::Name | QDir::IgnoreCase
@@ -72,8 +32,9 @@ QVector<FontLibraryEntry> fontLibraryEntries(bool includeDefault, const QString&
     // for every getter call. mtime/size invalidates the cache after an import
     // or an edited library file; the localized default label is part of the
     // key because the application can switch languages without restarting in
-    // tests and embedded shells.
-    QString signature;
+    // tests and embedded shells. The entry-list model is used on the GUI thread;
+    // font registration itself is shared with rendering and synchronized.
+    QString signature = validDirectory ? dir.absolutePath() : QString();
     signature.reserve(files.size() * 48);
     for (const QFileInfo& file : files) {
         signature += file.absoluteFilePath();
@@ -121,10 +82,16 @@ QVector<FontLibraryEntry> fontLibraryEntries(bool includeDefault, const QString&
 
 namespace {
 
-QString uniqueFontLibraryPath(const QFileInfo& sourceInfo)
+QString uniqueFontLibraryPath(const QFileInfo& sourceInfo, const QString& libraryDirectory)
 {
-    QDir dir(fontLibraryDirPath());
-    dir.mkpath(QStringLiteral("."));
+    QDir dir(libraryDirectory);
+    if (!dir.mkpath(QStringLiteral("."))) {
+        miacode::debug_log::appendLine(miacode::debug_log::Channel::Runtime,
+            QStringLiteral("font_library_import_failed"),
+            QStringLiteral("path=%1 reason=create-directory-failed").arg(libraryDirectory),
+            true, miacode::debug_log::Level::Warn);
+        return {};
+    }
     const QString baseName = sourceInfo.completeBaseName().isEmpty()
         ? QStringLiteral("font")
         : sourceInfo.completeBaseName();
@@ -140,8 +107,15 @@ QString uniqueFontLibraryPath(const QFileInfo& sourceInfo)
 
 }  // namespace
 
-FontImportResult importFontFileIntoLibrary(const QString& sourcePath)
+FontImportResult importFontFileIntoLibrary(const QString& sourcePath, const QString& libraryDirectory)
 {
+    if (libraryDirectory.isEmpty() || !QDir::isAbsolutePath(libraryDirectory)) {
+        miacode::debug_log::appendLine(miacode::debug_log::Channel::Runtime,
+            QStringLiteral("font_library_directory_unavailable"),
+            QStringLiteral("path=%1 reason=absolute-directory-required").arg(libraryDirectory),
+            true, miacode::debug_log::Level::Warn);
+        return {{}, FontImportFailure::CopyFailed};
+    }
     const QFileInfo sourceInfo(sourcePath);
     const QString suffix = sourceInfo.suffix().toLower();
     if (!sourceInfo.isFile() || (suffix != QStringLiteral("ttf") && suffix != QStringLiteral("otf"))) {
@@ -151,13 +125,20 @@ FontImportResult importFontFileIntoLibrary(const QString& sourcePath)
         return {{}, FontImportFailure::InvalidFont};
     }
 
-    const QDir libraryDir(fontLibraryDirPath());
+    const QDir libraryDir(libraryDirectory);
     if (sourceInfo.absoluteDir() == libraryDir) {
         return {sourceInfo.absoluteFilePath(), FontImportFailure::None};
     }
 
-    const QString targetPath = uniqueFontLibraryPath(sourceInfo);
-    if (!QFile::copy(sourceInfo.absoluteFilePath(), targetPath)) {
+    const QString targetPath = uniqueFontLibraryPath(sourceInfo, libraryDirectory);
+    if (targetPath.isEmpty()) return {{}, FontImportFailure::CopyFailed};
+    QFile sourceFile(sourceInfo.absoluteFilePath());
+    if (!sourceFile.copy(targetPath)) {
+        miacode::debug_log::appendLine(miacode::debug_log::Channel::Runtime,
+            QStringLiteral("font_library_import_failed"),
+            QStringLiteral("source=%1 path=%2 reason=%3")
+                .arg(sourceInfo.absoluteFilePath(), targetPath, sourceFile.errorString()),
+            true, miacode::debug_log::Level::Warn);
         return {{}, FontImportFailure::CopyFailed};
     }
     return {targetPath, FontImportFailure::None};

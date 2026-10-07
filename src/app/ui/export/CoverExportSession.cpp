@@ -14,6 +14,7 @@
 #include "export/cover_export/CoverLayoutModel.h"
 #include "export/cover_export/SceneFrameRenderer.h"
 #include "export/video_export/FontLibrary.h"
+#include "app/services/UserFontLibrary.h"
 #include "core/scene/PreviewLayerOrder.h"
 #include "preview/quick_scene/PreviewQuickSceneRoot.h"
 
@@ -151,7 +152,7 @@ QVariantList CoverExportSession::fontLibraryOptions() const
 {
     QVariantList output;
     const auto entries = miacode::video_export::fontLibraryEntries(
-        true, qtTrId("card_font.default"));
+        miacode::app_preferences::fontLibraryDirectory(), true, qtTrId("card_font.default"));
     for (const auto& entry : entries) {
         output.append(QVariantMap{{QStringLiteral("label"), entry.label},
                                   {QStringLiteral("path"), entry.path},
@@ -656,7 +657,7 @@ void CoverExportSession::requestFont(bool displayFont, bool textLayerFont)
     request.nameFilters = {miacode::localizedText("file_filter.font")};
     uiRequests_->requestFile(request, [this, displayFont, textLayerFont](const QString& path) {
         if (path.isEmpty()) return;
-        const auto result = miacode::video_export::importFontFileIntoLibrary(path);
+        const auto result = miacode::video_export::importFontFileIntoLibrary(path, miacode::app_preferences::fontLibraryDirectory());
         if (result.path.isEmpty()) {
             notifyError(miacode::localizedText("card_font.import"),
                         miacode::localizedText(result.failure == miacode::video_export::FontImportFailure::CopyFailed ? "card_font.copy_failed" : "card_font.invalid_font"));
