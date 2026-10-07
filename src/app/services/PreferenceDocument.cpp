@@ -42,8 +42,20 @@ QString legacyPreferencesFilePath()
     return appDir.filePath(".miacode_preferences.json");
 }
 
+bool supportedPreferencesSchema(const QJsonObject& root)
+{
+    if (!root.contains(QStringLiteral("schema"))) return true;
+    const QJsonValue value = root.value(QStringLiteral("schema"));
+    if (!value.isString()) return false;
+    for (int version = 1; version <= 4; ++version) {
+        if (value.toString() == QStringLiteral("miacode_preferences_v%1").arg(version)) return true;
+    }
+    return false;
+}
+
 QJsonObject normalizedPreferencesRoot(const QJsonObject& raw)
 {
+    if (!supportedPreferencesSchema(raw)) return raw;
     QJsonObject normalized = raw;
     normalized.remove(kUiSectionKey);
     normalized.remove(kAppSectionKey);
@@ -299,7 +311,6 @@ void saveStoredLanguagePreference(PreferenceDocument::LanguagePreference prefere
     QJsonObject ui = root.value(kUiSectionKey).toObject();
     ui.insert(kLanguageKey, languagePreferenceToken(preference));
     root.insert(kUiSectionKey, ui);
-    root.insert("schema", kPreferencesSchema);
     PreferenceDocument::savePreferencesObject(root);
 }
 
@@ -309,7 +320,6 @@ void saveStoredThemePreference(PreferenceDocument::ThemePreference preference)
     QJsonObject ui = root.value(kUiSectionKey).toObject();
     ui.insert(kThemeKey, PreferenceDocument::themePreferenceToken(preference));
     root.insert(kUiSectionKey, ui);
-    root.insert("schema", kPreferencesSchema);
     PreferenceDocument::savePreferencesObject(root);
 }
 
@@ -319,7 +329,6 @@ void saveStoredThemePalette(const char* key, PreferenceDocument::ThemePalette pa
     QJsonObject ui = root.value(kUiSectionKey).toObject();
     ui.insert(QLatin1String(key), PreferenceDocument::themePaletteToken(palette));
     root.insert(kUiSectionKey, ui);
-    root.insert("schema", kPreferencesSchema);
     PreferenceDocument::savePreferencesObject(root);
 }
 
@@ -527,7 +536,6 @@ void PreferenceDocument::setPreferredLanguageToken(const QString& token)
     QJsonObject ui = root.value(QString::fromLatin1(kUiSectionKey)).toObject();
     ui.insert(QString::fromLatin1(kLanguageKey), normalized.isEmpty() ? QStringLiteral("system") : normalized);
     root.insert(QString::fromLatin1(kUiSectionKey), ui);
-    root.insert(QStringLiteral("schema"), QString::fromLatin1(kPreferencesSchema));
     savePreferencesObject(root);
 }
 
@@ -627,6 +635,11 @@ void PreferenceDocument::Repository::initializeLocked()
     const ReadResult source = primary.status == ReadStatus::Missing && !legacyPath_.isEmpty()
         ? read(legacyPath_) : primary;
     legacyReadBlocked_ = primary.status == ReadStatus::Missing && source.status == ReadStatus::ReadError;
+    unsupportedSchema_ = !supportedPreferencesSchema(source.object);
+    if (unsupportedSchema_) {
+        miacode::preference_json_file::log(primary.status == ReadStatus::Missing ? legacyPath_ : path_,
+            QStringLiteral("unsupported-schema read-only-for-session"), miacode::debug_log::Level::Warn);
+    }
     storedSchema_ = source.object.value(QStringLiteral("schema")).toString();
     root_ = normalizedPreferencesRoot(source.object);
     dirty_ = primary.status != ReadStatus::Valid || root_ != primary.object;
@@ -656,7 +669,15 @@ bool PreferenceDocument::Repository::replace(const QJsonObject& root)
 {
     const QMutexLocker lock(&mutex_);
     initializeLocked();
-    const QJsonObject next = normalizedPreferencesRoot(root);
+    QJsonObject next = root;
+    if (unsupportedSchema_) {
+        // Runtime edits remain effective, but callers cannot relabel an unknown
+        // document and thereby bypass this repository lifetime's write guard.
+        next.insert(QStringLiteral("schema"), root_.value(QStringLiteral("schema")));
+    } else {
+        unsupportedSchema_ = !supportedPreferencesSchema(root);
+        next = normalizedPreferencesRoot(root);
+    }
     dirty_ = dirty_ || root_ != next;
     root_ = next;
     return flushLocked();
@@ -671,6 +692,10 @@ bool PreferenceDocument::Repository::flush()
 
 bool PreferenceDocument::Repository::flushLocked()
 {
+    if (unsupportedSchema_) {
+        miacode::preference_json_file::log(path_, QStringLiteral("unsupported-schema save-blocked-for-session"));
+        return false;
+    }
     if (!dirty_) {
         return true;
     }

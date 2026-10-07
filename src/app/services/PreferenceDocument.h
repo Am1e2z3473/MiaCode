@@ -59,6 +59,7 @@ private:
     QJsonObject root_;
     bool initialized_ = false;
     bool dirty_ = false;
+    bool unsupportedSchema_ = false;
     bool legacyReadBlocked_ = false;
 };
 

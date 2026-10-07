@@ -40,7 +40,7 @@ int main(int argc, char** argv)
     const QString second = QStringLiteral("preview.stop_or_play");
     const QString path = temporary.filePath(QStringLiteral("shortcuts.json"));
     const QJsonObject fixture{
-        {QStringLiteral("schema"), 23},
+        {QStringLiteral("schema"), 1},
         {QStringLiteral("vendor"), QJsonObject{{QStringLiteral("keep"), true}}},
         {QStringLiteral("editable"), QJsonArray{id, second}},
         {QStringLiteral("actions"), QJsonObject{
@@ -62,7 +62,7 @@ int main(int argc, char** argv)
     expect(model.setShortcutText(id, QStringLiteral("Ctrl+3")) && notifications == 1
                && registry.shortcutText(id) == "Ctrl+3", "accepted edit applies and notifies without reload");
     const QJsonObject saved = read(path).object;
-    expect(saved.value("schema") == 23 && saved.value("vendor") == fixture.value("vendor")
+    expect(saved.value("schema") == 1 && saved.value("vendor") == fixture.value("vendor")
                && saved.value("editable") == fixture.value("editable"), "save preserves unknown root fields");
     expect(saved.value("actions") == fixture.value("actions")
                && saved.value("contextual").toObject().value("vendor.context")
@@ -133,6 +133,19 @@ int main(int argc, char** argv)
     ShortcutRegistry external(path, cwd);
     expect(bytes(cwd) == broken && directory.entryList({QStringLiteral("cwd-shortcuts.json.corrupt-*")}, QDir::Files).isEmpty(),
            "invalid external input is logged without modifying it");
+    for (const QJsonValue version : {QJsonValue(23), QJsonValue(QStringLiteral("1")), QJsonValue(QJsonValue::Null)}) {
+        QJsonObject future{{QStringLiteral("schema"), version}};
+        const QByteArray originalFuture = QJsonDocument(future).toJson();
+        const QString futurePath = temporary.filePath(QStringLiteral("future-shortcuts.json"));
+        expect(put(futurePath, originalFuture), "future shortcut fixture");
+        ShortcutRegistry guarded(futurePath);
+        expect(guarded.setUserShortcutText(id, QStringLiteral("Ctrl+8"))
+                   && guarded.shortcutText(id) == "Ctrl+8" && bytes(futurePath) == originalFuture,
+               "unsupported shortcut schema accepts runtime edit without overwriting disk");
+        guarded.reload();
+        expect(guarded.shortcutText(id) == "Ctrl+8" && bytes(futurePath) == originalFuture,
+               "unsupported shortcut schema retains pending override after reload");
+    }
     miacode::debug_log::shutdownAsyncLogWriter();
     const QByteArray log = bytes(miacode::debug_log::runtimeLogPath());
     expect(log.contains("invalid-json") && log.contains("read-"), "silent recovery and IO failures leave log evidence");

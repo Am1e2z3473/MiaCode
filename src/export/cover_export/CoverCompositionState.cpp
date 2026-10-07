@@ -97,6 +97,14 @@ QJsonObject CoverCompositionState::toJson() const
     return root;
 }
 
+bool CoverCompositionState::supportsVersion(const QJsonObject& root)
+{
+    if (!root.contains(QStringLiteral("version"))) return true;
+    const QJsonValue value = root.value(QStringLiteral("version"));
+    const double version = value.toDouble(-1);
+    return value.isDouble() && version >= 1 && version <= kCurrentVersion && version == int(version);
+}
+
 bool CoverCompositionState::fromJson(const QJsonObject& root, CoverCompositionState* out, QString* errorMessage)
 {
     if (root.value(QStringLiteral("kind")).toString() != QString::fromLatin1(kCompositionKind)) {
@@ -106,6 +114,10 @@ bool CoverCompositionState::fromJson(const QJsonObject& root, CoverCompositionSt
         return false;
     }
 
+    if (!supportsVersion(root)) {
+        if (errorMessage != nullptr) *errorMessage = QStringLiteral("unsupported cover composition version");
+        return false;
+    }
     const QJsonObject migrated = migrateToCurrent(root);
     if (out != nullptr) {
         const QJsonObject sizeObject = migrated.value(QStringLiteral("size")).toObject();
@@ -121,6 +133,7 @@ bool CoverCompositionState::fromJson(const QJsonObject& root, CoverCompositionSt
 
 QJsonObject CoverCompositionState::migrateToCurrent(const QJsonObject& root)
 {
+    if (!supportsVersion(root)) return root;
     QJsonObject migrated = root;
     const int version = migrated.value(QStringLiteral("version")).toInt(1);
     if (version < 2) {

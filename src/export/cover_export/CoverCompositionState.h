@@ -24,6 +24,7 @@ struct CoverCompositionState {
 
     QJsonObject toJson() const;
     static bool fromJson(const QJsonObject& root, CoverCompositionState* out, QString* errorMessage = nullptr);
+    static bool supportsVersion(const QJsonObject& root);
     static QJsonObject migrateToCurrent(const QJsonObject& root);
 
 };

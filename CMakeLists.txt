@@ -457,6 +457,7 @@ add_executable(MiaCode WIN32 MACOSX_BUNDLE
     src/app/services/PreferenceJsonFile.h
     src/app/services/CoverExportPreferences.h
     src/app/services/VideoExportPreferences.h
+    src/app/services/PreferenceVersionGuard.h
     src/app/services/ChartNormalizationPreferences.h
     src/app/services/HudFontPreferences.h
     src/app/services/UserFontLibrary.h

@@ -1,4 +1,5 @@
 #include "app/services/ShortcutRegistry.h"
+#include "app/services/PreferenceVersionGuard.h"
 #include "app/services/PreferenceJsonFile.h"
 
 #include "common/InputShortcutGesture.h"
@@ -324,6 +325,7 @@ bool ShortcutRegistry::saveUserOverrides()
     // Preserve both known metadata and extension/vendor fields. Only shortcut
     // fields explicitly edited in this session belong to this writer.
     QJsonObject root = existing.object;
+    if (!app_preferences::allowVersionWrite(root, QStringLiteral("schema"), 1, QStringLiteral("shortcuts"))) return false;
     if (!root.contains(QStringLiteral("schema"))) {
         root.insert(QStringLiteral("schema"), 1);
     }

@@ -422,13 +422,15 @@ void Session::applyPreviewAudioSettingsFromUi(const PreviewAudioSettings& settin
     state_.previewAudioSettings_.normalize();
     // Break-slide tail cheer is an app-scoped sound-design choice, not a
     // per-chart mix, so the page's value is what the preference becomes.
+    const bool appPreferenceChanged = state_.breakSlideTailCheerMutedPreference_
+        != state_.previewAudioSettings_.breakSlideTailCheerMuted;
     state_.breakSlideTailCheerMutedPreference_ =
         state_.previewAudioSettings_.breakSlideTailCheerMuted;
     applyPreviewAudioSettingsToRuntime();
     // The mixer is project-scoped; savePortableState carries the app-level
     // companions edited from the same page.
     saveProjectAudioPreferences();
-    savePortableState();
+    if (appPreferenceChanged) savePortableState();
 }
 
 void Session::savePreviewAudioSettingsAsSoftwareDefault()

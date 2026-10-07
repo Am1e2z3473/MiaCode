@@ -6,6 +6,7 @@
 #include "export/video_export/VideoExportController.h"
 
 #include <QObject>
+#include <QTimer>
 #include <QJsonObject>
 #include <QUrl>
 #include <QVariantList>
@@ -235,6 +236,7 @@ private:
                                       bool renderChartFrames);
     bool applyCompositionJson(const QJsonObject& root, bool reportErrors);
     void persistComposition();
+    void flushComposition();
     void requestFont(bool displayFont, bool textLayerFont);
     void setBusy(bool busy);
     void notifyError(const miacode::LocalizedText& title, const miacode::LocalizedText& text, const miacode::LocalizedText& details = QString()) const;
@@ -269,6 +271,8 @@ private:
     int resolutionIndex_ = 3;
     bool pageSessionActive_ = false;
     bool hasLoadedPreferences_ = false;
+    QTimer compositionSaveTimer_;
+    bool compositionDirty_ = false;
     bool blurBackground_ = true;
     bool cardShadow_ = false;
     bool levelTextRender_ = false;
