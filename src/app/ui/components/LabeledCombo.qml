@@ -12,6 +12,8 @@ RowLayout {
     property var options: []
     property var currentValue
     property int labelWidth: 120
+    property string fontFamilyRole: ""
+    property string defaultFontFamily: Theme.uiFont
     signal picked(var value)
 
     function indexOfValue(value) {
@@ -34,6 +36,8 @@ RowLayout {
         Layout.fillWidth: true
         textRole: "label"
         model: root.options
+        fontFamilyRole: root.fontFamilyRole
+        defaultFontFamily: root.defaultFontFamily
         currentIndex: root.indexOfValue(root.currentValue)
         onActivated: function(index) { root.picked(root.options[index].value) }
     }

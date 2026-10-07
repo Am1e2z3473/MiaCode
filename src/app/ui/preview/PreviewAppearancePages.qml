@@ -29,17 +29,6 @@ AppTabPages {
         return 0
     }
 
-    function fontFamilyForPath(options, path) {
-        const target = path || ""
-        if (!options)
-            return ""
-        for (let index = 0; index < options.length; ++index) {
-            if ((options[index].path || "") === target)
-                return options[index].family || ""
-        }
-        return ""
-    }
-
     function flowSpeedLabel(speed) {
         const oneDecimal = Math.round(speed * 10) / 10
         return Math.abs(speed - oneDecimal) < 0.001 ? speed.toFixed(1) : speed.toFixed(2)
@@ -307,6 +296,7 @@ AppTabPages {
                 Layout.fillWidth: true
                 model: root.previewSettings ? root.previewSettings.fontLibraryOptions : []
                 textRole: "label"
+                fontFamilyRole: "family"
                 currentIndex: root.fontIndexForPath(model, root.previewSettings ? root.previewSettings.hudFontPath : "")
                 Accessible.name: qsTrId("dialog.video_export.option.hud_font")
                 onActivated: if (root.previewSettings) root.previewSettings.hudFontPath = model[currentIndex].path
@@ -324,9 +314,8 @@ AppTabPages {
                 anchors.margins: 10
                 text: root.previewSettings ? root.previewSettings.hudFontSample : ""
                 color: Theme.colors.text.primary
-                font.family: root.fontFamilyForPath(
-                                 root.previewSettings ? root.previewSettings.fontLibraryOptions : [],
-                                 root.previewSettings ? root.previewSettings.hudFontPath : "") || Theme.uiFont
+                font.family: root.previewSettings ? root.previewSettings.hudFont.family : Theme.uiFont
+                font.weight: root.previewSettings ? root.previewSettings.hudFont.weight : Font.Normal
                 font.pixelSize: Theme.uiFontSize
                 horizontalAlignment: Text.AlignHCenter
                 verticalAlignment: Text.AlignVCenter

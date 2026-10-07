@@ -9,8 +9,24 @@ ComboBox {
     id: root
 
     property bool compact: false
+    // Font pickers render each choice in its own family, including their
+    // context-specific default. Ordinary dropdowns keep the UI font.
+    property string fontFamilyRole: ""
+    property string defaultFontFamily: Theme.uiFont
 
-    font.family: Theme.uiFont
+    function optionFamily(index) {
+        if (root.fontFamilyRole && root.model && index >= 0 && index < root.count)
+            return root.model[index][root.fontFamilyRole] || root.defaultFontFamily
+        return root.defaultFontFamily
+    }
+
+    function optionFont(index) {
+        return root.fontFamilyRole ? Qt.font({ family: root.optionFamily(index),
+                                              pixelSize: root.font.pixelSize,
+                                              weight: root.font.weight }) : root.font
+    }
+
+    font.family: root.optionFamily(root.currentIndex)
     font.pixelSize: root.compact ? Theme.secondaryFontSize : Theme.uiFontSize
     implicitHeight: Theme.controlMinHeight
     Layout.preferredHeight: implicitHeight
@@ -19,7 +35,7 @@ ComboBox {
     rightPadding: 28
     hoverEnabled: true
 
-    readonly property FontMetrics textMetrics: FontMetrics { font: root.font }
+    readonly property FontMetrics optionMetrics: FontMetrics {}
 
     contentItem: Text {
         leftPadding: 0
@@ -66,7 +82,7 @@ ComboBox {
         height: 28
         highlighted: root.highlightedIndex === index
         text: root.textAt(index)
-        labelFont: root.font
+        labelFont: root.optionFont(index)
     }
 
     popup: AppDropdownPanel {
@@ -79,8 +95,10 @@ ComboBox {
 
         onAboutToShow: {
             let widest = 0
-            for (let i = 0; i < root.count; ++i)
-                widest = Math.max(widest, root.textMetrics.advanceWidth(root.textAt(i)))
+            for (let i = 0; i < root.count; ++i) {
+                root.optionMetrics.font = root.optionFont(i)
+                widest = Math.max(widest, root.optionMetrics.advanceWidth(root.textAt(i)))
+            }
             optionWidth = Math.ceil(widest) + 2 * Theme.rowPaddingX
         }
 

@@ -302,13 +302,19 @@ QString previewHudCustomFontPath(PreviewHudFontArea area)
     return persistedHudFontPath(area);
 }
 
-QFont previewHudTimestampFontForArea(PreviewHudFontArea area, int pointSize, QFont::Weight weight)
+QFont previewHudDefaultFontForArea(PreviewHudFontArea area, int pointSize, QFont::Weight weight)
 {
-    const QString customFamily = customHudFontFamily(area);
-    if (!customFamily.isEmpty()) {
-        QFont font(customFamily);
+    if (area == PreviewHudFontArea::DebugInfo) {
+        static const QString embeddedMapleMonoFamily = []() -> QString {
+            const int fontId = QFontDatabase::addApplicationFont(QStringLiteral(":/fonts/maple_mono_cn.ttf"));
+            const QStringList families = QFontDatabase::applicationFontFamilies(fontId);
+            return families.isEmpty() ? QStringLiteral("Maple Mono Normal NL CN") : families.first();
+        }();
+        QFont font(embeddedMapleMonoFamily);
         font.setPointSize(pointSize);
         font.setWeight(weight);
+        font.setStyleHint(QFont::Monospace);
+        font.setFixedPitch(true);
         return font;
     }
 
@@ -328,7 +334,7 @@ QFont previewHudTimestampFontForArea(PreviewHudFontArea area, int pointSize, QFo
         font.setFamily(QStringLiteral("Xiaolai Mono"));
     }
     if (font.family().isEmpty() || QFontInfo(font).family().compare(font.family(), Qt::CaseInsensitive) != 0) {
-        font = previewHudMonoFontForArea(area, pointSize, weight);
+        font = previewHudDefaultFontForArea(PreviewHudFontArea::DebugInfo, pointSize, weight);
     } else {
         font.setPointSize(pointSize);
         font.setWeight(weight);
@@ -336,6 +342,18 @@ QFont previewHudTimestampFontForArea(PreviewHudFontArea area, int pointSize, QFo
     font.setStyleHint(QFont::Monospace);
     font.setFixedPitch(true);
     return font;
+}
+
+QFont previewHudTimestampFontForArea(PreviewHudFontArea area, int pointSize, QFont::Weight weight)
+{
+    const QString customFamily = customHudFontFamily(area);
+    if (!customFamily.isEmpty()) {
+        QFont font(customFamily);
+        font.setPointSize(pointSize);
+        font.setWeight(weight);
+        return font;
+    }
+    return previewHudDefaultFontForArea(PreviewHudFontArea::Timestamp, pointSize, weight);
 }
 
 QFont previewHudTimestampFont(int pointSize, QFont::Weight weight)
@@ -353,18 +371,7 @@ QFont previewHudMonoFontForArea(PreviewHudFontArea area, int pointSize, QFont::W
         return font;
     }
 
-    static const QString embeddedMapleMonoFamily = []() -> QString {
-        const int fontId = QFontDatabase::addApplicationFont(QStringLiteral(":/fonts/maple_mono_cn.ttf"));
-        const QStringList families = QFontDatabase::applicationFontFamilies(fontId);
-        return families.isEmpty() ? QStringLiteral("Maple Mono Normal NL CN") : families.first();
-    }();
-
-    QFont font(embeddedMapleMonoFamily);
-    font.setPointSize(pointSize);
-    font.setWeight(weight);
-    font.setStyleHint(QFont::Monospace);
-    font.setFixedPitch(true);
-    return font;
+    return previewHudDefaultFontForArea(PreviewHudFontArea::DebugInfo, pointSize, weight);
 }
 
 QFont previewHudMonoFont(int pointSize, QFont::Weight weight)

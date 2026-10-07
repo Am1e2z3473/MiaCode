@@ -47,6 +47,15 @@ Rectangle {
         return options && options.length > index ? options[index].family : ""
     }
 
+    FontLoader {
+        id: defaultDisplayFont
+        source: "qrc:/intro/assets/fonts/ResourceHanRoundedCN-Heavy.ttf"
+    }
+    FontLoader {
+        id: defaultBodyFont
+        source: "qrc:/intro/assets/fonts/ResourceHanRoundedCN-Bold.ttf"
+    }
+
     readonly property int tabInset: 6
     readonly property int formInset: Theme.dialogMargin + Theme.dialogPadding
 
@@ -691,6 +700,8 @@ Rectangle {
                                 }
                                 AppComboBox {
                                     id: introDisplayFontCombo
+                                    fontFamilyRole: "family"
+                                    defaultFontFamily: defaultDisplayFont.name
                                     objectName: "introDisplayFontCombo"
                                     Layout.fillWidth: true
                                     model: root.session ? root.session.fontLibraryOptions : []
@@ -711,6 +722,8 @@ Rectangle {
                                 }
                                 AppComboBox {
                                     id: introBodyFontCombo
+                                    fontFamilyRole: "family"
+                                    defaultFontFamily: defaultBodyFont.name
                                     objectName: "introBodyFontCombo"
                                     Layout.fillWidth: true
                                     model: root.session ? root.session.fontLibraryOptions : []
@@ -739,7 +752,7 @@ Rectangle {
                                         color: Theme.colors.text.primary
                                         font.family: root.fontFamilyForPath(
                                                          root.session ? root.session.fontLibraryOptions : [],
-                                                         root.session ? root.session.introFontDisplayPath : "") || Theme.uiFont
+                                                         root.session ? root.session.introFontDisplayPath : "") || defaultDisplayFont.name
                                         font.pixelSize: Theme.uiFontSize
                                         font.bold: true
                                         elide: Text.ElideRight
@@ -750,7 +763,7 @@ Rectangle {
                                         color: Theme.colors.text.secondary
                                         font.family: root.fontFamilyForPath(
                                                          root.session ? root.session.fontLibraryOptions : [],
-                                                         root.session ? root.session.introFontBodyPath : "") || Theme.uiFont
+                                                         root.session ? root.session.introFontBodyPath : "") || defaultBodyFont.name
                                         font.pixelSize: Theme.secondaryFontSize
                                         elide: Text.ElideRight
                                     }
