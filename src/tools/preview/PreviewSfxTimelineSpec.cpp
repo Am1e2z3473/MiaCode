@@ -1,7 +1,7 @@
 #include <QCoreApplication>
 #include <QTextStream>
 
-#include "common/PreviewSfxTimeline.h"
+#include "core/scene/PreviewSfxTimeline.h"
 
 namespace {
 

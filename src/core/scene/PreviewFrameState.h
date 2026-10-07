@@ -8,18 +8,15 @@
 
 #include <limits>
 #include <memory>
+#include <utility>
 
-#include "common/PreviewGameplayConfig.h"
-#include "common/PreviewVideoGeometryConfig.h"
-#include "common/MuriRenderOptions.h"
-#include "common/MuriTypes.h"
+#include "core/video/PreviewGameplayConfig.h"
+#include "core/video/PreviewVideoGeometryConfig.h"
+#include "core/analysis/MuriRenderOptions.h"
+#include "core/analysis/MuriTypes.h"
 #include "core/scene/PreviewProgressStatsCache.h"
 #include "core/video/PreviewRenderSettings.h"
-#include "timeline/TimelineData.h"
-
-#ifdef HAVE_QT_MULTIMEDIA
-#include <QVideoFrame>
-#endif
+#include "core/chart/model/TimelineData.h"
 
 namespace miacode::preview::scene {
 
@@ -170,6 +167,26 @@ enum class PreviewExternalStageMediaType {
     Video = 2,
 };
 
+// Opaque, shared handle to the platform video frame a stage-media producer
+// published (a QVideoFrame on desktop). Scene state only records whether one is
+// present; the producer and any renderer that understands the payload own its
+// type, so scene math never depends on QtMultimedia.
+class PreviewVideoFrameHandle
+{
+public:
+    PreviewVideoFrameHandle() = default;
+    explicit PreviewVideoFrameHandle(std::shared_ptr<const void> payload)
+        : payload_(std::move(payload))
+    {
+    }
+
+    bool isValid() const { return static_cast<bool>(payload_); }
+    const std::shared_ptr<const void>& payload() const { return payload_; }
+
+private:
+    std::shared_ptr<const void> payload_;
+};
+
 struct PreviewMediaFrameState {
     QImage mediaFrame;
     QImage retainedVideoFallbackFrame;
@@ -177,9 +194,7 @@ struct PreviewMediaFrameState {
     quint64 stageMediaSerial = 0;
     bool resolvedStageImageCacheable = false;
     double resolvedStageImageToImageMs = 0.0;
-#ifdef HAVE_QT_MULTIMEDIA
-    QVideoFrame videoFrame;
-#endif
+    PreviewVideoFrameHandle videoFrame;
     bool stageMediaAvailable = false;
     PreviewStageMediaPresentationMode presentationMode = PreviewStageMediaPresentationMode::InternalLayer;
     PreviewExternalStageMediaType externalMediaType = PreviewExternalStageMediaType::None;

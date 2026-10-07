@@ -6,8 +6,8 @@
 // holds only PlaybackCoordinator::-owned seek/tick/transport logic; this
 // file holds the Session::-owned thin forwarders that used to share that TU.
 
-#include "runtime/playback/PlaybackCoordinator.h"
-#include "runtime/Session.h"
+#include "app/runtime/playback/PlaybackCoordinator.h"
+#include "app/runtime/Session.h"
 
 #include <QtCore>
 #include <QtGui>

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "runtime/RuntimeContext.h"
+#include "app/runtime/RuntimeContext.h"
 
 #include "app/services/AudioClockSource.h"
 #include "app/services/PlaybackControl.h"
@@ -12,7 +12,7 @@
 #include "app/services/PreviewPlaybackPort.h"
 #include "audio/PreviewAudioDeviceChangePolicy.h"
 #include "audio/PreviewAudioDeviceCutoff.h"
-#include "runtime/playback/PlaybackIdentityGate.h"
+#include "app/runtime/playback/PlaybackIdentityGate.h"
 
 class QObject;
 

@@ -1,14 +1,14 @@
-#include "runtime/Shared.h"
+#include "app/runtime/Shared.h"
 
-#include "QtPreviewSfxRuntime.h"
+#include "audio/QtPreviewSfxRuntime.h"
 #include "app/quick_shell/QuickShellPreviewCompositeSurface.h"
-#include "common/AssetPaths.h"
+#include "core/video/AssetPaths.h"
 #include "common/DebugLog.h"
 #include "common/DebugOptions.h"
 #include "common/OperationLog.h"
-#include "common/PreviewSfxAssets.h"
+#include "core/scene/PreviewSfxAssets.h"
 #include "preview/runtime/PreviewRuntime.h"
-#include "preview/runtime/PreviewStageMediaHost.h"
+#include "preview/stage_media/PreviewStageMediaHost.h"
 
 #include <QDir>
 #include <QElapsedTimer>

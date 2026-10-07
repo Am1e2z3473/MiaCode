@@ -5,7 +5,7 @@
 //
 // Run via CTest (registered as simai_document_spec) or standalone.
 
-#include "SimaiDocument.h"
+#include "core/chart/document/SimaiDocument.h"
 
 #include <QCoreApplication>
 #include <QString>

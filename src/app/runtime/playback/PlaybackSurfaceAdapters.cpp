@@ -1,6 +1,6 @@
-#include "PlaybackSurfaceAdapters.h"
+#include "app/runtime/playback/PlaybackSurfaceAdapters.h"
 
-#include "runtime/playback/PlaybackCoordinator.h"
+#include "app/runtime/playback/PlaybackCoordinator.h"
 
 namespace miacode::runtime {
 

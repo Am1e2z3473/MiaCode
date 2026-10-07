@@ -1,5 +1,6 @@
-#include "PreviewAudioSettings.h"
-#include "QtPreviewSfxRuntime.h"
+#include "audio/PreviewAudioSettings.h"
+#include "audio/QtPreviewSfxRuntime.h"
+#include "audio/bass/BassPreviewAudioBackend.h"
 #include "common/DebugLog.h"
 
 #include <QCoreApplication>
@@ -23,6 +24,8 @@ int main(int argc, char* argv[])
 {
     QCoreApplication app(argc, argv);
     QTextStream out(stdout);
+    miacode::preview_audio::installPreviewAudioBackendProvider(
+        miacode::preview_audio::bassPreviewAudioBackendProvider());
 
     const QStringList args = app.arguments();
     if (args.size() <= 1) {

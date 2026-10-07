@@ -9,13 +9,13 @@
 // left in place); this file holds the latency-sandbox document accessors and
 // the editor/timeline cursor-sync group that used to share that TU.
 
-#include "runtime/playback/PlaybackCoordinator.h"
-#include "runtime/Session.h"
+#include "app/runtime/playback/PlaybackCoordinator.h"
+#include "app/runtime/Session.h"
 
-#include "common/ChartClockCount.h"
-#include "common/PreviewInteractionConfig.h"
-#include "common/WaveformCache.h"
-#include "app/ui/export/ExportSession.h"
+#include "core/chart/document/ChartClockCount.h"
+#include "core/video/PreviewInteractionConfig.h"
+#include "audio/WaveformCache.h"
+#include "app/services/ExportPagePort.h"
 
 #include <QtCore>
 

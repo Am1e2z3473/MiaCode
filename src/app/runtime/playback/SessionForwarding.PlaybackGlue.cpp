@@ -8,8 +8,8 @@
 // logic; this file holds the Session::-owned methods that used to share
 // that TU.
 
-#include "runtime/playback/PlaybackCoordinator.h"
-#include "runtime/Session.h"
+#include "app/runtime/playback/PlaybackCoordinator.h"
+#include "app/runtime/Session.h"
 
 void Session::setAuditionSceneReady(std::function<bool()> stillCurrent,
                                        std::function<void()> reinstall)

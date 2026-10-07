@@ -6,7 +6,7 @@
 #include <QVariantList>
 #include <QVariantMap>
 
-#include "common/MuriRenderOptions.h"
+#include "core/analysis/MuriRenderOptions.h"
 
 #include "app/services/PlaybackControl.h"
 #include "app/services/PreviewSurface.h"

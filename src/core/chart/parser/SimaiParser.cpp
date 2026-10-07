@@ -1,4 +1,4 @@
-#include "SimaiParser.h"
+#include "core/chart/parser/SimaiParser.h"
 
 #include "common/TaskCancellation.h"
 
@@ -1802,7 +1802,7 @@ int inferSlideEndLane(const QString& token, int fallbackLane)
 }
 
 
-#include "SimaiParser.StrictChecks.cpp"
-#include "SimaiParser.Slide.cpp"
-#include "SimaiParser.TouchTap.cpp"
-#include "SimaiParser.Driver.cpp"
+#include "core/chart/parser/SimaiParser.StrictChecks.cpp"
+#include "core/chart/parser/SimaiParser.Slide.cpp"
+#include "core/chart/parser/SimaiParser.TouchTap.cpp"
+#include "core/chart/parser/SimaiParser.Driver.cpp"

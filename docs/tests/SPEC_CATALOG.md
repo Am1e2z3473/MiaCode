@@ -3,7 +3,7 @@
 Generated from `cmake/devtools/specs/` by `cmake -P cmake/devtools/SpecCatalog.cmake`.
 Check without writing: `cmake -DMIACODE_SPEC_CATALOG_CHECK=ON -P cmake/devtools/SpecCatalog.cmake`.
 
-118 independent specs; source lists and link dependencies are maintained only in CMake.
+119 independent specs; source lists and link dependencies are maintained only in CMake.
 
 `platform:all` means the target is registered on every platform, not that all platforms
 have been tested. Platform-specific source branches and link additions remain in their manifests.
@@ -12,34 +12,36 @@ Owners name production modules; kinds describe the checked boundary, not runtime
 
 | Source | Target / CTest name | Owner | Contract | Domain | Kind | Risk | Platform | Execution | Status |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `src/tools/boundary/AndroidModuleBoundarySpec.cpp` | `android_module_boundary_spec` | `src` | `architecture.android-module-boundary` | architecture | boundary | high | all | ctest | active |
+| `src/tools/boundary/WebModuleBoundarySpec.cpp` | `web_module_boundary_spec` | `src` | `architecture.web-module-boundary` | architecture | boundary | high | all | ctest | active |
 | `src/tools/chart_document/SimaiDocumentSpec.cpp` | `simai_document_spec` | `src/core/chart/document` | `chart-document.simai-document` | chart_document | behavior | normal | all | ctest | active |
 | `src/tools/chart_selection/ChartSelectionBeatSummarySpec.cpp` | `chart_selection_beat_summary_spec` | `src/core/chart/selection` | `chart-selection.chart-selection-beat-summary` | chart_selection | behavior | normal | all | ctest | active |
 | `src/tools/chart_transform/ChartBatchTransformSpec.cpp` | `chart_batch_transform_spec` | `src/core/chart/transform` | `chart-transform.chart-batch-transform` | chart_transform | behavior | normal | all | ctest | active |
-| `src/tools/cover_export/CoverFramePlaybackControllerSpec.cpp` | `cover_frame_playback_controller_spec` | `src/tools/cover_export` | `cover-export.cover-frame-playback-controller` | cover_export | behavior | normal | all | ctest | active |
-| `src/tools/cover_export/CoverFrameSceneBinderSpec.cpp` | `cover_frame_scene_binder_spec` | `src/tools/cover_export` | `cover-export.cover-frame-scene-binder` | cover_export | behavior | normal | all | ctest | active |
-| `src/tools/cover_export/CoverLayoutModelSpec.cpp` | `cover_layout_model_spec` | `src/tools/cover_export` | `cover-export.cover-layout-model` | cover_export | behavior | normal | all | ctest | active |
+| `src/tools/cover_export/CoverFramePlaybackControllerSpec.cpp` | `cover_frame_playback_controller_spec` | `src/export/cover_export` | `cover-export.cover-frame-playback-controller` | cover_export | behavior | normal | all | ctest | active |
+| `src/tools/cover_export/CoverFrameSceneBinderSpec.cpp` | `cover_frame_scene_binder_spec` | `src/export/cover_export` | `cover-export.cover-frame-scene-binder` | cover_export | behavior | normal | all | ctest | active |
+| `src/tools/cover_export/CoverLayoutModelSpec.cpp` | `cover_layout_model_spec` | `src/export/cover_export` | `cover-export.cover-layout-model` | cover_export | behavior | normal | all | ctest | active |
 | `src/tools/debug_index/DebugFlagIndexSpec.cpp` | `debug_flag_index_spec` | `src/common` | `debug-index.debug-flag-index` | debug_index | source-contract | normal | all | ctest | active |
 | `src/tools/debug_index/DebugOptionsSpec.cpp` | `debug_options_spec` | `src/common` | `debug-index.debug-options` | debug_index | behavior | normal | all | ctest | active |
 | `src/tools/debug_index/IdleFreezeReproScriptSpec.cpp` | `idle_freeze_repro_script_spec` | `scripts/debug` | `debug-index.idle-freeze-repro-script` | debug_index | source-contract | normal | all | ctest | active |
 | `src/tools/debug_index/LogPruningPolicySpec.cpp` | `log_pruning_policy_spec` | `src/common` | `debug-index.log-pruning-policy` | debug_index | behavior | normal | all | ctest | active |
 | `src/tools/debug_index/ProcessDiagnosticsSpec.cpp` | `process_diagnostics_spec` | `src/common` | `debug-index.process-diagnostics` | debug_index | behavior | normal | all | ctest | active |
-| `src/tools/debug_index/ProcessIdentityFieldsSpec.cpp` | `process_identity_fields_spec` | `src/app` | `debug-index.process-identity-fields` | debug_index | behavior | normal | all | ctest | active |
+| `src/tools/debug_index/ProcessIdentityFieldsSpec.cpp` | `process_identity_fields_spec` | `src/app/platform` | `debug-index.process-identity-fields` | debug_index | behavior | normal | all | ctest | active |
 | `src/tools/debug_index/UiHangWatchdogLifecycleSpec.cpp` | `ui_hang_watchdog_lifecycle_spec` | `src/common` | `debug-index.ui-hang-watchdog-lifecycle` | debug_index | behavior | high | all | ctest | active |
 | `src/tools/debug_index/UiHangWatchdogPolicySpec.cpp` | `ui_hang_watchdog_policy_spec` | `src/common` | `debug-index.ui-hang-watchdog-policy` | debug_index | behavior | normal | all | ctest | active |
-| `src/tools/debug_index/WindowVisibilityDiagnosticsSpec.cpp` | `window_visibility_diagnostics_spec` | `src/app` | `debug-index.window-visibility-diagnostics` | debug_index | behavior | normal | all | ctest | active |
+| `src/tools/debug_index/WindowVisibilityDiagnosticsSpec.cpp` | `window_visibility_diagnostics_spec` | `src/app/platform` | `debug-index.window-visibility-diagnostics` | debug_index | behavior | normal | all | ctest | active |
 | `src/tools/deps/DependencyAllowlistSpec.cpp` | `dependency_allowlist_spec` | `src/common` | `deps.dependency-allowlist` | deps | source-contract | normal | all | ctest | active |
 | `src/tools/editor/SimaiCompletionCatalogSpec.cpp` | `simai_completion_catalog_spec` | `src/editor` | `editor.simai-completion-catalog` | editor | behavior | normal | all | ctest | active |
 | `src/tools/editor/SimaiTextEditPolicySpec.cpp` | `simai_text_edit_policy_spec` | `src/editor` | `editor.simai-text-edit-policy` | editor | behavior | normal | all | ctest | active |
 | `src/tools/editor/TouchPadAuthoringEditSpec.cpp` | `touch_pad_authoring_edit_spec` | `src/editor` | `editor.touch-pad-authoring-edit` | editor | behavior | normal | all | ctest | active |
 | `src/tools/extensions/ExtensionManifestSpec.cpp` | `extension_manifest_spec` | `src/extensions` | `extensions.extension-manifest` | extensions | behavior | normal | all | ctest | active |
 | `src/tools/extensions/ExtensionProductBoundarySpec.cpp` | `extension_product_boundary_spec` | `src/extensions` | `extensions.extension-product-boundary` | extensions | boundary | normal | all | ctest | active |
-| `src/tools/media/PvCompressionPolicySpec.cpp` | `pv_compression_policy_spec` | `src/tools/media` | `media.pv-compression-policy` | media | behavior | normal | all | ctest | active |
-| `src/tools/muri/MuriSpec.cpp` | `muri_spec` | `src/tools/muri` | `muri.muri` | muri | behavior | normal | all | ctest | active |
-| `src/tools/net/NetClientSpec.cpp` | `net_client_spec` | `src/tools/net` | `net.net-client` | net | behavior | normal | all | ctest | active |
+| `src/tools/media/PvCompressionPolicySpec.cpp` | `pv_compression_policy_spec` | `src/media_tools/media` | `media.pv-compression-policy` | media | behavior | normal | all | ctest | active |
+| `src/tools/muri/MuriSpec.cpp` | `muri_spec` | `src/core/analysis` | `muri.muri` | muri | behavior | normal | all | ctest | active |
+| `src/tools/net/NetClientSpec.cpp` | `net_client_spec` | `src/media_tools/net` | `net.net-client` | net | behavior | normal | all | ctest | active |
 | `src/tools/oplog/OperationLogSpec.cpp` | `oplog_self_test` | `src/common` | `oplog.oplog` | oplog | behavior | normal | all | ctest | active |
-| `src/tools/preview/BassPreviewDebugLogRoutingSpec.cpp` | `bass_preview_debug_log_routing_spec` | `src/audio` | `preview.bass-preview-debug-log-routing` | preview | behavior | high | all | ctest | active |
-| `src/tools/preview/BassPreviewRetainedStateSpec.cpp` | `bass_preview_retained_state_spec` | `src/audio` | `preview.bass-preview-retained-state` | preview | behavior | high | all | ctest | active |
-| `src/tools/preview/BassPreviewSfxSchedulerPolicySpec.cpp` | `bass_preview_sfx_scheduler_policy_spec` | `src/audio` | `preview.bass-preview-sfx-scheduler-policy` | preview | behavior | high | all | ctest | active |
+| `src/tools/preview/BassPreviewDebugLogRoutingSpec.cpp` | `bass_preview_debug_log_routing_spec` | `src/audio/bass` | `preview.bass-preview-debug-log-routing` | preview | behavior | high | all | ctest | active |
+| `src/tools/preview/BassPreviewRetainedStateSpec.cpp` | `bass_preview_retained_state_spec` | `src/audio/bass` | `preview.bass-preview-retained-state` | preview | behavior | high | all | ctest | active |
+| `src/tools/preview/BassPreviewSfxSchedulerPolicySpec.cpp` | `bass_preview_sfx_scheduler_policy_spec` | `src/audio/bass` | `preview.bass-preview-sfx-scheduler-policy` | preview | behavior | high | all | ctest | active |
 | `src/tools/preview/PreviewAudioCommandQueueSpec.cpp` | `preview_audio_command_queue_spec` | `src/audio` | `preview.preview-audio-command-queue` | preview | behavior | high | all | ctest | active |
 | `src/tools/preview/PreviewAudioDeviceChangePolicySpec.cpp` | `preview_audio_device_change_policy_spec` | `src/audio` | `preview.preview-audio-device-change-policy` | preview | behavior | high | all | ctest | active |
 | `src/tools/preview/PreviewAudioHealthSpec.cpp` | `preview_audio_health_spec` | `src/audio` | `preview.preview-audio-health` | preview | behavior | high | all | ctest | active |
@@ -49,7 +51,7 @@ Owners name production modules; kinds describe the checked boundary, not runtime
 | `src/tools/preview/PreviewAudioSettingsSpec.cpp` | `preview_audio_settings_spec` | `src/audio` | `preview.preview-audio-settings` | preview | behavior | high | all | ctest | active |
 | `src/tools/preview/PreviewAudioWorkerProtocolSpec.cpp` | `preview_audio_worker_protocol_spec` | `src/audio` | `preview.preview-audio-worker-protocol` | preview | behavior | high | all | ctest | active |
 | `src/tools/preview/PreviewAudioWorkerSpec.cpp` | `preview_audio_worker_spec` | `src/audio` | `preview.preview-audio-worker` | preview | integration | high | all | ctest | active |
-| `src/tools/preview/PreviewBassDeviceLeaseSpec.cpp` | `preview_bass_device_lease_spec` | `src/audio` | `preview.preview-bass-device-lease` | preview | integration | high | all | ctest | active |
+| `src/tools/preview/PreviewBassDeviceLeaseSpec.cpp` | `preview_bass_device_lease_spec` | `src/audio/bass` | `preview.preview-bass-device-lease` | preview | integration | high | all | ctest | active |
 | `src/tools/preview/PreviewEndOfMediaPolicySpec.cpp` | `preview_end_of_media_policy_spec` | `src/core/video` | `preview.preview-end-of-media-policy` | preview | behavior | high | all | ctest | active |
 | `src/tools/preview/PreviewFireworkLifecycleSpec.cpp` | `preview_firework_lifecycle_spec` | `src/core/scene` | `preview.preview-firework-lifecycle` | preview | behavior | high | all | ctest | active |
 | `src/tools/preview/PreviewFireworkWarmupPolicySpec.cpp` | `preview_firework_warmup_policy_spec` | `src/core/scene` | `preview.preview-firework-warmup-policy` | preview | behavior | high | all | ctest | active |
@@ -59,11 +61,11 @@ Owners name production modules; kinds describe the checked boundary, not runtime
 | `src/tools/preview/PreviewQuickSpriteBatchSpec.cpp` | `preview_quick_sprite_batch_spec` | `src/preview/quick_scene` | `preview.preview-quick-sprite-batch` | preview | behavior | high | all | ctest | active |
 | `src/tools/preview/PreviewRealtimeObjectHotPathSpec.cpp` | `preview_realtime_object_hot_path_spec` | `src/core/scene` | `preview.preview-realtime-object-hot-path` | preview | behavior | high | all | ctest | active |
 | `src/tools/preview/PreviewSceneAssetLoaderSpec.cpp` | `preview_asset_loader_spec` | `src/preview/runtime` | `preview.preview-asset-loader` | preview | behavior | high | all | ctest | active |
-| `src/tools/preview/PreviewSfxTimelineSpec.cpp` | `preview_sfx_timeline_spec` | `src/common` | `preview.preview-sfx-timeline` | preview | behavior | high | all | ctest | active |
+| `src/tools/preview/PreviewSfxTimelineSpec.cpp` | `preview_sfx_timeline_spec` | `src/core/scene` | `preview.preview-sfx-timeline` | preview | behavior | high | all | ctest | active |
 | `src/tools/preview/PreviewSlideEraseByAreaSpec.cpp` | `preview_slide_erase_by_area_spec` | `src/core/scene` | `preview.preview-slide-erase-by-area` | preview | behavior | high | all | ctest | active |
 | `src/tools/preview/PreviewTextureGenerationPolicySpec.cpp` | `preview_texture_generation_policy_spec` | `src/preview/quick_scene` | `preview.preview-texture-generation-policy` | preview | behavior | high | all | ctest | active |
-| `src/tools/preview/PvMemoryDiagnosticsSpec.cpp` | `pv_memory_diagnostics_spec` | `src/preview/runtime` | `preview.pv-memory-diagnostics` | preview | behavior | high | all | ctest | active |
-| `src/tools/preview/PvMemoryHostContractSpec.cpp` | `pv_memory_host_contract_spec` | `src/preview/runtime` | `preview.pv-memory-host-contract` | preview | source-contract | high | all | ctest | active |
+| `src/tools/preview/PvMemoryDiagnosticsSpec.cpp` | `pv_memory_diagnostics_spec` | `src/preview/stage_media` | `preview.pv-memory-diagnostics` | preview | behavior | high | all | ctest | active |
+| `src/tools/preview/PvMemoryHostContractSpec.cpp` | `pv_memory_host_contract_spec` | `src/preview/stage_media` | `preview.pv-memory-host-contract` | preview | source-contract | high | all | ctest | active |
 | `src/tools/preview/QuickShellPreviewSurfacePolicySpec.cpp` | `quickshell_preview_surface_policy_spec` | `src/app/quick_shell` | `preview.quickshell-preview-surface-policy` | preview | source-contract | high | all | ctest | active |
 | `src/tools/preview/TouchPadAuthoringStateSpec.cpp` | `touch_pad_authoring_state_spec` | `src/core/scene` | `preview.touch-pad-authoring-state` | preview | source-contract | high | all | ctest | active |
 | `src/tools/services/AnalysisServiceSpec.cpp` | `analysis_service_spec` | `src/app/services` | `v2.analysis-service` | services | integration | high | all | ctest | active |
@@ -89,7 +91,7 @@ Owners name production modules; kinds describe the checked boundary, not runtime
 | `src/tools/services/ValidationPortSpec.cpp` | `validation_port_spec` | `src/app/services` | `v2.validation-port` | services | boundary | high | all | ctest | active |
 | `src/tools/simai_parser/SimaiParserSpec.cpp` | `simai_parser_spec` | `src/core/chart/parser` | `simai-parser.simai-parser` | simai_parser | behavior | normal | all | ctest | active |
 | `src/tools/timeline/TimelineCadenceArbitrationPolicySpec.cpp` | `timeline_cadence_arbitration_policy_spec` | `src/timeline` | `timeline.timeline-cadence-arbitration-policy` | timeline | behavior | normal | all | ctest | active |
-| `src/tools/timeline/TimelineMarkerOffsetSpec.cpp` | `timeline_marker_offset_spec` | `src/timeline` | `timeline.timeline-marker-offset` | timeline | behavior | normal | all | ctest | active |
+| `src/tools/timeline/TimelineMarkerOffsetSpec.cpp` | `timeline_marker_offset_spec` | `src/core/chart/model` | `timeline.timeline-marker-offset` | timeline | behavior | normal | all | ctest | active |
 | `src/tools/timeline/TimelineModelSpec.cpp` | `timeline_model_spec` | `src/timeline` | `timeline.timeline-model` | timeline | integration | normal | all | ctest | active |
 | `src/tools/timeline/TimelineQuickTextureCachePolicySpec.cpp` | `timeline_quick_texture_cache_policy_spec` | `src/timeline` | `timeline.timeline-quick-texture-cache-policy` | timeline | behavior | normal | all | ctest | active |
 | `src/tools/ui/AppBackgroundSettingsSpec.cpp` | `app_background_settings_spec` | `src/app/ui` | `ui.app-background-settings` | ui | behavior | normal | all | ctest | active |
@@ -121,11 +123,11 @@ Owners name production modules; kinds describe the checked boundary, not runtime
 | `src/tools/update/UpdateManifestSpec.cpp` | `update_manifest_spec` | `src/app/services/update` | `v2.update-manifest` | services | behavior | normal | all | ctest | active |
 | `src/tools/update/UpdateServiceSpec.cpp` | `update_service_spec` | `src/app/services/update` | `v2.update-service` | services | behavior | high | all | ctest | active |
 | `src/tools/update/UpdateVersionSpec.cpp` | `update_version_spec` | `src/app/services/update` | `v2.update-version` | services | behavior | normal | all | ctest | active |
-| `src/tools/video_export/RawVideoPipeFrameConservationSpec.cpp` | `raw_video_pipe_frame_conservation_spec` | `src/tools/video_export` | `video-export.raw-video-pipe-frame-conservation` | video_export | behavior | high | all | ctest | active |
-| `src/tools/video_export/VideoExportAudioRenderPlanSpec.cpp` | `video_export_audio_render_plan_spec` | `src/tools/video_export` | `video-export.video-export-audio-render-plan` | video_export | behavior | high | all | ctest | active |
-| `src/tools/video_export/VideoExportIntroModeSpec.cpp` | `video_export_intro_mode_spec` | `src/tools/video_export` | `video-export.video-export-intro-mode` | video_export | behavior | high | all | ctest | active |
-| `src/tools/video_export/VideoExportIntroSoundSpec.cpp` | `video_export_intro_sound_spec` | `src/tools/video_export` | `video-export.video-export-intro-sound` | video_export | behavior | high | all | ctest | active |
-| `src/tools/video_export/VideoExportMediaTimelineSpec.cpp` | `video_export_media_timeline_spec` | `src/tools/video_export` | `video-export.video-export-media-timeline` | video_export | behavior | high | all | ctest | active |
-| `src/tools/video_export/VideoExportPendingFrameRedrawSpec.cpp` | `video_export_pending_frame_redraw_spec` | `src/tools/video_export` | `video-export.video-export-pending-frame-redraw` | video_export | behavior | high | all | ctest | active |
-| `src/tools/video_export/VideoExportRuntimePolicySpec.cpp` | `video_export_runtime_policy_spec` | `src/tools/video_export` | `video-export.video-export-runtime-policy` | video_export | behavior | high | all | ctest | active |
-| `src/tools/zip_export/ChartZipPackagerSpec.cpp` | `chart_zip_packager_spec` | `src/tools/zip_export` | `zip-export.chart-zip-packager` | zip_export | integration | normal | all | ctest | active |
+| `src/tools/video_export/RawVideoPipeFrameConservationSpec.cpp` | `raw_video_pipe_frame_conservation_spec` | `src/export/video_export` | `video-export.raw-video-pipe-frame-conservation` | video_export | behavior | high | all | ctest | active |
+| `src/tools/video_export/VideoExportAudioRenderPlanSpec.cpp` | `video_export_audio_render_plan_spec` | `src/export/video_export` | `video-export.video-export-audio-render-plan` | video_export | behavior | high | all | ctest | active |
+| `src/tools/video_export/VideoExportIntroModeSpec.cpp` | `video_export_intro_mode_spec` | `src/export/video_export` | `video-export.video-export-intro-mode` | video_export | behavior | high | all | ctest | active |
+| `src/tools/video_export/VideoExportIntroSoundSpec.cpp` | `video_export_intro_sound_spec` | `src/export/video_export` | `video-export.video-export-intro-sound` | video_export | behavior | high | all | ctest | active |
+| `src/tools/video_export/VideoExportMediaTimelineSpec.cpp` | `video_export_media_timeline_spec` | `src/export/video_export` | `video-export.video-export-media-timeline` | video_export | behavior | high | all | ctest | active |
+| `src/tools/video_export/VideoExportPendingFrameRedrawSpec.cpp` | `video_export_pending_frame_redraw_spec` | `src/export/video_export` | `video-export.video-export-pending-frame-redraw` | video_export | behavior | high | all | ctest | active |
+| `src/tools/video_export/VideoExportRuntimePolicySpec.cpp` | `video_export_runtime_policy_spec` | `src/export/video_export` | `video-export.video-export-runtime-policy` | video_export | behavior | high | all | ctest | active |
+| `src/tools/zip_export/ChartZipPackagerSpec.cpp` | `chart_zip_packager_spec` | `src/media_tools/zip_export` | `zip-export.chart-zip-packager` | zip_export | integration | normal | all | ctest | active |

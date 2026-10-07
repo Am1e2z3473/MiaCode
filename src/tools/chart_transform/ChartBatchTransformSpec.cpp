@@ -1,4 +1,4 @@
-#include "ChartBatchTransform.h"
+#include "core/chart/transform/ChartBatchTransform.h"
 
 #include <functional>
 
@@ -17,8 +17,8 @@
 #include <QTextStream>
 #include <QtMath>
 
-#include "SimaiDocument.h"
-#include "SimaiParser.h"
+#include "core/chart/document/SimaiDocument.h"
+#include "core/chart/parser/SimaiParser.h"
 #include "core/chart/transform/ChartNormalization.h"
 #include "core/chart/transform/Non384SnapTable.h"
 

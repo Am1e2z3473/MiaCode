@@ -1,5 +1,5 @@
-#include "runtime/document/DocumentSessionHost.h"
-#include "runtime/Shared.h"
+#include "app/runtime/document/DocumentSessionHost.h"
+#include "app/runtime/Shared.h"
 
 #include <QtCore>
 

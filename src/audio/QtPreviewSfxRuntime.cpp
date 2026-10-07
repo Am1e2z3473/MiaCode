@@ -1,6 +1,4 @@
-#include "QtPreviewSfxRuntime.h"
-
-#include "PreviewBassEmergencyPause.h"
+#include "audio/QtPreviewSfxRuntime.h"
 
 #include <QMetaObject>
 
@@ -367,8 +365,7 @@ miacode::preview_audio::PreviewAudioDeviceCutoff QtPreviewSfxRuntime::requestDev
     // the new endpoint instead of retaining a stream bound to the previous device.
     deviceCutoffActive_.store(true, std::memory_order_release);
     if (playbackWasArmed) {
-        const BassEmergencyPauseResult emergencyPause =
-            PreviewBassEmergencyPause::pauseActiveOutput();
+        const BassEmergencyPauseResult emergencyPause = pauseActivePreviewAudioOutput();
         cutoff.emergencyPauseStartedNs = emergencyPause.startedMonotonicNs;
         cutoff.emergencyPauseFinishedNs = emergencyPause.finishedMonotonicNs;
         cutoff.emergencyPauseDeviceIndex = emergencyPause.outputDeviceIndex;

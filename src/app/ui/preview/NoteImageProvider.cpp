@@ -1,6 +1,6 @@
-#include "preview/NoteImageProvider.h"
+#include "app/ui/preview/NoteImageProvider.h"
 
-#include "preview/PreviewModel.h"
+#include "app/ui/preview/PreviewModel.h"
 #include "timeline/TimelineNoteAssets.h"
 
 #include <QImage>

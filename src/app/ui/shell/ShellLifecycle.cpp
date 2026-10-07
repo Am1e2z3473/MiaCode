@@ -1,4 +1,4 @@
-#include "shell/ShellLifecycle.h"
+#include "app/ui/shell/ShellLifecycle.h"
 
 #include "common/DebugLog.h"
 

@@ -1,6 +1,6 @@
-#include "timeline/TimelineThemeBridge.h"
+#include "app/ui/timeline/TimelineThemeBridge.h"
 
-#include "common/TimelineThemeConfig.h"
+#include "timeline/TimelineThemeConfig.h"
 
 
 namespace miacode::ui {

@@ -40,9 +40,9 @@ bool verifyQmlFontContract(QTextStream& err)
     const QString previewSettingsDialog = readSource(
         QStringLiteral("src/app/ui/preview/PreviewSettingsDialog.qml"));
     const QString fontLibraryHeader = readSource(
-        QStringLiteral("src/tools/video_export/FontLibrary.h"));
+        QStringLiteral("src/export/video_export/FontLibrary.h"));
     const QString fontLibraryImplementation = readSource(
-        QStringLiteral("src/tools/video_export/FontLibrary.cpp"));
+        QStringLiteral("src/export/video_export/FontLibrary.cpp"));
     const QString previewHudStateHeader = readSource(
         QStringLiteral("src/core/scene/PreviewHudState.h"));
     const QString previewHudStateImplementation = readSource(

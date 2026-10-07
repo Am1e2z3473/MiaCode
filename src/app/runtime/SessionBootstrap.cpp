@@ -1,43 +1,43 @@
-#include "runtime/Session.h"
-#include "runtime/Shared.h"
-#include "runtime/editor/EditorHost.h"
-#include "runtime/media/MediaJobsHost.h"
-#include "runtime/document/DocumentSessionHost.h"
-#include "runtime/export/VideoExportHost.h"
-#include "runtime/settings/SettingsHost.h"
-#include "runtime/preview/StageMediaHost.h"
-#include "runtime/playback/PlaybackCoordinator.h"
-#include "runtime/playback/PlaybackSurfaceAdapters.h"
-#include "runtime/timeline/TimelineHost.h"
-#include "runtime/preview/PreviewHost.h"
+#include "app/runtime/Session.h"
+#include "app/runtime/Shared.h"
+#include "app/runtime/editor/EditorHost.h"
+#include "app/runtime/media/MediaJobsHost.h"
+#include "app/runtime/document/DocumentSessionHost.h"
+#include "app/runtime/export/VideoExportHost.h"
+#include "app/runtime/settings/SettingsHost.h"
+#include "app/runtime/preview/StageMediaHost.h"
+#include "app/runtime/playback/PlaybackCoordinator.h"
+#include "app/runtime/playback/PlaybackSurfaceAdapters.h"
+#include "app/runtime/timeline/TimelineHost.h"
+#include "app/runtime/preview/PreviewHost.h"
 #include "app/services/SessionGeneration.h"
-#include "runtime/validation/ValidationHost.h"
-#include "runtime/shell/ShellHost.h"
+#include "app/runtime/validation/ValidationHost.h"
+#include "app/runtime/shell/ShellHost.h"
 
 #include "audio/PreviewAudioDeviceWatcher.h"
-#include "QtPreviewSfxRuntime.h"
-#include "SimaiParser.h"
-#include "chrome/ShortcutRegistry.h"
-#include "chrome/WindowParityMetrics.h"
+#include "audio/QtPreviewSfxRuntime.h"
+#include "core/chart/parser/SimaiParser.h"
+#include "app/services/ShortcutRegistry.h"
+#include "app/runtime/shell/WindowParityMetrics.h"
 #include "app/quick_shell/QuickShellPreviewCompositeSurface.h"
 #include "app/quick_shell/QuickShellPreviewSurfacePolicy.h"
-#include "common/ChartAssetPaths.h"
+#include "core/chart/ChartAssetPaths.h"
 #include "common/DebugLog.h"
 #include "common/DebugOptions.h"
-#include "common/PreviewInteractionConfig.h"
+#include "core/video/PreviewInteractionConfig.h"
 #include "preview/runtime/PreviewRuntime.h"
-#include "preview/runtime/PreviewStageMediaHost.h"
+#include "preview/stage_media/PreviewStageMediaHost.h"
 #include "core/scene/PreviewProgressStatsCache.h"
 #include "core/chart/transform/ChartBatchTransform.h"
 #include "core/chart/transform/ChartNormalization.h"
 #include "timeline/quick/TimelineQuickStateBridge.h"
-#include "app/ui/export/ExportSession.h"
+#include "app/services/ExportPagePort.h"
 #include "app/services/JobProgressService.h"
 #include "app/services/UiRequestService.h"
-#include "tools/latency/LatencySandboxController.h"
-#include "tools/muri/MuriAnalyzer.h"
-#include "tools/muri/MuriPanelEntries.h"
-#include "tools/muri/MuriStaticChecker.h"
+#include "app/runtime/latency/LatencySandboxController.h"
+#include "core/analysis/MuriAnalyzer.h"
+#include "core/analysis/MuriPanelEntries.h"
+#include "core/analysis/MuriStaticChecker.h"
 
 #include <QtCore>
 
@@ -212,18 +212,9 @@ Session::Session(miacode::ApplicationServices& services, QObject* parent)
                     videoExport_->cancelVideoExportWorker();
                 }
             });
-    ui_.qmlExportSession_ = new miacode::ui::ExportSession(
-        applicationServices_.shellNotifications(), applicationServices_.uiRequests(),
-        applicationServices_.jobProgress(), applicationServices_.previewAppearance(),
-        applicationServices_.exportEngineSlot(), applicationServices_.previewSurfaceSlot(),
-        this);
-    applicationServices_.setExportPageSession(ui_.qmlExportSession_);
-    connect(ui_.qmlExportSession_, &miacode::ui::ExportSession::playbackRangeRequested,
-            this, [this](bool enabled, double startSecond, double endSecond) {
-                if (auto* control = applicationServices_.playbackControl(); control != nullptr) {
-                    control->setPlaybackRangeEnabled(enabled, startSecond, endSecond);
-                }
-            });
+    if (const auto& createExportPage = applicationServices_.exportPageFactory()) {
+        ui_.qmlExportSession_ = createExportPage(this);
+    }
     logStartupStage("runtime_pages_ready");
 
     scene_ = new PreviewRuntime(this);

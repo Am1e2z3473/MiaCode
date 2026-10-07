@@ -27,9 +27,11 @@ QString readFile(const QString& relativePath)
 
 bool testArchiveBoundary(QTextStream& out)
 {
-    const QString cmake = readFile(QStringLiteral("CMakeLists.txt"));
+    // The product build is the root CMakeLists.txt plus its library manifest.
+    const QString cmake = readFile(QStringLiteral("CMakeLists.txt"))
+        + readFile(QStringLiteral("cmake/MiaCodeModules.cmake"));
     const QString windowsPackage = readFile(QStringLiteral("scripts/build/package-win.ps1"));
-    const QString preferencesStore = readFile(QStringLiteral("src/app/ui/preferences/PreferenceDocument.cpp"));
+    const QString preferencesStore = readFile(QStringLiteral("src/app/services/PreferenceDocument.cpp"));
     const QString localeService = readFile(QStringLiteral("src/app/ui/preferences/LocaleService.cpp"));
     const QString fixture = readFile(QStringLiteral("tools/extensions/extension-api-registry.json"));
     return require(!cmake.contains(QStringLiteral("ExtensionManager.cpp"))

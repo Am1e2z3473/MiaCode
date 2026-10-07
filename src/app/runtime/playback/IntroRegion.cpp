@@ -1,36 +1,36 @@
-#include "runtime/playback/PlaybackCoordinator.h"
-#include "runtime/Shared.h"
+#include "app/runtime/playback/PlaybackCoordinator.h"
+#include "app/runtime/Shared.h"
 
-#include "app/ui/export/ExportSession.h"
-#include "QtPreviewSfxRuntime.h"
-#include "SimaiParser.h"
+#include "app/services/ExportPagePort.h"
+#include "audio/QtPreviewSfxRuntime.h"
+#include "core/chart/parser/SimaiParser.h"
 #include "app/quick_shell/QuickShellPreviewCompositeSurface.h"
 #include "app/quick_shell/QuickShellPreviewSurfacePolicy.h"
-#include "common/ChartAssetPaths.h"
+#include "core/chart/ChartAssetPaths.h"
 #include "common/DebugLog.h"
 #include "common/DebugOptions.h"
 #include "common/OperationLog.h"
-#include "common/PreviewGameplayConfig.h"
-#include "common/PreviewInteractionConfig.h"
+#include "core/video/PreviewGameplayConfig.h"
+#include "core/video/PreviewInteractionConfig.h"
 #include "preview/runtime/PreviewRuntime.h"
-#include "preview/runtime/PreviewStageMediaHost.h"
-#include "tools/video_export/FontLibrary.h"
-#include "common/IntroConfig.h"
-#include "tools/video_export/VideoExportController.h"
+#include "preview/stage_media/PreviewStageMediaHost.h"
+#include "export/video_export/FontLibrary.h"
+#include "core/chart/IntroConfig.h"
+#include "export/video_export/VideoExportController.h"
 #include "core/scene/PreviewOpacityCurves.h"
 #include "core/scene/PreviewProgressStatsCache.h"
 #include "core/chart/transform/ChartBatchTransform.h"
 #include "core/chart/transform/ChartNormalization.h"
 #include "timeline/quick/TimelineQuickStateBridge.h"
-#include "tools/muri/MuriAnalyzer.h"
-#include "tools/muri/MuriPanelEntries.h"
-#include "tools/muri/MuriStaticChecker.h"
+#include "core/analysis/MuriAnalyzer.h"
+#include "core/analysis/MuriPanelEntries.h"
+#include "core/analysis/MuriStaticChecker.h"
 
 #include <QtCore>
 #include <QtGui>
 
 #include <cstdio>  // G2 Diag: std::snprintf for sync rate-change beacon lines
-#include "runtime/playback/Playback.Internal.h"
+#include "app/runtime/playback/Playback.Internal.h"
 
 using namespace miacode::runtime::shared;
 using namespace miacode::runtime::playback_detail;

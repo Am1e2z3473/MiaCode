@@ -1,7 +1,7 @@
-#include "layout/PageHost.h"
+#include "app/ui/layout/PageHost.h"
 
 #include "common/DebugLog.h"
-#include "document/DocumentModel.h"
+#include "app/ui/document/DocumentModel.h"
 #include "app/ui/export/ExportSession.h"
 
 

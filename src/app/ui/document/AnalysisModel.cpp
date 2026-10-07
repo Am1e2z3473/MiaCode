@@ -1,7 +1,7 @@
-#include "document/AnalysisModel.h"
+#include "app/ui/document/AnalysisModel.h"
 
-#include "common/MuriTypes.h"
-#include "tools/muri/MuriPanelEntries.h"
+#include "core/analysis/MuriTypes.h"
+#include "core/analysis/MuriPanelEntries.h"
 
 #include <QVariantMap>
 

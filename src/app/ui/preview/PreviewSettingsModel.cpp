@@ -1,18 +1,20 @@
 #include "common/LocalizedText.h"
+#include "common/PreferenceProvider.h"
 
-#include "preview/PreviewSettingsModel.h"
+#include "app/ui/preview/PreviewSettingsModel.h"
 
-#include "common/PreviewGameplayConfig.h"
+#include "core/video/PreviewGameplayConfig.h"
 #include "core/scene/PreviewHudState.h"
 #include "core/video/PreviewRenderSettings.h"
 #include "preview/runtime/PreviewRuntime.h"
-#include "tools/video_export/FontLibrary.h"
-#include "ui/preferences/LocaleService.h"
+#include "export/video_export/FontLibrary.h"
+#include "app/ui/preferences/LocaleService.h"
 
 #include <QDesktopServices>
 #include <QDir>
 #include <QUrl>
 #include <QCoreApplication>
+#include <QFileInfo>
 
 namespace miacode::ui {
 
@@ -309,6 +311,15 @@ int PreviewSettingsModel::outlineIndex() const
 QVariantList PreviewSettingsModel::fontLibraryOptions() const
 {
     QVariantList list;
+    const auto area = miacode::preview::scene::previewHudFontAreaFromId(hudFontAreaId_);
+    const QString globalPath = miacode::preferences::appPreferenceSection(QStringLiteral("video_export"))
+                                   .value(QStringLiteral("hud_font_path")).toString();
+    const QString globalFamily = miacode::video_export::fontFamilyForFile(globalPath);
+    const QString defaultFamily = globalFamily.isEmpty()
+        ? miacode::preview::scene::previewHudDefaultFontForArea(area, 14).family()
+        : globalFamily;
+    const QString selectedPath = hudFontPath();
+    bool selectedListed = selectedPath.isEmpty();
     const QVector<miacode::video_export::FontLibraryEntry> entries =
         miacode::video_export::fontLibraryEntries(
             true, text("card_font.default"));
@@ -316,8 +327,21 @@ QVariantList PreviewSettingsModel::fontLibraryOptions() const
         list.append(QVariantMap{
             {QStringLiteral("label"), entry.label},
             {QStringLiteral("path"), entry.path},
-            {QStringLiteral("family"), entry.family},
+            {QStringLiteral("family"), entry.path.isEmpty() ? defaultFamily : entry.family},
         });
+        selectedListed |= entry.path == selectedPath;
+    }
+    // Legacy global/area paths can be outside the imported font library.
+    // Keep their real selection visible rather than mislabelling them Default.
+    if (!selectedListed) {
+        const QString family = miacode::video_export::fontFamilyForFile(selectedPath);
+        if (!family.isEmpty()) {
+            list.append(QVariantMap{
+                {QStringLiteral("label"), QStringLiteral("%1 (%2)").arg(family, QFileInfo(selectedPath).fileName())},
+                {QStringLiteral("path"), selectedPath},
+                {QStringLiteral("family"), family},
+            });
+        }
     }
     return list;
 }
@@ -352,6 +376,14 @@ QString PreviewSettingsModel::hudFontSample() const
     const QVariantList areas = hudFontAreaOptions();
     return areas.at(qBound(0, hudFontAreaIndex(), static_cast<int>(areas.size()) - 1))
         .toMap().value(QStringLiteral("sample")).toString();
+}
+
+QFont PreviewSettingsModel::hudFont() const
+{
+    const auto area = miacode::preview::scene::previewHudFontAreaFromId(hudFontAreaId_);
+    return area == miacode::preview::scene::PreviewHudFontArea::DebugInfo
+        ? miacode::preview::scene::previewHudMonoFontForArea(area, 14)
+        : miacode::preview::scene::previewHudTimestampFontForArea(area, 14, QFont::DemiBold);
 }
 
 void PreviewSettingsModel::setSkinIndex(int index)
@@ -415,6 +447,7 @@ void PreviewSettingsModel::setHudFontAreaIndex(int index)
         return;
     }
     hudFontAreaId_ = nextAreaId;
+    emit fontLibraryChanged();
     emit hudFontChanged();
 }
 
@@ -428,6 +461,7 @@ void PreviewSettingsModel::setHudFontPath(const QString& path)
     if (surface() != nullptr) {
         surface()->refreshSurfaces();
     }
+    emit fontLibraryChanged();
     emit hudFontChanged();
 }
 

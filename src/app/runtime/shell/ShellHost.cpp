@@ -1,11 +1,11 @@
-#include "runtime/shell/ShellHost.h"
+#include "app/runtime/shell/ShellHost.h"
 
-#include "runtime/Session.h"
-#include "runtime/document/DocumentSessionHost.h"
-#include "runtime/export/VideoExportHost.h"
-#include "runtime/playback/PlaybackCoordinator.h"
+#include "app/runtime/Session.h"
+#include "app/runtime/document/DocumentSessionHost.h"
+#include "app/runtime/export/VideoExportHost.h"
+#include "app/runtime/playback/PlaybackCoordinator.h"
 
-#include "app/ui/chrome/ShortcutRegistry.h"
+#include "app/services/ShortcutRegistry.h"
 #include "common/CrashRecovery.h"
 #include "common/DebugLog.h"
 #include "common/DebugOptions.h"

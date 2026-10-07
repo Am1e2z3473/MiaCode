@@ -1,8 +1,8 @@
 #pragma once
 
-#include "common/PreviewSfxAssets.h"
+#include "core/scene/PreviewSfxAssets.h"
 
-#include "common/PreviewSfxSemantics.h"
+#include "core/scene/PreviewSfxSemantics.h"
 
 #include <QJsonObject>
 #include <QString>

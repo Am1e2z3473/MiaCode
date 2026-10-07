@@ -1,4 +1,4 @@
-#include "editor/ScintillaDslStyler.h"
+#include "app/ui/editor/ScintillaDslStyler.h"
 #include <QColor>
 #include "editor/BookmarkCommentSyntax.h"
 #include <QGuiApplication>

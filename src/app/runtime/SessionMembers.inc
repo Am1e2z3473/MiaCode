@@ -13,7 +13,7 @@
         QTimer* previewSeekDebounceTimer_ = nullptr;
         QTimer* bottomTabsContentScalePersistTimer_ = nullptr;
         QTimer* visualLayoutPersistTimer_ = nullptr;
-        miacode::ui::ExportSession* qmlExportSession_ = nullptr;
+        miacode::ExportPagePort* qmlExportSession_ = nullptr;
         // Shared, Widgets-free UI boundary: any flow that needs a file pick,
         // a message or a progress bar goes through these and the single QML
         // host renders it.
@@ -777,7 +777,7 @@
     bool& editorOverwriteModeEnabled_ = state_.editorOverwriteModeEnabled_;
     bool& editorAutoCompletionEnabled_ = state_.editorAutoCompletionEnabled_;
     bool& editorImeInputDisabled_ = state_.editorImeInputDisabled_;
-    miacode::ui::ExportSession*& qmlExportSession_ = ui_.qmlExportSession_;
+    miacode::ExportPagePort*& qmlExportSession_ = ui_.qmlExportSession_;
     miacode::UiRequestService*& uiRequests_ = ui_.uiRequests_;
     miacode::JobProgressService*& jobProgress_ = ui_.jobProgress_;
     QTimer*& previewHeldSeekTimer_ = ui_.previewHeldSeekTimer_;

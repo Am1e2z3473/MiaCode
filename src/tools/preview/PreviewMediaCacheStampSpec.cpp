@@ -17,7 +17,7 @@
 // This is the regression net for the 2026-06-03 fix that removed the path-only
 // resolved-path cache and switched the skip decision to a content stamp.
 
-#include "common/ChartAssetPaths.h"
+#include "core/chart/ChartAssetPaths.h"
 #include "common/FileContentStamp.h"
 
 #include <QByteArray>

@@ -4,9 +4,9 @@
 #include <QTextStream>
 #include <QtMath>
 
-#include "common/PreviewGameplayConfig.h"
+#include "core/video/PreviewGameplayConfig.h"
 #include "core/chart/parser/SimaiParser.h"
-#include "timeline/TimelineMarkerOffset.h"
+#include "core/chart/model/TimelineMarkerOffset.h"
 #include "core/scene/PreviewActiveMarkerView.h"
 #include "core/scene/PreviewMarkerDrawOrder.h"
 #include "core/scene/PreviewMuriActionLayerState.h"

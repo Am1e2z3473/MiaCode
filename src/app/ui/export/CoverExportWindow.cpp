@@ -1,11 +1,11 @@
-#include "export/CoverExportWindow.h"
+#include "app/ui/export/CoverExportWindow.h"
 
-#include "app/MainEntrypoints.h"
+#include "app/platform/PlatformDiagnostics.h"
 #include "app/ui/layout/WorkbenchSettings.h"
 #include "app/ui/chrome/NativeWindowTheme.h"
 #include "app/ui/preferences/LocaleService.h"
 #include "common/DebugLog.h"
-#include "tools/cover_export/CoverCompositeRenderer.h"
+#include "export/cover_export/CoverCompositeRenderer.h"
 
 #include <QCoreApplication>
 #include <QQmlApplicationEngine>

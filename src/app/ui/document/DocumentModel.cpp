@@ -1,19 +1,19 @@
 #include "common/LocalizedText.h"
 
-#include "document/ChartTransformCommands.h"
+#include "app/ui/document/ChartTransformCommands.h"
 #include "core/chart/transform/ChartBatchTransform.h"
 #include "core/chart/transform/ChartNormalization.h"
 #include "core/chart/selection/ChartSelectionBeatSummary.h"
-#include "document/DocumentModel.h"
-#include "ui/preferences/LocaleService.h"
+#include "app/ui/document/DocumentModel.h"
+#include "app/ui/preferences/LocaleService.h"
 
 #include "editor/BookmarkCommentSyntax.h"
 
 #include "app/services/UiRequestService.h"
-#include "common/ChartAssetPaths.h"
+#include "core/chart/ChartAssetPaths.h"
 #include "common/DebugLog.h"
-#include "common/Id3TagReader.h"
-#include "common/ProjectPreferences.h"
+#include "app/services/Id3TagReader.h"
+#include "app/services/ProjectPreferences.h"
 #include "core/chart/document/SimaiDocument.h"
 
 #include <algorithm>

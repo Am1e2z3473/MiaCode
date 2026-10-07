@@ -1,12 +1,12 @@
-﻿#include "runtime/validation/ValidationHost.h"
-#include "runtime/playback/PlaybackCoordinator.h"
-#include "runtime/shell/ShellHost.h"
+﻿#include "app/runtime/validation/ValidationHost.h"
+#include "app/runtime/playback/PlaybackCoordinator.h"
+#include "app/runtime/shell/ShellHost.h"
 
-#include "SimaiParser.h"
+#include "core/chart/parser/SimaiParser.h"
 #include "preview/runtime/PreviewRuntime.h"
-#include "tools/muri/MuriAnalyzer.h"
-#include "tools/muri/MuriPanelEntries.h"
-#include "common/MuriTypes.h"
+#include "core/analysis/MuriAnalyzer.h"
+#include "core/analysis/MuriPanelEntries.h"
+#include "core/analysis/MuriTypes.h"
 
 #include <QtCore>
 

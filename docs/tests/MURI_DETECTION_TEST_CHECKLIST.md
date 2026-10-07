@@ -1,7 +1,7 @@
 ---
 lifecycle: reusable-verification
 canonical_id: verify.muri
-owner: src/tools/muri
+owner: src/core/analysis
 test_targets: ["muri_spec"]
 ---
 

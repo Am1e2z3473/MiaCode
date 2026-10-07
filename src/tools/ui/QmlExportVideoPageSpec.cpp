@@ -294,6 +294,7 @@ ApplicationWindow {
         property int hudFontAreaIndex: 0
         property string hudFontPath: ""
         property string hudFontSample: "Title / Artist"
+        property font hudFont: Qt.font({ family: "Arial" })
         property int hudFontImportRequests: 0
         property var fontLibraryOptions: [
             { label: "Default font", path: "", family: "" },

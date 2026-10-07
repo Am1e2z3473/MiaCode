@@ -3,7 +3,7 @@
 #include <QString>
 #include <QVector>
 
-#include "ChartWorkspace.h"
+#include "app/services/ChartWorkspace.h"
 
 namespace miacode {
 

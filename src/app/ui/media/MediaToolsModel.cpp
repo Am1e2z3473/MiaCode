@@ -1,13 +1,13 @@
 #include "common/LocalizedText.h"
 
-#include "media/MediaToolsModel.h"
-#include "ui/preferences/LocaleService.h"
+#include "app/ui/media/MediaToolsModel.h"
+#include "app/ui/preferences/LocaleService.h"
 
 #include "app/services/MediaToolsEngine.h"
 
 #include "app/services/JobProgressService.h"
 #include "app/services/UiRequestService.h"
-#include "tools/media/PvBatchCompressionWorker.h"
+#include "media_tools/media/PvBatchCompressionWorker.h"
 
 #include <QDir>
 #include <QFileInfo>

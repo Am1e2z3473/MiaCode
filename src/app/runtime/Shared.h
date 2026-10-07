@@ -7,11 +7,11 @@
 #include <QStringList>
 #include <QtGlobal>
 
-#include "SimaiParser.h"
-#include "chrome/WindowParityMetrics.h"
+#include "core/chart/parser/SimaiParser.h"
+#include "app/runtime/shell/WindowParityMetrics.h"
 #include "common/DebugLog.h"
 #include "common/DebugOptions.h"
-#include "runtime/RuntimeContext.h"
+#include "app/runtime/RuntimeContext.h"
 
 class QFileInfo;
 class QObject;

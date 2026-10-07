@@ -1,6 +1,6 @@
 #pragma once
 
-#include "runtime/Session.h"
+#include "app/runtime/Session.h"
 
 #include "app/services/DocumentBridge.h"
 #include "app/services/EditorPageRouter.h"

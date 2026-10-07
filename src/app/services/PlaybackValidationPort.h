@@ -1,6 +1,6 @@
 #pragma once
 
-#include "common/MuriRenderOptions.h"
+#include "core/analysis/MuriRenderOptions.h"
 
 namespace miacode {
 

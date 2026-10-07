@@ -1,7 +1,7 @@
-﻿#include "runtime/playback/PlaybackCoordinator.h"
-#include "common/ContentDurationConfig.h"
+﻿#include "app/runtime/playback/PlaybackCoordinator.h"
+#include "app/runtime/ContentDurationConfig.h"
 #include "timeline/quick/TimelineQuickStateBridge.h"
-#include "runtime/playback/TimelineFlow.Internal.h"
+#include "app/runtime/playback/TimelineFlow.Internal.h"
 
 #include <QElapsedTimer>
 

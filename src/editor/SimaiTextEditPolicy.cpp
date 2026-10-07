@@ -1,6 +1,6 @@
-#include "SimaiTextEditPolicy.h"
+#include "editor/SimaiTextEditPolicy.h"
 
-#include "SimaiCompletionCatalog.h"
+#include "editor/SimaiCompletionCatalog.h"
 
 #include <QtGlobal>
 

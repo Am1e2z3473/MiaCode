@@ -3,7 +3,7 @@
 #include <QVector>
 #include <QtNumeric>
 
-#include "timeline/TimelineMarkerOffset.h"
+#include "core/chart/model/TimelineMarkerOffset.h"
 
 namespace {
 

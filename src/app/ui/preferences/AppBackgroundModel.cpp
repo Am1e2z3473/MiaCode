@@ -3,7 +3,7 @@
 #include "app/ui/preferences/AppBackgroundModel.h"
 
 #include "app/ui/preferences/LocaleService.h"
-#include "app/ui/preferences/PreferenceDocument.h"
+#include "app/services/PreferenceDocument.h"
 #include "app/services/UiRequestService.h"
 
 #include <QDir>

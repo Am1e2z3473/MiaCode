@@ -1,30 +1,30 @@
 ﻿#include "common/LocalizedText.h"
 
-#include "runtime/document/DocumentSessionHost.h"
+#include "app/runtime/document/DocumentSessionHost.h"
 #include "app/services/UiRequestService.h"
-#include "runtime/Shared.h"
+#include "app/runtime/Shared.h"
 
-#include "QtPreviewSfxRuntime.h"
-#include "SimaiParser.h"
+#include "audio/QtPreviewSfxRuntime.h"
+#include "core/chart/parser/SimaiParser.h"
 #include "app/quick_shell/QuickShellPreviewCompositeSurface.h"
 #include "app/quick_shell/QuickShellPreviewSurfacePolicy.h"
-#include "common/ChartAssetPaths.h"
+#include "core/chart/ChartAssetPaths.h"
 #include "common/CrashRecovery.h"
 #include "common/DebugLog.h"
 #include "common/DebugOptions.h"
 #include "common/OperationLog.h"
-#include "common/ProjectPreferences.h"
-#include "common/WaveformCache.h"
+#include "app/services/ProjectPreferences.h"
+#include "audio/WaveformCache.h"
 #include "app/services/PlaybackStateAuthority.h"
-#include "tools/latency/LatencySandboxController.h"
+#include "app/runtime/latency/LatencySandboxController.h"
 #include "preview/runtime/PreviewRuntime.h"
-#include "preview/runtime/PreviewStageMediaHost.h"
+#include "preview/stage_media/PreviewStageMediaHost.h"
 #include "core/scene/PreviewProgressStatsCache.h"
 #include "core/chart/transform/ChartBatchTransform.h"
 #include "core/chart/transform/ChartNormalization.h"
-#include "tools/muri/MuriAnalyzer.h"
-#include "tools/muri/MuriPanelEntries.h"
-#include "tools/muri/MuriStaticChecker.h"
+#include "core/analysis/MuriAnalyzer.h"
+#include "core/analysis/MuriPanelEntries.h"
+#include "core/analysis/MuriStaticChecker.h"
 
 #include <algorithm>
 
@@ -32,7 +32,7 @@
 #include <QtGui>
 
 using namespace miacode::runtime::shared;
-#include "runtime/document/DocumentFlow.Internal.h"
+#include "app/runtime/document/DocumentFlow.Internal.h"
 
 using namespace miacode::runtime::document_detail;
 

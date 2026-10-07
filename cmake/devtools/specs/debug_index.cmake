@@ -26,13 +26,12 @@ miacode_add_spec(debug_options_spec
     EXECUTION ctest STATUS active PLATFORM all
     SOURCES
         src/tools/debug_index/DebugOptionsSpec.cpp
-        src/common/DebugOptions.h
     LIBS Qt6::Core
-    INCLUDES src src/common
+    INCLUDES src
 )
 
 miacode_add_spec(process_identity_fields_spec
-    OWNER src/app
+    OWNER src/app/platform
     CONTRACT debug-index.process-identity-fields
     DOMAIN debug_index KIND behavior RISK normal
     EXECUTION ctest STATUS active PLATFORM all
@@ -60,11 +59,7 @@ miacode_add_spec(ui_hang_watchdog_lifecycle_spec
     EXECUTION ctest STATUS active PLATFORM all
     SOURCES
         src/tools/debug_index/UiHangWatchdogLifecycleSpec.cpp
-        src/common/UiHangWatchdog.h
-        src/common/UiHangWatchdog.cpp
-        src/common/DebugOptions.h
-        ${_miacode_log_core}
-    LIBS Qt6::Core
+    LIBS miacode_base Qt6::Core
     INCLUDES src
 )
 
@@ -75,9 +70,6 @@ miacode_add_spec(log_pruning_policy_spec
     EXECUTION ctest STATUS active PLATFORM all
     SOURCES
         src/tools/debug_index/LogPruningPolicySpec.cpp
-        src/common/LogEmissionPolicy.h
-        src/common/UiHangWatchdogPolicy.h
-        src/audio/BassPreviewSfxSchedulerPolicy.h
     LIBS Qt6::Core
     INCLUDES src
 )
@@ -89,10 +81,7 @@ miacode_add_spec(process_diagnostics_spec
     EXECUTION ctest STATUS active PLATFORM all
     SOURCES
         src/tools/debug_index/ProcessDiagnosticsSpec.cpp
-        src/common/ProcessDiagnostics.h
-        src/common/ProcessDiagnostics.cpp
-        ${_miacode_log_core}
-    LIBS Qt6::Core Qt6::Gui
+    LIBS miacode_base Qt6::Core Qt6::Gui
     INCLUDES src
 )
 if (WIN32)
@@ -101,16 +90,15 @@ if (WIN32)
 endif()
 
 miacode_add_spec(window_visibility_diagnostics_spec
-    OWNER src/app
+    OWNER src/app/platform
     CONTRACT debug-index.window-visibility-diagnostics
     DOMAIN debug_index KIND behavior RISK normal
     EXECUTION ctest STATUS active PLATFORM all
     SOURCES
         src/tools/debug_index/WindowVisibilityDiagnosticsSpec.cpp
-        src/app/WindowVisibilityDiagnostics.h
-        src/app/WindowVisibilityDiagnostics.cpp
-        ${_miacode_log_core}
-    LIBS Qt6::Core Qt6::Gui
+        src/app/platform/WindowVisibilityDiagnostics.h
+        src/app/platform/WindowVisibilityDiagnostics.cpp
+    LIBS miacode_base Qt6::Core Qt6::Gui
     INCLUDES src
 )
 
