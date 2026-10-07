@@ -12,7 +12,7 @@
 #include <QVariantList>
 #include <QVector>
 
-#include "document/DocumentProjection.h"
+#include "app/services/DocumentProjection.h"
 #include "app/services/AnalysisService.h"
 #include "app/services/ChartMediaService.h"
 #include "app/services/ChartWorkspace.h"

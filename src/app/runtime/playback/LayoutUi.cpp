@@ -1,8 +1,8 @@
-#include "runtime/playback/PlaybackCoordinator.h"
-#include "runtime/Shared.h"
+#include "app/runtime/playback/PlaybackCoordinator.h"
+#include "app/runtime/Shared.h"
 #include "app/services/ApplicationServices.h"
 
-#include "common/ContentDurationConfig.h"
+#include "app/runtime/ContentDurationConfig.h"
 #include "preview/runtime/PreviewRuntime.h"
 #include "core/scene/PreviewProgressStatsCache.h"
 #include "timeline/quick/TimelineQuickStateBridge.h"

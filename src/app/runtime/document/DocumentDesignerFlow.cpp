@@ -1,8 +1,8 @@
-#include "runtime/document/DocumentSessionHost.h"
+#include "app/runtime/document/DocumentSessionHost.h"
 
 #include "common/DebugLog.h"
 #include "common/OperationLog.h"
-#include "common/ProjectPreferences.h"
+#include "app/services/ProjectPreferences.h"
 #include "core/chart/document/SimaiDocument.h"
 
 #include <QJsonObject>

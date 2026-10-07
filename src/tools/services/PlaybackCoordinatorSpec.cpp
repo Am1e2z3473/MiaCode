@@ -173,7 +173,9 @@ bool verifyProjectionAdaptersOwnLegacySurfaceContracts(QTextStream& err)
 bool verifyAssemblyNoLongerUsesPlaybackControlAdapter(QTextStream& err)
 {
     const QString bootstrap = readSource(QStringLiteral("src/app/runtime/SessionBootstrap.cpp"));
-    const QString cmake = readSource(QStringLiteral("CMakeLists.txt"));
+    // The product build is the root CMakeLists.txt plus its library manifest.
+    const QString cmake = readSource(QStringLiteral("CMakeLists.txt"))
+        + readSource(QStringLiteral("cmake/MiaCodeModules.cmake"));
     bool ok = require(!bootstrap.isEmpty() && !cmake.isEmpty(),
                       QStringLiteral("coordinator assembly sources are readable"), err);
     ok &= require(!bootstrap.contains(QStringLiteral("PlaybackControlAdapter"))

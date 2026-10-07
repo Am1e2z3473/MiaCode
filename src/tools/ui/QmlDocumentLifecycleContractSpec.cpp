@@ -362,11 +362,11 @@ bool verifyPageNavigationUsesTheQmlLeaveGuard(QTextStream& err)
     const QString bottomPanel = sourceFile(
         QStringLiteral("src/app/ui/timeline/BottomPanel.qml"));
     const QString videoExportController = sourceFile(
-        QStringLiteral("src/tools/video_export/VideoExportController.cpp"));
+        QStringLiteral("src/export/video_export/VideoExportController.cpp"));
     const QString videoExportHeader = sourceFile(
-        QStringLiteral("src/tools/video_export/VideoExportController.h"));
+        QStringLiteral("src/export/video_export/VideoExportController.h"));
     const QString videoExportInternal = sourceFile(
-        QStringLiteral("src/tools/video_export/VideoExportControllerInternal.h"));
+        QStringLiteral("src/export/video_export/VideoExportControllerInternal.h"));
 
     bool ok = true;
     ok &= require(documentModel.contains(

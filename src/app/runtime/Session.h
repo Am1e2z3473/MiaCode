@@ -19,29 +19,29 @@
 #include <QVariantMap>
 #include <QVector>
 
-#include "PreviewAudioSettings.h"
-#include "common/PreviewTimingSettings.h"
-#include "PreviewRenderSettings.h"
-#include "SimaiDocument.h"
-#include "SimaiTimingMetadata.h"
-#include "SimaiParser.h"
-#include "timeline/TimelineData.h"
+#include "audio/PreviewAudioSettings.h"
+#include "core/video/PreviewTimingSettings.h"
+#include "core/video/PreviewRenderSettings.h"
+#include "core/chart/document/SimaiDocument.h"
+#include "core/chart/document/SimaiTimingMetadata.h"
+#include "core/chart/parser/SimaiParser.h"
+#include "core/chart/model/TimelineData.h"
 #include "timeline/TimelineQuickModel.h"
-#include "timeline/TimelineSlowRefresh.h"
-#include "common/MuriRenderOptions.h"
-#include "common/MuriTypes.h"
-#include "tools/video_export/VideoExportSnapshot.h"
-#include "common/PreviewGameplayConfig.h"
-#include "common/PreviewVideoGeometryConfig.h"
-#include "app/ui/document/DocumentProjection.h"
-#include "app/ui/document/AnalysisProjection.h"
+#include "core/analysis/TimelineSlowRefresh.h"
+#include "core/analysis/MuriRenderOptions.h"
+#include "core/analysis/MuriTypes.h"
+#include "export/video_export/VideoExportSnapshot.h"
+#include "core/video/PreviewGameplayConfig.h"
+#include "core/video/PreviewVideoGeometryConfig.h"
+#include "app/services/DocumentProjection.h"
+#include "app/services/AnalysisProjection.h"
 #include "app/services/ApplicationServices.h"
 #include "app/services/PlaybackControl.h"
 #include "app/services/PlaybackPreferencesPort.h"
 #include "app/services/PlaybackPreviewPort.h"
 #include "app/services/EditorSyncController.h"
 #include "core/chart/transform/ChartNormalization.h"
-#include "runtime/RuntimeContext.h"
+#include "app/runtime/RuntimeContext.h"
 
 class QByteArray;
 class QChronoTimer;
@@ -52,7 +52,6 @@ class JobProgressService;
 }
 namespace miacode::ui {
 class PageHost;
-class ExportSession;
 class PreviewSettingsModel;
 class Bootstrap;
 }
@@ -335,7 +334,7 @@ public:
     void setChartNormalizeOptions(const miacode::chart_transform::ChartNormalizationOptions& options);
     // Read-only hand-off to the single export-session owner. QML page services
     // may compose on top of this session, but never construct another one.
-    miacode::ui::ExportSession* qmlExportSession() const { return qmlExportSession_; }
+    miacode::ExportPagePort* qmlExportSession() const { return qmlExportSession_; }
     miacode::UiRequestService* uiRequestService() const;
     miacode::JobProgressService* jobProgressService() const;
     // PlaybackPreviewPort: the port's one method that is Session's own
@@ -410,7 +409,7 @@ private:
         qint64 totalElapsedMs = 0;
     };
 
-    #include "SessionPrivate.inc"
+    #include "app/runtime/SessionPrivate.inc"
     double previewDurationSeconds() const;
     double previewPlaybackEndSeconds() const;
     void applyPreviewPlaybackRate(double rate);
@@ -606,6 +605,6 @@ private:
     std::unique_ptr<miacode::runtime::PreviewHost> previewHost_;
 
     #define MIACODE_SESSION_RUNTIME_MEMBERS 1
-    #include "SessionMembers.inc"
+    #include "app/runtime/SessionMembers.inc"
     #undef MIACODE_SESSION_RUNTIME_MEMBERS
 };

@@ -1,4 +1,4 @@
-#include "editor/ScintillaEditorBridge.h"
+#include "app/ui/editor/ScintillaEditorBridge.h"
 #include "editor/SimaiCompletionCatalog.h"
 #include <QClipboard>
 #include <QGuiApplication>

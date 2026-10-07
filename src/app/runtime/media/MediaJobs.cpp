@@ -1,21 +1,21 @@
 #include "common/LocalizedText.h"
 
 #include "app/services/UiRequestService.h"
-#include "runtime/media/MediaJobsHost.h"
-#include "runtime/Shared.h"
-#include "runtime/shell/ShellHost.h"
+#include "app/runtime/media/MediaJobsHost.h"
+#include "app/runtime/Shared.h"
+#include "app/runtime/shell/ShellHost.h"
 
 #include "AppVersion.h"
-#include "QtPreviewSfxRuntime.h"
-#include "common/ChartAssetPaths.h"
-#include "common/ChartClockCount.h"
-#include "common/Id3TagReader.h"
+#include "audio/QtPreviewSfxRuntime.h"
+#include "core/chart/ChartAssetPaths.h"
+#include "core/chart/document/ChartClockCount.h"
+#include "app/services/Id3TagReader.h"
 #include "common/OperationLog.h"
-#include "common/PreviewSfxAssets.h"
-#include "common/PreviewGameplayConfig.h"
-#include "common/WaveformCache.h"
+#include "core/scene/PreviewSfxAssets.h"
+#include "core/video/PreviewGameplayConfig.h"
+#include "audio/WaveformCache.h"
 #include "preview/runtime/PreviewRuntime.h"
-#include "tools/latency/LatencyAnalysis.h"
+#include "app/runtime/latency/LatencyAnalysis.h"
 
 #include <QDesktopServices>
 #include <QUrl>

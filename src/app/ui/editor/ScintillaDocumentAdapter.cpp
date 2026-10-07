@@ -1,4 +1,4 @@
-#include "editor/ScintillaDocumentAdapter.h"
+#include "app/ui/editor/ScintillaDocumentAdapter.h"
 
 namespace miacode::ui {
 ScintillaDocumentAdapter::ScintillaDocumentAdapter(ScintillaQuick_item& editor) : editor_(editor)

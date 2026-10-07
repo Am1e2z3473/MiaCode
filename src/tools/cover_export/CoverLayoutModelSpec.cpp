@@ -1,8 +1,8 @@
-#include "tools/cover_export/CoverCompositionState.h"
-#include "tools/cover_export/CoverCompositionPersistenceGuard.h"
-#include "tools/cover_export/CoverLayoutModel.h"
-#include "tools/cover_export/CoverFrameExportPlan.h"
-#include "app/ui/preferences/PreferenceDocument.h"
+#include "export/cover_export/CoverCompositionState.h"
+#include "export/cover_export/CoverCompositionPersistenceGuard.h"
+#include "export/cover_export/CoverLayoutModel.h"
+#include "export/cover_export/CoverFrameExportPlan.h"
+#include "common/PreferenceProvider.h"
 
 #include <QCoreApplication>
 #include <QFile>
@@ -526,12 +526,36 @@ bool testExportPlanPreservesFrameTimes(QTextStream& err)
 
 }  // namespace
 
+namespace {
+
+// In-memory stand-in for the application's preference document: the spec
+// exercises the cover export's own `app.cover_export` handling through the
+// same port the application installs.
+class MemoryPreferenceProvider final : public miacode::preferences::PreferenceProvider
+{
+public:
+    QJsonObject appSection(const QString& name) const override { return app_.value(name).toObject(); }
+    bool setAppSection(const QString& name, const QJsonObject& section) override
+    {
+        app_.insert(name, section);
+        return true;
+    }
+    QString preferencesDirectoryPath() const override { return QString(); }
+    QString resolvedLanguageToken() const override { return QStringLiteral("en_US"); }
+
+private:
+    QJsonObject app_;
+};
+
+}  // namespace
+
 int main(int argc, char** argv)
 {
     QStandardPaths::setTestModeEnabled(true);
     QCoreApplication app(argc, argv);
     QCoreApplication::setApplicationName(QStringLiteral("MiaCodeCoverLayoutModelSpec"));
-    QFile::remove(PreferenceDocument::preferencesFilePath());
+    MemoryPreferenceProvider preferences;
+    miacode::preferences::installPreferenceProvider(&preferences);
     QTextStream err(stderr);
     if (!testCompositionPersistenceLifecycle(err)) return 1;
     if (!testMultiFrameModel(err)) return 1;
@@ -548,6 +572,6 @@ int main(int argc, char** argv)
     if (!testExportPlanPreservesFrameTimes(err)) return 1;
     if (!testCoverPresetPersistence(err)) return 1;
     if (!testOutputDirectoryRoundTrip(err)) return 1;
-    QFile::remove(PreferenceDocument::preferencesFilePath());
+    miacode::preferences::installPreferenceProvider(nullptr);
     return 0;
 }

@@ -2,7 +2,7 @@
 
 #include "common/DebugLog.h"
 #include "common/DebugOptions.h"
-#include "common/PreviewGameplayConfig.h"
+#include "core/video/PreviewGameplayConfig.h"
 #include "core/scene/PreviewJudgeOverlayShared.h"
 #include "core/scene/PreviewMarkerDrawOrder.h"
 #include "core/scene/PreviewMaimuriDxJudgeLayerState.h"

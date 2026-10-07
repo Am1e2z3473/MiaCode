@@ -8,7 +8,7 @@
 
 #include "core/chart/document/SimaiDocument.h"
 #include "core/chart/document/SimaiTimingMetadata.h"
-#include "SimaiParser.h"
+#include "core/chart/parser/SimaiParser.h"
 
 namespace {
 

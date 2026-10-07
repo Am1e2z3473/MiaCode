@@ -2,8 +2,8 @@
 
 #include <QObject>
 
-#include "PreviewAudioDeviceChangePolicy.h"
-#include "PreviewAudioDeviceCutoff.h"
+#include "audio/PreviewAudioDeviceChangePolicy.h"
+#include "audio/PreviewAudioDeviceCutoff.h"
 
 #include <functional>
 #include <mutex>

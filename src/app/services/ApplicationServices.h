@@ -1,15 +1,17 @@
 #pragma once
 
-#include "AnalysisService.h"
-#include "ChartWorkspace.h"
-#include "ChartWorkspaceFileService.h"
-#include "EditorSyncController.h"
-#include "JobProgressService.h"
-#include "PreviewAppearanceState.h"
-#include "ShellNotifications.h"
-#include "UiRequestService.h"
+#include "app/services/AnalysisService.h"
+#include "app/services/ChartWorkspace.h"
+#include "app/services/ChartWorkspaceFileService.h"
+#include "app/services/EditorSyncController.h"
+#include "app/services/JobProgressService.h"
+#include "app/services/PreviewAppearanceState.h"
+#include "app/services/ShellNotifications.h"
+#include "app/services/UiRequestService.h"
 
 #include <QObject>
+
+#include <functional>
 
 namespace miacode {
 
@@ -25,6 +27,7 @@ class PlaybackControl;
 class PlaybackStateAuthority;
 class PreferencesStore;
 class DocumentBridge;
+class ExportPagePort;
 
 namespace update {
 class UpdateFetcher;
@@ -155,6 +158,14 @@ public:
     QObject* exportPageSession() const { return exportPageSession_; }
     void setExportPageSession(QObject* session) { exportPageSession_ = session; }
 
+    // Creates the export page the runtime drives through ExportPagePort. The
+    // UI installs it before the session is assembled; the factory parents the
+    // page to `parent`, publishes it through setExportPageSession() and wires
+    // its own signals. Without a factory the runtime runs without that page.
+    using ExportPageFactory = std::function<ExportPagePort*(QObject* parent)>;
+    const ExportPageFactory& exportPageFactory() const { return exportPageFactory_; }
+    void setExportPageFactory(ExportPageFactory factory) { exportPageFactory_ = std::move(factory); }
+
     SimaiValidationLocale validationLocale() const { return validationLocale_; }
     void setValidationLocale(SimaiValidationLocale locale)
     {
@@ -199,6 +210,7 @@ private:
     PreferencesStore* preferencesStore_ = nullptr;
     DocumentBridge* documentBridge_ = nullptr;
     QObject* exportPageSession_ = nullptr;
+    ExportPageFactory exportPageFactory_;
     update::UpdateFetcher* updateFetcher_ = nullptr;
     update::UpdateService* updateService_ = nullptr;
 };

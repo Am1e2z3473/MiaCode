@@ -1,9 +1,10 @@
-#include "MainEntrypoints.h"
+#include "app/MainEntrypoints.h"
+#include "app/runtime/settings/PreferenceDocumentProvider.h"
 
-#include "tools/video_export/VideoExportSnapshot.h"
+#include "export/video_export/VideoExportSnapshot.h"
 #include "common/DebugLog.h"
 #include "common/OperationLog.h"
-#include "common/WaveformCache.h"
+#include "audio/WaveformCache.h"
 
 #include <QGuiApplication>
 #include <QCommandLineOption>
@@ -51,6 +52,9 @@ namespace miacode::app::entry {
 int runCliVideoExportWorker(QGuiApplication& app, QString* errorMessage)
 {
     MC_OP("runCliVideoExportWorker");
+    // The export renders the HUD and reads export settings through the
+    // preference port, exactly as the GUI process does.
+    miacode::runtime::installPreferenceDocumentProvider();
     QString workerJobId;
     try {
     QCommandLineParser parser;

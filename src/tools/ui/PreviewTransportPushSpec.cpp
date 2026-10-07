@@ -230,7 +230,7 @@ int main(int argc, char** argv)
                && exportSnapshot.contains(QStringLiteral("clearAuditionSceneReady()")),
            QStringLiteral("the export audition registers and releases its scene"), out, &failed);
     const QString latencySandbox = readSource(
-        QStringLiteral("src/tools/latency/LatencySandboxController.cpp"));
+        QStringLiteral("src/app/runtime/latency/LatencySandboxController.cpp"));
     expect(latencySandbox.contains(QStringLiteral("setAuditionSceneReady("))
                && latencySandbox.contains(QStringLiteral("clearAuditionSceneReady()")),
            QStringLiteral("the latency sandbox registers and releases its scene"), out, &failed);

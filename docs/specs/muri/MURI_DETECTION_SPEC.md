@@ -1,9 +1,9 @@
 ---
 lifecycle: stable-current
 canonical_id: muri.detection
-owner: src/tools/muri
+owner: src/core/analysis
 last_verified: 2026-09-11
-code_anchors: ["src/tools/muri/MuriAnalyzer.cpp", "src/tools/muri/MuriStaticChecker.cpp", "src/tools/muri/MuriSpec.cpp"]
+code_anchors: ["src/core/analysis/MuriAnalyzer.cpp", "src/core/analysis/MuriStaticChecker.cpp", "src/tools/muri/MuriSpec.cpp"]
 ---
 
 # 无理检测规则与行为规格

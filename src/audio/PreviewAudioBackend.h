@@ -3,10 +3,10 @@
 #include <QString>
 #include <QVector>
 
-#include "common/PreviewSfxTimeline.h"
-#include "common/PreviewTimingSettings.h"
-#include "PreviewAudioSettings.h"
-#include "PreviewAudioHealth.h"
+#include "core/scene/PreviewSfxTimeline.h"
+#include "core/video/PreviewTimingSettings.h"
+#include "audio/PreviewAudioSettings.h"
+#include "audio/PreviewAudioHealth.h"
 
 namespace miacode::preview_audio {
 

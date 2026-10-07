@@ -1,22 +1,22 @@
 #include "common/LocalizedText.h"
 
-#include "runtime/export/VideoExportHost.h"
+#include "app/runtime/export/VideoExportHost.h"
 #include "app/services/JobProgressService.h"
-#include "runtime/Shared.h"
-#include "runtime/playback/PlaybackCoordinator.h"
-#include "runtime/shell/ShellHost.h"
+#include "app/runtime/Shared.h"
+#include "app/runtime/playback/PlaybackCoordinator.h"
+#include "app/runtime/shell/ShellHost.h"
 
-#include "QtPreviewSfxRuntime.h"
-#include "SimaiParser.h"
-#include "common/ChartAssetPaths.h"
+#include "audio/QtPreviewSfxRuntime.h"
+#include "core/chart/parser/SimaiParser.h"
+#include "core/chart/ChartAssetPaths.h"
 #include "common/DebugLog.h"
 #include "common/DebugOptions.h"
 #include "common/GpuDevicePolicy.h"
 #include "common/OperationLog.h"
-#include "common/WaveformCache.h"
+#include "audio/WaveformCache.h"
 #include "preview/runtime/PreviewRuntime.h"
-#include "tools/video_export/VideoExportController.h"
-#include "tools/video_export/VideoExportRuntimePolicy.h"
+#include "export/video_export/VideoExportController.h"
+#include "export/video_export/VideoExportRuntimePolicy.h"
 
 #include <QtCore>
 #include <QtGui>

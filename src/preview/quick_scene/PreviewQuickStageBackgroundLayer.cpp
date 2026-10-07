@@ -1,6 +1,6 @@
 #include "preview/quick_scene/PreviewQuickStageBackgroundLayer.h"
 
-#include "common/PreviewVideoGeometryConfig.h"
+#include "core/video/PreviewVideoGeometryConfig.h"
 #include "preview/quick_scene/PreviewTextureRepository.h"
 #include "core/scene/PreviewSceneGeometry.h"
 
@@ -412,9 +412,7 @@ QSGNode* PreviewQuickStageBackgroundLayer::updateNode(
         profile.mediaToImageMs = 0.0;
     }
     profile.mediaFrameCount = hasMedia ? 1 : 0;
-#ifdef HAVE_QT_MULTIMEDIA
     profile.videoFrameCount = usesExternalMedia ? 0 : (state.media.videoFrame.isValid() ? 1 : 0);
-#endif
     profile.staticImageFrameCount =
         !usesExternalMedia && media.sourceKind == StageMediaSourceKind::StaticImage ? 1 : 0;
 

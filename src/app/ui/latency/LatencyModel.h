@@ -3,7 +3,7 @@
 #include <QObject>
 #include <QString>
 
-#include "tools/latency/LatencyAnalysis.h"
+#include "app/runtime/latency/LatencyAnalysis.h"
 
 #include "app/services/LatencyEngine.h"
 

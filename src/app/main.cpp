@@ -1,18 +1,21 @@
 #include "AppVersion.h"
-#include "ui/Bootstrap.h"
-#include "preferences/PreferenceDocument.h"
-#include "preferences/LocaleService.h"
+#include "app/ui/Bootstrap.h"
+#include "app/services/PreferenceDocument.h"
+#include "app/runtime/settings/PreferenceDocumentProvider.h"
+#include "app/ui/preferences/LocaleService.h"
 #include "common/CrashRecovery.h"
 #include "common/DebugLog.h"
 #include "common/OperationLog.h"
 #include "common/ProcessDiagnostics.h"
 #include "common/UiHangWatchdog.h"
 #include "common/DebugOptions.h"
-#include "common/WaveformCache.h"
-#include "audio/PreviewBassDefaultDevice.h"
-#include "SimaiParser.h"
+#include "audio/WaveformCache.h"
+#include "audio/bass/BassPreviewAudioBackend.h"
+#include "audio/bass/PreviewBassDefaultDevice.h"
+#include "core/chart/parser/SimaiParser.h"
 
 #include <QCoreApplication>
+#include <QtQml/qqmlextensionplugin.h>
 #include <QCommandLineOption>
 #include <QCommandLineParser>
 #include <QDateTime>
@@ -54,7 +57,7 @@
 #pragma comment(lib, "version.lib")
 #endif
 
-#include "MainEntrypoints.h"
+#include "app/MainEntrypoints.h"
 
 namespace {
 
@@ -151,6 +154,12 @@ QString summarizeTopLevelWindows()
 
 using namespace miacode::app::entry;
 
+// MiaCode.Preview and MiaCode.Timeline are static QML modules linked from
+// miacode_preview_quick and miacode_timeline_quick; every engine in this
+// process (UI, preview composite, cover composer, export) resolves them here.
+Q_IMPORT_QML_PLUGIN(MiaCode_PreviewPlugin)
+Q_IMPORT_QML_PLUGIN(MiaCode_TimelinePlugin)
+
 int main(int argc, char* argv[])
 {
     // Phase 6 — startup beacon. Heap-free, pure-Win32. Lands a tiny
@@ -200,6 +209,11 @@ int main(int argc, char* argv[])
 #endif
 
     MC_OP("main");
+
+    // Every role of this executable plays preview audio through BASS; install
+    // it before anything can construct a preview audio worker.
+    miacode::preview_audio::installPreviewAudioBackendProvider(
+        miacode::preview_audio::bassPreviewAudioBackendProvider());
 
     // Negative HS (`<HS*-N>`) is ON by default. The opt-out escape hatch
     // MIACODE_PREVIEW_REJECT_NEGATIVE_HS restores the strict reject-hs<=0
@@ -575,6 +589,9 @@ int main(int argc, char* argv[])
     // CLI export / worker runs above must never touch it (they open
     // charts through the same MainWindow code paths).
     miacode::crash_recovery::setSessionMarkerEnabled(true);
+
+    // Library code reaches preferences.json only through this provider.
+    miacode::runtime::installPreferenceDocumentProvider();
 
     QQuickStyle::setStyle(QStringLiteral("Basic"));
 

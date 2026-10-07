@@ -9,7 +9,7 @@
 // definition across TUs. Helpers used by exactly one resulting TU stayed in
 // that TU's own anonymous namespace.
 
-#include "runtime/Shared.h"
+#include "app/runtime/Shared.h"
 
 #include <algorithm>
 

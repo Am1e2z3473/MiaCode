@@ -1,4 +1,4 @@
-#include "PreviewAudioWorker.h"
+#include "audio/PreviewAudioWorker.h"
 
 #include "common/DebugLog.h"
 #include "common/DebugOptions.h"

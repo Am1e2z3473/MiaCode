@@ -1,7 +1,7 @@
 #include <QString>
 #include <QTextStream>
 
-#include "app/ProcessIdentityFields.h"
+#include "app/platform/ProcessIdentityFields.h"
 
 namespace {
 

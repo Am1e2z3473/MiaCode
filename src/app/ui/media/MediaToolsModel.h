@@ -7,7 +7,7 @@
 #include <QVariantList>
 #include <QVariantMap>
 
-#include "tools/media/PvBatchCompressionScanner.h"
+#include "media_tools/media/PvBatchCompressionScanner.h"
 
 #include <atomic>
 

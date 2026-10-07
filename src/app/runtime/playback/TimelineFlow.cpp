@@ -1,41 +1,42 @@
-﻿#include "runtime/playback/PlaybackCoordinator.h"
-#include "runtime/Shared.h"
-#include "runtime/media/MediaJobsHost.h"
-#include "runtime/document/DocumentSessionHost.h"
+﻿#include "app/runtime/playback/PlaybackCoordinator.h"
+#include "app/runtime/Shared.h"
+#include "app/runtime/media/MediaJobsHost.h"
+#include "app/runtime/document/DocumentSessionHost.h"
 
 #include "app/services/ApplicationServices.h"
 #include "app/services/LatencyEngine.h"
 
-#include "QtPreviewSfxRuntime.h"
-#include "SimaiParser.h"
-#include "MainEntrypoints.h"
+#include "audio/QtPreviewSfxRuntime.h"
+#include "audio/bass/OfflineAudioDecoder.h"
+#include "core/chart/parser/SimaiParser.h"
+#include "app/platform/PlatformDiagnostics.h"
 #include "app/quick_shell/QuickShellPreviewCompositeSurface.h"
 #include "app/quick_shell/QuickShellPreviewSurfacePolicy.h"
-#include "common/ChartAssetPaths.h"
-#include "common/ChartClockCount.h"
-#include "common/ContentDurationConfig.h"
+#include "core/chart/ChartAssetPaths.h"
+#include "core/chart/document/ChartClockCount.h"
+#include "app/runtime/ContentDurationConfig.h"
 #include "common/CrashRecovery.h"
 #include "common/OperationLog.h"
 #include "common/DebugLog.h"
 #include "common/ProcessDiagnostics.h"
 #include "common/DebugOptions.h"
-#include "common/PreviewInteractionConfig.h"
-#include "common/WaveformCache.h"
+#include "core/video/PreviewInteractionConfig.h"
+#include "audio/WaveformCache.h"
 #include "preview/runtime/PreviewRuntime.h"
-#include "preview/runtime/PreviewStageMediaHost.h"
+#include "preview/stage_media/PreviewStageMediaHost.h"
 #include "core/scene/PreviewProgressStatsCache.h"
 #include "core/chart/transform/ChartBatchTransform.h"
 #include "core/chart/transform/ChartNormalization.h"
-#include "timeline/TimelineMarkerOffset.h"
+#include "core/chart/model/TimelineMarkerOffset.h"
 #include "timeline/quick/TimelineQuickStateBridge.h"
-#include "tools/muri/MuriAnalyzer.h"
-#include "tools/muri/MuriPanelEntries.h"
-#include "tools/muri/MuriStaticChecker.h"
+#include "core/analysis/MuriAnalyzer.h"
+#include "core/analysis/MuriPanelEntries.h"
+#include "core/analysis/MuriStaticChecker.h"
 
 #include <QtCore>
 #include <QtGui>
 
-#include "runtime/playback/TimelineFlow.Internal.h"
+#include "app/runtime/playback/TimelineFlow.Internal.h"
 
 using namespace miacode::runtime::shared;
 using namespace miacode::runtime::preview_timeline_detail;
@@ -1082,6 +1083,7 @@ miacode::waveform::WaveformCacheService* miacode::runtime::PlaybackCoordinator::
 {
     if (state_.waveformCacheService_ == nullptr) {
         state_.waveformCacheService_ = new miacode::waveform::WaveformCacheService(&owner_);
+        state_.waveformCacheService_->setDecoder(miacode::audio_decode::bassAudioFileDecoder());
     }
     state_.waveformCacheService_->setThreadPool(
         state_.previewWarmupPool_ != nullptr ? state_.previewWarmupPool_ : QThreadPool::globalInstance());

@@ -148,7 +148,9 @@ int main(int argc, char** argv)
            QStringLiteral("QML no longer consumes a shell controller"), out, &failed);
 
     // 构建系统不得再引用已删除的源文件。
-    const QString cmake = readSource(QStringLiteral("CMakeLists.txt"));
+    // The product build is the root CMakeLists.txt plus its library manifest.
+    const QString cmake = readSource(QStringLiteral("CMakeLists.txt"))
+        + readSource(QStringLiteral("cmake/MiaCodeModules.cmake"));
     QStringList cmakeLeftovers;
     for (const QString& token : {QStringLiteral("QuickShellBootstrap"),
                                  QStringLiteral("QuickShellNativeSurfaceHost"),

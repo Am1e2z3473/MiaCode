@@ -1,6 +1,6 @@
-#include "runtime/document/DocumentSessionHost.h"
-#include "runtime/editor/EditorHost.h"
-#include "runtime/Shared.h"
+#include "app/runtime/document/DocumentSessionHost.h"
+#include "app/runtime/editor/EditorHost.h"
+#include "app/runtime/Shared.h"
 
 #include "common/OperationLog.h"
 #include "core/chart/transform/ChartBatchTransform.h"

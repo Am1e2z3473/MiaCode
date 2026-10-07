@@ -1,15 +1,15 @@
 #include "common/LocalizedText.h"
 
-#include "runtime/export/VideoExportHost.h"
-#include "runtime/Shared.h"
-#include "runtime/document/DocumentSessionHost.h"
-#include "runtime/shell/ShellHost.h"
+#include "app/runtime/export/VideoExportHost.h"
+#include "app/runtime/Shared.h"
+#include "app/runtime/document/DocumentSessionHost.h"
+#include "app/runtime/shell/ShellHost.h"
 
 #include "app/services/JobProgressService.h"
 #include "app/services/UiRequestService.h"
 #include "common/DebugLog.h"
 #include "common/OperationLog.h"
-#include "tools/zip_export/ChartZipPackager.h"
+#include "media_tools/zip_export/ChartZipPackager.h"
 
 #include <QCoreApplication>
 #include <QDesktopServices>

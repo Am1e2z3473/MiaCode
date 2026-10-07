@@ -1,10 +1,10 @@
-#include "runtime/playback/PlaybackCoordinator.h"
-#include "runtime/Session.h"
+#include "app/runtime/playback/PlaybackCoordinator.h"
+#include "app/runtime/Session.h"
 
 #include "common/DebugLog.h"
 #include "common/OperationLog.h"
-#include "tools/latency/LatencySandboxController.h"
-#include "tools/video_export/VideoExportController.h"  // IntroBannerSpec (export-page intro lead-in)
+#include "app/runtime/latency/LatencySandboxController.h"
+#include "export/video_export/VideoExportController.h"  // IntroBannerSpec (export-page intro lead-in)
 
 #include <QtCore>
 

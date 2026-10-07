@@ -1,6 +1,6 @@
-#include "ApplicationServices.h"
+#include "app/services/ApplicationServices.h"
 
-#include "app/ui/preferences/PreferenceDocument.h"
+#include "app/services/PreferenceDocument.h"
 
 namespace miacode {
 

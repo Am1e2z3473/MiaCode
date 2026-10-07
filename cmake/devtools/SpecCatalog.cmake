@@ -27,7 +27,6 @@ endfunction()
 function(add_dependencies)
 endfunction()
 
-include("${CMAKE_CURRENT_LIST_DIR}/SharedSources.cmake")
 include("${CMAKE_CURRENT_LIST_DIR}/MiaCodeSpecRegistry.cmake")
 include("${CMAKE_CURRENT_LIST_DIR}/specs/index.cmake")
 miacode_finalize_spec_registry()

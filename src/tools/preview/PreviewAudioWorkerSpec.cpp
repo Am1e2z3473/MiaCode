@@ -19,9 +19,9 @@
 #include <vector>
 
 #include "audio/PreviewAudioWorker.h"
-#include "audio/PreviewBassDefaultDevice.h"
+#include "audio/bass/PreviewBassDefaultDevice.h"
 #include "audio/QtPreviewSfxRuntime.h"
-#include "audio/BassPreviewAudioBackend.h"
+#include "audio/bass/BassPreviewAudioBackend.h"
 #ifdef Q_OS_WIN
 #include "bass.h"
 #endif
@@ -65,7 +65,7 @@ bool verifyWindowsBassFxLoaderCachesImmediateErrors(QTextStream& err)
 {
     QFile file(
         QStringLiteral(MIACODE_SOURCE_ROOT)
-        + QStringLiteral("/src/audio/BassPreviewAudioBackend_EngineInit.cpp"));
+        + QStringLiteral("/src/audio/bass/BassPreviewAudioBackend_EngineInit.cpp"));
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
         return expect(false, "BASS engine-init source is readable", err);
     }
@@ -115,7 +115,7 @@ bool verifyBassDefaultDeviceEntryIsSettledAtStartup(QTextStream& err)
     QFile mainFile(QStringLiteral(MIACODE_SOURCE_ROOT) + QStringLiteral("/src/app/main.cpp"));
     QFile engineFile(
         QStringLiteral(MIACODE_SOURCE_ROOT)
-        + QStringLiteral("/src/audio/BassPreviewAudioBackend_EngineInit.cpp"));
+        + QStringLiteral("/src/audio/bass/BassPreviewAudioBackend_EngineInit.cpp"));
     if (!mainFile.open(QIODevice::ReadOnly | QIODevice::Text)
         || !engineFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
         return expect(false, "main and BASS engine-init sources are readable", err);
@@ -1781,6 +1781,8 @@ bool verifyProductionBassFactoryRunsOnWorker(QTextStream& err)
         return token == 0 ? quint64(1) : token;
     };
     const quint64 callerThreadId = threadToken(callerThread);
+    // The production factory is whatever the host installed; MiaCode installs BASS.
+    installPreviewAudioBackendProvider(bassPreviewAudioBackendProvider());
     PreviewAudioWorker worker(
         [state, threadToken] {
             std::unique_ptr<PreviewAudioBackend> backend =

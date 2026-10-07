@@ -1,9 +1,9 @@
-#include "layout/WorkbenchSettings.h"
+#include "app/ui/layout/WorkbenchSettings.h"
 
-#include "runtime/Shared.h"
+#include "app/runtime/Shared.h"
 #include "AppVersion.h"
-#include "ui/preferences/PreferenceDocument.h"
-#include "ui/theme/ThemeVariantResolver.h"
+#include "app/services/PreferenceDocument.h"
+#include "app/ui/theme/ThemeVariantResolver.h"
 
 #include <QCoreApplication>
 #include <QGuiApplication>

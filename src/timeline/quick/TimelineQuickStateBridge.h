@@ -12,9 +12,9 @@
 
 #include <memory>
 
-#include "common/TimelineThemeConfig.h"
-#include "common/MuriTypes.h"
-#include "common/WaveformCache.h"
+#include "timeline/TimelineThemeConfig.h"
+#include "core/analysis/MuriTypes.h"
+#include "audio/WaveformCache.h"
 #include "timeline/TimelineRenderData.h"
 #include "timeline/TimelineSceneState.h"
 

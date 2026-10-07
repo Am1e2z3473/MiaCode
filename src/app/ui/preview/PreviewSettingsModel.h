@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QObject>
+#include <QFont>
 #include <QString>
 #include <QVariant>
 #include <QVariantList>
@@ -55,6 +56,7 @@ class PreviewSettingsModel final : public QObject
     Q_PROPERTY(int hudFontAreaIndex READ hudFontAreaIndex WRITE setHudFontAreaIndex NOTIFY hudFontChanged)
     Q_PROPERTY(QString hudFontPath READ hudFontPath WRITE setHudFontPath NOTIFY hudFontChanged)
     Q_PROPERTY(QString hudFontSample READ hudFontSample NOTIFY hudFontChanged)
+    Q_PROPERTY(QFont hudFont READ hudFont NOTIFY hudFontChanged)
 
 public:
     // No MainWindow: the settings page reaches the live preview through the
@@ -90,6 +92,7 @@ public:
     int hudFontAreaIndex() const;
     QString hudFontPath() const;
     QString hudFontSample() const;
+    QFont hudFont() const;
 
     void setSkinIndex(int index);
     void setSkinJudgeEffectIndex(int index);

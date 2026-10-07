@@ -2,7 +2,7 @@
 // video-frame conversion, timers, and logging; this helper receives only facts
 // already computed by that host.
 
-#include "preview/runtime/PvMemoryDiagnostics.h"
+#include "preview/stage_media/PvMemoryDiagnostics.h"
 
 #include <QFile>
 #include <QTextStream>
@@ -47,8 +47,8 @@ const Record* findRecord(const QVector<Record>& records, RecordAction action, co
 bool helperInterfaceIsScalarOnly(QTextStream& err)
 {
     const QStringList helperFiles {
-        QStringLiteral(MIACODE_SOURCE_ROOT "/src/preview/runtime/PvMemoryDiagnostics.h"),
-        QStringLiteral(MIACODE_SOURCE_ROOT "/src/preview/runtime/PvMemoryDiagnostics.cpp"),
+        QStringLiteral(MIACODE_SOURCE_ROOT "/src/preview/stage_media/PvMemoryDiagnostics.h"),
+        QStringLiteral(MIACODE_SOURCE_ROOT "/src/preview/stage_media/PvMemoryDiagnostics.cpp"),
     };
     for (const QString& path : helperFiles) {
         QFile helperFile(path);

@@ -1,9 +1,9 @@
-#include "AnalysisService.h"
+#include "app/services/AnalysisService.h"
 
-#include "common/MuriConfig.h"
+#include "core/analysis/MuriConfig.h"
 #include "common/TaskCancellation.h"
 #include "core/chart/document/SimaiTimingMetadata.h"
-#include "timeline/TimelineMarkerOffset.h"
+#include "core/chart/model/TimelineMarkerOffset.h"
 
 #include <QMetaObject>
 #include <QPointer>

@@ -71,7 +71,7 @@ int main(int argc, char** argv)
     const QString settings = readFile(QStringLiteral("src/app/ui/layout/WorkbenchSettings.cpp"));
     const QString settingsHeader = readFile(QStringLiteral("src/app/ui/layout/WorkbenchSettings.h"));
     const QString themeQml = readFile(QStringLiteral("src/app/ui/theme/Theme.qml"));
-    const QString preferencesStore = readFile(QStringLiteral("src/app/ui/preferences/PreferenceDocument.cpp"));
+    const QString preferencesStore = readFile(QStringLiteral("src/app/services/PreferenceDocument.cpp"));
     bool ok = require(!settings.isEmpty() && !settingsHeader.isEmpty() && !themeQml.isEmpty()
                           && !preferencesStore.isEmpty(),
                       QStringLiteral("the settings, Theme.qml and PreferenceDocument sources are readable"), err);

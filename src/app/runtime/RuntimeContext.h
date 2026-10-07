@@ -6,29 +6,29 @@
 #include <QtCore>
 #include <QtGui>
 
-#include "PreviewAudioSettings.h"
-#include "PreviewRenderSettings.h"
-#include "SimaiDocument.h"
-#include "SimaiParser.h"
-#include "SimaiTimingMetadata.h"
-#include "common/MuriRenderOptions.h"
-#include "common/MuriTypes.h"
-#include "common/PreviewGameplayConfig.h"
-#include "common/PreviewTimingSettings.h"
-#include "common/PreviewVideoGeometryConfig.h"
+#include "audio/PreviewAudioSettings.h"
+#include "core/video/PreviewRenderSettings.h"
+#include "core/chart/document/SimaiDocument.h"
+#include "core/chart/parser/SimaiParser.h"
+#include "core/chart/document/SimaiTimingMetadata.h"
+#include "core/analysis/MuriRenderOptions.h"
+#include "core/analysis/MuriTypes.h"
+#include "core/video/PreviewGameplayConfig.h"
+#include "core/video/PreviewTimingSettings.h"
+#include "core/video/PreviewVideoGeometryConfig.h"
 #include "core/chart/transform/ChartNormalization.h"
 #include "app/services/PlaybackControl.h"
-#include "timeline/TimelineData.h"
+#include "core/chart/model/TimelineData.h"
 #include "timeline/TimelineQuickModel.h"
-#include "timeline/TimelineSlowRefresh.h"
-#include "tools/video_export/VideoExportSnapshot.h"
+#include "core/analysis/TimelineSlowRefresh.h"
+#include "export/video_export/VideoExportSnapshot.h"
 
 class IntroBannerSpec;
 class PreviewAudioDeviceWatcher;
 class PreviewRuntime;
 class PreviewStageMediaHost;
-namespace miacode::ui {
-class ExportSession;
+namespace miacode {
+class ExportPagePort;
 }
 class QtPreviewSfxRuntime;
 class QuickShellPreviewCompositeSurface;
@@ -171,7 +171,7 @@ public:
     };
 
 #define MIACODE_RUNTIME_CONTEXT_TYPES 1
-#include "runtime/SessionMembers.inc"
+#include "app/runtime/SessionMembers.inc"
 #undef MIACODE_RUNTIME_CONTEXT_TYPES
 
     // Declaration order is load-bearing: `state` binds compatibility references

@@ -7,9 +7,9 @@
 // holds the Session::-owned storage-value parsing and thin read accessors
 // that used to share that TU.
 
-#include "runtime/playback/PlaybackCoordinator.h"
-#include "runtime/Session.h"
-#include "runtime/Shared.h"
+#include "app/runtime/playback/PlaybackCoordinator.h"
+#include "app/runtime/Session.h"
+#include "app/runtime/Shared.h"
 
 void Session::setPreviewFixedTimerHighResolutionActive(bool active)
 {

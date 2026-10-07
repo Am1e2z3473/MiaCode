@@ -1,30 +1,28 @@
 #include "common/LocalizedText.h"
 
-#include "Bootstrap.h"
+#include "app/ui/Bootstrap.h"
 
 #include "AppVersion.h"
-#include "ApplicationContext.h"
+#include "app/ui/ApplicationContext.h"
 #include "app/services/update/NetworkUpdateFetcher.h"
 #include "app/services/update/PreferenceUpdateStateStore.h"
 #include "app/services/update/UpdateManifest.h"
 #include "app/services/update/UpdateService.h"
-#include "app/ui/preferences/PreferenceDocument.h"
-#include "preview/NoteImageProvider.h"
-#include "export/CoverExportWindow.h"
-#include "chrome/WindowChrome.h"
-#include "MainEntrypoints.h"
-#include "runtime/Session.h"
+#include "app/services/PreferenceDocument.h"
+#include "app/ui/preview/NoteImageProvider.h"
+#include "app/ui/export/CoverExportWindow.h"
+#include "app/ui/export/ExportSession.h"
+#include "app/ui/chrome/WindowChrome.h"
+#include "app/platform/PlatformDiagnostics.h"
+#include "app/runtime/Session.h"
 #include "app/services/ApplicationServices.h"
-#include "chrome/NativeWindowTheme.h"
-#include "ui/preferences/LocaleService.h"
-#include "drop/ChartDropBridge.h"
-#include "document/DocumentModel.h"
-#include "layout/PageHost.h"
+#include "app/ui/chrome/NativeWindowTheme.h"
+#include "app/ui/preferences/LocaleService.h"
+#include "app/ui/drop/ChartDropBridge.h"
+#include "app/ui/document/DocumentModel.h"
+#include "app/ui/layout/PageHost.h"
 #include "common/DebugLog.h"
 #include "common/OperationLog.h"
-#include "preview/quick_scene/PreviewQuickHudLayer.h"
-#include "preview/quick_scene/PreviewQuickSceneRoot.h"
-#include "timeline/quick/TimelineQuickItem.h"
 
 #include <QCoreApplication>
 #include <QGuiApplication>
@@ -39,18 +37,6 @@
 
 namespace miacode::ui {
 namespace {
-
-void ensurePreviewQuickTypesRegistered()
-{
-    static bool registered = false;
-    if (registered) {
-        return;
-    }
-    registered = true;
-    qmlRegisterType<PreviewQuickSceneRoot>("MiaCode.Preview", 1, 0, "PreviewQuickSceneRoot");
-    qmlRegisterType<PreviewQuickHudLayer>("MiaCode.Preview", 1, 0, "PreviewQuickHudLayer");
-    qmlRegisterType<TimelineQuickItem>("MiaCode.Timeline", 1, 0, "TimelineQuickItem");
-}
 
 void appendUiRuntimeLog(const QString& action, const QString& payload = QString())
 {
@@ -117,6 +103,24 @@ bool Bootstrap::start(const QString& startupOpenTarget)
             updateService_.get(), &miacode::update::UpdateService::setLanguageToken);
     applicationServices_->setUpdateFetcher(updateFetcher_.get());
     applicationServices_->setUpdateService(updateService_.get());
+    // The runtime creates its export page through this factory while it
+    // assembles, parented to the session; range requests drive its playback.
+    applicationServices_->setExportPageFactory(
+        [services = applicationServices_.get()](QObject* parent) -> miacode::ExportPagePort* {
+            auto* session = new miacode::ui::ExportSession(
+                services->shellNotifications(), services->uiRequests(),
+                services->jobProgress(), services->previewAppearance(),
+                services->exportEngineSlot(), services->previewSurfaceSlot(),
+                parent);
+            services->setExportPageSession(session);
+            QObject::connect(session, &miacode::ui::ExportSession::playbackRangeRequested,
+                parent, [services](bool enabled, double startSecond, double endSecond) {
+                    if (auto* control = services->playbackControl(); control != nullptr) {
+                        control->setPlaybackRangeEnabled(enabled, startSecond, endSecond);
+                    }
+                });
+            return session;
+        });
     backend_ = std::make_unique<Session>(*applicationServices_);
     backend_->setBackendActive(true);
     appendUiRuntimeLog(QStringLiteral("backend_ready"));
@@ -142,7 +146,6 @@ bool Bootstrap::start(const QString& startupOpenTarget)
     engine_->addImportPath(QCoreApplication::applicationDirPath() + QStringLiteral("/qml"));
     registerNoteImageProvider(
         engine_.get(), static_cast<PreviewModel*>(applicationContext_->preview()));
-    ensurePreviewQuickTypesRegistered();
 
     windowChrome_ = std::make_unique<WindowChrome>(this);
     if (auto* settings = qobject_cast<WorkbenchSettings*>(applicationContext_->preferences())) {

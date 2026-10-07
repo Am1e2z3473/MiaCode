@@ -446,7 +446,7 @@ void runRealisticScenarioDemos(const QString& logPath, const QString& fatalPath)
     mainSim();
 
     // Scenario 5: Phase-3 audio init chain (area H). Mirrors the
-    // actual MC_OP stack in src/audio/BassPreviewAudioBackend.cpp:
+    // actual MC_OP stack in src/audio/bass/BassPreviewAudioBackend.cpp:
     //   reloadAssets → initializeAudioEngine → ensureBassFxLoaded
     // when bass_fx.dll is missing from the runtime install. Each
     // layer emits its own fail() with the underlying error code so

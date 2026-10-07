@@ -1,6 +1,6 @@
 #pragma once
 
-#include "runtime/Session.h"
+#include "app/runtime/Session.h"
 #include "common/LocalizedText.h"
 
 #include "app/services/MediaToolsEngine.h"

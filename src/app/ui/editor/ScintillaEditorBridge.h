@@ -1,9 +1,9 @@
 #pragma once
 
-#include "editor/ScintillaDslStyler.h"
-#include "editor/EditorController.h"
-#include "document/DocumentModel.h"
-#include "document/AnalysisModel.h"
+#include "app/ui/editor/ScintillaDslStyler.h"
+#include "app/ui/editor/EditorController.h"
+#include "app/ui/document/DocumentModel.h"
+#include "app/ui/document/AnalysisModel.h"
 #include "app/services/EditorSyncController.h"
 #include <QtQmlIntegration/qqmlintegration.h>
 #include <optional>
