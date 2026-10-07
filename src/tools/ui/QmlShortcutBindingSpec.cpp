@@ -80,16 +80,27 @@ int main(int argc, char** argv)
     miacode::ui::ShortcutModel model;
     const QStringList boundIds = miacode::ui::shortcutCommandIds();
 
-    // Every id v2 binds must be one the registry actually knows, or the QML
-    // Shortcut resolves to an empty sequence and is silently inert — the exact
-    // shape of the gap that left chart transforms unreachable in v2.
+    // A declared command can intentionally have no default binding. Identity,
+    // rather than a nonempty sequence, determines whether it is configurable.
+    QSet<QString> editableIds;
+    for (const auto& definition : miacode::ui::ShortcutRegistry::instance().editableShortcuts()) {
+        editableIds.insert(definition.id);
+    }
     QStringList unknown;
     for (const QString& id : boundIds) {
-        if (model.sequence(id).isEmpty()) unknown.append(id);
+        if (!editableIds.contains(id)) unknown.append(id);
     }
     if (!unknown.isEmpty()) out << "  unknown ids: " << unknown.join(QStringLiteral(", ")) << '\n';
     expect(unknown.isEmpty(),
-           QStringLiteral("every bound command id resolves to a real registry sequence"), out, &failed);
+           QStringLiteral("every bound command id resolves to an editable registry definition"), out, &failed);
+
+    for (const QString& id : {QStringLiteral("transform.clear_complete_elements"),
+                              QStringLiteral("transform.reset_tap_notes")}) {
+        expect(editableIds.contains(id) && boundIds.contains(id)
+                   && miacode::ui::ShortcutRegistry::instance().defaultShortcutText(id).isEmpty(),
+               QStringLiteral("%1 remains configurable and dispatched without assigning a default binding").arg(id),
+               out, &failed);
+    }
 
     const QSet<QString> uniqueIds(boundIds.cbegin(), boundIds.cend());
     expect(!boundIds.isEmpty() && boundIds.size() == uniqueIds.size(),

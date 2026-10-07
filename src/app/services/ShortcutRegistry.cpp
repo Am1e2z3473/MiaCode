@@ -1,14 +1,15 @@
 #include "app/services/ShortcutRegistry.h"
+#include "app/services/PreferenceJsonFile.h"
 
 #include "common/InputShortcutGesture.h"
 
 #include <QCoreApplication>
 #include <QDir>
-#include <QFile>
 #include <QJsonArray>
-#include <QJsonDocument>
 #include <QJsonObject>
 #include <QJsonValue>
+
+#include <utility>
 
 
 namespace miacode::ui {
@@ -64,6 +65,13 @@ ShortcutRegistry& ShortcutRegistry::instance()
 }
 
 ShortcutRegistry::ShortcutRegistry()
+    : ShortcutRegistry(userOverridePath(), QDir(QDir::currentPath()).filePath(QStringLiteral("shortcuts.json")))
+{
+    useCurrentCwd_ = true;
+}
+
+ShortcutRegistry::ShortcutRegistry(QString overridePath, QString cwdOverridePath)
+    : overridePath_(std::move(overridePath)), cwdOverridePath_(std::move(cwdOverridePath))
 {
     reload();
 }
@@ -80,12 +88,20 @@ void ShortcutRegistry::reload()
 
     loadDefaults();
 
-    const QString appOverride = userOverridePath();
-    loadOverrideFile(appOverride);
-    const QString cwdOverride =
-        QDir(QDir::currentPath()).filePath(QStringLiteral("shortcuts.json"));
-    if (QDir::cleanPath(cwdOverride) != QDir::cleanPath(appOverride)) {
-        loadOverrideFile(cwdOverride);
+    if (useCurrentCwd_) {
+        cwdOverridePath_ = QDir(QDir::currentPath()).filePath(QStringLiteral("shortcuts.json"));
+    }
+    loadOverrideFile(overridePath_, true);
+    if (!cwdOverridePath_.isEmpty()
+        && QDir::cleanPath(cwdOverridePath_) != QDir::cleanPath(overridePath_)) {
+        loadOverrideFile(cwdOverridePath_);
+    }
+    const auto extensions = extensionDefinitions_.values();
+    for (const ShortcutDefinition& definition : extensions) {
+        registerExtensionShortcut(definition.id, definition.labelEn, definition.defaultSequence);
+    }
+    for (auto it = pendingChanges_.constBegin(); it != pendingChanges_.constEnd(); ++it) {
+        applyRuntimeShortcut(it.key(), it.value());
     }
 }
 
@@ -140,9 +156,13 @@ bool ShortcutRegistry::registerExtensionShortcut(
         validDefault,
         defaultText,
     });
+    extensionDefinitions_.insert(normalizedId, definitions_.value(normalizedId));
     if (!validDefault.isEmpty()) {
         defaultShortcuts_.insert(normalizedId, validDefault);
         defaultShortcutTexts_.insert(normalizedId, defaultText);
+    } else {
+        defaultShortcuts_.remove(normalizedId);
+        defaultShortcutTexts_.remove(normalizedId);
     }
     if (!editableShortcutIds_.contains(normalizedId)) {
         editableShortcutIds_.append(normalizedId);
@@ -171,11 +191,10 @@ bool ShortcutRegistry::setUserShortcutText(const QString& id, const QString& sho
     if (!editableShortcutIds_.contains(id) || normalized.isEmpty()) {
         return false;
     }
-    userOverrides_.insert(id, normalized);
-    if (!saveUserOverrides()) {
-        return false;
-    }
-    reload();
+    const PendingShortcut change{normalized, false};
+    pendingChanges_.insert(id, change);
+    applyRuntimeShortcut(id, change);
+    saveUserOverrides();
     return true;
 }
 
@@ -184,53 +203,39 @@ bool ShortcutRegistry::resetUserShortcut(const QString& id)
     if (!editableShortcutIds_.contains(id)) {
         return false;
     }
-    userOverrides_.remove(id);
-    if (!saveUserOverrides()) {
-        return false;
-    }
-    reload();
+    const PendingShortcut change{defaultShortcutText(id), true};
+    pendingChanges_.insert(id, change);
+    applyRuntimeShortcut(id, change);
+    saveUserOverrides();
     return true;
 }
 
 bool ShortcutRegistry::resetEditableShortcuts()
 {
     for (const QString& id : editableShortcutIds_) {
-        userOverrides_.remove(id);
+        const PendingShortcut change{defaultShortcutText(id), true};
+        pendingChanges_.insert(id, change);
+        applyRuntimeShortcut(id, change);
     }
-    if (!saveUserOverrides()) {
-        return false;
-    }
-    reload();
+    saveUserOverrides();
     return true;
 }
 
 void ShortcutRegistry::loadDefaults()
 {
-    QFile file(QStringLiteral(":/config/shortcuts.json"));
-    if (!file.open(QIODevice::ReadOnly)) {
-        return;
-    }
-    mergeJsonBytes(file.readAll());
+    mergeJsonObject(preference_json_file::read(QStringLiteral(":/config/shortcuts.json")).object);
 }
 
-void ShortcutRegistry::loadOverrideFile(const QString& path)
+void ShortcutRegistry::loadOverrideFile(const QString& path, bool recoverCorruption)
 {
-    QFile file(path);
-    if (!file.exists() || !file.open(QIODevice::ReadOnly)) {
-        return;
-    }
-    mergeJsonBytes(file.readAll());
+    // Only the app-owned write target is repaired. A CWD input remains an
+    // external higher-priority source, with errors logged and bytes preserved.
+    mergeJsonObject(recoverCorruption ? preference_json_file::load(path)
+                                     : preference_json_file::read(path).object);
 }
 
-void ShortcutRegistry::mergeJsonBytes(const QByteArray& bytes)
+void ShortcutRegistry::mergeJsonObject(const QJsonObject& root)
 {
-    QJsonParseError error;
-    const QJsonDocument document = QJsonDocument::fromJson(bytes, &error);
-    if (error.error != QJsonParseError::NoError || !document.isObject()) {
-        return;
-    }
-
-    const QJsonObject root = document.object();
     if (root.contains(QStringLiteral("editable"))) {
         editableShortcutIds_ = parseStringList(root.value(QStringLiteral("editable")));
     }
@@ -296,47 +301,80 @@ void ShortcutRegistry::mergeJsonBytes(const QByteArray& bytes)
     }
 }
 
-bool ShortcutRegistry::saveUserOverrides() const
+void ShortcutRegistry::applyRuntimeShortcut(const QString& id, const PendingShortcut& change)
 {
-    QJsonObject root;
-    root.insert(QStringLiteral("schema"), 1);
-    root.insert(
-        QStringLiteral("notes"),
-        QJsonArray{QStringLiteral("User shortcut overrides written by MiaCode preferences.")}
-    );
-
-    QJsonObject actions;
-    for (const QString& id : editableShortcutIds_) {
-        const QString shortcut = userOverrides_.value(id);
-        if (shortcut.isEmpty()) {
-            continue;
-        }
-        const ShortcutDefinition definition = definitions_.value(id);
-        QJsonObject object;
-        if (!definition.labelKey.isEmpty()) {
-            object.insert(QStringLiteral("label_key"), definition.labelKey);
-        }
-        if (!definition.labelZh.isEmpty()) {
-            object.insert(QStringLiteral("label_zh"), definition.labelZh);
-        }
-        if (!definition.labelEn.isEmpty()) {
-            object.insert(QStringLiteral("label_en"), definition.labelEn);
-        }
-        object.insert(QStringLiteral("shortcut"), shortcut);
-        actions.insert(id, object);
+    shortcutTexts_.insert(id, change.text);
+    shortcuts_.insert(id, QKeySequence(change.text, QKeySequence::PortableText));
+    if (change.reset) {
+        userOverrides_.remove(id);
+    } else {
+        userOverrides_.insert(id, change.text);
     }
-    root.insert(QStringLiteral("actions"), actions);
-
-    QFile file(userOverridePath());
-    const QFileInfo info(file);
-    if (!info.dir().exists() && !info.dir().mkpath(QStringLiteral("."))) {
-        return false;
-    }
-    if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
-        return false;
-    }
-    file.write(QJsonDocument(root).toJson(QJsonDocument::Indented));
-    return file.error() == QFileDevice::NoError;
 }
 
+bool ShortcutRegistry::saveUserOverrides()
+{
+    if (pendingChanges_.isEmpty()) {
+        return true;
+    }
+    const auto existing = preference_json_file::read(overridePath_);
+    if (existing.status == preference_json_file::ReadStatus::ReadError) {
+        return false;
+    }
+    // Preserve both known metadata and extension/vendor fields. Only shortcut
+    // fields explicitly edited in this session belong to this writer.
+    QJsonObject root = existing.object;
+    if (!root.contains(QStringLiteral("schema"))) {
+        root.insert(QStringLiteral("schema"), 1);
+    }
+    QJsonObject actions = root.value(QStringLiteral("actions")).toObject();
+    QJsonObject contextual = root.value(QStringLiteral("contextual")).toObject();
+    bool actionsChanged = false;
+    bool contextualChanged = false;
+    for (auto it = pendingChanges_.constBegin(); it != pendingChanges_.constEnd(); ++it) {
+        const QString& id = it.key();
+        const PendingShortcut& change = it.value();
+        if (change.reset) {
+            // Remove both owned fields so a lower app entry cannot resurrect an
+            // old UI override. Metadata and hand-authored defaults survive.
+            for (const bool context : {false, true}) {
+                QJsonObject& entries = context ? contextual : actions;
+                QJsonObject object = entries.value(id).toObject();
+                if (object.contains(QStringLiteral("shortcut"))) {
+                    object.remove(QStringLiteral("shortcut"));
+                    entries.insert(id, object);
+                    (context ? contextualChanged : actionsChanged) = true;
+                }
+            }
+            QString fallback = defaultShortcutText(id);
+            for (const QJsonObject& entries : {actions, contextual}) {
+                const QString candidate = parseShortcutObject(entries.value(id).toObject());
+                if (!candidate.isEmpty()) {
+                    fallback = candidate;
+                }
+            }
+            if (fallback == change.text) {
+                continue;
+            }
+        }
+        // contextual is applied after actions by the existing load contract.
+        const bool context = contextual.value(id).isObject();
+        QJsonObject& entries = context ? contextual : actions;
+        QJsonObject object = entries.value(id).toObject();
+        object.insert(QStringLiteral("shortcut"), change.text);
+        entries.insert(id, object);
+        (context ? contextualChanged : actionsChanged) = true;
+    }
+    if (actionsChanged) {
+        root.insert(QStringLiteral("actions"), actions);
+    }
+    if (contextualChanged) {
+        root.insert(QStringLiteral("contextual"), contextual);
+    }
+    if (!preference_json_file::write(overridePath_, root)) {
+        return false;
+    }
+    pendingChanges_.clear();
+    return true;
+}
 } // namespace miacode::ui
