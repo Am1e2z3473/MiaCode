@@ -330,7 +330,7 @@ miacode_add_spec(ui_text_locale_spec
         src/tools/ui_text/UiTextLocaleSpec.cpp
         src/app/services/PreferenceDocument.h
         src/app/services/PreferenceDocument.cpp
-    LIBS Qt6::Core
+    LIBS miacode_base Qt6::Core
     INCLUDES src
 )
 target_compile_definitions(ui_text_locale_spec PRIVATE
@@ -360,6 +360,6 @@ miacode_add_spec(ui_text_preferences_spec
         src/tools/ui_text/UiTextPreferencesSpec.cpp
         src/app/services/PreferenceDocument.h
         src/app/services/PreferenceDocument.cpp
-    LIBS Qt6::Core
+    LIBS miacode_base Qt6::Core
     INCLUDES src
 )

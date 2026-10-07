@@ -17,7 +17,7 @@ miacode_add_spec(qml_app_background_model_spec
         src/app/ui/preferences/LocaleService.cpp
         src/app/services/UiRequestService.h
         src/app/services/UiRequestService.cpp
-    LIBS Qt6::Core Qt6::Gui Qt6::Qml
+    LIBS miacode_base Qt6::Core Qt6::Gui Qt6::Qml
     INCLUDES src
 )
 
@@ -129,7 +129,7 @@ miacode_add_spec(timeline_surface_ready_spec
         src/app/services/PreferenceDocument.h
         src/app/ui/preferences/LocaleService.cpp
         src/app/ui/preferences/LocaleService.h
-    LIBS Qt6::Core Qt6::Qml
+    LIBS miacode_base Qt6::Core Qt6::Qml
     INCLUDES src
 )
 target_compile_definitions(timeline_surface_ready_spec PRIVATE

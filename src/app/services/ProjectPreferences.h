@@ -10,7 +10,8 @@
 // All functions are no-ops / return empties when chartFilePath is empty
 // or its parent directory doesn't exist; callers don't need to defend.
 // Pure JSON-on-disk; no caching, no observer pattern. Read at load,
-// write at save.
+// write at save. Corrupt JSON is backed up before rebuilding an empty object;
+// IO/backup failures preserve the original. Writes use atomic replacement.
 
 #include <QJsonObject>
 #include <QString>
