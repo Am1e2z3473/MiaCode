@@ -60,7 +60,8 @@ private:
     bool initialized_ = false;
     bool dirty_ = false;
     bool unsupportedSchema_ = false;
-    bool legacyReadBlocked_ = false;
+    bool sourceReadBlocked_ = false;
+    QString unreadSourcePath_;
 };
 
 LanguagePreference resolvedLanguage();

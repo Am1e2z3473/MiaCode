@@ -12,6 +12,8 @@
 // Pure JSON-on-disk; no caching, no observer pattern. Read at load,
 // write at save. Corrupt JSON is backed up before rebuilding an empty object;
 // IO/backup failures preserve the original. Writes use atomic replacement.
+// A read IO failure blocks saves to that file for this process lifetime, even
+// after IO recovers, because callers may retain fallback compound settings.
 
 #include <QJsonObject>
 #include <QString>
