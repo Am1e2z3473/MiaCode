@@ -91,14 +91,14 @@ void WindowChrome::setMaterialRegions(const QVariantList& regions)
 #endif
 }
 
-void WindowChrome::attach(QWindow* window, bool persistWindowState)
+void WindowChrome::attach(QWindow* window, const QString& stateKey)
 {
     if (window == nullptr) {
         return;
     }
 
     window_ = window;
-    persistWindowState_ = persistWindowState;
+    stateKey_ = stateKey;
 
 #ifdef Q_OS_WIN
     nativeHandle_ = window->winId();
@@ -147,10 +147,6 @@ void WindowChrome::attach(QWindow* window, bool persistWindowState)
     setTitleBarLeadingInset(0);
 #endif
 
-    if (!persistWindowState_) {
-        return;
-    }
-
     // Restore client coordinates after the platform chrome establishes its
     // frame margins, using the same coordinate space as captureWindowState.
     restoreWindowState();
@@ -162,6 +158,18 @@ void WindowChrome::attach(QWindow* window, bool persistWindowState)
     connect(window, &QWindow::windowStateChanged, this, scheduleCapture);
     connect(window, &QWindow::visibilityChanged, this, scheduleCapture);
     connect(window, &QWindow::screenChanged, this, scheduleCapture);
+}
+
+void WindowChrome::showRestored()
+{
+    if (window_.isNull()) {
+        return;
+    }
+    if (maximized_) {
+        window_->showMaximized();
+    } else {
+        window_->showNormal();
+    }
 }
 
 void WindowChrome::minimize()
@@ -273,7 +281,7 @@ void WindowChrome::restoreWindowState()
 {
     const QJsonObject saved = PreferenceDocument::loadPreferencesObject()
         .value(QStringLiteral("ui")).toObject()
-        .value(QStringLiteral("main_window")).toObject();
+        .value(stateKey_).toObject();
     const QJsonObject geometry = saved.value(QStringLiteral("normal_geometry")).toObject();
     normalGeometry_ = QRect(geometry.value(QStringLiteral("x")).toInt(),
                             geometry.value(QStringLiteral("y")).toInt(),
@@ -348,13 +356,13 @@ void WindowChrome::captureWindowState()
 
 void WindowChrome::saveWindowState()
 {
-    if (window_.isNull() || !persistWindowState_) {
+    if (window_.isNull()) {
         return;
     }
     captureWindowState();
     QJsonObject root = PreferenceDocument::loadPreferencesObject();
     QJsonObject ui = root.value(QStringLiteral("ui")).toObject();
-    ui.insert(QStringLiteral("main_window"), QJsonObject{
+    ui.insert(stateKey_, QJsonObject{
         {QStringLiteral("normal_geometry"), QJsonObject{
              {QStringLiteral("x"), normalGeometry_.x()},
              {QStringLiteral("y"), normalGeometry_.y()},

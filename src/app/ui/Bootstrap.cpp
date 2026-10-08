@@ -268,7 +268,7 @@ bool Bootstrap::start(const QString& startupOpenTarget)
             detachedPreviewWindowChrome_ = std::make_unique<WindowChrome>(this);
             detachedPreviewWindowChrome_->setBlurMaterialsEnabled(windowChrome_->blurMaterialsEnabled());
             previewWindow->setIcon(appIcon_);
-            detachedPreviewWindowChrome_->attach(previewWindow, false);
+            detachedPreviewWindowChrome_->attach(previewWindow, QStringLiteral("preview_window"));
             previewWindow->setProperty("windowChrome",
                 QVariant::fromValue<QObject*>(detachedPreviewWindowChrome_.get()));
         }
@@ -355,6 +355,9 @@ void Bootstrap::beginAcceptedRootWindowShutdown(const QString& source)
     }
     if (!rootWindow_.isNull()) {
         windowChrome_->saveWindowState();
+        if (detachedPreviewWindowChrome_) {
+            detachedPreviewWindowChrome_->saveWindowState();
+        }
         rootWindow_->hide();
     }
     if (applicationServices_ != nullptr && applicationServices_->documentBridge() != nullptr
