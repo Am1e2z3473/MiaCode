@@ -15,7 +15,7 @@ Rectangle {
     property bool applicationMenusVisible: true
     property string documentTitle: ""
     property string titleText: (root.documentSession && root.documentSession.dirty ? "* " : "")
-                               + root.documentTitle
+        + (root.documentTitle.length > 0 ? root.documentTitle : Qt.application.name)
     property real leadingInset: 0
     property bool saveEnabled: true
     property bool wholeDocumentSaveEnabled: true

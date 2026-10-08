@@ -43,10 +43,13 @@ Item {
     readonly property bool chartEditorActive: documentSession.hasDocument
         && documentSession.currentDifficultyId > 0 && !pages.overlayActive
     readonly property alias mainMenuCommands: menuCommands
-    readonly property real minimumWidth: splitView.minimumWorkspaceWidth
+    readonly property string windowTitle: titleBar.titleText
+    readonly property real minimumWidth: Math.max(splitView.minimumWorkspaceWidth,
+        mainToolBar.minimumWidth, titleBar.minimumLeftMargin + titleBar.minimumRightMargin)
     readonly property real minimumHeight: chromeHost.height + statusBar.height
         + splitView.minimumHeight
-    readonly property bool compact: width < minimumWidth + splitView.expandedSidebarWidth
+    readonly property bool compact: width < splitView.minimumWorkspaceWidth
+        + splitView.expandedSidebarWidth
 
     ViewState { id: state }
 
@@ -381,6 +384,7 @@ Item {
                 editorSync: root.editorSync
                 latency: root.latency
                 compact: root.compact
+                documentTitle: root.documentTitle
                 onOpenRequested: openFileDialog.open()
                 onSettingsRequested: preferencesDialog.open()
                 onAudioSettingsRequested: audioSettingsDialog.open()

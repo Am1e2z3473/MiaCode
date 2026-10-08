@@ -123,14 +123,8 @@ void WindowChrome::attach(QWindow* window, const QString& stateKey)
     if (auto* quickWindow = qobject_cast<QQuickWindow*>(window)) {
         // Attach after the first scene-graph presentation, and repeat this
         // step when Qt recreates the rendering resources.
-        const auto refreshAfterPresentation = [this, quickWindow] {
-            QObject::connect(quickWindow, &QQuickWindow::frameSwapped, this,
-                [this] { materialUpdateTimer_.start(); },
-                Qt::ConnectionType(Qt::QueuedConnection | Qt::SingleShotConnection));
-            quickWindow->update();
-        };
         QObject::connect(quickWindow, &QQuickWindow::sceneGraphInitialized, this,
-            refreshAfterPresentation, Qt::QueuedConnection);
+            &WindowChrome::refreshMaterialAfterPresentation, Qt::QueuedConnection);
         QObject::connect(quickWindow, &QQuickWindow::sceneGraphInvalidated, this,
             [this] {
                 materialUpdateTimer_.stop();
@@ -138,7 +132,7 @@ void WindowChrome::attach(QWindow* window, const QString& stateKey)
                 setNativeMaterialAvailable(false);
             }, Qt::QueuedConnection);
         if (quickWindow->isSceneGraphInitialized()) {
-            refreshAfterPresentation();
+            refreshMaterialAfterPresentation();
         }
     }
     updateMacOsTitleBarMetrics(window);
@@ -239,6 +233,24 @@ void WindowChrome::refreshNativeMaterial()
 #endif
 }
 
+void WindowChrome::refreshMaterialAfterPresentation()
+{
+#ifdef Q_OS_MACOS
+    auto* quickWindow = qobject_cast<QQuickWindow*>(window_.data());
+    if (quickWindow == nullptr || materialPresentationPending_) {
+        return;
+    }
+    materialPresentationPending_ = true;
+    QObject::connect(
+        quickWindow, &QQuickWindow::frameSwapped, this,
+        [this] {
+            materialPresentationPending_ = false;
+            materialUpdateTimer_.start();
+        }, Qt::ConnectionType(Qt::QueuedConnection | Qt::SingleShotConnection));
+    quickWindow->update();
+#endif
+}
+
 bool WindowChrome::eventFilter(QObject* watched, QEvent* event)
 {
 #if defined(Q_OS_WIN) || defined(Q_OS_MACOS)
@@ -246,11 +258,15 @@ bool WindowChrome::eventFilter(QObject* watched, QEvent* event)
         if (event->type() == QEvent::Show) {
             // Apply after Qt has completed the native show operation.
             materialUpdateTimer_.start();
+            refreshMaterialAfterPresentation();
 #ifdef Q_OS_MACOS
         } else if (event->type() == QEvent::Expose
                 || event->type() == QEvent::WindowStateChange
                 || event->type() == QEvent::ScreenChangeInternal) {
             materialUpdateTimer_.start();
+            if (window_->isExposed()) {
+                refreshMaterialAfterPresentation();
+            }
 #endif
         } else if (event->type() == QEvent::PlatformSurface) {
             const auto* surfaceEvent = static_cast<QPlatformSurfaceEvent*>(event);

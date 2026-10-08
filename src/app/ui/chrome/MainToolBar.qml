@@ -30,6 +30,8 @@ Rectangle {
 
     readonly property real leadingActionsRight: leftActions.x + leftActions.width
     readonly property real trailingActionsWidth: width - rightActions.x
+    readonly property real minimumWidth: leftActions.anchors.leftMargin + leftActions.width
+        + 16 + rightActions.width + rightActions.anchors.rightMargin
 
     implicitHeight: root.integratedInTitleBar ? 32 : Theme.windowChromeRowHeight
     color: root.integratedInTitleBar

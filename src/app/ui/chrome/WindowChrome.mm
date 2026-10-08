@@ -17,19 +17,25 @@
 @interface MiaCodeWindowBindingObserver : NSObject
 @property(nonatomic, strong) NSView* view;
 @property(nonatomic, copy) void (^windowChanged)(NSWindow*);
-- (instancetype)initWithView:(NSView*)view callback:(void (^)(NSWindow*))callback;
+@property(nonatomic, copy) void (^layerChanged)(void);
+- (instancetype)initWithView:(NSView*)view callback:(void (^)(NSWindow*))callback
+               layerCallback:(void (^)(void))layerCallback;
 @end
 
 @implementation MiaCodeWindowBindingObserver
 - (instancetype)initWithView:(NSView*)view callback:(void (^)(NSWindow*))callback
+               layerCallback:(void (^)(void))layerCallback
 {
     self = [super init];
     if (self) {
         self.view = view;
         self.windowChanged = callback;
+        self.layerChanged = layerCallback;
         [view addObserver:self forKeyPath:@"window"
                   options:NSKeyValueObservingOptionInitial | NSKeyValueObservingOptionNew
                   context:nullptr];
+        [view addObserver:self forKeyPath:@"layer"
+                  options:NSKeyValueObservingOptionNew context:nullptr];
     }
     return self;
 }
@@ -39,6 +45,8 @@
 {
     if ([keyPath isEqualToString:@"window"]) {
         self.windowChanged(self.view.window);
+    } else if ([keyPath isEqualToString:@"layer"]) {
+        self.layerChanged();
     } else {
         [super observeValueForKeyPath:keyPath ofObject:object change:change context:context];
     }
@@ -47,9 +55,11 @@
 - (void)dealloc
 {
     [_view removeObserver:self forKeyPath:@"window"];
+    [_view removeObserver:self forKeyPath:@"layer"];
 #if !__has_feature(objc_arc)
     [_view release];
     [_windowChanged release];
+    [_layerChanged release];
     [super dealloc];
 #endif
 }
@@ -199,7 +209,7 @@ void WindowChrome::refreshMacOsMaterial(QWindow* window)
         macMaterialView_ = material;
 #endif
     }
-    if (material.superview != view) {
+    if (material.superview != view || material.layer.superlayer != view.layer) {
         layoutChanged = true;
         [material removeFromSuperview];
         [view addSubview:material];
@@ -307,6 +317,9 @@ void WindowChrome::observeMacOsWindow(QWindow* window)
                 window_->windowState() == Qt::WindowFullScreen);
             observeMacOsFullScreen(window_.data());
             materialUpdateTimer_.start();
+        } layerCallback:^{
+            materialUpdateTimer_.start();
+            refreshMaterialAfterPresentation();
         }];
 #if __has_feature(objc_arc)
     macViewWindowObserver_ = (__bridge_retained void*)observer;
