@@ -2957,6 +2957,18 @@ The file may be open in preview, a media player, File Explorer preview pane, or 
         <source>Picture Options</source>
         <translation>画面オプション</translation>
     </message>
+    <message id="preview.window.detach">
+        <source>Detach Preview</source>
+        <translation>プレビューを別ウィンドウに表示</translation>
+    </message>
+    <message id="preview.window.dock">
+        <source>Return to Main Window</source>
+        <translation>メインウィンドウに戻す</translation>
+    </message>
+    <message id="preview.window.title">
+        <source>MiaCode Preview</source>
+        <translation>MiaCode プレビュー</translation>
+    </message>
     <message id="preview.fullscreen.enter_tooltip">
         <source>Fullscreen</source>
         <translation>全画面</translation>
