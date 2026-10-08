@@ -15,7 +15,7 @@ class QEvent;
 // v2 WindowTitleBar chrome. Attach only from Bootstrap (never v1).
 // Windows: native resize frame and system commands; QML owns the caption.
 // macOS: full-size content; native title text hidden; QWindow::title kept.
-// All platforms: window state transitions; optional main-window geometry persistence.
+// All platforms: window state transitions and geometry persisted per window.
 // titleBarLeadingInset: clearance past macOS traffic lights (0 elsewhere).
 namespace miacode::ui {
 
@@ -31,11 +31,12 @@ public:
     explicit WindowChrome(QObject* parent = nullptr);
     ~WindowChrome() override;
 
-    void attach(QWindow* window, bool persistWindowState = true);
+    void attach(QWindow* window, const QString& stateKey = QStringLiteral("main_window"));
+    Q_INVOKABLE void showRestored();
     Q_INVOKABLE void minimize();
     Q_INVOKABLE void toggleMaximized();
     Q_INVOKABLE void handleTitleBarDoubleClick();
-    void saveWindowState();
+    Q_INVOKABLE void saveWindowState();
     qreal titleBarLeadingInset() const { return titleBarLeadingInset_; }
     qreal titleBarHeight() const { return titleBarHeight_; }
     bool nativeMaterialAvailable() const { return nativeMaterialAvailable_; }
@@ -74,7 +75,7 @@ private:
     QRect normalGeometry_;
     QString screenName_;
     bool maximized_ = false;
-    bool persistWindowState_ = true;
+    QString stateKey_;
     QTimer stateCaptureTimer_;
     QTimer materialUpdateTimer_;
     quintptr nativeHandle_ = 0;

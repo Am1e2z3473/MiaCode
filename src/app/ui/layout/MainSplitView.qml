@@ -27,7 +27,7 @@ Item {
     property bool compact: false
     property real sidebarDragWidth: 0
     property bool sidebarResizing: false
-    property bool previewDetached: false
+    readonly property bool previewDetached: root.preferences.previewDetached
     readonly property Item settingsDialogParent: root.previewDetached
         ? detachedPreviewWindow.Overlay.overlay : root.Overlay.overlay
     property bool previewSurfaceMoving: false
@@ -156,8 +156,8 @@ Item {
     function detachPreview() {
         preview.closeMenus()
         root.previewSurfaceMoving = true
-        root.previewDetached = true
-        detachedPreviewWindow.showNormal()
+        root.preferences.previewDetached = true
+        detachedPreviewWindow.windowChrome.showRestored()
         detachedPreviewWindow.raise()
         detachedPreviewWindow.requestActivate()
         Qt.callLater(root.finishPreviewMove)
@@ -166,10 +166,19 @@ Item {
     function dockPreview() {
         preview.closeMenus()
         root.previewSurfaceMoving = true
-        root.previewDetached = false
+        detachedPreviewWindow.windowChrome.saveWindowState()
+        root.preferences.previewDetached = false
         detachedPreviewWindow.hide()
         root.Window.window.requestActivate()
         Qt.callLater(root.finishPreviewMove)
+    }
+
+    Connections {
+        target: root.Window.window
+        function onVisibleChanged() {
+            if (root.Window.window.visible && root.previewDetached)
+                root.detachPreview()
+        }
     }
 
     function finishPreviewMove() {
