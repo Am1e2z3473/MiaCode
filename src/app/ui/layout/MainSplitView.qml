@@ -28,6 +28,8 @@ Item {
     property real sidebarDragWidth: 0
     property bool sidebarResizing: false
     property bool previewDetached: false
+    readonly property Item settingsDialogParent: root.previewDetached
+        ? detachedPreviewWindow.Overlay.overlay : root.Overlay.overlay
     property bool previewSurfaceMoving: false
     readonly property rect activityBarMaterialRect: Qt.rect(0, 0,
         root.compact || !horizontalSplit.visible ? 0 : sidebar.activityBarWidth,
@@ -62,6 +64,8 @@ Item {
         Math.max(1, workspaceSplit.width - (previewHost.visible ? Theme.splitDividerThickness : 0))
     signal openRequested()
     signal settingsRequested()
+    signal audioSettingsRequested()
+    signal previewSettingsRequested()
     signal mediaToolRequested(string toolId)
 
     function showMediaToolsMenu() {
@@ -240,7 +244,7 @@ Item {
 
     PreviewPane {
         id: preview
-        parent: root.previewDetached ? detachedPreviewWindow.contentItem : previewHost
+        parent: root.previewDetached ? detachedPreviewContent : previewHost
         anchors.fill: parent
         documentAvailable: root.documentSession.hasDocument
         surfaceActive: !fullscreenPreview.visible && !root.previewSurfaceMoving
@@ -261,16 +265,41 @@ Item {
     ApplicationWindow {
         id: detachedPreviewWindow
         objectName: "detachedPreviewWindow"
+        property var windowChrome: null
+        readonly property bool nativeMaterialActive: windowChrome
+            && windowChrome.nativeMaterialAvailable && Theme.blurMaterialsEnabled
+            && !Theme.backgroundActive
         title: qsTrId("preview.window.title")
         transientParent: root.Window.window
         visible: false
         width: 560
         height: 680
         minimumWidth: preview.minimumWidth
-        minimumHeight: preview.minimumHeight
-        color: Theme.colors.background.panel
+        minimumHeight: preview.minimumHeight + detachedTitleBar.height
+        flags: {
+            let value = Qt.Window
+            if (root.Window.window.platform.captionButtons) {
+                value |= Qt.CustomizeWindowHint
+                        | Qt.WindowTitleHint
+                        | Qt.WindowSystemMenuHint
+                        | Qt.WindowMinimizeButtonHint
+                        | Qt.WindowMaximizeButtonHint
+                        | Qt.WindowCloseButtonHint
+            }
+            if (Qt.platform.os === "linux")
+                value |= Qt.FramelessWindowHint
+            if (Qt.platform.os === "osx")
+                value |= Qt.ExpandedClientAreaHint | Qt.NoTitleBarBackgroundHint
+            return value
+        }
+        color: nativeMaterialActive ? "transparent" : Theme.colors.background.panel
+        background: null
         font.family: Theme.uiFont
         font.pixelSize: Theme.uiFontSize
+        topPadding: 0
+        leftPadding: 0
+        rightPadding: 0
+        bottomPadding: 0
         palette.window: Theme.colors.background.surface
         palette.windowText: Theme.colors.text.primary
         palette.base: Theme.colors.background.surface
@@ -282,6 +311,80 @@ Item {
         palette.disabled.text: Theme.colors.text.disabled
         palette.disabled.buttonText: Theme.colors.text.disabled
         onClosing: root.dockPreview()
+
+        Binding {
+            target: detachedPreviewWindow.windowChrome
+            property: "materialRegions"
+            when: (Qt.platform.os === "osx" || Qt.platform.os === "windows") && target !== null
+            value: detachedPreviewWindow.visible && detachedTitleBar.visible
+                && Theme.blurMaterialsEnabled && !Theme.backgroundActive
+                ? [{ rect: Qt.rect(0, 0, detachedPreviewWindow.width, detachedTitleBar.height) }]
+                : []
+            restoreMode: Binding.RestoreNone
+        }
+
+        WindowTitleBar {
+            id: detachedTitleBar
+            color: Theme.chromeSurfaceColor(Theme.colors.background.titleBar,
+                detachedPreviewWindow.nativeMaterialActive)
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.top: parent.top
+            visible: detachedPreviewWindow.visibility !== Window.FullScreen
+            height: visible ? implicitHeight : 0
+            hostWindow: detachedPreviewWindow
+            windowChrome: detachedPreviewWindow.windowChrome
+            platform: root.Window.window.platform
+            applicationMenusVisible: false
+            titleText: detachedPreviewWindow.title
+            nativeHeight: detachedPreviewWindow.windowChrome
+                ? detachedPreviewWindow.windowChrome.titleBarHeight : 0
+            leadingInset: detachedPreviewWindow.windowChrome
+                ? detachedPreviewWindow.windowChrome.titleBarLeadingInset : 0
+            leadingToolAreaWidth: leadingInset
+            trailingToolAreaWidth: detachedSettingsActions.width + 8
+
+            Row {
+                id: detachedSettingsActions
+                anchors.right: parent.right
+                anchors.rightMargin: detachedTitleBar.captionButtonsWidth + 8
+                anchors.verticalCenter: parent.verticalCenter
+                height: parent.height
+                spacing: 5
+                z: 2
+
+                IconButton {
+                    objectName: "detachedPreviewAudioSettingsButton"
+                    height: Math.min(implicitHeight, detachedSettingsActions.height)
+                    anchors.verticalCenter: parent.verticalCenter
+                    stateColors: Theme.chromeStateColorsFor(detachedPreviewWindow.nativeMaterialActive)
+                    iconSource: Qt.resolvedUrl("icons/audio-settings.svg")
+                    label: qsTrId("action.audio_settings")
+                    tooltip: qsTrId("action.audio_settings")
+                    onClicked: root.audioSettingsRequested()
+                }
+
+                IconButton {
+                    objectName: "detachedPreviewPreviewSettingsButton"
+                    height: Math.min(implicitHeight, detachedSettingsActions.height)
+                    anchors.verticalCenter: parent.verticalCenter
+                    stateColors: Theme.chromeStateColorsFor(detachedPreviewWindow.nativeMaterialActive)
+                    iconSource: Qt.resolvedUrl("icons/preview-settings.svg")
+                    label: qsTrId("action.video_settings")
+                    tooltip: qsTrId("action.video_settings")
+                    onClicked: root.previewSettingsRequested()
+                }
+            }
+        }
+
+        Rectangle {
+            id: detachedPreviewContent
+            color: Theme.colors.background.panel
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.top: detachedTitleBar.bottom
+            anchors.bottom: parent.bottom
+        }
 
         Shortcut {
             sequence: StandardKey.Close
@@ -419,6 +522,7 @@ Item {
 
         CornerMask {
             id: workspaceCorner
+            visible: sidebar.visible
             x: root.compact ? 0 : sidebar.activityBarWidth
             backgroundSource: root.backgroundSource
             backgroundOffset: Qt.point(root.backgroundOffset.x + x, root.backgroundOffset.y)
@@ -433,7 +537,7 @@ Item {
         }
 
         Rectangle {
-            x: workspaceCorner.x + workspaceCorner.width
+            x: workspaceCorner.visible ? workspaceCorner.x + workspaceCorner.width : 0
             y: 0
             width: parent.width - x
             height: 1 / root.Screen.devicePixelRatio

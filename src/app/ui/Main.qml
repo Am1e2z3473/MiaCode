@@ -57,6 +57,9 @@ ApplicationWindow {
         if (Qt.platform.os === "linux") {
             value |= Qt.FramelessWindowHint
         }
+        if (Qt.platform.os === "osx") {
+            value |= Qt.ExpandedClientAreaHint | Qt.NoTitleBarBackgroundHint
+        }
         return value
     }
     title: (mainView.documentSession.dirty ? "* " : "") + Qt.application.name
