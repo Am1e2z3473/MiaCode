@@ -14,7 +14,6 @@ Switch {
 
     font.family: Theme.uiFont
     font.pixelSize: root.sectionTitle ? Theme.sectionTitleFontSize : Theme.uiFontSize
-    font.weight: root.sectionTitle ? Theme.sectionTitleFontWeight : Font.Normal
     hoverEnabled: true
     leftPadding: 0
     rightPadding: 0
@@ -57,11 +56,11 @@ Switch {
     contentItem: Text {
         text: root.text
         font: root.font
-        // One label color for both states: brightening the label when on made
-        // a minor option outshine the section caption above it.
+        // One label color for both states, matching the form's row labels, so
+        // an option never reads like the section caption above it.
         color: !root.enabled ? Theme.colors.text.disabled
                : root.sectionTitle ? Theme.colors.text.section
-               : Theme.colors.text.primary
+               : Theme.colors.text.secondary
         verticalAlignment: Text.AlignVCenter
         leftPadding: root.indicator.width + root.spacing
     }

@@ -857,6 +857,10 @@
         <source>Clear</source>
         <translation>清空</translation>
     </message>
+    <message id="dialog.batch_export.no_chart_folders">
+        <source>No chart folders added</source>
+        <translation>尚未添加谱面文件夹</translation>
+    </message>
     <message id="dialog.batch_export.difficulty">
         <source>Difficulty</source>
         <translation>难度</translation>
@@ -3896,6 +3900,10 @@ Error: %1</source>
     <message id="video_export.export_range">
         <source>Export Range</source>
         <translation>导出区间</translation>
+    </message>
+    <message id="video_export.extras">
+        <source>Extras</source>
+        <translation>附加内容</translation>
     </message>
     <message id="video_export.filename">
         <source>File Name</source>

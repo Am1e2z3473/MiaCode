@@ -13,24 +13,58 @@ ColumnLayout {
     // from the first section, so the first section skips its own to avoid a
     // doubled-up line.
     property bool first: false
+    // Regular-weight title followed by a hairline, for sections that sit under
+    // a regular-weight tab row: a bold title there would outrank its own tab.
+    property bool inlineRule: false
+    // Optional count shown after the title, e.g. how many items a list holds.
+    property string badge: ""
     default property alias content: contentColumn.data
 
     spacing: 8
 
     Rectangle {
-        visible: !root.first
+        visible: !root.first && !root.inlineRule
         Layout.fillWidth: true
         Layout.topMargin: 6
         height: 1
         color: Theme.colors.border.normal
     }
 
-    Text {
-        text: root.title
-        color: Theme.colors.text.section
-        font.family: Theme.uiFont
-        font.pixelSize: Theme.sectionTitleFontSize
-        font.weight: Theme.sectionTitleFontWeight
+    RowLayout {
+        Layout.fillWidth: true
+        Layout.topMargin: root.inlineRule && !root.first ? 8 : 0
+        spacing: 10
+
+        Text {
+            text: root.title
+            color: Theme.colors.text.section
+            font.family: Theme.uiFont
+            font.pixelSize: Theme.sectionTitleFontSize
+            font.weight: root.inlineRule ? Font.Normal : Theme.sectionTitleFontWeight
+        }
+        Rectangle {
+            visible: root.badge.length > 0
+            implicitWidth: Math.max(implicitHeight, badgeText.implicitWidth + 12)
+            implicitHeight: 18
+            radius: height / 2
+            color: Theme.colors.popupState.selected
+
+            Text {
+                id: badgeText
+                anchors.centerIn: parent
+                text: root.badge
+                color: Theme.colors.text.secondary
+                font.family: Theme.uiFont
+                font.pixelSize: Theme.secondaryFontSize
+            }
+        }
+        Rectangle {
+            visible: root.inlineRule
+            Layout.fillWidth: true
+            Layout.alignment: Qt.AlignVCenter
+            implicitHeight: 1
+            color: Theme.colors.border.normal
+        }
     }
 
     ColumnLayout {

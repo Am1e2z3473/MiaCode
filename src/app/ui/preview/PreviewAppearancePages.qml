@@ -249,19 +249,25 @@ AppTabPages {
             }
         }
 
-        Rectangle {
+        // Same shape as SettingsSection.inlineRule: these pages sit under a
+        // regular-weight tab row, so the caption stays regular too.
+        RowLayout {
             Layout.fillWidth: true
-            Layout.topMargin: 6
-            height: 1
-            color: Theme.colors.border.normal
-        }
+            Layout.topMargin: 8
+            spacing: 10
 
-        Text {
-            text: qsTrId("dialog.video_export.option.hud_font")
-            color: Theme.colors.text.section
-            font.family: Theme.uiFont
-            font.pixelSize: Theme.sectionTitleFontSize
-            font.weight: Theme.sectionTitleFontWeight
+            Text {
+                text: qsTrId("dialog.video_export.option.hud_font")
+                color: Theme.colors.text.section
+                font.family: Theme.uiFont
+                font.pixelSize: Theme.sectionTitleFontSize
+            }
+            Rectangle {
+                Layout.fillWidth: true
+                Layout.alignment: Qt.AlignVCenter
+                implicitHeight: 1
+                color: Theme.colors.border.normal
+            }
         }
 
         RowLayout {
