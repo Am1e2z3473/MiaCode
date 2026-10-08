@@ -62,7 +62,7 @@ ApplicationWindow {
         }
         return value
     }
-    title: mainView.windowTitle
+    title: mainView.windowTitle.replace(/ — /g, " - ")
     font.family: Theme.uiFont
     font.pixelSize: Theme.uiFontSize
     // Allocate an alpha-capable surface at startup and retain it across
