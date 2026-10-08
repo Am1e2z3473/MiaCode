@@ -857,6 +857,10 @@
         <source>Clear</source>
         <translation>空にする</translation>
     </message>
+    <message id="dialog.batch_export.no_chart_folders">
+        <source>No chart folders added</source>
+        <translation>譜面フォルダーが追加されていません</translation>
+    </message>
     <message id="dialog.batch_export.difficulty">
         <source>Difficulty</source>
         <translation>難易度</translation>
@@ -3896,6 +3900,10 @@ Error: %1</source>
     <message id="video_export.export_range">
         <source>Export Range</source>
         <translation>出力範囲</translation>
+    </message>
+    <message id="video_export.extras">
+        <source>Extras</source>
+        <translation>追加要素</translation>
     </message>
     <message id="video_export.filename">
         <source>File Name</source>

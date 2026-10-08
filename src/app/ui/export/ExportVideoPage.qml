@@ -191,6 +191,7 @@ Rectangle {
 
                         SettingsSection {
                             title: qsTrId("dialog.batch_export.difficulty")
+                            inlineRule: true
                             first: true
 
                             Flow {
@@ -210,6 +211,7 @@ Rectangle {
 
                         SettingsSection {
                             title: qsTrId("qml.output_folder")
+                            inlineRule: true
 
                             RowLayout {
                                 Layout.fillWidth: true
@@ -228,23 +230,8 @@ Rectangle {
 
                         SettingsSection {
                             title: qsTrId("dialog.batch_export.chart_folders")
-
-                            // SettingsSection's title row has no slot for trailing
-                            // controls, so Add/Clear sit on their own right-aligned
-                            // row directly above the list instead of riding the
-                            // caption itself.
-                            RowLayout {
-                                Layout.fillWidth: true
-                                Item { Layout.fillWidth: true }
-                                AppButton {
-                                    text: qsTrId("qml.add")
-                                    onClicked: if (root.session) root.session.addChartDirectories()
-                                }
-                                AppButton {
-                                    text: qsTrId("dialog.batch_export.clear")
-                                    onClicked: if (root.session) root.session.clearChartDirectories()
-                                }
-                            }
+                            inlineRule: true
+                            badge: root.session ? String(root.session.chartDirectories.length) : ""
 
                             // This was a ListView capped at 112px because it shared
                             // a column with the settings tabs and would otherwise
@@ -268,6 +255,15 @@ Rectangle {
                                 implicitHeight: chartDirectoryGroove.directories.length > 0
                                                  ? directoryColumn.implicitHeight
                                                  : Theme.controlMinHeight * 3
+
+                                Text {
+                                    anchors.centerIn: parent
+                                    visible: chartDirectoryGroove.directories.length === 0
+                                    text: qsTrId("dialog.batch_export.no_chart_folders")
+                                    color: Theme.colors.text.secondary
+                                    font.family: Theme.uiFont
+                                    font.pixelSize: Theme.secondaryFontSize
+                                }
 
                                 ColumnLayout {
                                     id: directoryColumn
@@ -340,6 +336,19 @@ Rectangle {
                                         }
                                     }
                                 }
+                            }
+
+                            RowLayout {
+                                Layout.fillWidth: true
+                                AppButton {
+                                    text: qsTrId("qml.add")
+                                    onClicked: if (root.session) root.session.addChartDirectories()
+                                }
+                                AppButton {
+                                    text: qsTrId("dialog.batch_export.clear")
+                                    onClicked: if (root.session) root.session.clearChartDirectories()
+                                }
+                                Item { Layout.fillWidth: true }
                             }
                         }
                     }
@@ -488,27 +497,10 @@ Rectangle {
                             }
                         }
 
-                        ColumnLayout {
+                        SettingsSection {
+                            title: qsTrId("video_export.export_range")
+                            inlineRule: true
                             visible: root.session && root.session.activeTab === "export"
-                            spacing: Theme.panelPadding
-                            Layout.fillWidth: true
-
-                        Rectangle {
-                            Layout.fillWidth: true
-                            height: 1
-                            color: Theme.colors.border.normal
-                        }
-
-                        ColumnLayout {
-                            spacing: Theme.chromePadding
-                            Layout.fillWidth: true
-
-                            Text {
-                                text: qsTrId("video_export.export_range")
-                                color: Theme.colors.text.secondary
-                                font.family: Theme.uiFont
-                                font.pixelSize: Theme.uiFontSize
-                            }
 
                             ExportRangeSelector {
                                 id: exportRangeSelector
@@ -517,92 +509,76 @@ Rectangle {
                                 exportSession: root.session
                                 previewSession: root.previewSession
                             }
-                        }
-                        RowLayout {
-                            Layout.fillWidth: true
-                            spacing: Theme.chromePadding
+                            RowLayout {
+                                Layout.fillWidth: true
+                                spacing: Theme.chromePadding
 
-                            Text {
-                                text: qsTrId("dialog.video_export.range.start")
-                                color: Theme.colors.text.secondary
-                                font.family: Theme.uiFont
-                                font.pixelSize: Theme.uiFontSize
-                                Layout.alignment: Qt.AlignVCenter
-                            }
-                            AppTextField {
-                                id: exportRangeStartField
-
-                                objectName: "exportRangeStartField"
-                                Layout.preferredWidth: 100
-                                Layout.alignment: Qt.AlignVCenter
-                                text: root.session ? root.session.exportStartSeconds.toFixed(3) : "0"
-                                onEditingFinished: {
-                                    if (!root.session)
-                                        return
-                                    text = root.session.setExportStartText(text)
-                                    exportRangeSelector.seekToSelectedStart()
+                                Text {
+                                    text: qsTrId("dialog.video_export.range.start")
+                                    color: Theme.colors.text.secondary
+                                    font.family: Theme.uiFont
+                                    font.pixelSize: Theme.uiFontSize
+                                    Layout.alignment: Qt.AlignVCenter
                                 }
+                                AppTextField {
+                                    id: exportRangeStartField
+
+                                    objectName: "exportRangeStartField"
+                                    Layout.preferredWidth: 100
+                                    Layout.alignment: Qt.AlignVCenter
+                                    text: root.session ? root.session.exportStartSeconds.toFixed(3) : "0"
+                                    onEditingFinished: {
+                                        if (!root.session)
+                                            return
+                                        text = root.session.setExportStartText(text)
+                                        exportRangeSelector.seekToSelectedStart()
+                                    }
+                                }
+                                Item { Layout.fillWidth: true }
                             }
-                            Item { Layout.fillWidth: true }
-                        }
-                        RowLayout {
-                            Layout.fillWidth: true
-                            spacing: Theme.chromePadding
+                            RowLayout {
+                                Layout.fillWidth: true
+                                spacing: Theme.chromePadding
 
-                            Text {
-                                text: qsTrId("dialog.video_export.range.end")
-                                color: Theme.colors.text.secondary
-                                font.family: Theme.uiFont
-                                font.pixelSize: Theme.uiFontSize
-                                Layout.alignment: Qt.AlignVCenter
+                                Text {
+                                    text: qsTrId("dialog.video_export.range.end")
+                                    color: Theme.colors.text.secondary
+                                    font.family: Theme.uiFont
+                                    font.pixelSize: Theme.uiFontSize
+                                    Layout.alignment: Qt.AlignVCenter
+                                }
+                                AppTextField {
+                                    id: exportRangeEndField
+
+                                    objectName: "exportRangeEndField"
+                                    Layout.preferredWidth: 100
+                                    Layout.alignment: Qt.AlignVCenter
+                                    text: root.session ? root.session.exportEndSeconds.toFixed(3) : "0"
+                                    onEditingFinished: if (root.session) text = root.session.setExportEndText(text)
+                                }
+                                Item { Layout.fillWidth: true }
                             }
-                            AppTextField {
-                                id: exportRangeEndField
+                        }
 
-                                objectName: "exportRangeEndField"
-                                Layout.preferredWidth: 100
-                                Layout.alignment: Qt.AlignVCenter
-                                text: root.session ? root.session.exportEndSeconds.toFixed(3) : "0"
-                                onEditingFinished: if (root.session) text = root.session.setExportEndText(text)
+                        SettingsSection {
+                            title: qsTrId("video_export.extras")
+                            inlineRule: true
+
+                            AppSwitch {
+                                text: qsTrId("dialog.video_export.option.show_object_stats")
+                                checked: root.session ? root.session.showObjectStatsHud : false
+                                onToggled: if (root.session) root.session.showObjectStatsHud = checked
                             }
-                            Item { Layout.fillWidth: true }
-                        }
-                        Text {
-                            text: root.session
-                                  ? qsTrId("qml.total_duration_1_s").arg(
-                                        (root.session.exportEndSeconds - root.session.exportStartSeconds).toFixed(3))
-                                  : ""
-                            color: Theme.colors.text.secondary
-                            font.family: Theme.uiFont
-                            font.pixelSize: Theme.secondaryFontSize
-                        }
-
-                        Rectangle {
-                            Layout.fillWidth: true
-                            height: 1
-                            color: Theme.colors.border.normal
-                        }
-                        }
-
-                        AppSwitch {
-                            text: qsTrId("dialog.video_export.option.show_object_stats")
-                            checked: root.session ? root.session.showObjectStatsHud : false
-                            onToggled: if (root.session) root.session.showObjectStatsHud = checked
-                        }
-                        AppSwitch {
-                            text: qsTrId("qml.show_chart_information")
-                            checked: root.session ? root.session.showChartInfoHud : false
-                            onToggled: if (root.session) root.session.showChartInfoHud = checked
-                        }
-                        AppSwitch {
-                            text: qsTrId("qml.fix_hud_text_layout")
-                            checked: root.session ? root.session.fixHudTextLayout : false
-                            onToggled: if (root.session) root.session.fixHudTextLayout = checked
-                        }
-                        AppSwitch {
-                            text: qsTrId("qml.enable_clock_count")
-                            checked: root.session ? root.session.clockCountEnabled : false
-                            onToggled: if (root.session) root.session.clockCountEnabled = checked
+                            AppSwitch {
+                                text: qsTrId("qml.show_chart_information")
+                                checked: root.session ? root.session.showChartInfoHud : false
+                                onToggled: if (root.session) root.session.showChartInfoHud = checked
+                            }
+                            AppSwitch {
+                                text: qsTrId("qml.enable_clock_count")
+                                checked: root.session ? root.session.clockCountEnabled : false
+                                onToggled: if (root.session) root.session.clockCountEnabled = checked
+                            }
                         }
                     }
 
@@ -636,6 +612,7 @@ Rectangle {
 
                         SettingsSection {
                             title: qsTrId("qml.visuals")
+                            inlineRule: true
                             enabled: root.introSettingsEnabled
 
                             RowLayout {
@@ -663,11 +640,6 @@ Rectangle {
                                     onClicked: if (root.session) root.session.browseIntroBackground()
                                 }
                             }
-                            AppSwitch {
-                                text: qsTrId("cover.blur_background")
-                                checked: root.session ? root.session.introBlurBackground : true
-                                onToggled: if (root.session) root.session.introBlurBackground = checked
-                            }
                             RowLayout {
                                 Text {
                                     text: qsTrId("cover.chart_type")
@@ -680,6 +652,11 @@ Rectangle {
                                     currentIndex: root.session ? root.session.introModeIndex : 0
                                     onActivated: if (root.session) root.session.introModeIndex = currentIndex
                                 }
+                            }
+                            AppSwitch {
+                                text: qsTrId("cover.blur_background")
+                                checked: root.session ? root.session.introBlurBackground : true
+                                onToggled: if (root.session) root.session.introBlurBackground = checked
                             }
                             AppSwitch {
                                 text: qsTrId("cover.card_drop_shadow")
@@ -695,6 +672,7 @@ Rectangle {
 
                         SettingsSection {
                             title: qsTrId("qml.difficulty_card_fonts")
+                            inlineRule: true
                             enabled: root.introSettingsEnabled
 
                             RowLayout {

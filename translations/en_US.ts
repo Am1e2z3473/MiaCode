@@ -857,6 +857,10 @@
         <source>Clear</source>
         <translation>Clear</translation>
     </message>
+    <message id="dialog.batch_export.no_chart_folders">
+        <source>No chart folders added</source>
+        <translation>No chart folders added</translation>
+    </message>
     <message id="dialog.batch_export.difficulty">
         <source>Difficulty</source>
         <translation>Difficulty</translation>
@@ -3896,6 +3900,10 @@ Error: %1</translation>
     <message id="video_export.export_range">
         <source>Export Range</source>
         <translation>Export Range</translation>
+    </message>
+    <message id="video_export.extras">
+        <source>Extras</source>
+        <translation>Extras</translation>
     </message>
     <message id="video_export.filename">
         <source>File Name</source>
