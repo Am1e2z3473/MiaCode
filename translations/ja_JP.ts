@@ -3901,10 +3901,6 @@ Error: %1</source>
         <source>Export Range</source>
         <translation>出力範囲</translation>
     </message>
-    <message id="video_export.extras">
-        <source>Extras</source>
-        <translation>追加要素</translation>
-    </message>
     <message id="video_export.filename">
         <source>File Name</source>
         <translation>ファイル名</translation>

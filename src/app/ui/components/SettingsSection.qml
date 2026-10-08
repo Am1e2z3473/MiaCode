@@ -36,6 +36,9 @@ ColumnLayout {
         spacing: 10
 
         Text {
+            // An empty title leaves just the rule, for a group that needs
+            // separating but no caption.
+            visible: root.title.length > 0
             text: root.title
             color: Theme.colors.text.section
             font.family: Theme.uiFont
