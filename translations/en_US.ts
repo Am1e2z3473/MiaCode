@@ -701,10 +701,6 @@
         <source>No difficulty is selected, so the cover cannot be exported.</source>
         <translation>No difficulty is selected, so the cover cannot be exported.</translation>
     </message>
-    <message id="cover.no_output_directory">
-        <source>Choose an output folder before exporting the cover.</source>
-        <translation>Choose an output folder before exporting the cover.</translation>
-    </message>
     <message id="cover.no_presets">
         <source>No saved presets</source>
         <translation>No saved presets</translation>

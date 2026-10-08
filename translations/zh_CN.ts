@@ -701,10 +701,6 @@
         <source>No difficulty is selected, so the cover cannot be exported.</source>
         <translation>当前未选中难度，无法导出封面。</translation>
     </message>
-    <message id="cover.no_output_directory">
-        <source>Choose an output folder before exporting the cover.</source>
-        <translation>请先选择输出文件夹，再导出封面。</translation>
-    </message>
     <message id="cover.no_presets">
         <source>No saved presets</source>
         <translation>没有已保存的预设</translation>
