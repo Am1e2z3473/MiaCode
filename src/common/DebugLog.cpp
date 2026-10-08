@@ -17,9 +17,11 @@
 
 #include <array>
 #include <atomic>
+#include <cerrno>
 #include <chrono>
 #include <condition_variable>
 #include <cstdio>
+#include <cstdlib>
 #include <deque>
 #include <mutex>
 #include <string>
@@ -426,6 +428,36 @@ std::FILE* openAppendFile(const QString& path)
 #endif
 }
 
+// OS error of the last failed openAppendFile(), in the form qt_error_string()
+// expects: the Win32 code the CRT keeps in _doserrno on Windows, errno elsewhere.
+int lastOpenError()
+{
+#ifdef Q_OS_WIN
+    return static_cast<int>(_doserrno);
+#else
+    return errno;
+#endif
+}
+
+// One-shot append for the synchronous paths (fatal-grade lines, the durable
+// fallback, post-shutdown stragglers). They run on whichever thread logs —
+// the hang watchdog's std::thread included — so they follow the worker's
+// no-QObject rule. Returns false only when the open fails, like the QFile code
+// it replaces; the bytes reach the OS when the handle closes.
+bool appendBytesNative(const QString& path, const QByteArray& bytes, int* openError = nullptr)
+{
+    std::FILE* file = openAppendFile(path);
+    if (file == nullptr) {
+        if (openError != nullptr) {
+            *openError = lastOpenError();
+        }
+        return false;
+    }
+    std::fwrite(bytes.constData(), 1, static_cast<size_t>(bytes.size()), file);
+    std::fclose(file);
+    return true;
+}
+
 bool removeFileNative(const QString& path)
 {
 #ifdef Q_OS_WIN
@@ -811,12 +843,7 @@ private:
     {
         const QString path = logPath(channel);
         ensureParentDirectory(path);
-        QFile file(path);
-        if (!file.open(QIODevice::WriteOnly | QIODevice::Append | QIODevice::Text)) {
-            return;
-        }
-        file.write(bytes);
-        file.close();
+        appendBytesNative(path, bytes);
     }
 
     void closeAllCachedHandles()
@@ -1001,13 +1028,7 @@ bool writeDurableFallbackLine(const QByteArray& bytes)
                                  .filePath(QStringLiteral("miacode_durable_fallback_%1.log")
                                                .arg(cachedProcessId()));
         ensureParentDirectory(path);
-        QFile file(path);
-        if (file.open(QIODevice::WriteOnly | QIODevice::Append | QIODevice::Text)) {
-            file.write(bytes);
-            file.flush();
-            file.close();
-            written = true;
-        }
+        written = appendBytesNative(path, bytes);
     }
     fallbackMutex.unlock();
     return written;
@@ -1157,29 +1178,15 @@ bool appendText(Channel channel, const QString& text, bool force, Level level)
         if (!mutex.tryLock(kDurableLockTimeoutMs)) {
             return writeDurableFallbackLine(bytes);
         }
-        bool written = false;
         int openError = 0;
-        QString openErrorText;
-        QString attemptedPath;
-        {
-            const QString path = logPath(channel);
-            attemptedPath = path;
-            ensureParentDirectory(path);
-            QFile file(path);
-            if (file.open(QIODevice::WriteOnly | QIODevice::Append | QIODevice::Text)) {
-                file.write(bytes);
-                file.flush();
-                file.close();
-                written = true;
-            } else {
-                openError = static_cast<int>(file.error());
-                openErrorText = file.errorString();
-            }
-        }
+        const QString attemptedPath = logPath(channel);
+        ensureParentDirectory(attemptedPath);
+        const bool written = appendBytesNative(attemptedPath, bytes, &openError);
         mutex.unlock();
         if (written) {
             return true;
         }
+        const QString openErrorText = qt_error_string(openError);
         // The durable path used to end here, returning false into a caller that does not
         // check it -- so a fatal-grade line whose open() failed vanished without a trace.
         // That is not theoretical: across five captures the hang watchdog generated its
