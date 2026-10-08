@@ -2165,6 +2165,10 @@ Restore the backup from %1?</source>
         <source>%1 was not found next to the current chart.</source>
         <translation>当前谱面目录缺少 %1。</translation>
     </message>
+    <message id="media_tools.audio_processing_track">
+        <source>Audio Processing track.mp3</source>
+        <translation>音频处理 track.mp3</translation>
+    </message>
     <message id="media_tools.audio_video_processing">
         <source>Audio/Video Processing</source>
         <translation>音频/视频处理</translation>
@@ -2268,6 +2272,10 @@ Restore the backup from %1?</source>
     <message id="media_tools.batch_pv_replace_failed_1">
         <source>Compressed, but replacement failed; output kept at %1</source>
         <translation>压缩完成但替换失败，输出保留在 %1</translation>
+    </message>
+    <message id="media_tools.batch_compress">
+        <source>Batch Compress</source>
+        <translation>批量压缩</translation>
     </message>
     <message id="media_tools.batch_pv_start">
         <source>Compress Videos</source>
@@ -2425,6 +2433,10 @@ The file may be open in preview, a media player, File Explorer preview pane, or 
         <source>Could not create the two-pass log directory.</source>
         <translation>创建双遍编码日志目录失败。</translation>
     </message>
+    <message id="media_tools.prepend_blank">
+        <source>Prepend Blank</source>
+        <translation>前置空白</translation>
+    </message>
     <message id="media_tools.prepend_pv_black_screen">
         <source>Prepend PV Black Screen</source>
         <translation>视频前置黑幕</translation>
@@ -2453,12 +2465,20 @@ The file may be open in preview, a media player, File Explorer preview pane, or 
         <source>progress surface unavailable</source>
         <translation>进度界面不可用</translation>
     </message>
+    <message id="media_tools.pv_compress">
+        <source>PV Compression</source>
+        <translation>PV压缩</translation>
+    </message>
     <message id="media_tools.replace_failed">
         <source>Failed to replace file: %1</source>
         <translation>替换文件失败：%1</translation>
     </message>
     <message id="media_tools.sample_rate">
         <source>Sample Rate</source>
+        <translation>采样率转换</translation>
+    </message>
+    <message id="media_tools.sample_rate_conversion">
+        <source>Sample Rate Conversion</source>
         <translation>采样率转换</translation>
     </message>
     <message id="media_tools.sample_rate_conversion_canceled">
@@ -2492,6 +2512,10 @@ The file may be open in preview, a media player, File Explorer preview pane, or 
     <message id="media_tools.video_processing_canceled">
         <source>Video processing canceled.</source>
         <translation>已取消视频处理。</translation>
+    </message>
+    <message id="media_tools.video_processing_pv">
+        <source>Video Processing pv.mp4</source>
+        <translation>视频处理 pv.mp4</translation>
     </message>
     <message id="menu.clear_elements">
         <source>Clear Elements</source>

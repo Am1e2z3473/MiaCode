@@ -2165,6 +2165,10 @@ Restore the backup from %1?</translation>
         <source>%1 was not found next to the current chart.</source>
         <translation>%1 was not found next to the current chart.</translation>
     </message>
+    <message id="media_tools.audio_processing_track">
+        <source>Audio Processing track.mp3</source>
+        <translation>Audio Processing track.mp3</translation>
+    </message>
     <message id="media_tools.audio_video_processing">
         <source>Audio/Video Processing</source>
         <translation>Audio/Video Processing</translation>
@@ -2268,6 +2272,10 @@ Restore the backup from %1?</translation>
     <message id="media_tools.batch_pv_replace_failed_1">
         <source>Compressed, but replacement failed; output kept at %1</source>
         <translation>Compressed, but replacement failed; output kept at %1</translation>
+    </message>
+    <message id="media_tools.batch_compress">
+        <source>Batch Compress</source>
+        <translation>Batch Compress</translation>
     </message>
     <message id="media_tools.batch_pv_start">
         <source>Compress Videos</source>
@@ -2425,6 +2433,10 @@ The file may be open in preview, a media player, File Explorer preview pane, or 
         <source>Could not create the two-pass log directory.</source>
         <translation>Could not create the two-pass log directory.</translation>
     </message>
+    <message id="media_tools.prepend_blank">
+        <source>Prepend Blank</source>
+        <translation>Prepend Blank</translation>
+    </message>
     <message id="media_tools.prepend_pv_black_screen">
         <source>Prepend PV Black Screen</source>
         <translation>Prepend PV Black Screen</translation>
@@ -2453,6 +2465,10 @@ The file may be open in preview, a media player, File Explorer preview pane, or 
         <source>progress surface unavailable</source>
         <translation>progress surface unavailable</translation>
     </message>
+    <message id="media_tools.pv_compress">
+        <source>PV Compression</source>
+        <translation>PV Compression</translation>
+    </message>
     <message id="media_tools.replace_failed">
         <source>Failed to replace file: %1</source>
         <translation>Failed to replace file: %1</translation>
@@ -2460,6 +2476,10 @@ The file may be open in preview, a media player, File Explorer preview pane, or 
     <message id="media_tools.sample_rate">
         <source>Sample Rate</source>
         <translation>Sample Rate</translation>
+    </message>
+    <message id="media_tools.sample_rate_conversion">
+        <source>Sample Rate Conversion</source>
+        <translation>Sample Rate Conversion</translation>
     </message>
     <message id="media_tools.sample_rate_conversion_canceled">
         <source>Sample-rate conversion canceled.</source>
@@ -2492,6 +2512,10 @@ The file may be open in preview, a media player, File Explorer preview pane, or 
     <message id="media_tools.video_processing_canceled">
         <source>Video processing canceled.</source>
         <translation>Video processing canceled.</translation>
+    </message>
+    <message id="media_tools.video_processing_pv">
+        <source>Video Processing pv.mp4</source>
+        <translation>Video Processing pv.mp4</translation>
     </message>
     <message id="menu.clear_elements">
         <source>Clear Elements</source>
