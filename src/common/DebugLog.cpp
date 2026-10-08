@@ -22,14 +22,18 @@
 #include <cstdio>
 #include <deque>
 #include <mutex>
+#include <string>
 #include <thread>
 
 #ifdef Q_OS_WIN
+#include <share.h>
 #include <windows.h>
-#elif defined(Q_OS_MAC)
-#include <mach-o/dyld.h>
-#elif defined(Q_OS_UNIX)
+#else
+#include <fcntl.h>
 #include <unistd.h>
+#endif
+#ifdef Q_OS_MAC
+#include <mach-o/dyld.h>
 #endif
 
 namespace miacode::debug_log {
@@ -380,6 +384,66 @@ qint64 startupTrimMaxBytes()
     return 4 * 1024 * 1024;
 }
 
+// Plain C-runtime file primitives for everything the AsyncLogWriter worker
+// touches. The worker is a std::thread; constructing any QObject on it (a QFile,
+// or the temporary behind the static QFile::remove/rename) makes Qt adopt the
+// thread. On MinGW, winpthreads tears down the thread's TLS before Qt's
+// adopted-thread cleanup runs, so that cleanup dereferences a null QThreadData
+// (Qt6Core access violation) and WER snapshots the process on every writer stop,
+// i.e. every project-dir change. Without QObjects Qt registers no cleanup for the
+// worker. Behaviour mirrors the QFile usage this replaces: append, text mode
+// ("\n" -> "\r\n" on Windows), shared read/write, not inherited by children.
+#ifdef Q_OS_WIN
+std::wstring nativeFilePath(const QString& path)
+{
+    QString nativePath =
+        QDir::toNativeSeparators(QDir::cleanPath(QFileInfo(path).absoluteFilePath()));
+    // Past MAX_PATH the CRT needs the extended-length prefix QFile adds itself.
+    if (nativePath.size() >= MAX_PATH && !nativePath.startsWith(QLatin1String("\\\\?\\"))) {
+        nativePath = nativePath.startsWith(QLatin1String("\\\\"))
+            ? QStringLiteral("\\\\?\\UNC\\") + nativePath.mid(2)
+            : QStringLiteral("\\\\?\\") + nativePath;
+    }
+    return nativePath.toStdWString();
+}
+#endif
+
+std::FILE* openAppendFile(const QString& path)
+{
+#ifdef Q_OS_WIN
+    return ::_wfsopen(nativeFilePath(path).c_str(), L"aN", _SH_DENYNO);
+#else
+    const int fd = ::open(QFile::encodeName(path).constData(),
+                          O_WRONLY | O_APPEND | O_CREAT | O_CLOEXEC, 0666);
+    if (fd < 0) {
+        return nullptr;
+    }
+    std::FILE* file = ::fdopen(fd, "a");
+    if (file == nullptr) {
+        ::close(fd);
+    }
+    return file;
+#endif
+}
+
+bool removeFileNative(const QString& path)
+{
+#ifdef Q_OS_WIN
+    return ::_wremove(nativeFilePath(path).c_str()) == 0;
+#else
+    return std::remove(QFile::encodeName(path).constData()) == 0;
+#endif
+}
+
+bool renameFileNative(const QString& from, const QString& to)
+{
+#ifdef Q_OS_WIN
+    return ::_wrename(nativeFilePath(from).c_str(), nativeFilePath(to).c_str()) == 0;
+#else
+    return std::rename(QFile::encodeName(from).constData(), QFile::encodeName(to).constData()) == 0;
+#endif
+}
+
 // Number of archived segments kept per channel (miacode_x.1.log .. .N.log).
 // Total on-disk per channel is bounded by (N + 1) × startupTrimMaxBytes().
 constexpr int kMaxLogSegments = 3;
@@ -415,19 +479,20 @@ bool rotateFileLocked(const QString& path, qint64 maxBytes, int maxSegments = kM
     if (!info.exists() || info.size() <= maxBytes) {
         return true;
     }
-    // Drop the oldest archive, then shift the rest up by one.
-    QFile::remove(rotatedSegmentPath(path, maxSegments));
+    // Drop the oldest archive, then shift the rest up by one. Native calls: this
+    // also runs on the AsyncLogWriter worker (see openAppendFile).
+    removeFileNative(rotatedSegmentPath(path, maxSegments));
     for (int i = maxSegments - 1; i >= 1; --i) {
         const QString from = rotatedSegmentPath(path, i);
-        if (QFile::exists(from)) {
+        if (QFileInfo::exists(from)) {
             const QString to = rotatedSegmentPath(path, i + 1);
-            QFile::remove(to);
-            QFile::rename(from, to);
+            removeFileNative(to);
+            renameFileNative(from, to);
         }
     }
     const QString firstArchive = rotatedSegmentPath(path, 1);
-    QFile::remove(firstArchive);
-    return QFile::rename(path, firstArchive);
+    removeFileNative(firstArchive);
+    return renameFileNative(path, firstArchive);
 }
 
 void trimDebugLogsInCurrentDirectoryLocked()
@@ -710,37 +775,31 @@ private:
             channelPaths_[idx] = logPath(entry.channel);
         }
         const QString& path = channelPaths_[idx];
-        QFile* file = openFiles_[idx];
-        if (file == nullptr || !file->isOpen()) {
+        // Native handle, never QFile: a QObject here would make Qt adopt this
+        // std::thread (see openAppendFile).
+        std::FILE*& file = openFiles_[idx];
+        if (file == nullptr) {
             ensureParentDirectory(path);
-            file = new QFile(path);
-            if (!file->open(QIODevice::WriteOnly | QIODevice::Append | QIODevice::Text)) {
-                delete file;
-                openFiles_[idx] = nullptr;
+            file = openAppendFile(path);
+            if (file == nullptr) {
                 return;
             }
-            openFiles_[idx] = file;
             writeCountSinceTrim_[idx] = 0;
         }
-        file->write(entry.bytes);
-        // No flush here — Qt's QFile writes go through the OS file cache, and we let the
-        // OS flush on its own schedule. Trade-off: a hard crash may lose the last few log
-        // lines, but the alternative (flush per write) re-introduces the I/O stall we're
-        // trying to eliminate.
+        std::fwrite(entry.bytes.constData(), 1, static_cast<size_t>(entry.bytes.size()), file);
+        // No flush here — writes stay in the stdio buffer / OS file cache, and we let
+        // the OS flush on its own schedule. Trade-off: a hard crash may lose the last few
+        // log lines, but the alternative (flush per write) re-introduces the I/O stall
+        // we're trying to eliminate.
         const qint64 newCount = writeCountSinceTrim_[idx] + 1;
         if (newCount >= kTrimEveryWritesPerChannel
             && miacode::debug_options::debugModeEnabled()) {
             // Close the handle, rotate if oversized (rename-based, preserves the
             // session start in an archived segment), then reopen a fresh base for
             // further appends. rotateFileLocked short-circuits when under the cap.
-            file->close();
+            std::fclose(file);
             rotateFileLocked(path, startupTrimMaxBytes());
-            if (!file->open(QIODevice::WriteOnly | QIODevice::Append | QIODevice::Text)) {
-                delete file;
-                openFiles_[idx] = nullptr;
-                writeCountSinceTrim_[idx] = 0;
-                return;
-            }
+            file = openAppendFile(path);
             writeCountSinceTrim_[idx] = 0;
         } else {
             writeCountSinceTrim_[idx] = newCount;
@@ -762,12 +821,9 @@ private:
 
     void closeAllCachedHandles()
     {
-        for (QFile*& f : openFiles_) {
+        for (std::FILE*& f : openFiles_) {
             if (f != nullptr) {
-                if (f->isOpen()) {
-                    f->close();
-                }
-                delete f;
+                std::fclose(f);
                 f = nullptr;
             }
         }
@@ -803,7 +859,7 @@ private:
     // path needs no QString key derivation. channelPaths_ caches each channel's
     // resolved log path (filled once per worker lifetime; cleared on stop, so a
     // project-dir change re-resolves it).
-    std::array<QFile*, kChannelCount> openFiles_{};
+    std::array<std::FILE*, kChannelCount> openFiles_{};
     std::array<qint64, kChannelCount> writeCountSinceTrim_{};
     std::array<QString, kChannelCount> channelPaths_;
 
@@ -878,7 +934,7 @@ void setSessionProjectLogDirectory(const QString& directoryPath)
 
     // If the project folder actually changed, drain the async log
     // writer and tear down its cached file handles. The writer keeps
-    // one QFile* per channel open for the lifetime of the worker
+    // one file handle per channel open for the lifetime of the worker
     // thread; on Windows those handles take an exclusive write lock
     // that blocks the user from zipping / compressing the old
     // project folder while MiaCode is still running. Stopping the
