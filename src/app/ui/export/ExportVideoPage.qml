@@ -231,7 +231,8 @@ Rectangle {
                         SettingsSection {
                             title: qsTrId("dialog.batch_export.chart_folders")
                             inlineRule: true
-                            badge: root.session ? String(root.session.chartDirectories.length) : ""
+                            badge: root.session && root.session.chartDirectories.length > 0
+                                   ? String(root.session.chartDirectories.length) : ""
 
                             // This was a ListView capped at 112px because it shared
                             // a column with the settings tabs and would otherwise
@@ -339,6 +340,7 @@ Rectangle {
                             }
 
                             RowLayout {
+                                id: chartDirectoryButtons
                                 Layout.fillWidth: true
                                 AppButton {
                                     text: qsTrId("qml.add")
@@ -561,7 +563,7 @@ Rectangle {
                         }
 
                         SettingsSection {
-                            title: qsTrId("video_export.extras")
+                            title: ""
                             inlineRule: true
 
                             AppSwitch {
@@ -795,6 +797,29 @@ Rectangle {
                 }
             }
         }
+    }
+
+    // A long folder list pushes Add/Clear below the fold. After an add, bring
+    // them back into view rather than leaving the user wherever the refresh
+    // left the scroll position (removals shrink the list and need nothing).
+    property int chartDirectoryCount: root.session ? root.session.chartDirectories.length : 0
+    onChartDirectoryCountChanged: {
+        if (root.chartDirectoryCount > root.lastChartDirectoryCount)
+            Qt.callLater(root.revealChartDirectoryButtons)
+        root.lastChartDirectoryCount = root.chartDirectoryCount
+    }
+    property int lastChartDirectoryCount: 0
+
+    function revealChartDirectoryButtons() {
+        if (!chartDirectoryButtons.visible)
+            return
+        const top = chartDirectoryButtons.mapToItem(settingsFlickable.contentItem, 0, 0).y
+        const bottom = top + chartDirectoryButtons.height + Theme.panelPadding
+        const maxY = Math.max(0, settingsFlickable.contentHeight - settingsFlickable.height)
+        if (bottom > settingsFlickable.contentY + settingsFlickable.height)
+            settingsFlickable.contentY = Math.min(maxY, bottom - settingsFlickable.height)
+        else if (top < settingsFlickable.contentY)
+            settingsFlickable.contentY = Math.max(0, top)
     }
 
     Connections {

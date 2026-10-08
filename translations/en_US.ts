@@ -3901,10 +3901,6 @@ Error: %1</translation>
         <source>Export Range</source>
         <translation>Export Range</translation>
     </message>
-    <message id="video_export.extras">
-        <source>Extras</source>
-        <translation>Extras</translation>
-    </message>
     <message id="video_export.filename">
         <source>File Name</source>
         <translation>File Name</translation>
