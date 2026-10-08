@@ -259,11 +259,6 @@ QString ExportSession::introSoundLabel() const
     return qtTrId("dialog.render_settings.music.intro_sound");
 }
 
-QString ExportSession::introSoundVolumeLabel() const
-{
-    return qtTrId("dialog.render_settings.music.intro_sound_volume");
-}
-
 QString ExportSession::introSoundImportLabel() const
 {
     return qtTrId("dialog.render_settings.video.skin.import");
@@ -534,10 +529,6 @@ void ExportSession::applyPreferences()
     task_.intro.mode = QStringLiteral("auto");
     task_.intro.lvRenderMode = QStringLiteral("atlas");
     miacode::video_export::applyVideoExportPreferences(settings, &task_);
-    miacode::preview_sfx::setSelectedIntroSoundVolume(task_.introSoundVolume);
-    if (preview() != nullptr) {
-        preview()->applySfxLevels();
-    }
     const int savedWidth = task_.outputWidth;
     const int savedHeight = task_.outputHeight;
     resolutionIndex_ = 3;
@@ -1339,24 +1330,6 @@ void ExportSession::setIntroSoundFileName(const QString& fileName)
     // The window reloads the SFX bank and persists in reaction to this.
     appearance_->setIntroSoundFileName(normalized);
     emit introChanged();
-}
-
-void ExportSession::setIntroSoundVolume(double value)
-{
-    if (!qIsFinite(value)) {
-        return;
-    }
-    const double normalized = qBound(0.0, value, 2.0);
-    if (qFuzzyCompare(task_.introSoundVolume + 1.0, normalized + 1.0)) {
-        return;
-    }
-    task_.introSoundVolume = normalized;
-    miacode::preview_sfx::setSelectedIntroSoundVolume(normalized);
-    if (preview() != nullptr) {
-        preview()->applySfxLevels();
-    }
-    emit introChanged();
-    savePreferences();
 }
 
 void ExportSession::setExportStartSeconds(double value)

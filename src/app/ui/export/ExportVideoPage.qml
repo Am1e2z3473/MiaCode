@@ -794,54 +794,6 @@ Rectangle {
                                 Item { Layout.fillWidth: true }
                             }
                         }
-
-                        SettingsSection {
-                            title: qsTrId("qml.sound_effects")
-                            enabled: root.introSettingsEnabled
-
-                            RowLayout {
-                                Layout.fillWidth: true
-                                Text {
-                                    text: root.session ? root.session.introSoundLabel : ""
-                                    color: Theme.colors.text.secondary
-                                    Layout.preferredWidth: 120
-                                }
-                                AppComboBox {
-                                    id: introSoundCombo
-                                    objectName: "introSoundCombo"
-                                    Layout.fillWidth: true
-                                    model: root.session ? root.session.introSoundOptions : []
-                                    textRole: "label"
-                                    currentIndex: root.session ? root.session.introSoundIndex : 0
-                                    focusPolicy: Qt.StrongFocus
-                                    Accessible.name: root.session ? root.session.introSoundLabel : ""
-                                    onActivated: if (root.session) root.session.introSoundIndex = currentIndex
-                                }
-                                AppButton {
-                                    id: introSoundImportButton
-                                    objectName: "introSoundImportButton"
-                                    text: root.session ? root.session.introSoundImportLabel : ""
-                                    focusPolicy: Qt.StrongFocus
-                                    Accessible.name: root.session
-                                                     ? root.session.introSoundImportLabel + " "
-                                                       + root.session.introSoundLabel
-                                                     : ""
-                                    onClicked: if (root.session) root.session.importIntroSound()
-                                }
-                            }
-                            LabeledSlider {
-                                id: introSoundVolumeSlider
-                                objectName: "introSoundVolumeSlider"
-                                label: root.session ? root.session.introSoundVolumeLabel : ""
-                                from: 0
-                                to: 200
-                                stepSize: 1
-                                suffix: "%"
-                                value: root.session ? root.session.introSoundVolume * 100 : 100
-                                focusPolicy: Qt.StrongFocus
-                                onMoved: function(v) { if (root.session) root.session.introSoundVolume = v / 100 }
-                            }
-                        }
                     }
                 }
             }
