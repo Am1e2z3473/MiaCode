@@ -1232,48 +1232,48 @@ Failed: %2</source>
         <translation>アップデート</translation>
     </message>
     <message id="dialog.render_settings.audio.answer">
-        <source>Answer Volume</source>
-        <translation>Answer</translation>
+        <source>Answer Sound</source>
+        <translation>アンサー音</translation>
     </message>
     <message id="dialog.render_settings.audio.break">
-        <source>Break Volume</source>
+        <source>Break</source>
         <translation>Break</translation>
     </message>
     <message id="dialog.render_settings.audio.break_slide">
-        <source>Break Slide Volume</source>
+        <source>Break Slide</source>
         <translation>Break Slide</translation>
     </message>
     <message id="dialog.render_settings.audio.ex">
-        <source>EX Volume</source>
+        <source>EX</source>
         <translation>EX</translation>
     </message>
     <message id="dialog.render_settings.audio.firework">
-        <source>Firework Volume</source>
-        <translation>Firework</translation>
+        <source>Hanabi</source>
+        <translation>花火</translation>
     </message>
     <message id="dialog.render_settings.audio.global">
         <source>Global Volume</source>
-        <translation>Global</translation>
+        <translation>全体音量</translation>
     </message>
     <message id="dialog.render_settings.audio.intro">
-        <source>Intro Volume</source>
-        <translation>開始音の音量</translation>
+        <source>Export Intro</source>
+        <translation>エクスポートのイントロ</translation>
     </message>
     <message id="dialog.render_settings.audio.slide">
-        <source>Slide Volume</source>
+        <source>Slide</source>
         <translation>Slide</translation>
     </message>
     <message id="dialog.render_settings.audio.tap">
-        <source>Tap Volume</source>
+        <source>Tap</source>
         <translation>Tap</translation>
     </message>
     <message id="dialog.render_settings.audio.touch">
-        <source>Touch Volume</source>
+        <source>Touch</source>
         <translation>Touch</translation>
     </message>
     <message id="dialog.render_settings.audio.track">
-        <source>Track Volume</source>
-        <translation>Track</translation>
+        <source>Track</source>
+        <translation>楽曲</translation>
     </message>
     <message id="dialog.render_settings.gameplay.center_display">
         <source>Center Display</source>
