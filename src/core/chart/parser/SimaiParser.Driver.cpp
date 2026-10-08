@@ -20,7 +20,7 @@ const QString& kInvalidBpmValue()
 
 const QString& kBpmMissingExplicitSubdivision()
 {
-    static const QString value = QStringLiteral("BPM directive is missing an explicit subdivision");
+    static const QString value = QStringLiteral("Note subdivision is unspecified");
     return value;
 }
 
@@ -289,7 +289,7 @@ const QHash<QString, QString>& zhExactMap()
 {
     static const QHash<QString, QString> map{
         {kInvalidBpmValue(), QStringLiteral("BPM 数值无效")},
-        {kBpmMissingExplicitSubdivision(), QStringLiteral("BPM 指令缺少显式分音")},
+        {kBpmMissingExplicitSubdivision(), QStringLiteral("note未指定分音")},
         {kInvalidBeatValue(), QStringLiteral("分拍数值无效")},
         {kUnterminatedBpmBlock(), QStringLiteral("BPM 块未闭合")},
         {kUnterminatedBeatBlock(), QStringLiteral("分拍块未闭合")},
@@ -345,7 +345,7 @@ const QHash<QString, QString>& jaExactMap()
 {
     static const QHash<QString, QString> map{
         {kInvalidBpmValue(), QStringLiteral("BPM の値が無効です")},
-        {kBpmMissingExplicitSubdivision(), QStringLiteral("BPM 指令に明示的な分音がありません")},
+        {kBpmMissingExplicitSubdivision(), QStringLiteral("ノートに分音が指定されていません")},
         {kInvalidBeatValue(), QStringLiteral("分音数の値が無効です")},
         {kUnterminatedBpmBlock(), QStringLiteral("BPM 括弧が閉じられていません")},
         {kUnterminatedBeatBlock(), QStringLiteral("分音括弧が閉じられていません")},
