@@ -222,7 +222,9 @@ struct VideoExportTask {
     bool showTimestamp = true;
     bool showObjectStatsHud = false;
     bool showChartInfoHud = false;
-    bool fixHudTextLayout = false;
+    // Always on for exports; kept as a field so the snapshot and the shared
+    // preview renderer can still tell export rendering apart.
+    bool fixHudTextLayout = true;
     // Pre-roll maimai track-start intro (full-range exports only). intro.enabled
     // is the dialog checkbox before the snapshot is built; the rest of the
     // banner payload is filled by buildVideoExportSnapshot from the chart and

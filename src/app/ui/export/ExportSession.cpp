@@ -525,7 +525,6 @@ void ExportSession::applyPreferences()
     const QJsonObject settings = miacode::app_preferences::loadDialogPreferences();
     // Keep the established first-run defaults shared with the Widgets dialog.
     task_.clockCountEnabled = false;
-    task_.fixHudTextLayout = false;
     task_.intro.mode = QStringLiteral("auto");
     task_.intro.lvRenderMode = QStringLiteral("atlas");
     miacode::video_export::applyVideoExportPreferences(settings, &task_);
@@ -1177,13 +1176,6 @@ void ExportSession::setShowChartInfoHud(bool value)
     applyLivePreviewSettings();
 }
 
-void ExportSession::setFixHudTextLayout(bool value)
-{
-    task_.fixHudTextLayout = value;
-    emit videoChanged();
-    applyLivePreviewSettings();
-    savePreferences();
-}
 
 void ExportSession::setClockCountEnabled(bool value)
 {
