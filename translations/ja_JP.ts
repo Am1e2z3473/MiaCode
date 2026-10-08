@@ -2165,6 +2165,10 @@ Restore the backup from %1?</source>
         <source>%1 was not found next to the current chart.</source>
         <translation>現在の譜面フォルダーに %1 がありません。</translation>
     </message>
+    <message id="media_tools.audio_processing_track">
+        <source>Audio Processing track.mp3</source>
+        <translation>音声処理 track.mp3</translation>
+    </message>
     <message id="media_tools.audio_video_processing">
         <source>Audio/Video Processing</source>
         <translation>オーディオ/動画処理</translation>
@@ -2268,6 +2272,10 @@ Restore the backup from %1?</source>
     <message id="media_tools.batch_pv_replace_failed_1">
         <source>Compressed, but replacement failed; output kept at %1</source>
         <translation>Compressed, but replacement failed; output kept at %1</translation>
+    </message>
+    <message id="media_tools.batch_compress">
+        <source>Batch Compress</source>
+        <translation>一括圧縮</translation>
     </message>
     <message id="media_tools.batch_pv_start">
         <source>Compress Videos</source>
@@ -2425,6 +2433,10 @@ The file may be open in preview, a media player, File Explorer preview pane, or 
         <source>Could not create the two-pass log directory.</source>
         <translation>2パスエンコード用ログフォルダーを作成できませんでした。</translation>
     </message>
+    <message id="media_tools.prepend_blank">
+        <source>Prepend Blank</source>
+        <translation>先頭に空白を追加</translation>
+    </message>
     <message id="media_tools.prepend_pv_black_screen">
         <source>Prepend PV Black Screen</source>
         <translation>動画の先頭に黒画面を追加</translation>
@@ -2453,12 +2465,20 @@ The file may be open in preview, a media player, File Explorer preview pane, or 
         <source>progress surface unavailable</source>
         <translation>進捗画面を利用できません</translation>
     </message>
+    <message id="media_tools.pv_compress">
+        <source>PV Compression</source>
+        <translation>PV圧縮</translation>
+    </message>
     <message id="media_tools.replace_failed">
         <source>Failed to replace file: %1</source>
         <translation>ファイルを置換できませんでした：%1</translation>
     </message>
     <message id="media_tools.sample_rate">
         <source>Sample Rate</source>
+        <translation>サンプルレート変換</translation>
+    </message>
+    <message id="media_tools.sample_rate_conversion">
+        <source>Sample Rate Conversion</source>
         <translation>サンプルレート変換</translation>
     </message>
     <message id="media_tools.sample_rate_conversion_canceled">
@@ -2492,6 +2512,10 @@ The file may be open in preview, a media player, File Explorer preview pane, or 
     <message id="media_tools.video_processing_canceled">
         <source>Video processing canceled.</source>
         <translation>動画の処理をキャンセルしました。</translation>
+    </message>
+    <message id="media_tools.video_processing_pv">
+        <source>Video Processing pv.mp4</source>
+        <translation>動画処理 pv.mp4</translation>
     </message>
     <message id="menu.clear_elements">
         <source>Clear Elements</source>

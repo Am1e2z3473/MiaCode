@@ -59,6 +59,11 @@ Item {
         Math.max(1, workspaceSplit.width - (preview.visible ? Theme.splitDividerThickness : 0))
     signal openRequested()
     signal settingsRequested()
+    signal mediaToolRequested(string toolId)
+
+    function showMediaToolsMenu() {
+        sidebar.showMediaToolsMenu()
+    }
 
     function persistBottomPanelHeightRatio() {
         if (!root.bottomPanelEffectivelyVisible || centerSplit.height <= 0
@@ -217,6 +222,7 @@ Item {
                 ? (root.sidebarResizing ? root.sidebarDragWidth : root.preferences.sidebarWidth) : 0) : 0
             height: parent.height
             onSettingsRequested: root.settingsRequested()
+            onMediaToolRequested: toolId => root.mediaToolRequested(toolId)
         }
 
         SplitView {

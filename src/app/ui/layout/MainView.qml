@@ -120,10 +120,7 @@ Item {
             if (root.documentSession.hasDocument)
                 root.pages.openLatencyPage()
         }
-        onMediaToolsRequested: {
-            if (root.documentSession.hasDocument)
-                root.pages.openMediaProcessingTools()
-        }
+        onMediaToolRequested: toolId => root.runMediaTool(toolId)
         onUnavailableFeatureRequested: featureName => root.showUnavailableFeature(featureName)
         onOpenRequested: openFileDialog.open()
         onSaveRequested: root.saveDocument()
@@ -168,6 +165,38 @@ Item {
         }
         state.sidebarVisible = !state.sidebarVisible
         root.preferences.sidebarVisible = state.sidebarVisible
+    }
+
+    function showMediaToolsMenu() {
+        if (root.compact)
+            compactPanelLayer.showMediaToolsMenu()
+        else
+            splitView.showMediaToolsMenu()
+    }
+
+    function runMediaTool(toolId) {
+        if (!root.documentSession.hasDocument)
+            return
+        switch (toolId) {
+        case "convertTrack":
+            root.mediaTools.convertTrackTo44100Hz()
+            break
+        case "prependTrack":
+        case "prependPv": {
+            const context = root.mediaTools.prependContext(toolId === "prependTrack")
+            if (context.available) {
+                prependBlankDialog.loadContext(context)
+                prependBlankDialog.open()
+            }
+            break
+        }
+        case "compressVideo":
+            root.mediaTools.compressBackgroundVideo()
+            break
+        case "batchCompress":
+            batchCompressionDialog.open()
+            break
+        }
     }
 
     // PageHost is the authority for overlay navigation. Keep the activity bar
@@ -353,9 +382,11 @@ Item {
                 compact: root.compact
                 onOpenRequested: openFileDialog.open()
                 onSettingsRequested: preferencesDialog.open()
+                onMediaToolRequested: toolId => root.runMediaTool(toolId)
             }
 
             CompactPanelLayer {
+                id: compactPanelLayer
                 anchors.fill: parent
                 viewState: state
                 documentSession: root.documentSession
@@ -364,6 +395,7 @@ Item {
                 pages: root.pages
                 compact: root.compact
                 onSettingsRequested: preferencesDialog.open()
+                onMediaToolRequested: toolId => root.runMediaTool(toolId)
             }
         }
 
@@ -567,20 +599,11 @@ Item {
         imageResources: root.imageResources
     }
 
-    // Window-level tool overlays keep the current center page mounted.
-    MediaToolsDialog {
-        id: mediaToolsDialog
-        objectName: "shellMediaToolsDialog"
+    // Input-heavy media tools keep their own dialogs; the launcher is a submenu.
+    PvBatchCompressionDialog {
+        id: batchCompressionDialog
+        objectName: "pvBatchCompressionDialog"
         mediaTools: root.mediaTools
-        documentAvailable: root.documentSession.hasDocument
-        onPrependRequested: function(isTrack) {
-            const context = root.mediaTools.prependContext(isTrack)
-            // An unavailable target has already explained itself as a notice.
-            if (!context.available)
-                return
-            prependBlankDialog.loadContext(context)
-            prependBlankDialog.open()
-        }
     }
 
     PrependBlankDialog {
@@ -638,7 +661,7 @@ Item {
 
     Connections {
         target: root.pages
-        function onMediaToolsRequested() { mediaToolsDialog.open() }
+        function onMediaToolsRequested() { root.showMediaToolsMenu() }
         function onNormalizeWholeChartRequested() {
             if (root.pages.activePageId === "export" || !splitView.canNormalizeChart())
                 return
