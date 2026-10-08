@@ -54,7 +54,6 @@ class ExportSession final : public QObject, public miacode::ExportPagePort
 
     Q_PROPERTY(bool showObjectStatsHud READ showObjectStatsHud WRITE setShowObjectStatsHud NOTIFY videoChanged)
     Q_PROPERTY(bool showChartInfoHud READ showChartInfoHud WRITE setShowChartInfoHud NOTIFY videoChanged)
-    Q_PROPERTY(bool fixHudTextLayout READ fixHudTextLayout WRITE setFixHudTextLayout NOTIFY videoChanged)
     Q_PROPERTY(bool clockCountEnabled READ clockCountEnabled WRITE setClockCountEnabled NOTIFY videoChanged)
 
     // Shared portable font library for the intro difficulty card. File selection
@@ -128,7 +127,6 @@ public:
 
     bool showObjectStatsHud() const { return task_.showObjectStatsHud; }
     bool showChartInfoHud() const { return task_.showChartInfoHud; }
-    bool fixHudTextLayout() const { return task_.fixHudTextLayout; }
     bool clockCountEnabled() const { return task_.clockCountEnabled; }
 
     QVariantList fontLibraryOptions() const;
@@ -205,7 +203,6 @@ public:
     void setSizePresetIndex(int index);
     void setShowObjectStatsHud(bool value);
     void setShowChartInfoHud(bool value);
-    void setFixHudTextLayout(bool value);
     void setClockCountEnabled(bool value);
     void setIntroEnabled(bool value);
     void setIntroBackgroundModeIndex(int index);

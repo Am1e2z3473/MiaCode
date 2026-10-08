@@ -99,8 +99,6 @@ void applyVideoExportPreferences(const QJsonObject& settings, VideoExportTask* t
         settings.value(QStringLiteral("size_preset")), task->sizePreset);
     task->clockCountEnabled = settings.value(QStringLiteral("clock_count_enabled"))
                                   .toBool(task->clockCountEnabled);
-    task->fixHudTextLayout = settings.value(QStringLiteral("fix_hud_text_layout"))
-                                 .toBool(task->fixHudTextLayout);
     task->intro.enabled = settings.value(QStringLiteral("add_intro")).toBool(task->intro.enabled);
     task->intro.backgroundMode = settings.value(QStringLiteral("intro_background_mode"))
                                      .toString(task->intro.backgroundMode);
@@ -134,7 +132,6 @@ void appendVideoExportPreferences(QJsonObject* settings, const VideoExportTask& 
     settings->insert(QStringLiteral("preset"), videoExportPreferencePresetToken(task.preset));
     settings->insert(QStringLiteral("size_preset"), videoExportSizePresetToken(task.sizePreset));
     settings->insert(QStringLiteral("clock_count_enabled"), task.clockCountEnabled);
-    settings->insert(QStringLiteral("fix_hud_text_layout"), task.fixHudTextLayout);
     settings->insert(QStringLiteral("add_intro"), task.intro.enabled);
     settings->insert(QStringLiteral("intro_background_mode"), task.intro.backgroundMode);
     settings->insert(QStringLiteral("intro_background_custom_path"), task.intro.customBackgroundPath.trimmed());

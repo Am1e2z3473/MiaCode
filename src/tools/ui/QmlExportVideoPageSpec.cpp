@@ -105,7 +105,6 @@ ApplicationWindow {
         property var sizePresetOptions: ["Standard"]
         property bool showObjectStatsHud: false
         property bool showChartInfoHud: false
-        property bool fixHudTextLayout: false
         property bool clockCountEnabled: false
         property var fontLibraryOptions: [
             { label: "Default font", path: "", family: "" },
