@@ -608,7 +608,8 @@ public:
         return !dropped;
     }
 
-    // Wait until the queue has been fully drained. Returns false on timeout.
+    // Wait until every queued entry has been written and handed to the OS (the
+    // worker flushes its stdio buffers per batch). Returns false on timeout.
     bool flush(int timeoutMs)
     {
         std::unique_lock<std::mutex> lock(mutex_);
@@ -779,6 +780,10 @@ private:
             for (const Entry& entry : batch) {
                 writeEntryWorker(entry);
             }
+            // Hand the batch to the OS before reporting it drained, so a flush()
+            // caller (fatal-grade lines, crash breadcrumbs) finds every earlier line
+            // in the file. One write per open channel per batch, not per line.
+            flushCachedHandles();
             const auto batchEnd = std::chrono::steady_clock::now();
             const quint64 batchNs = static_cast<quint64>(
                 std::chrono::duration_cast<std::chrono::nanoseconds>(batchEnd - batchStart).count());
@@ -819,10 +824,8 @@ private:
             writeCountSinceTrim_[idx] = 0;
         }
         std::fwrite(entry.bytes.constData(), 1, static_cast<size_t>(entry.bytes.size()), file);
-        // No flush here — writes stay in the stdio buffer / OS file cache, and we let
-        // the OS flush on its own schedule. Trade-off: a hard crash may lose the last few
-        // log lines, but the alternative (flush per write) re-introduces the I/O stall
-        // we're trying to eliminate.
+        // No flush per line: workerLoop flushes once per batch, so a burst costs one
+        // write per channel instead of one per line.
         const qint64 newCount = writeCountSinceTrim_[idx] + 1;
         if (newCount >= kTrimEveryWritesPerChannel
             && miacode::debug_options::debugModeEnabled()) {
@@ -844,6 +847,15 @@ private:
         const QString path = logPath(channel);
         ensureParentDirectory(path);
         appendBytesNative(path, bytes);
+    }
+
+    void flushCachedHandles()
+    {
+        for (std::FILE* f : openFiles_) {
+            if (f != nullptr) {
+                std::fflush(f);
+            }
+        }
     }
 
     void closeAllCachedHandles()
