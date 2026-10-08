@@ -42,7 +42,7 @@ ComboBox {
         rightPadding: 0
         text: root.displayText
         font: root.font
-        color: root.enabled ? Theme.colors.text.primary : Theme.colors.text.disabled
+        color: root.enabled ? Theme.colors.text.active : Theme.colors.text.disabled
         verticalAlignment: Text.AlignVCenter
         elide: Text.ElideRight
     }

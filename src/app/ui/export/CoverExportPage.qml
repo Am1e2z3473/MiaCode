@@ -687,7 +687,7 @@ Rectangle {
                                             color: Theme.colors.text.section
                                             font.family: Theme.uiFont
                                             font.pixelSize: Theme.sectionTitleFontSize
-                                            font.bold: true
+                                            font.weight: Theme.sectionTitleFontWeight
                                             elide: Text.ElideRight
                                         }
                                         IconButton {

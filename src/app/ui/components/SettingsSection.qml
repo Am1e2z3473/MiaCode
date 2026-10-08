@@ -15,10 +15,12 @@ ColumnLayout {
     property bool first: false
     default property alias content: contentColumn.data
 
+    spacing: 8
+
     Rectangle {
         visible: !root.first
         Layout.fillWidth: true
-        Layout.topMargin: 2
+        Layout.topMargin: 6
         height: 1
         color: Theme.colors.border.normal
     }
@@ -28,7 +30,7 @@ ColumnLayout {
         color: Theme.colors.text.section
         font.family: Theme.uiFont
         font.pixelSize: Theme.sectionTitleFontSize
-        font.bold: true
+        font.weight: Theme.sectionTitleFontWeight
     }
 
     ColumnLayout {

@@ -251,7 +251,7 @@ AppTabPages {
 
         Rectangle {
             Layout.fillWidth: true
-            Layout.topMargin: 2
+            Layout.topMargin: 6
             height: 1
             color: Theme.colors.border.normal
         }
@@ -261,7 +261,7 @@ AppTabPages {
             color: Theme.colors.text.section
             font.family: Theme.uiFont
             font.pixelSize: Theme.sectionTitleFontSize
-            font.bold: true
+            font.weight: Theme.sectionTitleFontWeight
         }
 
         RowLayout {

@@ -573,6 +573,8 @@ Rectangle {
                                         (root.session.exportEndSeconds - root.session.exportStartSeconds).toFixed(3))
                                   : ""
                             color: Theme.colors.text.secondary
+                            font.family: Theme.uiFont
+                            font.pixelSize: Theme.secondaryFontSize
                         }
 
                         Rectangle {
