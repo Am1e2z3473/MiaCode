@@ -155,6 +155,8 @@ bool BassExportAudioBackend::runtimeLibrariesPresent() const
 #if defined(Q_OS_WIN)
     return runtimeLibraryExists(QStringLiteral("bass.dll"))
         && runtimeLibraryExists(QStringLiteral("bassmix.dll"));
+#elif defined(Q_OS_IOS)
+    return true;
 #elif defined(Q_OS_MACOS)
     return runtimeLibraryExists(QStringLiteral("libbass.dylib"))
         && runtimeLibraryExists(QStringLiteral("libbassmix.dylib"));

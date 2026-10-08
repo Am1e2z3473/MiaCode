@@ -32,6 +32,9 @@ public:
     ~WindowChrome() override;
 
     void attach(QWindow* window);
+#ifdef Q_OS_IOS
+    void applyIos(QWindow* window);
+#endif
     Q_INVOKABLE void minimize();
     Q_INVOKABLE void toggleMaximized();
     void saveWindowState();

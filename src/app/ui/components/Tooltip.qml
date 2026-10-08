@@ -6,6 +6,16 @@ import MiaCode.UI
 ToolTip {
     id: root
 
+    property bool requestedVisible: false
+    property Item pointerTarget: root.parent
+    visible: requestedVisible && (Qt.platform.os !== "ios" || pointerHover.hovered)
+
+    HoverHandler {
+        id: pointerHover
+        parent: root.pointerTarget
+        acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
+    }
+
     readonly property Window hostWindow: root.parent ? root.parent.Window.window : null
     popupType: Popup.Item
     z: 1000

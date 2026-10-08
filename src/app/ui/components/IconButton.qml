@@ -100,7 +100,7 @@ AbstractButton {
     }
 
     Tooltip {
-        visible: root.hovered && root.tooltip.length > 0
+        requestedVisible: root.hovered && root.tooltip.length > 0
         text: root.tooltip
     }
 }

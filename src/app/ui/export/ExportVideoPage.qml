@@ -317,7 +317,7 @@ Rectangle {
 
                                                         HoverHandler { id: chartDirectoryPathHover }
                                                         Tooltip {
-                                                            visible: chartDirectoryPathHover.hovered
+                                                            requestedVisible: chartDirectoryPathHover.hovered
                                                             text: chartDirectoryDelegate.modelData
                                                         }
                                                     }

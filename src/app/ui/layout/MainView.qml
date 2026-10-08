@@ -125,7 +125,7 @@ Item {
                 root.pages.openMediaProcessingTools()
         }
         onUnavailableFeatureRequested: featureName => root.showUnavailableFeature(featureName)
-        onOpenRequested: openFileDialog.open()
+        onOpenRequested: root.openChartPicker()
         onSaveRequested: root.saveDocument()
         onSaveWholeDocumentRequested: root.saveWholeDocument()
         onSaveAsRequested: {
@@ -224,6 +224,13 @@ Item {
     // commands.openDocument itself, along with every other action that would
     // discard the document — there used to be two three-way prompts written
     // twice, and only one of them covered anything but 打开.
+    function openChartPicker() {
+        if (Qt.platform.os === "ios")
+            root.commands.openChartFolder()
+        else
+            openFileDialog.open()
+    }
+
     function requestOpenFile(fileUrl) {
         root.commands.openDocument(fileUrl)
     }
@@ -263,7 +270,7 @@ Item {
                 hostWindow: root.hostWindow
                 windowChrome: root.applicationContext.windowChrome
                 platform: root.platform
-                nativeHeight: root.platform.nativeMenuBar
+                nativeHeight: (root.platform.nativeMenuBar || Qt.platform.os === "ios")
                     && root.applicationContext.windowChrome
                     ? root.applicationContext.windowChrome.titleBarHeight
                     : 0
@@ -318,7 +325,7 @@ Item {
                 }
                 onUndoRequested: root.undo()
                 onRedoRequested: root.redo()
-                onOpenRequested: openFileDialog.open()
+                onOpenRequested: root.openChartPicker()
                 onSaveRequested: root.saveDocument()
                 onAudioSettingsRequested: audioSettingsDialog.open()
                 onPreviewSettingsRequested: previewSettingsDialog.open()
@@ -351,7 +358,7 @@ Item {
                 editorSync: root.editorSync
                 latency: root.latency
                 compact: root.compact
-                onOpenRequested: openFileDialog.open()
+                onOpenRequested: root.openChartPicker()
                 onSettingsRequested: preferencesDialog.open()
             }
 

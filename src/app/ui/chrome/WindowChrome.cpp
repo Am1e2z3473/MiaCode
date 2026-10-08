@@ -151,6 +151,9 @@ void WindowChrome::attach(QWindow* window)
             setTitleBarLeadingInset(windowedTitleBarLeadingInset_);
             setTitleBarHeight(windowedTitleBarHeight_);
         });
+#elif defined(Q_OS_IOS)
+    applyIos(window);
+    return;
 #else
     Q_UNUSED(window);
     setTitleBarLeadingInset(0);
@@ -347,6 +350,9 @@ void WindowChrome::captureWindowState()
 
 void WindowChrome::saveWindowState()
 {
+#ifdef Q_OS_IOS
+    return;
+#endif
     if (window_.isNull()) {
         return;
     }
@@ -375,6 +381,9 @@ void WindowChrome::refreshTitleBarMetrics()
         return;
     }
     applyMacOs(window_.data());
+#elif defined(Q_OS_IOS)
+    if (window_)
+        applyIos(window_.data());
 #else
     setTitleBarLeadingInset(0);
 #endif

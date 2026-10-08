@@ -124,7 +124,7 @@ Rectangle {
         }
 
         Tooltip {
-            visible: button.hovered
+            requestedVisible: button.hovered
             text: button.tooltip
         }
     }

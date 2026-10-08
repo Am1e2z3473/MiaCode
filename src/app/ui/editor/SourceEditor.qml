@@ -78,7 +78,7 @@ Rectangle {
         bookmarkTitleDialog.open()
     }
     function openContextMenuAt(x, y) {
-        sourceArea.forceActiveFocus()
+        root.editorController.closeCompletion()
         const position = sourceArea.positionAt(x, y)
         const line = sourceArea.textPositionRectangle(position)
         editorContextMenu.anchorPosition = position
@@ -128,7 +128,6 @@ Rectangle {
                     && contextDifficulty === root.documentSession.currentDifficultyId
                     && contextRevision === root.documentSession.documentRevision
                     && contextGeneration === root.documentSession.documentOpenGeneration) {
-                sourceArea.forceActiveFocus()
                 executeOperation(operation)
             }
         }
@@ -387,7 +386,7 @@ Rectangle {
                 root.editorController.closeCompletion()
         }
         onFindRequested: root.openFindReplace()
-        onContextMenuRequested: (x, y) => root.openContextMenuAt(x, y)
+        onContextMenuRequested: (x, y) => Qt.callLater(() => root.openContextMenuAt(x, y))
         onBookmarkMenuRequested: (line, x, y) => {
             root.pendingBookmarkLine = line
             bookmarkMenu.contextDifficulty = root.documentSession.currentDifficultyId

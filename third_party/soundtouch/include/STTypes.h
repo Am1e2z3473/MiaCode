@@ -61,10 +61,7 @@ typedef int BOOL;
 #define SOUNDTOUCH_ALIGN_POINTER_16(x)      ( ( (ulongptr)(x) + 15 ) & ~(ulongptr)15 )
 
 
-#if ((defined(TARGET_OS_IPHONE) && TARGET_OS_IPHONE) || (defined(IOS) && IOS))
-    #include <CoreFoundation/CoreFoundation.h>
-    #include <objc/objc.h>
-#elif defined(__GNUC__) && !defined(ANDROID)
+#if defined(__GNUC__) && !defined(ANDROID)
     // Include autotools-generated config only when present. CMake-based builds
     // in this repository do not generate soundtouch_config.h.
     #if defined(__has_include)

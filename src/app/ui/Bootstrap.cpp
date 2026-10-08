@@ -20,12 +20,14 @@
 #include "app/ui/preferences/LocaleService.h"
 #include "app/ui/drop/ChartDropBridge.h"
 #include "app/ui/document/DocumentModel.h"
+#include "app/ui/document/CommandService.h"
 #include "app/ui/layout/PageHost.h"
 #include "common/DebugLog.h"
 #include "common/OperationLog.h"
 
 #include <QCoreApplication>
 #include <QGuiApplication>
+#include <QFont>
 #include <QQmlApplicationEngine>
 #include <QQmlEngine>
 #include <QQuickItem>
@@ -149,6 +151,18 @@ bool Bootstrap::start(const QString& startupOpenTarget)
 
     windowChrome_ = std::make_unique<WindowChrome>(this);
     if (auto* settings = qobject_cast<WorkbenchSettings*>(applicationContext_->preferences())) {
+#ifdef Q_OS_IOS
+        // Bare QML Text uses the application font rather than inheriting a
+        // Control's font. Match it to the desktop-sized theme on iPad.
+        const auto applyUiFont = [settings] {
+            QFont font = QGuiApplication::font();
+            font.setFamily(settings->uiFontFamily());
+            font.setPixelSize(settings->fontSize());
+            QGuiApplication::setFont(font);
+        };
+        applyUiFont();
+        connect(settings, &WorkbenchSettings::fontSizeChanged, this, applyUiFont);
+#endif
         windowChrome_->setBlurMaterialsEnabled(settings->blurMaterialsEnabled());
         connect(settings, &WorkbenchSettings::blurMaterialsEnabledChanged, this, [this, settings] {
             windowChrome_->setBlurMaterialsEnabled(settings->blurMaterialsEnabled());
@@ -285,10 +299,15 @@ bool Bootstrap::start(const QString& startupOpenTarget)
     }
 
     if (!startupOpenTarget.trimmed().isEmpty() && applicationContext_ != nullptr) {
+#ifdef Q_OS_IOS
+        if (auto* commands = qobject_cast<CommandService*>(applicationContext_->commands()))
+            commands->openDocument(QUrl::fromLocalFile(startupOpenTarget.trimmed()));
+#else
         auto* document = qobject_cast<DocumentModel*>(applicationContext_->document());
         if (document != nullptr) {
             document->openFile(QUrl::fromLocalFile(startupOpenTarget.trimmed()));
         }
+#endif
     }
 
     if (miacode::update::UpdateService* updates = applicationServices_->updateService()) {

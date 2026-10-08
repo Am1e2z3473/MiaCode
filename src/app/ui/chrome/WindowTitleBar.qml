@@ -31,10 +31,11 @@ Rectangle {
     readonly property real brandContentPadding: Theme.chromePadding
     readonly property real brandLeadingMargin:
         root.useEmbeddedMenu
-            ? (Theme.activityButtonSize - Theme.titleBarBrandIconSize) / 2 - brandContentPadding
+            ? Math.max((Theme.activityButtonSize - Theme.titleBarBrandIconSize) / 2 - brandContentPadding,
+                       Qt.platform.os === "ios" ? root.leadingInset - brandContentPadding : 0)
             : (root.leadingInset > 0 ? root.leadingInset : 10) - brandContentPadding
 
-    implicitHeight: root.useNativeMenu && root.nativeHeight > 0
+    implicitHeight: (root.useNativeMenu || Qt.platform.os === "ios") && root.nativeHeight > 0
                     ? root.nativeHeight
                     : (root.useEmbeddedMenu ? Theme.windowChromeRowHeight : 32)
     color: Theme.chromeSurfaceColor(Theme.colors.background.titleBar)
@@ -129,7 +130,7 @@ Rectangle {
         }
 
         Tooltip {
-            visible: brand.hovered && !root.brandTextVisible && !brandMenu.active
+            requestedVisible: brand.hovered && !root.brandTextVisible && !brandMenu.active
             text: "MiaCode"
         }
 
@@ -219,7 +220,7 @@ Rectangle {
         elide: Text.ElideRight
         HoverHandler { id: titleHover }
         Tooltip {
-            visible: titleHover.hovered && titleLabel.truncated
+            requestedVisible: titleHover.hovered && titleLabel.truncated
             text: titleLabel.text
         }
     }

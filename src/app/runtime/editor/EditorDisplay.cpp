@@ -1,3 +1,4 @@
+#include "app/platform/DocumentFileAccess.h"
 #include "app/runtime/editor/EditorHost.h"
 #include "app/runtime/settings/SettingsHost.h"
 #include "app/runtime/playback/PlaybackCoordinator.h"
@@ -118,11 +119,11 @@ void miacode::runtime::EditorHost::loadPortableState()
     applyEditorAutoCompletionEnabled(state_.editorAutoCompletionEnabled_, false);
     applyEditorImeInputDisabled(state_.editorImeInputDisabled_, false);
 
-    const QString dir = app.value("last_open_dir").toString();
+    const QString dir = miacode::document_access::resolvePath(app.value("last_open_dir").toString());
     if (!dir.isEmpty() && QDir(dir).exists()) {
         state_.lastOpenDir_ = QDir::cleanPath(dir);
     }
-    const QString lastOpenFile = app.value("last_open_file").toString();
+    const QString lastOpenFile = miacode::document_access::resolvePath(app.value("last_open_file").toString());
     if (!lastOpenFile.isEmpty()) {
         state_.lastSessionFilePath_ = QDir::cleanPath(lastOpenFile);
     }
@@ -132,7 +133,7 @@ void miacode::runtime::EditorHost::loadPortableState()
     const QJsonArray recentFiles = app.value("recent_files").toArray();
     QSet<QString> seenRecentFiles;
     for (const QJsonValue& value : recentFiles) {
-        const QString path = QDir::cleanPath(value.toString().trimmed());
+        const QString path = QDir::cleanPath(miacode::document_access::resolvePath(value.toString().trimmed()));
         if (path.isEmpty() || seenRecentFiles.contains(path)) {
             continue;
         }
@@ -530,13 +531,13 @@ void miacode::runtime::EditorHost::savePortableState() const
     ui.insert("editor_ime_input_disabled", state_.editorImeInputDisabled_);
     root.insert("ui", ui);
 
-    app.insert("last_open_dir", state_.lastOpenDir_);
-    app.insert("last_open_file", state_.lastSessionFilePath_);
+    app.insert("last_open_dir", miacode::document_access::persistentPath(state_.lastOpenDir_));
+    app.insert("last_open_file", miacode::document_access::persistentPath(state_.lastSessionFilePath_));
     app.insert("auto_restore_last_open_file", state_.autoRestoreLastSessionFile_);
     QJsonArray recentFiles;
     for (const QString& path : state_.recentFilePaths_) {
         if (!path.trimmed().isEmpty()) {
-            recentFiles.append(path);
+            recentFiles.append(miacode::document_access::persistentPath(path));
         }
     }
     app.insert("recent_files", recentFiles);

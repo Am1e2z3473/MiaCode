@@ -3953,5 +3953,9 @@ Error: %1</source>
         <source>Timeline</source>
         <translation>タイムライン</translation>
     </message>
+    <message id="platform.external_process_unavailable">
+        <source>This feature is available in the desktop version.</source>
+        <translation>この機能はデスクトップ版で利用できます。</translation>
+    </message>
 </context>
 </TS>

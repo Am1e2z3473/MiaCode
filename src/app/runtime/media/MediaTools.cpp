@@ -314,6 +314,11 @@ bool runFfmpegBlocking(
     miacode::LocalizedText* error,
     bool* cancelled = nullptr)
 {
+#ifdef Q_OS_IOS
+    if (error) *error = miacode::localizedText("platform.external_process_unavailable");
+    return false;
+#else
+
     if (jobProgress == nullptr) {
         if (error != nullptr) {
             *error = miacode::localizedText("media_tools.progress_unavailable");
@@ -425,10 +430,17 @@ bool runFfmpegBlocking(
         return false;
     }
     return true;
+
+#endif
 }
 
 bool probeMediaDurationSeconds(const QString& ffmpegPath, const QString& mediaPath, double* durationSeconds, miacode::LocalizedText* error)
 {
+#ifdef Q_OS_IOS
+    if (error) *error = miacode::localizedText("platform.external_process_unavailable");
+    return false;
+#else
+
     QStringList args;
     args << QStringLiteral("-hide_banner")
          << QStringLiteral("-i") << mediaPath
@@ -479,6 +491,8 @@ bool probeMediaDurationSeconds(const QString& ffmpegPath, const QString& mediaPa
         *durationSeconds = totalSeconds;
     }
     return true;
+
+#endif
 }
 
 bool compressVideoUnder20Mb(

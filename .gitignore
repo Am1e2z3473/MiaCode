@@ -198,3 +198,9 @@ __pycache__/
 # Throwaway slide-arrow-count analysis script + its generated CSV (repo root).
 /slide_arrow_count.py
 /slide_arrow_count.csv
+
+# iOS SDKs are provisioned by the platform build scripts.
+third_party/ffmpeg/ios/dev/
+third_party/bass/lib/ios/
+!scripts/build/provision-ios-dependencies.sh
+!scripts/build/build-ios-local.sh

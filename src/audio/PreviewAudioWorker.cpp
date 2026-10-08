@@ -740,6 +740,7 @@ void PreviewAudioWorker::executeReload(
     RuntimeState& state,
     PreviewAudioCompletion& completion)
 {
+    const bool rebuildBackend = snapshot().lifecycle == WorkerLifecycle::Degraded;
     if (command.applyWarmupPathsBeforeReload) {
         state.chartPath = command.chartPath;
         state.trackPath = command.trackPath;
@@ -758,6 +759,11 @@ void PreviewAudioWorker::executeReload(
         return;
     }
     try {
+        // A failed backend cannot serve playback commands while Degraded.
+        // Rebuild it for the next asset set rather than retaining failed
+        // streams or a failed output endpoint across document switches.
+        if (rebuildBackend)
+            backend.reset();
         const bool createdBackend = backend == nullptr;
         if (createdBackend) {
             backend = factory_ ? factory_() : nullptr;

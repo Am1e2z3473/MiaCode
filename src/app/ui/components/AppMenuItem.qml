@@ -8,6 +8,8 @@ import MiaCode.UI
 MenuItem {
     id: root
 
+    hoverEnabled: true
+
     property bool compact: false
 
     implicitHeight: compact ? Theme.compactControlHeight : 28
@@ -47,7 +49,7 @@ MenuItem {
     }
 
     Tooltip {
-        visible: root.tooltip.length > 0 && root.hovered
+        requestedVisible: root.tooltip.length > 0 && root.hovered
         text: root.tooltip
     }
 

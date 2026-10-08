@@ -596,7 +596,7 @@ Rectangle {
 
                                         HoverHandler { id: outputDirectoryHover }
                                         Tooltip {
-                                            visible: outputDirectoryHover.hovered && !outputDirectoryField.activeFocus
+                                            requestedVisible: outputDirectoryHover.hovered && !outputDirectoryField.activeFocus
                                                      && !!root.session && root.session.outputDirectory.length > 0
                                             text: root.session ? root.session.outputDirectory : ""
                                         }

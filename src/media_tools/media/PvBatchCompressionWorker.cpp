@@ -30,6 +30,11 @@ bool runProcess(
     QByteArray* output,
     miacode::LocalizedText* error)
 {
+#ifdef Q_OS_IOS
+    if (error) *error = miacode::localizedText("platform.external_process_unavailable");
+    return false;
+#else
+
     QProcess process;
     process.setProcessChannelMode(QProcess::MergedChannels);
     process.start(executable, arguments, QIODevice::ReadOnly);
@@ -57,6 +62,8 @@ bool runProcess(
         return false;
     }
     return true;
+
+#endif
 }
 
 bool probeDuration(
@@ -66,6 +73,11 @@ bool probeDuration(
     double* durationSeconds,
     miacode::LocalizedText* error)
 {
+#ifdef Q_OS_IOS
+    if (error) *error = miacode::localizedText("platform.external_process_unavailable");
+    return false;
+#else
+
     QProcess process;
     process.setProcessChannelMode(QProcess::MergedChannels);
     process.start(
@@ -107,6 +119,8 @@ bool probeDuration(
     }
     *durationSeconds = total;
     return true;
+
+#endif
 }
 
 bool replaceWithTemp(const QString& originalPath, const QString& tempPath, QString* preservedPath)

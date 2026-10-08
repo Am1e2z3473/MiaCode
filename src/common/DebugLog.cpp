@@ -7,6 +7,7 @@
 #include <QCoreApplication>
 #include <QDateTime>
 #include <QDir>
+#include <QStandardPaths>
 #include <QFile>
 #include <QFileInfo>
 #include <QHash>
@@ -284,7 +285,11 @@ QString executableDirectoryPath()
 
 QString defaultDebugLogDirectory()
 {
+#ifdef Q_OS_IOS
+    const QString executableDir = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation);
+#else
     const QString executableDir = executableDirectoryPath();
+#endif
     if (executableDir.isEmpty()) {
         return QString();
     }

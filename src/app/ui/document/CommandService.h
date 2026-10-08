@@ -26,6 +26,9 @@ public:
     //
     // These do not return a verdict — the answer arrives from a dialog, so
     // there is none to return yet. The action happens later, or not at all.
+#ifdef Q_OS_IOS
+    Q_INVOKABLE void openChartFolder();
+#endif
     Q_INVOKABLE void openDocument(const QUrl& fileUrl);
     Q_INVOKABLE void openRecentDocument(const QString& path);
     Q_INVOKABLE void closeDocument();

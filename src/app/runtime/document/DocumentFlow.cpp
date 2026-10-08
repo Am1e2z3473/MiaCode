@@ -1,4 +1,5 @@
-﻿#include "app/runtime/document/DocumentSessionHost.h"
+#include "app/platform/DocumentFileAccess.h"
+#include "app/runtime/document/DocumentSessionHost.h"
 #include "app/services/UiRequestService.h"
 #include "app/runtime/Shared.h"
 #include "app/runtime/export/VideoExportHost.h"
@@ -76,7 +77,7 @@ void Session::onOpenCurrentFolder()
 
 void Session::addRecentFilePath(const QString& path)
 {
-    const QString normalizedPath = path.isEmpty() ? QString() : QDir::cleanPath(path);
+    const QString normalizedPath = path.isEmpty() ? QString() : QDir::cleanPath(miacode::document_access::resolvePath(path));
     if (normalizedPath.isEmpty()) {
         return;
     }
@@ -94,14 +95,16 @@ QVariantList miacode::runtime::DocumentSessionHost::recentDocumentEntries()
     QSet<QString> seen;
     QVariantList entries;
     for (const QString& path : state_.recentFilePaths_) {
-        const QString normalized = path.isEmpty() ? QString() : QDir::cleanPath(path);
+        const QString normalized = path.isEmpty() ? QString() : QDir::cleanPath(miacode::document_access::resolvePath(path));
         if (normalized.isEmpty() || seen.contains(normalized)) {
             continue;
         }
         const QFileInfo info(normalized);
+#ifndef Q_OS_IOS
         if (!info.exists() || !info.isFile()) {
             continue;
         }
+#endif
         seen.insert(normalized);
         existing.append(normalized);
         const QString folderName = info.absoluteDir().dirName().trimmed();
@@ -131,7 +134,7 @@ void miacode::runtime::DocumentSessionHost::noteRecentDocument(const QString& pa
 
 void miacode::runtime::DocumentSessionHost::removeRecentDocument(const QString& path)
 {
-    const QString normalizedPath = path.isEmpty() ? QString() : QDir::cleanPath(path);
+    const QString normalizedPath = path.isEmpty() ? QString() : QDir::cleanPath(miacode::document_access::resolvePath(path));
     if (normalizedPath.isEmpty()) {
         return;
     }
@@ -156,7 +159,7 @@ void Session::postShellNotice(const QString& title, const QString& text)
 
 bool Session::openStartupTarget(const QString& path)
 {
-    const QString normalizedPath = path.isEmpty() ? QString() : QDir::cleanPath(path);
+    const QString normalizedPath = path.isEmpty() ? QString() : QDir::cleanPath(miacode::document_access::resolvePath(path));
     if (normalizedPath.isEmpty()) {
         return false;
     }

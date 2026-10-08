@@ -1,4 +1,5 @@
-﻿#include "common/LocalizedText.h"
+#include "app/platform/DocumentFileAccess.h"
+#include "common/LocalizedText.h"
 
 #include "app/runtime/document/DocumentSessionHost.h"
 #include "app/services/UiRequestService.h"
@@ -170,6 +171,10 @@ bool miacode::runtime::DocumentSessionHost::restoreLastSessionFile()
     if (state_.lastSessionFilePath_.isEmpty()) {
         return false;  // not a failure — first run or cleared session
     }
+#ifdef Q_OS_IOS
+    if (!miacode::document_access::hasFolderAccess(state_.lastSessionFilePath_))
+        return false;
+#endif
     const QFileInfo fileInfo(state_.lastSessionFilePath_);
     if (!fileInfo.exists() || !fileInfo.isFile()) {
         _mc_op_.fail(QStringLiteral("session_file_missing"));
@@ -197,6 +202,12 @@ void miacode::runtime::DocumentSessionHost::scheduleStartupRestoreLastSessionFil
         return;
     }
 
+#ifdef Q_OS_IOS
+    if (!miacode::document_access::hasFolderAccess(state_.lastSessionFilePath_)) {
+        state_.startupRestorePending_ = false;
+        return;
+    }
+#endif
     const QFileInfo fileInfo(state_.lastSessionFilePath_);
     if (!fileInfo.exists() || !fileInfo.isFile()) {
         state_.lastSessionFilePath_.clear();

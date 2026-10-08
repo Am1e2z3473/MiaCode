@@ -3953,5 +3953,9 @@ Error: %1</source>
         <source>Timeline</source>
         <translation>时间轴</translation>
     </message>
+    <message id="platform.external_process_unavailable">
+        <source>This feature is available in the desktop version.</source>
+        <translation>此功能适用于桌面版本。</translation>
+    </message>
 </context>
 </TS>

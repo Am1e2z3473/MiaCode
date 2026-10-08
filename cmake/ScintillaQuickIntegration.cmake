@@ -1,3 +1,13 @@
+# Generated integration sources track their upstream inputs.
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
+    src/platform/scintillaquick_platqt.cpp
+    src/public/scintillaquick_item.cpp
+    include/scintillaquick/scintillaquick_item.h
+    src/core/scintillaquick_core.cpp
+    src/core/scintillaquick_core.h
+    src/render/scintillaquick_scene_graph_renderer.cpp
+    third_party/scintilla/src/EditView.cxx)
+
 # Runs in ScintillaQuick's project scope. Metatype custom commands must belong
 # to the dependency's directory so CMake attaches them to its build graph.
 cmake_language(DEFER CALL qt_extract_metatypes ScintillaQuick)

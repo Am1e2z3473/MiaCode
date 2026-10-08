@@ -3953,5 +3953,9 @@ Error: %1</translation>
         <source>Timeline</source>
         <translation>Timeline</translation>
     </message>
+    <message id="platform.external_process_unavailable">
+        <source>This feature is available in the desktop version.</source>
+        <translation>This feature is available in the desktop version.</translation>
+    </message>
 </context>
 </TS>

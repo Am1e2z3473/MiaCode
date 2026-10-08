@@ -2,6 +2,7 @@
 #include "app/ui/chrome/ShortcutCommands.h"
 
 #include "app/ui/document/DocumentModel.h"
+#include "app/platform/DocumentFileAccess.h"
 
 
 namespace miacode::ui {
@@ -29,16 +30,40 @@ void CommandService::whenDocumentMayBeLeft(std::function<void()> proceed)
 
 void CommandService::openDocument(const QUrl& fileUrl)
 {
-    whenDocumentMayBeLeft([this, fileUrl]() { document_->openFile(fileUrl); });
+    whenDocumentMayBeLeft([this, fileUrl]() {
+#ifdef Q_OS_IOS
+        const QString path = miacode::document_access::resolvePath(
+            fileUrl.isLocalFile() ? fileUrl.toLocalFile() : fileUrl.toString());
+        if (!miacode::document_access::hasFolderAccess(path)) {
+            miacode::document_access::pickChartFolder(this, path, [this](const QString& chart) {
+                document_->openFile(QUrl::fromLocalFile(chart));
+            });
+            return;
+        }
+        document_->openFile(QUrl::fromLocalFile(path));
+#else
+        document_->openFile(fileUrl);
+#endif
+    });
 }
+
+#ifdef Q_OS_IOS
+void CommandService::openChartFolder()
+{
+    whenDocumentMayBeLeft([this] {
+        miacode::document_access::pickChartFolder(this, {}, [this](const QString& chart) {
+            document_->openFile(QUrl::fromLocalFile(chart));
+        });
+    });
+}
+#endif
 
 void CommandService::openRecentDocument(const QString& path)
 {
     if (path.trimmed().isEmpty()) {
         return;
     }
-    whenDocumentMayBeLeft(
-        [this, path]() { document_->openFile(QUrl::fromLocalFile(path)); });
+    openDocument(QUrl::fromLocalFile(miacode::document_access::resolvePath(path)));
 }
 
 void CommandService::newDocument()

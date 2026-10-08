@@ -86,7 +86,7 @@ Rectangle {
             }
 
             Tooltip {
-                visible: renderModeButton.hovered
+                requestedVisible: renderModeButton.hovered
                 text: qsTrId("qml.preview_rendering_mode")
             }
 

@@ -8,7 +8,7 @@
 
 | 目录 | 内容 |
 |---|---|
-| `build/` | Windows/macOS 构建、打包与出包校验入口 |
+| `build/` | Windows/macOS/iOS 构建、打包与出包校验入口 |
 | `debug/` | Windows/macOS 调试/诊断启动入口 |
 | `ffmpeg/` | FFmpeg 运行时、开发 SDK 获取脚本，以及 decode-only 裁剪工具链 |
 | `assets/` | 资产生成和字体裁剪辅助脚本 |
@@ -81,6 +81,27 @@ macOS 的 QtAVPlayer 预览解码还需要 FFmpeg dev SDK，位于仓库本地�
 `third_party/ffmpeg/macos/dev/`，用 `bash scripts/ffmpeg/ensure-macos-ffmpeg-dev.sh`
 生成（已存在且校验通过时直接复用）；打包仅复制其中必需的六个 dylib，
 不会查找或复制 Homebrew 依赖。也可用 `MIACODE_FFMPEG_DEV_DIR` 显式指定兼容 SDK。
+
+iOS / iPadOS:
+
+安装 Qt 6.11.2 的 iOS、Multimedia、Quick 3D、Shader Tools 组件，以及同版本 macOS 宿主工具。
+Xcode 使用开发者账号与设备签名证书，设备开启开发者模式并与 Mac 配对。
+
+```bash
+MIACODE_IOS_DEVELOPMENT_TEAM=<Apple团队标识> \
+MIACODE_IOS_DEVICE=<设备标识> \
+bash scripts/build/build-ios-local.sh
+```
+
+入口在 `build-ios/` 配置 Xcode 工程，以 Release、arm64、四路并发构建，
+指定设备时安装并启动应用。`QT_ROOT`、`QT_HOST_ROOT` 可指定 Qt iOS 与 macOS 目录，
+`MIACODE_IOS_BUILD_DIR` 可指定构建目录。最低系统版本为 iOS 17。
+
+`provision-ios-dependencies.sh` 获取 iOS BASS XCFramework，并从经过 SHA-256 校验的
+FFmpeg 8.1.2 源码生成静态 SDK；下载与编译缓存位于 `build-ios/dependencies/`。
+界面、ScintillaQuick、谱面解析、Muri、时间轴、音频与 QSG 预览复用共享模块，
+视频解码沿用 QtAVPlayer / VideoToolbox。素材打包到应用，调试日志位于 Documents/logs，
+Documents 支持系统文件共享。视频子进程导出与外部 FFmpeg 媒体处理作为桌面能力保留。
 
 ## 开发者工具
 

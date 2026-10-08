@@ -6,6 +6,8 @@ import QtQuick
 Item {
     id: root
 
+    enabled: Qt.platform.os !== "ios"
+
     required property var hostWindow
     required property var windowChrome
 

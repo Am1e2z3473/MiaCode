@@ -169,8 +169,9 @@ Item {
 
     Tooltip {
         id: timelineMarkerTooltip
+        pointerTarget: timelineItem
         parent: Overlay.overlay
-        visible: timelineItem.hoverTooltipText.length > 0
+        requestedVisible: timelineItem.hoverTooltipText.length > 0
         text: timelineItem.hoverTooltipText
         x: {
             const position = timelineItem.mapToItem(null, timelineItem.hoverTooltipPosition)

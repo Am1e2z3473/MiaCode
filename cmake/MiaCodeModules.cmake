@@ -288,6 +288,8 @@ if (WIN32)
         ole32        # Windows Core Audio endpoint notification COM API
         avrt
     )
+elseif (IOS)
+    target_link_libraries(miacode_audio_bass PUBLIC ${MIACODE_BASS_IOS_FRAMEWORKS})
 elseif (APPLE)
     target_link_libraries(miacode_audio_bass PUBLIC
         "${MIACODE_BASS_MACOS_DIR}/libbass.dylib"
@@ -499,6 +501,12 @@ elseif (CMAKE_SYSTEM_NAME STREQUAL "Linux")
         PkgConfig::MIACODE_VAAPI)
 endif()
 
+if (IOS)
+    target_link_libraries(miacode_stage_media PRIVATE
+        "-framework VideoToolbox" "-framework AudioToolbox" "-framework Security"
+        "-framework CoreFoundation" "-framework CoreGraphics" z bz2 iconv)
+endif()
+
 # ---- export: video/cover export, QSG/D3D11 export sessions ----------------
 miacode_add_module(miacode_export
     SOURCES
@@ -522,6 +530,13 @@ miacode_add_module(miacode_export
         src/export/session/PreviewQuickD3D11ExportSession.h
         src/export/session/PreviewQuickExportSession.cpp
         src/export/session/PreviewQuickExportSession.h
+        src/export/video_export/VideoExportController.cpp
+        src/export/video_export/VideoExportDiagnostics.cpp
+        src/export/video_export/VideoExportEncoder.cpp
+        src/export/video_export/VideoExportFrameRender.cpp
+        src/export/video_export/VideoExportPipeline.cpp
+        src/export/video_export/VideoExportPreparedTask.cpp
+        src/export/video_export/VideoExportControllerIOS.cpp
         src/export/video_export/BassExportAudioBackend.cpp
         src/export/video_export/BassExportAudioBackend.h
         src/export/video_export/FontLibrary.cpp
@@ -532,19 +547,13 @@ miacode_add_module(miacode_export
         src/export/video_export/VideoExportAudioRenderPlan.cpp
         src/export/video_export/VideoExportAudioRenderPlan.h
         src/export/video_export/VideoExportConfig.h
-        src/export/video_export/VideoExportController.cpp
         src/export/video_export/VideoExportController.h
         src/export/video_export/VideoExportControllerInternal.h
-        src/export/video_export/VideoExportDiagnostics.cpp
         src/export/video_export/EncoderProbeCache.h
         src/export/video_export/EncoderProbeCache.cpp
-        src/export/video_export/VideoExportEncoder.cpp
-        src/export/video_export/VideoExportFrameRender.cpp
         src/export/video_export/VideoExportMediaTimeline.cpp
         src/export/video_export/VideoExportMediaTimeline.h
         src/export/video_export/VideoExportPendingFrameRedraw.h
-        src/export/video_export/VideoExportPipeline.cpp
-        src/export/video_export/VideoExportPreparedTask.cpp
         src/export/video_export/VideoExportQuickRenderBackend.cpp
         src/export/video_export/VideoExportQuickRenderBackend.h
         src/export/video_export/VideoExportRuntimePolicy.cpp
@@ -556,6 +565,23 @@ miacode_add_module(miacode_export
     PUBLIC miacode_audio_bass miacode_preview_quick Qt6::Quick Qt6::Qml
     QRC resources/intro.qrc
 )
+# iOS retains the shared scene and cover exporters; video encoding uses a
+# platform entry point because Qt iOS has no subprocess support.
+get_target_property(export_sources miacode_export SOURCES)
+if(IOS)
+    list(REMOVE_ITEM export_sources
+        src/export/video_export/VideoExportController.cpp
+        src/export/video_export/VideoExportDiagnostics.cpp
+        src/export/video_export/VideoExportEncoder.cpp
+        src/export/video_export/VideoExportFrameRender.cpp
+        src/export/video_export/VideoExportPipeline.cpp
+        src/export/video_export/VideoExportPreparedTask.cpp
+)
+else()
+    list(REMOVE_ITEM export_sources src/export/video_export/VideoExportControllerIOS.cpp)
+endif()
+set_property(TARGET miacode_export PROPERTY SOURCES "${export_sources}")
+
 if (WIN32)
     target_link_libraries(miacode_export PRIVATE
         d3d11        # D3D11 export session

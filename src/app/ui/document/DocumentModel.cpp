@@ -1346,6 +1346,8 @@ bool DocumentModel::openFile(const QUrl& fileUrl)
     refreshUnifiedDesignerState();
     publishWorkspaceCommit(
         WorkspaceCommitKind::Open, true, result.usedSystemEncoding);
+    if (bridge() != nullptr)
+        bridge()->noteRecentDocument(currentFilePath());
     return true;
 }
 

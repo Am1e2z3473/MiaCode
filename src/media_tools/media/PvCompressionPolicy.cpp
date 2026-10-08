@@ -72,7 +72,11 @@ QStringList makePvCompressionPassArguments(
     };
 
     if (passNumber == 1) {
+        #ifdef Q_OS_IOS
+        args << QStringLiteral("-f") << QStringLiteral("null") << QStringLiteral("/dev/null");
+#else
         args << QStringLiteral("-f") << QStringLiteral("null") << QProcess::nullDevice();
+#endif
     } else {
         args << QStringLiteral("-movflags") << QStringLiteral("+faststart") << outputPath;
     }

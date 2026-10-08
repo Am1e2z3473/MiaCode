@@ -1,3 +1,5 @@
+#include <QPointer>
+#include <QTimer>
 #include "app/ui/editor/ScintillaEditorBridge.h"
 #include "editor/SimaiCompletionCatalog.h"
 #include <QClipboard>
@@ -7,6 +9,7 @@
 #include <QKeyEvent>
 #include <QMouseEvent>
 #include <QWheelEvent>
+#include <QTouchEvent>
 #include <QScopedValueRollback>
 #include <QStyleHints>
 #include <cmath>
@@ -16,6 +19,10 @@ using miacode::editor::normalizeSimaiInput;
 ScintillaEditorBridge::ScintillaEditorBridge(QQuickItem* parent)
     : ScintillaQuick_item(parent), document_(*this), styler_(*this, document_)
 {
+#ifdef Q_OS_IOS
+    setAcceptTouchEvents(false);
+    setProperty("inputMethodHints", QVariant::fromValue(Qt::InputMethodHints(Qt::ImhNoPredictiveText | Qt::ImhNoAutoUppercase | Qt::ImhNoTextHandles | Qt::ImhNoEditMenu)));
+#endif
     send(SCI_SETCODEPAGE, SC_CP_UTF8);
     send(SCI_USEPOPUP, SC_POPUP_NEVER);
     send(SCI_SETHSCROLLBAR, false);
@@ -168,19 +175,14 @@ void ScintillaEditorBridge::publishLayout()
     layoutSize_ = size;
 
     const QRectF cursor = positionToRectangle(cursorPosition());
-    const QRectF anchor = positionToRectangle(document_.utf16Position(send(SCI_GETANCHOR)));
     const QRectF follow = styler_.following() ? positionToRectangle(followCaretPosition_) : QRectF{};
     const bool cursorChanged = cursorRectangle_ != cursor;
-    const bool anchorChanged = anchorRectangle_ != anchor;
     const bool followChanged = followCursorRectangle_ != follow;
     cursorRectangle_ = cursor;
-    anchorRectangle_ = anchor;
     followCursorRectangle_ = follow;
     if (metricsChanged) emit layoutChanged();
     if (cursorChanged) emit cursorRectangleChanged();
     if (followChanged) emit followVisualChanged();
-    if (hasActiveFocus() && (metricsChanged || cursorChanged || anchorChanged))
-        QGuiApplication::inputMethod()->update(Qt::ImCursorRectangle | Qt::ImAnchorRectangle);
 }
 void ScintillaEditorBridge::setDocumentSession(DocumentModel* value)
 {
@@ -407,7 +409,11 @@ void ScintillaEditorBridge::refreshSettings()
 {
     if (!controller_) return;
     send(SCI_SETOVERTYPE, controller_->overwriteMode());
+#ifdef Q_OS_IOS
+    setFlag(ItemAcceptsInputMethod, true);
+#else
     setFlag(ItemAcceptsInputMethod, !controller_->imeInputDisabled());
+#endif
 }
 void ScintillaEditorBridge::publishContext(bool userCaret)
 {
@@ -429,8 +435,12 @@ void ScintillaEditorBridge::refreshSelection(bool userCaret)
     emit selectionChanged();
     if (!synchronizing_ && !handlingIme_) {
         publishContext(userCaret);
-        if (controller_ && userCaret)
-            controller_->updateCompletion(document_.text(), cursorPosition());
+        if (controller_ && userCaret) {
+            if (anchor == caret)
+                controller_->updateCompletion(document_.text(), cursorPosition());
+            else
+                controller_->closeCompletion();
+        }
     }
 }
 void ScintillaEditorBridge::revealPosition(int utf16, bool center)
@@ -667,6 +677,26 @@ void ScintillaEditorBridge::keyPressEvent(QKeyEvent* event)
 void ScintillaEditorBridge::mousePressEvent(QMouseEvent* event)
 {
     beginUserInteraction();
+#ifdef Q_OS_IOS
+    if (event->source() == Qt::MouseEventSynthesizedByQt && event->button() == Qt::LeftButton) {
+        if (controller_) controller_->closeCompletion();
+        touchMouseDown_ = true;
+        touchSelecting_ = lastTouchTapTime_ > 0
+            && event->timestamp() - lastTouchTapTime_ <= 350
+            && (event->position() - lastTouchTapPosition_).manhattanLength() <= 12;
+        lastTouchTapTime_ = 0;
+        touchScrolling_ = false;
+        touchOrigin_ = touchPrevious_ = event->position();
+        touchScrollRemainder_ = 0;
+        setKeepMouseGrab(true);
+        if (touchSelecting_) {
+            ScintillaQuick_item::mousePressEvent(event);
+            refreshSelection(true);
+        }
+        event->accept();
+        return;
+    }
+#endif
     if (event->button() == Qt::RightButton) {
         int gutterWidth = 0;
         for (int margin = 0; margin < send(SCI_GETMARGINS); ++margin)
@@ -679,20 +709,112 @@ void ScintillaEditorBridge::mousePressEvent(QMouseEvent* event)
             event->accept();
             return;
         }
-    }
-    ScintillaQuick_item::mousePressEvent(event);
-    if (event->button() == Qt::RightButton) {
-        emit selectionChanged();
+        forceActiveFocus();
+        const int position = positionAt(event->position().x(), event->position().y());
+        if (position < selectionStart() || position > selectionEnd()) setCursorPosition(position);
         updatePolish();
         emit contextMenuRequested(event->position().x(), event->position().y());
+        event->accept();
+        return;
     }
+    if (event->button() == Qt::LeftButton) setKeepMouseGrab(true);
+    ScintillaQuick_item::mousePressEvent(event);
     refreshSelection(!programmatic_);
 }
 void ScintillaEditorBridge::mouseReleaseEvent(QMouseEvent* event)
 {
+#ifdef Q_OS_IOS
+    if (event->source() == Qt::MouseEventSynthesizedByQt && event->button() == Qt::LeftButton) {
+        touchMouseDown_ = false;
+        if (touchSelecting_) {
+            ScintillaQuick_item::mouseReleaseEvent(event);
+            refreshSelection(true);
+            emit contextMenuRequested(event->position().x(), event->position().y());
+        } else if (!touchScrolling_) {
+            QMouseEvent press(QEvent::MouseButtonPress, event->position(), event->globalPosition(),
+                Qt::LeftButton, Qt::LeftButton, event->modifiers());
+            ScintillaQuick_item::mousePressEvent(&press);
+            ScintillaQuick_item::mouseReleaseEvent(event);
+            refreshSelection(true);
+            lastTouchTapTime_ = event->timestamp();
+            lastTouchTapPosition_ = event->position();
+            if (selectionStart() != selectionEnd())
+                emit contextMenuRequested(event->position().x(), event->position().y());
+        }
+        touchSelecting_ = touchScrolling_ = false;
+        setKeepMouseGrab(false);
+        event->accept();
+        return;
+    }
+#endif
+    if (event->button() == Qt::RightButton) { event->accept(); return; }
     ScintillaQuick_item::mouseReleaseEvent(event);
+    if (event->button() == Qt::LeftButton) setKeepMouseGrab(false);
     refreshSelection(!programmatic_);
     if (event->button() == Qt::LeftButton && (event->modifiers() & (Qt::ControlModifier | Qt::MetaModifier))) seekPreviewToCaret();
+}
+void ScintillaEditorBridge::mouseMoveEvent(QMouseEvent* event)
+{
+#ifdef Q_OS_IOS
+    if (touchMouseDown_ && event->source() == Qt::MouseEventSynthesizedByQt) {
+        const QPointF point = event->position();
+        if (touchSelecting_) {
+            ScintillaQuick_item::mouseMoveEvent(event);
+            refreshSelection(true);
+        } else {
+            if (!touchScrolling_ && (point - touchOrigin_).manhattanLength() > 12) {
+                touchScrolling_ = true;
+            }
+            if (touchScrolling_) {
+                const QPointF delta = touchPrevious_ - point;
+                touchScrollRemainder_ += delta.y() / qMax(1, int(send(SCI_TEXTHEIGHT, 0)));
+                const int rows = int(touchScrollRemainder_);
+                if (rows) {
+                    scrollVertical(int(send(SCI_GETFIRSTVISIBLELINE)) + rows);
+                    touchScrollRemainder_ -= rows;
+                }
+                if (!autoWrap_)
+                    scrollHorizontal(int(send(SCI_GETXOFFSET)) + qRound(delta.x()));
+                else if (send(SCI_GETXOFFSET) != 0) scrollHorizontal(0);
+            }
+        }
+        touchPrevious_ = point;
+        event->accept();
+        return;
+    }
+#endif
+    ScintillaQuick_item::mouseMoveEvent(event);
+    refreshSelection(!programmatic_);
+}
+void ScintillaEditorBridge::mouseDoubleClickEvent(QMouseEvent* event)
+{
+#ifdef Q_OS_IOS
+    if (event->source() == Qt::MouseEventSynthesizedByQt) {
+        if (!touchSelecting_) {
+            touchSelecting_ = touchMouseDown_ = true;
+            touchScrolling_ = false;
+            setKeepMouseGrab(true);
+            ScintillaQuick_item::mousePressEvent(event);
+            refreshSelection(true);
+        }
+        event->accept();
+        return;
+    }
+#endif
+    ScintillaQuick_item::mouseDoubleClickEvent(event);
+}
+void ScintillaEditorBridge::mouseUngrabEvent()
+{
+    if (touchMouseDown_) lastTouchTapTime_ = 0;
+    if (touchMouseDown_ && touchSelecting_) {
+        QMouseEvent release(QEvent::MouseButtonRelease, touchPrevious_, mapToGlobal(touchPrevious_),
+            Qt::LeftButton, Qt::NoButton, Qt::NoModifier);
+        ScintillaQuick_item::mouseReleaseEvent(&release);
+        refreshSelection(true);
+    }
+    touchMouseDown_ = touchSelecting_ = touchScrolling_ = false;
+    setKeepMouseGrab(false);
+    ScintillaQuick_item::mouseUngrabEvent();
 }
 void ScintillaEditorBridge::wheelEvent(QWheelEvent* event)
 {
@@ -722,19 +844,46 @@ void ScintillaEditorBridge::wheelEvent(QWheelEvent* event)
     if (event->phase() == Qt::ScrollEnd) wheelRemainder_ = 0;
     event->accept();
 }
+
 void ScintillaEditorBridge::inputMethodEvent(QInputMethodEvent* event)
 {
+#ifndef Q_OS_IOS
     if (controller_ && controller_->imeInputDisabled()) { event->accept(); return; }
+#endif
+    const bool wasComposing = imeComposing_;
+    const bool changesText = wasComposing || !event->preeditString().isEmpty()
+        || !event->commitString().isEmpty() || event->replacementLength() != 0;
     {
         QScopedValueRollback guard(handlingIme_, true);
-        imeComposing_ = !event->preeditString().isEmpty() && event->commitString().isEmpty();
-        QInputMethodEvent normalized(event->preeditString(), event->attributes());
+        imeComposing_ = !event->preeditString().isEmpty();
+        auto attributes = event->attributes();
+#ifdef Q_OS_IOS
+        if (event->replacementStart() != 0 || event->replacementLength() != 0)
+            attributes.removeIf([](const auto& attribute) { return attribute.type == QInputMethodEvent::Selection; });
+#endif
+        QInputMethodEvent normalized(event->preeditString(), attributes);
         const QString commit = controller_ && controller_->halfWidthInputEnabled() ? normalizeSimaiInput(event->commitString()) : event->commitString();
         normalized.setCommitString(commit, event->replacementStart(), event->replacementLength());
-        const bool committed = !commit.isEmpty();
+        const bool committed = !commit.isEmpty() || event->replacementLength() != 0;
         if (committed) send(SCI_BEGINUNDOACTION);
+#ifdef Q_OS_IOS
+        if (event->replacementStart() != 0 || event->replacementLength() != 0) {
+            if (wasComposing) {
+                QInputMethodEvent cancel;
+                ScintillaQuick_item::inputMethodEvent(&cancel);
+            }
+            const int start = qBound(0, cursorPosition() + event->replacementStart(), int(document_.text().size()));
+            const int end = qBound(start, start + event->replacementLength(), int(document_.text().size()));
+            select(start, end);
+            normalized.setCommitString(commit);
+            if (commit.isEmpty() && event->replacementLength() != 0)
+                sends(SCI_REPLACESEL, 0, "");
+        }
+#endif
         ScintillaQuick_item::inputMethodEvent(&normalized);
-        if (controller_ && committed && commit.size() == 1 && controller_->autoCompletionEnabled()
+        if (controller_ && committed && commit.size() == 1 && !imeComposing_
+            && event->replacementStart() == 0 && event->replacementLength() == 0
+            && controller_->autoCompletionEnabled()
             && !controller_->overwriteMode() && !controller_->completionActive()) {
             const QChar glyph = commit.front();
             const QChar closing = miacode::editor::closingBracketFor(glyph);
@@ -756,6 +905,7 @@ void ScintillaEditorBridge::inputMethodEvent(QInputMethodEvent* event)
     if (imeComposing_) {
         if (syncController_) syncController_->setTouchPadControlHold(false);
         publishContext(false);
-    } else textMutated();
+    } else if (changesText) textMutated();
+    else refreshSelection(false);
 }
 }

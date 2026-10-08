@@ -46,6 +46,8 @@ ApplicationWindow {
     visible: false
     flags: {
         let value = Qt.Window
+        if (Qt.platform.os === "ios")
+            value |= Qt.ExpandedClientAreaHint
         if (window.platform.captionButtons) {
             value |= Qt.CustomizeWindowHint
                     | Qt.WindowTitleHint

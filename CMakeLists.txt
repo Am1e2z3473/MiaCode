@@ -29,7 +29,7 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-if (APPLE AND NOT DEFINED CMAKE_OSX_DEPLOYMENT_TARGET)
+if (APPLE AND NOT IOS AND NOT DEFINED CMAKE_OSX_DEPLOYMENT_TARGET)
     set(CMAKE_OSX_DEPLOYMENT_TARGET "10.14" CACHE STRING "Minimum macOS deployment version" FORCE)
 endif()
 
@@ -189,6 +189,8 @@ if (WIN32)
                 "Missing required Windows BASS runtime: ${MIACODE_BASS_WINDOWS_BIN_DIR}/${MIACODE_BASS_DLL}")
         endif()
     endforeach()
+elseif (IOS)
+    include(cmake/MiaCodeIOS.cmake)
 elseif (APPLE)
     set(MIACODE_BASS_MACOS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/third_party/bass/lib/macos/universal")
     set(MIACODE_BASS_MACOS_LIBRARIES
@@ -247,6 +249,9 @@ endif()
             set(MIACODE_FFMPEG_DEV_DIR_DEFAULT
                 "${CMAKE_CURRENT_SOURCE_DIR}/third_party/ffmpeg/windows/win64/dev")
         endif()
+    elseif (IOS)
+        set(MIACODE_FFMPEG_DEV_DIR_DEFAULT
+            "${CMAKE_CURRENT_SOURCE_DIR}/third_party/ffmpeg/ios/dev")
     elseif (APPLE)
         set(MIACODE_FFMPEG_DEV_DIR_DEFAULT
             "${CMAKE_CURRENT_SOURCE_DIR}/third_party/ffmpeg/macos/dev")
@@ -255,7 +260,10 @@ endif()
         set(MIACODE_FFMPEG_DEV_DIR "${MIACODE_FFMPEG_DEV_DIR_DEFAULT}"
             CACHE PATH "FFmpeg shared dev SDK root (include/ + lib/) for the QtAVPlayer preview backend")
         if (NOT EXISTS "${MIACODE_FFMPEG_DEV_DIR}/include" OR NOT EXISTS "${MIACODE_FFMPEG_DEV_DIR}/lib")
-            if (APPLE)
+            if (IOS)
+                set(MIACODE_FFMPEG_PROVISION_COMMAND
+                    "bash scripts/build/provision-ios-dependencies.sh")
+            elseif (APPLE)
                 set(MIACODE_FFMPEG_PROVISION_COMMAND
                     "bash scripts/ffmpeg/ensure-macos-ffmpeg-dev.sh")
             else()
@@ -314,13 +322,21 @@ endif()
             unset(${MIACODE_QTAVPLAYER_FFMPEG_LIBRARY})
         endforeach()
     endif()
+    if(IOS)
+        foreach(library AVFILTER AVCODEC AVFORMAT AVUTIL SWRESAMPLE SWSCALE)
+            string(TOLOWER "${library}" library_name)
+            find_library(${library}_LIBRARY NAMES "${library_name}"
+                PATHS "${MIACODE_FFMPEG_DEV_DIR}/lib"
+                NO_DEFAULT_PATH NO_CMAKE_FIND_ROOT_PATH REQUIRED)
+        endforeach()
+    endif()
     # Sets QtAVPlayer_SOURCES / QtAVPlayer_LIBS (absolute import-lib paths via
     # find_library) and globally defines QT_BUILD_QTAVPLAYER_LIB.
     include("${QT_AVPLAYER_DIR}/QtAVPlayer.cmake")
 
 include(cmake/MiaCodeModules.cmake)
 
-add_executable(MiaCode WIN32 MACOSX_BUNDLE
+qt_add_executable(MiaCode WIN32 MACOSX_BUNDLE
     src/app/main.cpp
     src/app/services/ApplicationServices.cpp
     src/app/services/ApplicationServices.h
@@ -509,6 +525,12 @@ add_executable(MiaCode WIN32 MACOSX_BUNDLE
     src/app/services/update/UpdateService.cpp
     src/app/services/update/UpdateService.h
 )
+if(IOS)
+    get_target_property(app_sources MiaCode SOURCES)
+    list(REMOVE_ITEM app_sources src/app/runtime/export/ExportWorker.cpp)
+    set_property(TARGET MiaCode PROPERTY SOURCES "${app_sources}")
+    target_sources(MiaCode PRIVATE src/app/runtime/export/ExportWorkerIOS.cpp)
+endif()
 miacode_add_qrc(MiaCode resources/app_icons.qrc)
 
 qt_add_shaders(MiaCode "ui_shaders"
@@ -534,7 +556,7 @@ if (WIN32 AND EXISTS "${MIACODE_APP_ICON}")
     target_sources(MiaCode PRIVATE "${MIACODE_APP_RC}")
 endif()
 
-if (APPLE AND EXISTS "${MIACODE_MACOS_APP_ICON}")
+if (APPLE AND NOT IOS AND EXISTS "${MIACODE_MACOS_APP_ICON}")
     set_source_files_properties("${MIACODE_MACOS_APP_ICON}" PROPERTIES
         MACOSX_PACKAGE_LOCATION "Resources"
     )
@@ -883,6 +905,8 @@ if (WIN32)
         COMMENT "Bundling assets directory into output"
         VERBATIM
     )
+elseif (IOS)
+    miacode_configure_ios_app(MiaCode)
 elseif (APPLE)
     set_target_properties(MiaCode PROPERTIES
         BUILD_RPATH "@executable_path/../Frameworks"
@@ -939,7 +963,7 @@ add_custom_command(TARGET MiaCode POST_BUILD
     VERBATIM
 )
 
-if (APPLE)
+if (APPLE AND NOT IOS)
     target_sources(MiaCode PRIVATE
         src/app/ui/chrome/NativeWindowThemeMac.h
         src/app/ui/chrome/NativeWindowThemeMac.mm
@@ -972,7 +996,7 @@ endif()
                 $<TARGET_FILE_DIR:MiaCode>
             VERBATIM
         )
-    elseif (APPLE)
+    elseif (APPLE AND NOT IOS)
         # The project-local macOS SDK has @rpath install names. Make the local
         # app bundle runnable too, then let the release packager stage the
         # same six dylibs in its final Frameworks directory.

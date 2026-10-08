@@ -164,7 +164,7 @@ void PreviewStageMediaHost::initializeBackendObjects()
             .arg(integratedGpu ? 1 : 0)
             .arg(adapterDesc)
             .arg(miacode::preview::sharedPreviewD3D11DeviceActive() ? 1 : 0));
-#elif defined(Q_OS_MACOS)
+#elif defined(Q_OS_DARWIN)
     appendPreviewStageMediaLog(
         QStringLiteral("media_backend"),
         QString("backend=qtavplayer ffmpeg=1 hardware_decoder=videotoolbox qt_runtime_version=%1 force_software=%2 pref=%3 renderer_bridge=metal")
@@ -416,7 +416,7 @@ QString PreviewStageMediaHost::videoDecodeDescription() const
             return QStringLiteral("GPU (VA-API)");
 #elif defined(Q_OS_WIN)
             return QStringLiteral("GPU (D3D11VA)");
-#elif defined(Q_OS_MACOS)
+#elif defined(Q_OS_DARWIN)
             return QStringLiteral("GPU (VideoToolbox)");
 #else
             return QStringLiteral("GPU (Hardware)");
@@ -428,7 +428,7 @@ QString PreviewStageMediaHost::videoDecodeDescription() const
     return QStringLiteral("GPU (VA-API)");
 #elif defined(Q_OS_WIN)
     return QStringLiteral("GPU (D3D11VA)");
-#elif defined(Q_OS_MACOS)
+#elif defined(Q_OS_DARWIN)
     return QStringLiteral("GPU (VideoToolbox)");
 #else
     return QStringLiteral("GPU (Hardware)");

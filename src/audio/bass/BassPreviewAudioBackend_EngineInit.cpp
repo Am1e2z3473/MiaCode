@@ -30,7 +30,7 @@
 #include <windows.h>
 #include <mmdeviceapi.h>
 #include <objbase.h>
-#elif defined(Q_OS_MACOS) || defined(Q_OS_LINUX)
+#elif defined(Q_OS_DARWIN) || defined(Q_OS_LINUX)
 #include <dlfcn.h>
 #endif
 
@@ -296,8 +296,10 @@ bool BassPreviewAudioBackend::ensureBassFxLoaded()
     bassFxModule_ = module;
     bassFxTempoCreate_ = reinterpret_cast<void*>(proc);
     return true;
-#elif (defined(Q_OS_MACOS) || defined(Q_OS_LINUX))
-#ifdef Q_OS_MACOS
+#elif (defined(Q_OS_DARWIN) || defined(Q_OS_LINUX))
+#if defined(Q_OS_IOS)
+    const QString libraryName = QStringLiteral("Frameworks/bass_fx.framework/bass_fx");
+#elif defined(Q_OS_MACOS)
     const QString libraryName = QStringLiteral("libbass_fx.dylib");
 #else
     const QString libraryName = QStringLiteral("libbass_fx.so");
@@ -338,7 +340,7 @@ void BassPreviewAudioBackend::unloadBassFx()
     if (bassFxModule_ != nullptr) {
         FreeLibrary(static_cast<HMODULE>(bassFxModule_));
     }
-#elif (defined(Q_OS_MACOS) || defined(Q_OS_LINUX))
+#elif (defined(Q_OS_DARWIN) || defined(Q_OS_LINUX))
     if (bassFxModule_ != nullptr) {
         dlclose(bassFxModule_);
     }
@@ -365,6 +367,12 @@ void BassPreviewAudioBackend::loadOptionalPlugins()
         if (QFileInfo::exists(opusPath)) {
             pluginOpus_ = BASS_PluginLoad(reinterpret_cast<const WCHAR*>(opusPath.utf16()), 0);
         }
+    }
+#elif defined(Q_OS_IOS)
+    if (pluginOpus_ == 0) {
+        const QString path = QDir(QCoreApplication::applicationDirPath())
+            .filePath(QStringLiteral("Frameworks/bassopus.framework/bassopus"));
+        pluginOpus_ = BASS_PluginLoad(QFile::encodeName(path).constData(), 0);
     }
 #elif defined(Q_OS_MACOS)
     if (pluginOpus_ == 0) {

@@ -67,7 +67,7 @@ Column {
             }
 
             Tooltip {
-                visible: sectionButton.hovered
+                requestedVisible: sectionButton.hovered
                 text: root.viewState.difficultySectionExpanded
                     ? qsTrId("qml.collapse_difficulties") : qsTrId("qml.expand_difficulties")
             }
@@ -181,7 +181,7 @@ Column {
                     }
 
                     Tooltip {
-                        visible: difficultyButton.hovered
+                        requestedVisible: difficultyButton.hovered
                         text: difficultyGroup.foldsBookmarks
                             ? (difficultyGroup.bookmarksExpanded
                                ? qsTrId("qml.collapse_bookmarks") : qsTrId("qml.expand_bookmarks"))

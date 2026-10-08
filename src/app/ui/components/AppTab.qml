@@ -122,7 +122,7 @@ Item {
                         focused: closeButton.visualFocus
                     }
                     Tooltip {
-                        visible: closeButton.hovered
+                        requestedVisible: closeButton.hovered
                         text: qsTrId("qml.close_ctrl_w")
                     }
                 }
@@ -141,7 +141,7 @@ Item {
     }
 
     Tooltip {
-        visible: tabButton.hovered && !closeButton.hovered && root.tooltip.length > 0
+        requestedVisible: tabButton.hovered && !closeButton.hovered && root.tooltip.length > 0
         text: root.tooltip
     }
 }

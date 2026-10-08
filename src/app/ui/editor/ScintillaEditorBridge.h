@@ -133,6 +133,9 @@ protected:
     void keyPressEvent(QKeyEvent* event) override;
     void mousePressEvent(QMouseEvent* event) override;
     void mouseReleaseEvent(QMouseEvent* event) override;
+    void mouseMoveEvent(QMouseEvent* event) override;
+    void mouseDoubleClickEvent(QMouseEvent* event) override;
+    void mouseUngrabEvent() override;
     void wheelEvent(QWheelEvent* event) override;
     void inputMethodEvent(QInputMethodEvent* event) override;
 private:
@@ -169,7 +172,6 @@ private:
     int lineHeight_ = 0;
     QSizeF layoutSize_;
     QRectF cursorRectangle_;
-    QRectF anchorRectangle_;
     QRectF followCursorRectangle_;
     int followCaretPosition_ = 0;
     struct ViewportAnchor {
@@ -201,6 +203,14 @@ private:
     int reportedAnchor_ = -1;
     int reportedCaret_ = -1;
     qreal wheelRemainder_ = 0;
+    QPointF touchPrevious_;
+    bool touchSelecting_ = false;
+    ulong lastTouchTapTime_ = 0;
+    QPointF lastTouchTapPosition_;
+    bool touchMouseDown_ = false;
+    bool touchScrolling_ = false;
+    QPointF touchOrigin_;
+    qreal touchScrollRemainder_ = 0;
     int blockSpacing_ = 0;
     bool autoWrap_ = true;
     bool scrollPastEnd_ = true;
