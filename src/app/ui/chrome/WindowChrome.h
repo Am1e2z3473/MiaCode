@@ -57,6 +57,7 @@ signals:
 private:
     bool eventFilter(QObject* watched, QEvent* event) override;
     void refreshNativeMaterial();
+    void refreshMaterialAfterPresentation();
     bool extendDwmFrame() const;
     void observeMacOsWindow(QWindow* window);
     void stopObservingMacOsWindow();
@@ -78,6 +79,7 @@ private:
     QString stateKey_;
     QTimer stateCaptureTimer_;
     QTimer materialUpdateTimer_;
+    bool materialPresentationPending_ = false;
     quintptr nativeHandle_ = 0;
 #ifdef Q_OS_WIN
     NativeWindowTheme::AppliedState dwmState_;

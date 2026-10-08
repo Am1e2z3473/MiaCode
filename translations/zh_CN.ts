@@ -2966,8 +2966,8 @@ The file may be open in preview, a media player, File Explorer preview pane, or 
         <translation>返回主窗口</translation>
     </message>
     <message id="preview.window.title">
-        <source>MiaCode Preview</source>
-        <translation>MiaCode 预览</translation>
+        <source>Preview</source>
+        <translation>预览</translation>
     </message>
     <message id="preview.fullscreen.enter_tooltip">
         <source>Fullscreen</source>

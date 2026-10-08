@@ -25,6 +25,7 @@ Item {
     required property var editorSync
     required property var latency
     property bool compact: false
+    property string documentTitle: ""
     property real sidebarDragWidth: 0
     property bool sidebarResizing: false
     readonly property bool previewDetached: root.preferences.previewDetached
@@ -34,10 +35,12 @@ Item {
     readonly property rect activityBarMaterialRect: Qt.rect(0, 0,
         root.compact || !horizontalSplit.visible ? 0 : sidebar.activityBarWidth,
         horizontalSplit.height)
-    // 现有紧凑工作区的可用宽度；展开侧栏所需空间单独计算。
-    readonly property real minimumWorkspaceWidth: Math.max(620,
-        bottomPanel.minimumWidth + (root.previewDetached
-            ? 0 : preview.minimumWidth + Theme.splitDividerThickness))
+    readonly property real minimumEditorWidth: Math.max(editorPane.minimumWidth,
+        bottomPanel.minimumWidth)
+    // 拆分后的工作区按编辑器和底部面板计算，侧栏所需空间单独计算。
+    readonly property real minimumWorkspaceWidth: root.previewDetached
+        ? minimumEditorWidth
+        : Math.max(620, minimumEditorWidth + preview.minimumWidth + Theme.splitDividerThickness)
     readonly property real expandedSidebarWidth:
         sidebar.activityBarWidth + root.preferences.sidebarWidth + Theme.splitDividerThickness
     readonly property real minimumHeight: Math.max(
@@ -278,7 +281,9 @@ Item {
         readonly property bool nativeMaterialActive: windowChrome
             && windowChrome.nativeMaterialAvailable && Theme.blurMaterialsEnabled
             && !Theme.backgroundActive
-        title: qsTrId("preview.window.title")
+        title: root.documentTitle.length > 0
+            ? (root.documentSession.dirty ? "* " : "") + root.documentTitle
+            : qsTrId("preview.window.title")
         transientParent: root.Window.window
         visible: false
         width: 560
@@ -451,8 +456,8 @@ Item {
                         panelHeightAtPress = bottomPanel.height
                 }
                 SplitView.fillWidth: true
-                SplitView.minimumWidth: root.previewDetached ? bottomPanel.minimumWidth
-                    : Math.max(bottomPanel.minimumWidth,
+                SplitView.minimumWidth: root.previewDetached ? root.minimumEditorWidth
+                    : Math.max(root.minimumEditorWidth,
                     Math.min(root.previewEditorAvailableWidth * (1.0 - root.preferences.previewMaximumWidthRatio),
                              root.previewEditorAvailableWidth - preview.minimumWidth))
 

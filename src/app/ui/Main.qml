@@ -62,10 +62,7 @@ ApplicationWindow {
         }
         return value
     }
-    title: (mainView.documentSession.dirty ? "* " : "") + Qt.application.name
-           + (mainView.documentTitle.length > 0
-              ? " — " + mainView.documentTitle
-              : "")
+    title: mainView.windowTitle
     font.family: Theme.uiFont
     font.pixelSize: Theme.uiFontSize
     // Allocate an alpha-capable surface at startup and retain it across
