@@ -578,33 +578,33 @@ Rectangle {
                                 RowLayout {
                                     Layout.fillWidth: true
                                     FormLabel { text: qsTrId("cover.output") }
-                                    // 显示相对谱面文件夹的路径（covers、.、~/…），完整路径在悬停提示里；
-                                    // 输入相对路径同样按谱面文件夹解析。
+                                    // 导出封面的文件名（默认 card.jpg，写入谱面文件夹）；
+                                    // 带目录的相对路径同样按谱面文件夹解析，完整路径在悬停提示里。
                                     AppTextField {
-                                        id: outputDirectoryField
-                                        objectName: "coverOutputDirectoryField"
+                                        id: outputFileField
+                                        objectName: "coverOutputFileField"
                                         Layout.fillWidth: true
-                                        text: root.session ? root.session.outputDirectoryDisplay : ""
+                                        text: root.session ? root.session.outputFile : ""
                                         onEditingFinished: {
                                             if (root.session)
-                                                root.session.outputDirectory = text
+                                                root.session.outputFile = text
                                             // 手动输入会打断绑定；提交后回到规范写法。
                                             text = Qt.binding(function() {
-                                                return root.session ? root.session.outputDirectoryDisplay : ""
+                                                return root.session ? root.session.outputFile : ""
                                             })
                                         }
 
-                                        HoverHandler { id: outputDirectoryHover }
+                                        HoverHandler { id: outputFileHover }
                                         Tooltip {
-                                            visible: outputDirectoryHover.hovered && !outputDirectoryField.activeFocus
-                                                     && !!root.session && root.session.outputDirectory.length > 0
-                                            text: root.session ? root.session.outputDirectory : ""
+                                            visible: outputFileHover.hovered && !outputFileField.activeFocus
+                                                     && !!root.session && root.session.outputFilePath.length > 0
+                                            text: root.session ? root.session.outputFilePath : ""
                                         }
                                     }
                                     IconButton {
                                         iconSource: Qt.resolvedUrl("icons/folder-open.svg")
                                         tooltip: qsTrId("cover.browse")
-                                        onClicked: if (root.session) root.session.browseOutputDirectory()
+                                        onClicked: if (root.session) root.session.browseOutputFile()
                                     }
                                 }
 

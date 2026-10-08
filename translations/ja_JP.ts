@@ -701,10 +701,6 @@
         <source>No difficulty is selected, so the cover cannot be exported.</source>
         <translation>難易度が選択されていないため、カバーを出力できません。</translation>
     </message>
-    <message id="cover.no_output_directory">
-        <source>Choose an output folder before exporting the cover.</source>
-        <translation>カバーを出力する前に、出力フォルダーを選んでください。</translation>
-    </message>
     <message id="cover.no_presets">
         <source>No saved presets</source>
         <translation>保存されたプリセットはありません</translation>
