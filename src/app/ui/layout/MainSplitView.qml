@@ -277,13 +277,16 @@ Item {
     ApplicationWindow {
         id: detachedPreviewWindow
         objectName: "detachedPreviewWindow"
+        readonly property Item backdropSource: detachedPreviewContent
         property var windowChrome: null
         readonly property bool nativeMaterialActive: windowChrome
             && windowChrome.nativeMaterialAvailable && Theme.blurMaterialsEnabled
             && !Theme.backgroundActive
-        title: root.documentTitle.length > 0
+        readonly property string captionTitle: root.documentTitle.length > 0
             ? (root.documentSession.dirty ? "* " : "") + root.documentTitle
             : qsTrId("preview.window.title")
+        title: captionTitle.replace(/ — /g, " - ") + (root.documentTitle.length > 0
+            ? " - " + qsTrId("preview.window.title") : "")
         transientParent: root.Window.window
         visible: false
         width: 560
@@ -350,7 +353,7 @@ Item {
             windowChrome: detachedPreviewWindow.windowChrome
             platform: root.Window.window.platform
             applicationMenusVisible: false
-            titleText: detachedPreviewWindow.title
+            titleText: detachedPreviewWindow.captionTitle
             nativeHeight: detachedPreviewWindow.windowChrome
                 ? detachedPreviewWindow.windowChrome.titleBarHeight : 0
             leadingInset: detachedPreviewWindow.windowChrome
