@@ -27,18 +27,21 @@ Item {
     property bool compact: false
     property real sidebarDragWidth: 0
     property bool sidebarResizing: false
+    property bool previewDetached: false
+    property bool previewSurfaceMoving: false
     readonly property rect activityBarMaterialRect: Qt.rect(0, 0,
         root.compact || !horizontalSplit.visible ? 0 : sidebar.activityBarWidth,
         horizontalSplit.height)
     // 现有紧凑工作区的可用宽度；展开侧栏所需空间单独计算。
     readonly property real minimumWorkspaceWidth: Math.max(620,
-        bottomPanel.minimumWidth + preview.minimumWidth + Theme.splitDividerThickness)
+        bottomPanel.minimumWidth + (root.previewDetached
+            ? 0 : preview.minimumWidth + Theme.splitDividerThickness))
     readonly property real expandedSidebarWidth:
         sidebar.activityBarWidth + root.preferences.sidebarWidth + Theme.splitDividerThickness
     readonly property real minimumHeight: Math.max(
         editorHost.SplitView.minimumHeight + (root.bottomPanelEffectivelyVisible
             ? bottomPanel.minimumHeight + Theme.splitDividerThickness : 0),
-        preview.minimumHeight)
+        root.previewDetached ? 0 : preview.minimumHeight)
     readonly property bool canUndo: editorPane.canUndo
     readonly property bool canRedo: editorPane.canRedo
     readonly property bool canCut: editorPane.canCut
@@ -56,7 +59,7 @@ Item {
     readonly property bool exportVideoActive:
         root.pages.activePageId === "export"
     readonly property real previewEditorAvailableWidth:
-        Math.max(1, workspaceSplit.width - (preview.visible ? Theme.splitDividerThickness : 0))
+        Math.max(1, workspaceSplit.width - (previewHost.visible ? Theme.splitDividerThickness : 0))
     signal openRequested()
     signal settingsRequested()
     signal mediaToolRequested(string toolId)
@@ -136,7 +139,38 @@ Item {
         // Stop-gap for the export-page + fullscreen Intel iGPU D3D11 crash.
         if (root.exportVideoActive)
             return
+        if (root.previewDetached) {
+            if (detachedPreviewWindow.visibility === Window.FullScreen)
+                detachedPreviewWindow.showNormal()
+            else
+                detachedPreviewWindow.showFullScreen()
+            return
+        }
         fullscreenPreview.visible = true
+    }
+
+    function detachPreview() {
+        preview.closeMenus()
+        root.previewSurfaceMoving = true
+        root.previewDetached = true
+        detachedPreviewWindow.showNormal()
+        detachedPreviewWindow.raise()
+        detachedPreviewWindow.requestActivate()
+        Qt.callLater(root.finishPreviewMove)
+    }
+
+    function dockPreview() {
+        preview.closeMenus()
+        root.previewSurfaceMoving = true
+        root.previewDetached = false
+        detachedPreviewWindow.hide()
+        root.Window.window.requestActivate()
+        Qt.callLater(root.finishPreviewMove)
+    }
+
+    function finishPreviewMove() {
+        root.previewSurfaceMoving = false
+        preview.forceActiveFocus()
     }
 
     function persistSidebarWidth() {
@@ -153,13 +187,13 @@ Item {
     }
 
     function persistPreviewWidthRatio() {
-        if (root.compact) return
-        root.preferences.previewWidthRatio = preview.width / root.previewEditorAvailableWidth
+        if (root.compact || root.previewDetached) return
+        root.preferences.previewWidthRatio = previewHost.width / root.previewEditorAvailableWidth
     }
 
     function syncWorkspacePanelOrder() {
         const targetPreviewIndex = root.preferencesModel.previewOnLeft ? 0 : 1
-        const currentPreviewIndex = workspaceSplit.itemAt(0) === preview ? 0 : 1
+        const currentPreviewIndex = workspaceSplit.itemAt(0) === previewHost ? 0 : 1
         if (currentPreviewIndex !== targetPreviewIndex)
             workspaceSplit.moveItem(currentPreviewIndex, targetPreviewIndex)
     }
@@ -200,6 +234,65 @@ Item {
     onExportVideoActiveChanged: {
         if (root.exportVideoActive && fullscreenPreview.visible)
             fullscreenPreview.visible = false
+        if (root.exportVideoActive && detachedPreviewWindow.visibility === Window.FullScreen)
+            detachedPreviewWindow.showNormal()
+    }
+
+    PreviewPane {
+        id: preview
+        parent: root.previewDetached ? detachedPreviewWindow.contentItem : previewHost
+        anchors.fill: parent
+        documentAvailable: root.documentSession.hasDocument
+        surfaceActive: !fullscreenPreview.visible && !root.previewSurfaceMoving
+        detached: root.previewDetached
+        fullscreenActive: root.previewDetached
+                          && detachedPreviewWindow.visibility === Window.FullScreen
+        previewSession: root.previewSession
+        preferences: root.preferences
+        exportSession: root.pages.exportSession
+        exportPageActive: root.exportVideoActive
+        latencyActive: root.viewState.latencyEditorActive
+                       && root.pages.activePageId === "latency"
+        onFullscreenRequested: root.showFullscreenPreview()
+        onDetachRequested: root.detachPreview()
+        onDockRequested: root.dockPreview()
+    }
+
+    ApplicationWindow {
+        id: detachedPreviewWindow
+        objectName: "detachedPreviewWindow"
+        title: qsTrId("preview.window.title")
+        transientParent: root.Window.window
+        visible: false
+        width: 560
+        height: 680
+        minimumWidth: preview.minimumWidth
+        minimumHeight: preview.minimumHeight
+        color: Theme.colors.background.panel
+        font.family: Theme.uiFont
+        font.pixelSize: Theme.uiFontSize
+        palette.window: Theme.colors.background.surface
+        palette.windowText: Theme.colors.text.primary
+        palette.base: Theme.colors.background.surface
+        palette.text: Theme.colors.text.primary
+        palette.button: Theme.colors.background.panel
+        palette.buttonText: Theme.colors.text.primary
+        palette.highlight: Theme.colors.state.textSelection
+        palette.highlightedText: Theme.colors.text.active
+        palette.disabled.text: Theme.colors.text.disabled
+        palette.disabled.buttonText: Theme.colors.text.disabled
+        onClosing: root.dockPreview()
+
+        Shortcut {
+            sequence: StandardKey.Close
+            onActivated: detachedPreviewWindow.close()
+        }
+
+        Shortcut {
+            sequence: "Escape"
+            enabled: detachedPreviewWindow.visibility === Window.FullScreen
+            onActivated: detachedPreviewWindow.showNormal()
+        }
     }
 
     Item {
@@ -246,7 +339,8 @@ Item {
                         panelHeightAtPress = bottomPanel.height
                 }
                 SplitView.fillWidth: true
-                SplitView.minimumWidth: Math.max(bottomPanel.minimumWidth,
+                SplitView.minimumWidth: root.previewDetached ? bottomPanel.minimumWidth
+                    : Math.max(bottomPanel.minimumWidth,
                     Math.min(root.previewEditorAvailableWidth * (1.0 - root.preferences.previewMaximumWidthRatio),
                              root.previewEditorAvailableWidth - preview.minimumWidth))
 
@@ -311,25 +405,15 @@ Item {
                 }
             }
 
-            PreviewPane {
-                id: preview
-                documentAvailable: root.documentSession.hasDocument
-                surfaceActive: !fullscreenPreview.visible
-                previewSession: root.previewSession
-                preferences: root.preferences
-                exportSession: root.pages.exportSession
-                exportPageActive: root.exportVideoActive
-                latencyActive: root.viewState.latencyEditorActive
-                               && root.pages.activePageId === "latency"
-                SplitView.preferredWidth: root.previewEditorAvailableWidth
-                                          * root.preferences.previewWidthRatio
+            Item {
+                id: previewHost
+                visible: !root.previewDetached
                 SplitView.minimumWidth: Math.max(preview.minimumWidth,
                     Math.min(root.previewEditorAvailableWidth * root.preferences.previewMinimumWidthRatio,
                              root.previewEditorAvailableWidth - bottomPanel.minimumWidth))
                 SplitView.maximumWidth: Math.max(preview.minimumWidth,
                     Math.min(root.previewEditorAvailableWidth * root.preferences.previewMaximumWidthRatio,
                              root.previewEditorAvailableWidth - bottomPanel.minimumWidth))
-                onFullscreenRequested: root.showFullscreenPreview()
             }
         }
 
@@ -340,7 +424,7 @@ Item {
             backgroundOffset: Qt.point(root.backgroundOffset.x + x, root.backgroundOffset.y)
             panelItem: !root.compact && root.viewState.sidebarVisible
                 ? sidebar.cornerSourceItem
-                : root.preferencesModel.previewOnLeft && preview.visible
+                : root.preferencesModel.previewOnLeft && previewHost.visible
                     ? preview.cornerSourceItem
                     : root.exportVideoActive ? exportVideoPage.cornerSourceItem
                         : editorPane.cornerSourceItem
@@ -408,6 +492,15 @@ Item {
                 }
             }
         }
+    }
+
+    // 分离期间保留宽度比例，回归或主窗口缩放时按当前可用宽度恢复。
+    Binding {
+        target: previewHost.SplitView
+        property: "preferredWidth"
+        value: root.previewEditorAvailableWidth * root.preferences.previewWidthRatio
+        when: !workspaceSplit.resizing
+        restoreMode: Binding.RestoreNone
     }
 
     // SplitView 拖动时会写入首选高度；松开后重新接回持久比例绑定。

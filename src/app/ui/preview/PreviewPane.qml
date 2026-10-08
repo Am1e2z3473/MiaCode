@@ -17,10 +17,14 @@ Rectangle {
     // exactly one PreviewSurface may subscribe to the runtime at a time. The
     // compact and fullscreen owners use the same rule.
     property bool surfaceActive: true
+    property bool detached: false
+    property bool fullscreenActive: false
     readonly property real minimumHeight: heading.implicitHeight + transport.implicitHeight
                                           + statistics.implicitHeight + 64
     readonly property real minimumWidth: transport.minimumWidth
     signal fullscreenRequested()
+    signal detachRequested()
+    signal dockRequested()
     readonly property alias cornerSourceItem: heading
 
     // Export page still uses the backend ratio. Edit mode defaults to 1:1;
@@ -36,6 +40,11 @@ Rectangle {
 
     color: Theme.surfaceColor(Theme.colors.background.panel)
     clip: true
+
+    function closeMenus() {
+        renderModeMenu.close()
+        transport.closeMenus()
+    }
 
     function fittedFrameWidth(hostWidth, hostHeight) {
         const safeWidth = Math.max(1, hostWidth)
@@ -91,6 +100,20 @@ Rectangle {
             }
 
         }
+
+        IconButton {
+            objectName: "previewDetachButton"
+            iconSource: Qt.resolvedUrl("icons/preview-detach.svg")
+            active: root.detached
+            tooltip: root.detached ? qsTrId("preview.window.dock")
+                                   : qsTrId("preview.window.detach")
+            onClicked: {
+                if (root.detached)
+                    root.dockRequested()
+                else
+                    root.detachRequested()
+            }
+        }
     }
 
     PreviewRenderModeMenu {
@@ -124,7 +147,7 @@ Rectangle {
                 runtime: root.previewSession.runtime
                 mediaHost: root.previewSession.mediaHost
                 logger: root.previewSession
-                surfaceRole: "workspace"
+                surfaceRole: root.detached ? "detached" : "workspace"
                 backgroundColor: "transparent"
                 hudTextColor: Theme.colors.previewHud.text
                 hudShadowColor: Theme.colors.previewHud.shadow
@@ -142,6 +165,7 @@ Rectangle {
         preferences: root.preferences
         exportSession: root.exportSession
         exportPageActive: root.exportPageActive
+        fullscreenActive: root.fullscreenActive
         dataAvailable: root.documentAvailable
         enabled: root.documentAvailable
         onFullscreenRequested: root.fullscreenRequested()

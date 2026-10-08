@@ -16,7 +16,13 @@ Item {
     // active page.
     property bool exportPageActive: false
     property bool showCanvasMenuButton: !root.exportPageActive
+    property bool fullscreenActive: false
     signal fullscreenRequested()
+
+    function closeMenus() {
+        rateMenu.close()
+        canvasMenu.close()
+    }
 
 
     readonly property real progressTopInset: 3
@@ -276,7 +282,8 @@ Item {
             Layout.preferredHeight: implicitHeight
             visible: root.showCanvasMenuButton
             iconSource: Qt.resolvedUrl("icons/fullscreen.svg")
-            tooltip: qsTrId("preview.fullscreen.enter_tooltip")
+            tooltip: root.fullscreenActive ? qsTrId("qml.exit_fullscreen_preview")
+                                           : qsTrId("preview.fullscreen.enter_tooltip")
             onClicked: root.fullscreenRequested()
         }
     }
