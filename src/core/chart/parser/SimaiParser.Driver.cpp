@@ -937,6 +937,7 @@ SimaiParseResult parseInternal(
                 int close = line.indexOf('}', i + 1);
                 if (close < 0) {
                     appendTokenError(&state, lineNumber, i + 1, ValidationMessage::kUnterminatedBeatBlock());
+                    clearPendingExplicitSubdivision(&state);
                     break;
                 }
                 warnDirectiveAfterNote(lineNumber, line, i, close);
