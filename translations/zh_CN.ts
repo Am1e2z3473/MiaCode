@@ -1251,6 +1251,10 @@ Failed: %2</source>
         <source>Global Volume</source>
         <translation>Global 音量</translation>
     </message>
+    <message id="dialog.render_settings.audio.intro">
+        <source>Intro Volume</source>
+        <translation>片头音量</translation>
+    </message>
     <message id="dialog.render_settings.audio.slide">
         <source>Slide Volume</source>
         <translation>Slide 音量</translation>
@@ -1390,10 +1394,6 @@ Failed: %2</source>
     <message id="dialog.render_settings.music.intro_sound">
         <source>Intro sound</source>
         <translation>片头音效</translation>
-    </message>
-    <message id="dialog.render_settings.music.intro_sound_volume">
-        <source>Intro sound volume</source>
-        <translation>片头音量</translation>
     </message>
     <message id="dialog.render_settings.preview.canvas_frame_rate">
         <source>Preview Refresh Rate</source>
@@ -3492,10 +3492,6 @@ The file may be open in preview, a media player, File Explorer preview pane, or 
     <message id="qml.sound_effect_volume">
         <source>Sound-effect volume</source>
         <translation>音效音量</translation>
-    </message>
-    <message id="qml.sound_effects">
-        <source>Sound effects</source>
-        <translation>音效</translation>
     </message>
     <message id="qml.start_audition">
         <source>Start audition</source>

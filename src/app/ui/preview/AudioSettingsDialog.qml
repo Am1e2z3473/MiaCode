@@ -63,7 +63,9 @@ AppDialog {
 
     title: qsTrId("action.audio_settings")
     preferredWidth: 520
-    preferredHeight: Theme.dialogHeight
+    // The channel list grows with the mixer; size to it instead of a fixed
+    // height that clips the last row. AppDialog still caps it to the window.
+    preferredHeight: implicitHeight
     footer: Item {
         implicitHeight: footerRow.implicitHeight + 2 * Theme.dialogPadding
 
