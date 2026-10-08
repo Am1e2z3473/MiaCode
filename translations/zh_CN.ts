@@ -2467,7 +2467,7 @@ The file may be open in preview, a media player, File Explorer preview pane, or 
     </message>
     <message id="media_tools.pv_compress">
         <source>PV Compression</source>
-        <translation>PV压缩</translation>
+        <translation>PV 压缩</translation>
     </message>
     <message id="media_tools.replace_failed">
         <source>Failed to replace file: %1</source>
