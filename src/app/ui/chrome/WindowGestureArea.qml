@@ -20,6 +20,6 @@ Item {
 
     TapHandler {
         acceptedButtons: Qt.LeftButton
-        onDoubleTapped: root.windowChrome.toggleMaximized()
+        onDoubleTapped: root.windowChrome.handleTitleBarDoubleClick()
     }
 }

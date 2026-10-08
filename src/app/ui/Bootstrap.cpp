@@ -64,6 +64,7 @@ Bootstrap::~Bootstrap()
     delete coverWindow_.data();
     releaseRootWindowResources();
     engine_.reset();
+    detachedPreviewWindowChrome_.reset();
     windowChrome_.reset();
     applicationContext_.reset();
     backend_.reset();
@@ -152,6 +153,9 @@ bool Bootstrap::start(const QString& startupOpenTarget)
         windowChrome_->setBlurMaterialsEnabled(settings->blurMaterialsEnabled());
         connect(settings, &WorkbenchSettings::blurMaterialsEnabledChanged, this, [this, settings] {
             windowChrome_->setBlurMaterialsEnabled(settings->blurMaterialsEnabled());
+            if (detachedPreviewWindowChrome_) {
+                detachedPreviewWindowChrome_->setBlurMaterialsEnabled(settings->blurMaterialsEnabled());
+            }
         });
     }
     applicationContext_->setWindowChrome(windowChrome_.get());
@@ -259,6 +263,16 @@ bool Bootstrap::start(const QString& startupOpenTarget)
         miacode::app::entry::logQuickWindowGpuDevice(
             window, QStringLiteral("qml_ui_root_window"));
 
+        if (auto* previewWindow = window->findChild<QQuickWindow*>(
+                QStringLiteral("detachedPreviewWindow")); previewWindow != nullptr) {
+            detachedPreviewWindowChrome_ = std::make_unique<WindowChrome>(this);
+            detachedPreviewWindowChrome_->setBlurMaterialsEnabled(windowChrome_->blurMaterialsEnabled());
+            previewWindow->setIcon(appIcon_);
+            detachedPreviewWindowChrome_->attach(previewWindow, false);
+            previewWindow->setProperty("windowChrome",
+                QVariant::fromValue<QObject*>(detachedPreviewWindowChrome_.get()));
+        }
+
         window->setVisible(false);
         windowChrome_->attach(window);
         appendUiRuntimeLog(QStringLiteral("window_chrome_attached"));
@@ -268,6 +282,9 @@ bool Bootstrap::start(const QString& startupOpenTarget)
             QObject::connect(settings, &WorkbenchSettings::themeChanged, this, [this]() {
                 if (rootWindow_ != nullptr) {
                     windowChrome_->refreshNativeTheme();
+                }
+                if (detachedPreviewWindowChrome_) {
+                    detachedPreviewWindowChrome_->refreshNativeTheme();
                 }
             });
         }
@@ -369,6 +386,7 @@ void Bootstrap::destroyAcceptedRootWindowResourcesAndQuit(const QString& source)
 
     releaseRootWindowResources();
     engine_.reset();
+    detachedPreviewWindowChrome_.reset();
     windowChrome_.reset();
     applicationContext_.reset();
     backend_.reset();

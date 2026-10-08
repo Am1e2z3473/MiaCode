@@ -9,6 +9,52 @@
 #import <AppKit/AppKit.h>
 #import <QuartzCore/QuartzCore.h>
 
+// AppKit's native Fill action, also used by Chromium's custom draggable regions.
+@interface NSWindow (MiaCodeWindowFill)
+- (void)_zoomFill:(id)sender;
+@end
+
+@interface MiaCodeWindowBindingObserver : NSObject
+@property(nonatomic, strong) NSView* view;
+@property(nonatomic, copy) void (^windowChanged)(NSWindow*);
+- (instancetype)initWithView:(NSView*)view callback:(void (^)(NSWindow*))callback;
+@end
+
+@implementation MiaCodeWindowBindingObserver
+- (instancetype)initWithView:(NSView*)view callback:(void (^)(NSWindow*))callback
+{
+    self = [super init];
+    if (self) {
+        self.view = view;
+        self.windowChanged = callback;
+        [view addObserver:self forKeyPath:@"window"
+                  options:NSKeyValueObservingOptionInitial | NSKeyValueObservingOptionNew
+                  context:nullptr];
+    }
+    return self;
+}
+
+- (void)observeValueForKeyPath:(NSString*)keyPath ofObject:(id)object
+                       change:(NSDictionary*)change context:(void*)context
+{
+    if ([keyPath isEqualToString:@"window"]) {
+        self.windowChanged(self.view.window);
+    } else {
+        [super observeValueForKeyPath:keyPath ofObject:object change:change context:context];
+    }
+}
+
+- (void)dealloc
+{
+    [_view removeObserver:self forKeyPath:@"window"];
+#if !__has_feature(objc_arc)
+    [_view release];
+    [_windowChanged release];
+    [super dealloc];
+#endif
+}
+@end
+
 @interface MiaCodeMaterialHostView : NSView
 @property(nonatomic, strong) NSView* surfaces;
 @property(nonatomic, strong) NSMutableArray<NSView*>* effects;
@@ -57,14 +103,14 @@ void pinMaterialContent(NSView* content, NSView* owner)
 
 namespace miacode::ui {
 namespace {
-void configureNativeTitleBar(NSWindow* window)
+void configureNativeTitleBar(NSWindow* window, bool fullscreen = false)
 {
     if (window == nil) {
         return;
     }
-    window.styleMask |= NSWindowStyleMaskFullSizeContentView;
-    window.titlebarAppearsTransparent = YES;
-    window.titleVisibility = NSWindowTitleHidden;
+    if (window.titleVisibility != NSWindowTitleHidden) {
+        window.titleVisibility = NSWindowTitleHidden;
+    }
 
     static NSString* const toolbarIdentifier = @"MiaCode.WindowTitleBar";
     if (window.toolbar == nil || ![window.toolbar.identifier isEqualToString:toolbarIdentifier]) {
@@ -79,11 +125,18 @@ void configureNativeTitleBar(NSWindow* window)
         [toolbar release];
 #endif
     }
-    window.toolbar.visible = YES;
+    const BOOL toolbarVisible = fullscreen ? NO : YES;
+    if (window.toolbar.visible != toolbarVisible) {
+        window.toolbar.visible = toolbarVisible;
+    }
 
     if (@available(macOS 11.0, *)) {
-        window.toolbarStyle = NSWindowToolbarStyleUnifiedCompact;
-        window.titlebarSeparatorStyle = NSTitlebarSeparatorStyleNone;
+        if (window.toolbarStyle != NSWindowToolbarStyleUnifiedCompact) {
+            window.toolbarStyle = NSWindowToolbarStyleUnifiedCompact;
+        }
+        if (window.titlebarSeparatorStyle != NSTitlebarSeparatorStyleNone) {
+            window.titlebarSeparatorStyle = NSTitlebarSeparatorStyleNone;
+        }
     }
 }
 }
@@ -213,26 +266,74 @@ void WindowChrome::refreshMacOsMaterial(QWindow* window)
     setNativeMaterialAvailable(true);
 }
 
-void WindowChrome::applyMacOs(QWindow* window)
+void WindowChrome::handleTitleBarDoubleClick()
 {
-    if (window == nullptr) {
+    if (window_.isNull()) {
         return;
     }
 
-    NSView* view = (__bridge NSView*)reinterpret_cast<void*>(window->winId());
-    NSWindow* nativeWindow = (view != nil) ? view.window : nil;
+    NSView* view = (__bridge NSView*)reinterpret_cast<void*>(window_->winId());
+    NSWindow* nativeWindow = view.window;
     if (nativeWindow == nil) {
         return;
     }
 
-    refreshNativeTheme();
-    configureNativeTitleBar(nativeWindow);
-    if (window->windowState() == Qt::WindowFullScreen) {
-        nativeWindow.toolbar.visible = NO;
+    NSString* action = [NSUserDefaults.standardUserDefaults
+        stringForKey:@"AppleActionOnDoubleClick"];
+    if ([action isEqualToString:@"Fill"]
+            && [nativeWindow respondsToSelector:@selector(_zoomFill:)]) {
+        [nativeWindow _zoomFill:nil];
+    } else if (action == nil || [action isEqualToString:@"Maximize"]) {
+        [nativeWindow performZoom:nil];
+    } else if ([action isEqualToString:@"Minimize"]) {
+        [nativeWindow performMiniaturize:nil];
     }
+}
 
-    refreshMacOsMaterial(window);
+void WindowChrome::observeMacOsWindow(QWindow* window)
+{
+    if (macViewWindowObserver_ != nullptr) {
+        return;
+    }
+    NSView* view = (__bridge NSView*)reinterpret_cast<void*>(window->winId());
+    MiaCodeWindowBindingObserver* observer = [[MiaCodeWindowBindingObserver alloc]
+        initWithView:view callback:^(NSWindow* nativeWindow) {
+            if (nativeWindow == nil || window_.isNull()) {
+                stopObservingMacOsFullScreen();
+                return;
+            }
+            refreshNativeTheme();
+            configureNativeTitleBar(nativeWindow,
+                window_->windowState() == Qt::WindowFullScreen);
+            observeMacOsFullScreen(window_.data());
+            materialUpdateTimer_.start();
+        }];
+#if __has_feature(objc_arc)
+    macViewWindowObserver_ = (__bridge_retained void*)observer;
+#else
+    macViewWindowObserver_ = observer;
+#endif
+}
 
+void WindowChrome::stopObservingMacOsWindow()
+{
+    if (macViewWindowObserver_ == nullptr) {
+        return;
+    }
+#if __has_feature(objc_arc)
+    MiaCodeWindowBindingObserver* observer =
+        (__bridge_transfer MiaCodeWindowBindingObserver*)macViewWindowObserver_;
+    Q_UNUSED(observer);
+#else
+    [static_cast<MiaCodeWindowBindingObserver*>(macViewWindowObserver_) release];
+#endif
+    macViewWindowObserver_ = nullptr;
+}
+
+void WindowChrome::updateMacOsTitleBarMetrics(QWindow* window)
+{
+    NSView* view = (__bridge NSView*)reinterpret_cast<void*>(window->winId());
+    NSWindow* nativeWindow = view.window;
     NSView* contentView = nativeWindow.contentView;
     if (contentView == nil) {
         return;
@@ -315,9 +416,7 @@ void WindowChrome::observeMacOsFullScreen(QWindow* window)
                     nativeWindow.toolbar.visible = NO;
                     setTitleBarLeadingInset(0);
                     setTitleBarHeight(windowedTitleBarHeight_);
-                    if (!window_.isNull()) {
-                        applyMacOs(window_.data());
-                    }
+                    materialUpdateTimer_.start();
                 }];
     id willExitObserver = [center
         addObserverForName:NSWindowWillExitFullScreenNotification
@@ -333,9 +432,8 @@ void WindowChrome::observeMacOsFullScreen(QWindow* window)
                     object:nativeWindow
                      queue:NSOperationQueue.mainQueue
                 usingBlock:^(__unused NSNotification* notification) {
-                    if (!window_.isNull()) {
-                        applyMacOs(window_.data());
-                    }
+                    configureNativeTitleBar(nativeWindow);
+                    materialUpdateTimer_.start();
                 }];
 
     macWillEnterFullScreenObserver_ = (__bridge void*)willEnterObserver;

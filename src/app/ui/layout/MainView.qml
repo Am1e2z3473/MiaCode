@@ -331,6 +331,7 @@ Item {
                 windowChrome: root.applicationContext.windowChrome
                 integratedInTitleBar: root.platform.nativeMenuBar
                 titleBarLeadingInset: titleBar.leadingInset
+                previewSettingsVisible: !splitView.previewDetached
                 sidebarActive: root.compact
                                ? state.compactPanel === "sidebar"
                                : state.sidebarVisible
@@ -382,6 +383,8 @@ Item {
                 compact: root.compact
                 onOpenRequested: openFileDialog.open()
                 onSettingsRequested: preferencesDialog.open()
+                onAudioSettingsRequested: audioSettingsDialog.open()
+                onPreviewSettingsRequested: previewSettingsDialog.open()
                 onMediaToolRequested: toolId => root.runMediaTool(toolId)
             }
 
@@ -631,12 +634,14 @@ Item {
     AudioSettingsDialog {
         id: audioSettingsDialog
         objectName: "shellAudioSettingsDialog"
+        parent: splitView.settingsDialogParent
         audioSettings: root.applicationContext.audioSettings
     }
 
     PreviewSettingsDialog {
         id: previewSettingsDialog
         objectName: "shellPreviewSettingsDialog"
+        parent: splitView.settingsDialogParent
         previewSettings: root.applicationContext.previewSettings
     }
 

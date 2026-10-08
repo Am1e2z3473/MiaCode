@@ -15,7 +15,7 @@ class QEvent;
 // v2 WindowTitleBar chrome. Attach only from Bootstrap (never v1).
 // Windows: native resize frame and system commands; QML owns the caption.
 // macOS: full-size content; native title text hidden; QWindow::title kept.
-// All platforms: root-window state transitions and persisted geometry.
+// All platforms: window state transitions; optional main-window geometry persistence.
 // titleBarLeadingInset: clearance past macOS traffic lights (0 elsewhere).
 namespace miacode::ui {
 
@@ -31,12 +31,11 @@ public:
     explicit WindowChrome(QObject* parent = nullptr);
     ~WindowChrome() override;
 
-    void attach(QWindow* window);
+    void attach(QWindow* window, bool persistWindowState = true);
     Q_INVOKABLE void minimize();
     Q_INVOKABLE void toggleMaximized();
+    Q_INVOKABLE void handleTitleBarDoubleClick();
     void saveWindowState();
-    // Remeasure traffic-light clearance after native layout is ready.
-    Q_INVOKABLE void refreshTitleBarMetrics();
     qreal titleBarLeadingInset() const { return titleBarLeadingInset_; }
     qreal titleBarHeight() const { return titleBarHeight_; }
     bool nativeMaterialAvailable() const { return nativeMaterialAvailable_; }
@@ -58,7 +57,9 @@ private:
     bool eventFilter(QObject* watched, QEvent* event) override;
     void refreshNativeMaterial();
     bool extendDwmFrame() const;
-    void applyMacOs(QWindow* window);
+    void observeMacOsWindow(QWindow* window);
+    void stopObservingMacOsWindow();
+    void updateMacOsTitleBarMetrics(QWindow* window);
     void refreshMacOsMaterial(QWindow* window);
     void observeMacOsFullScreen(QWindow* window);
     void stopObservingMacOsFullScreen();
@@ -73,6 +74,7 @@ private:
     QRect normalGeometry_;
     QString screenName_;
     bool maximized_ = false;
+    bool persistWindowState_ = true;
     QTimer stateCaptureTimer_;
     QTimer materialUpdateTimer_;
     quintptr nativeHandle_ = 0;
@@ -86,6 +88,7 @@ private:
     qreal titleBarHeight_ = 0;
     qreal windowedTitleBarLeadingInset_ = 0;
     qreal windowedTitleBarHeight_ = 0;
+    void* macViewWindowObserver_ = nullptr;
     void* macWillEnterFullScreenObserver_ = nullptr;
     void* macMaterialView_ = nullptr;
     void* macDidEnterFullScreenObserver_ = nullptr;

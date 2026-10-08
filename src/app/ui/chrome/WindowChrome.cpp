@@ -37,6 +37,7 @@ WindowChrome::WindowChrome(QObject* parent)
 
 WindowChrome::~WindowChrome()
 {
+    stopObservingMacOsWindow();
     stopObservingMacOsFullScreen();
     releaseMacOsMaterial();
     if (QCoreApplication::instance() != nullptr) {
@@ -90,13 +91,14 @@ void WindowChrome::setMaterialRegions(const QVariantList& regions)
 #endif
 }
 
-void WindowChrome::attach(QWindow* window)
+void WindowChrome::attach(QWindow* window, bool persistWindowState)
 {
     if (window == nullptr) {
         return;
     }
 
     window_ = window;
+    persistWindowState_ = persistWindowState;
 
 #ifdef Q_OS_WIN
     nativeHandle_ = window->winId();
@@ -115,7 +117,9 @@ void WindowChrome::attach(QWindow* window)
     refreshNativeMaterial();
     setTitleBarLeadingInset(0);
 #elif defined(Q_OS_MACOS)
+    window->winId();
     window->installEventFilter(this);
+    observeMacOsWindow(window);
     if (auto* quickWindow = qobject_cast<QQuickWindow*>(window)) {
         // Attach after the first scene-graph presentation, and repeat this
         // step when Qt recreates the rendering resources.
@@ -137,24 +141,15 @@ void WindowChrome::attach(QWindow* window)
             refreshAfterPresentation();
         }
     }
-    applyMacOs(window);
-    observeMacOsFullScreen(window);
-    QObject::connect(
-        window,
-        &QWindow::windowStateChanged,
-        this,
-        [this](Qt::WindowState state) {
-            if (state == Qt::WindowFullScreen) {
-                setTitleBarLeadingInset(0);
-                return;
-            }
-            setTitleBarLeadingInset(windowedTitleBarLeadingInset_);
-            setTitleBarHeight(windowedTitleBarHeight_);
-        });
+    updateMacOsTitleBarMetrics(window);
 #else
     Q_UNUSED(window);
     setTitleBarLeadingInset(0);
 #endif
+
+    if (!persistWindowState_) {
+        return;
+    }
 
     // Restore client coordinates after the platform chrome establishes its
     // frame margins, using the same coordinate space as captureWindowState.
@@ -232,6 +227,7 @@ void WindowChrome::refreshNativeMaterial()
     setNativeMaterialAvailable(dwmState_.frameExtended && backdropApplied);
 #elif defined(Q_OS_MACOS)
     refreshMacOsMaterial(window_.data());
+    updateMacOsTitleBarMetrics(window_.data());
 #endif
 }
 
@@ -251,10 +247,15 @@ bool WindowChrome::eventFilter(QObject* watched, QEvent* event)
         } else if (event->type() == QEvent::PlatformSurface) {
             const auto* surfaceEvent = static_cast<QPlatformSurfaceEvent*>(event);
             if (surfaceEvent->surfaceEventType() == QPlatformSurfaceEvent::SurfaceCreated) {
+#ifdef Q_OS_MACOS
+                observeMacOsWindow(window_.data());
+#endif
                 materialUpdateTimer_.start();
             } else {
                 materialUpdateTimer_.stop();
 #ifdef Q_OS_MACOS
+                stopObservingMacOsWindow();
+                stopObservingMacOsFullScreen();
                 releaseMacOsMaterial();
 #elif defined(Q_OS_WIN)
                 dwmState_ = {};
@@ -347,7 +348,7 @@ void WindowChrome::captureWindowState()
 
 void WindowChrome::saveWindowState()
 {
-    if (window_.isNull()) {
+    if (window_.isNull() || !persistWindowState_) {
         return;
     }
     captureWindowState();
@@ -366,18 +367,6 @@ void WindowChrome::saveWindowState()
         miacode::debug_log::appendLine(miacode::debug_log::Channel::Runtime,
                                      QStringLiteral("window"), QStringLiteral("action=state_save_failed"));
     }
-}
-
-void WindowChrome::refreshTitleBarMetrics()
-{
-#ifdef Q_OS_MACOS
-    if (window_.isNull()) {
-        return;
-    }
-    applyMacOs(window_.data());
-#else
-    setTitleBarLeadingInset(0);
-#endif
 }
 
 bool WindowChrome::nativeEventFilter(const QByteArray& eventType, void* message, qintptr* result)
@@ -493,12 +482,26 @@ bool WindowChrome::extendDwmFrame() const
 }
 
 #ifndef Q_OS_MACOS
+void WindowChrome::handleTitleBarDoubleClick()
+{
+    toggleMaximized();
+}
+
 void WindowChrome::refreshMacOsMaterial(QWindow* window)
 {
     Q_UNUSED(window);
 }
 
-void WindowChrome::applyMacOs(QWindow* window)
+void WindowChrome::observeMacOsWindow(QWindow* window)
+{
+    Q_UNUSED(window);
+}
+
+void WindowChrome::stopObservingMacOsWindow()
+{
+}
+
+void WindowChrome::updateMacOsTitleBarMetrics(QWindow* window)
 {
     Q_UNUSED(window);
 }

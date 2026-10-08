@@ -26,6 +26,7 @@ Rectangle {
     property bool canRedo: false
     property bool integratedInTitleBar: false
     property real titleBarLeadingInset: 0
+    property bool previewSettingsVisible: true
 
     readonly property real leadingActionsRight: leftActions.x + leftActions.width
     readonly property real trailingActionsWidth: width - rightActions.x
@@ -98,12 +99,14 @@ Rectangle {
         z: 1
 
         ToolBarButton {
+            visible: root.previewSettingsVisible
             iconSource: Qt.resolvedUrl("icons/audio-settings.svg")
             label: qsTrId("action.audio_settings")
             tooltip: qsTrId("action.audio_settings")
             onClicked: root.audioSettingsRequested()
         }
         ToolBarButton {
+            visible: root.previewSettingsVisible
             iconSource: Qt.resolvedUrl("icons/preview-settings.svg")
             label: qsTrId("action.video_settings")
             tooltip: qsTrId("action.video_settings")
