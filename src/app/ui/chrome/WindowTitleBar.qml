@@ -71,14 +71,15 @@ Rectangle {
     readonly property real menuAvailableWidth: root.useEmbeddedMenu
         ? Math.max(minimumMenuWidth, (width - preferredTitleWidth) / 2 - menuGap - menuLeft)
         : 0
-    readonly property real titleAreaLeft: root.useNativeMenu
+    readonly property real titleAreaLeft: root.useNativeMenu || !root.applicationMenusVisible
         ? root.leadingToolAreaWidth + menuGap
         : menuHost.x + menuHost.width + menuGap
     readonly property real titleAreaRight: root.useNativeMenu
         ? width - root.trailingToolAreaWidth - menuGap
         : width - captionButtons.width - root.trailingToolAreaWidth - menuGap
-    readonly property real titleAvailableWidth: Math.max(0,
-        2 * Math.min(width / 2 - titleAreaLeft, titleAreaRight - width / 2))
+    readonly property real titleAvailableWidth: Math.max(0, root.applicationMenusVisible || root.useNativeMenu
+        ? 2 * Math.min(width / 2 - titleAreaLeft, titleAreaRight - width / 2)
+        : titleAreaRight - titleAreaLeft)
 
     WindowGestureArea {
         anchors.fill: parent
@@ -211,8 +212,11 @@ Rectangle {
 
     Text {
         id: titleLabel
-        anchors.centerIn: parent
+        anchors.verticalCenter: parent.verticalCenter
         width: Math.min(implicitWidth, root.titleAvailableWidth)
+        x: Math.max(root.titleAreaLeft,
+            Math.min((root.width - width) / 2, root.titleAreaRight - width))
+        clip: true
         z: 1
         text: root.titleText
         color: Theme.colors.text.chrome

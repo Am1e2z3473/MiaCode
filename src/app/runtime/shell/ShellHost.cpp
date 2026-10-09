@@ -112,11 +112,13 @@ bool Session::eventFilter(QObject*, QEvent* event)
         const auto* keyEvent = static_cast<const QKeyEvent*>(event);
         auto* rootWindow = qobject_cast<QQuickWindow*>(rootWindow_.data());
         QWindow* focusWindow = QGuiApplication::focusWindow();
-        // Space works in the root window and its transient children (detached preview).
-        const bool focusOnRootOrTransient = rootWindow != nullptr
+        // The detached preview is an independent top-level window owned by the QML tree.
+        const bool focusOnWorkbench = rootWindow != nullptr
             && (focusWindow == rootWindow
-                || (focusWindow != nullptr && focusWindow->transientParent() == rootWindow));
-        if (focusOnRootOrTransient
+                || (focusWindow != nullptr && (focusWindow->transientParent() == rootWindow
+                    || focusWindow == rootWindow->findChild<QWindow*>(
+                        QStringLiteral("detachedPreviewWindow")))));
+        if (focusOnWorkbench
             && keyEvent->key() == Qt::Key_Space
             && keyEvent->modifiers() == Qt::NoModifier
             && rootWindow->property("playbackCommandsEnabled").toBool()
@@ -140,7 +142,7 @@ bool Session::eventFilter(QObject*, QEvent* event)
             && editorSyncController_ != nullptr) {
             if (event->type() == QEvent::KeyPress) {
                 controlArmsTouchAuthoring = previewTouchPadAuthoringShortcutEnabled_
-                    && focusOnRootOrTransient
+                    && focusOnWorkbench
                     && editorAuthoringContextActive();
                 if (controlArmsTouchAuthoring) {
                     editorSyncController_->setTouchPadControlHold(true);
