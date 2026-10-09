@@ -10,9 +10,8 @@
 #include <QPlatformSurfaceEvent>
 #include <QPointer>
 #include <QScreen>
-#ifdef Q_OS_MACOS
+#include <QScopedValueRollback>
 #include <QQuickWindow>
-#endif
 #include <QWindow>
 
 #ifdef Q_OS_WIN
@@ -37,6 +36,7 @@ WindowChrome::WindowChrome(QObject* parent)
 
 WindowChrome::~WindowChrome()
 {
+    stopObservingMacOsWindow();
     stopObservingMacOsFullScreen();
     releaseMacOsMaterial();
     if (QCoreApplication::instance() != nullptr) {
@@ -90,70 +90,61 @@ void WindowChrome::setMaterialRegions(const QVariantList& regions)
 #endif
 }
 
-void WindowChrome::attach(QWindow* window)
+void WindowChrome::attach(QWindow* window, const QString& stateKey)
 {
     if (window == nullptr) {
         return;
     }
 
     window_ = window;
+    stateKey_ = stateKey;
 
 #ifdef Q_OS_WIN
     nativeHandle_ = window->winId();
-    const auto handle = reinterpret_cast<HWND>(nativeHandle_);
     window->installEventFilter(this);
     QCoreApplication::instance()->installNativeEventFilter(this);
-
-    SetWindowPos(
-        handle,
-        nullptr,
-        0,
-        0,
-        0,
-        0,
+    SetWindowPos(reinterpret_cast<HWND>(nativeHandle_), nullptr, 0, 0, 0, 0,
         SWP_FRAMECHANGED | SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
-    refreshNativeMaterial();
+    materialUpdateTimer_.start();
     setTitleBarLeadingInset(0);
 #elif defined(Q_OS_MACOS)
+    window->winId();
     window->installEventFilter(this);
-    if (auto* quickWindow = qobject_cast<QQuickWindow*>(window)) {
-        // Attach after the first scene-graph presentation, and repeat this
-        // step when Qt recreates the rendering resources.
-        const auto refreshAfterPresentation = [this, quickWindow] {
-            QObject::connect(quickWindow, &QQuickWindow::frameSwapped, this,
-                [this] { materialUpdateTimer_.start(); },
-                Qt::ConnectionType(Qt::QueuedConnection | Qt::SingleShotConnection));
-            quickWindow->update();
-        };
-        QObject::connect(quickWindow, &QQuickWindow::sceneGraphInitialized, this,
-            refreshAfterPresentation, Qt::QueuedConnection);
-        QObject::connect(quickWindow, &QQuickWindow::sceneGraphInvalidated, this,
-            [this] {
-                materialUpdateTimer_.stop();
-                releaseMacOsMaterial();
-                setNativeMaterialAvailable(false);
-            }, Qt::QueuedConnection);
-        if (quickWindow->isSceneGraphInitialized()) {
-            refreshAfterPresentation();
-        }
-    }
-    applyMacOs(window);
-    observeMacOsFullScreen(window);
-    QObject::connect(
-        window,
-        &QWindow::windowStateChanged,
-        this,
-        [this](Qt::WindowState state) {
-            if (state == Qt::WindowFullScreen) {
-                setTitleBarLeadingInset(0);
-                return;
-            }
-            setTitleBarLeadingInset(windowedTitleBarLeadingInset_);
-            setTitleBarHeight(windowedTitleBarHeight_);
-        });
+    observeMacOsWindow(window);
+    updateMacOsTitleBarMetrics(window);
 #else
     Q_UNUSED(window);
     setTitleBarLeadingInset(0);
+#endif
+
+#if defined(Q_OS_WIN) || defined(Q_OS_MACOS)
+    if (auto* quickWindow = qobject_cast<QQuickWindow*>(window)) {
+#ifdef Q_OS_WIN
+        QObject::connect(quickWindow, &QQuickWindow::sceneGraphInitialized, this,
+            [this] { materialUpdateTimer_.start(); }, Qt::QueuedConnection);
+#else
+        // AppKit attaches its effect view after Qt presents its content layer.
+        QObject::connect(quickWindow, &QQuickWindow::sceneGraphInitialized, this,
+            &WindowChrome::refreshMaterialAfterPresentation, Qt::QueuedConnection);
+#endif
+        QObject::connect(quickWindow, &QQuickWindow::sceneGraphInvalidated, this,
+            [this] {
+                materialUpdateTimer_.stop();
+#ifdef Q_OS_MACOS
+                releaseMacOsMaterial();
+#else
+                dwmState_ = {};
+#endif
+                setNativeMaterialAvailable(false);
+            }, Qt::QueuedConnection);
+        if (quickWindow->isSceneGraphInitialized()) {
+#ifdef Q_OS_WIN
+            materialUpdateTimer_.start();
+#else
+            refreshMaterialAfterPresentation();
+#endif
+        }
+    }
 #endif
 
     // Restore client coordinates after the platform chrome establishes its
@@ -167,6 +158,19 @@ void WindowChrome::attach(QWindow* window)
     connect(window, &QWindow::windowStateChanged, this, scheduleCapture);
     connect(window, &QWindow::visibilityChanged, this, scheduleCapture);
     connect(window, &QWindow::screenChanged, this, scheduleCapture);
+}
+
+void WindowChrome::showRestored()
+{
+    if (window_.isNull()) {
+        return;
+    }
+    if (maximized_ && window_->screen() != nullptr) {
+        window_->setWindowStates(Qt::WindowNoState);
+        window_->setGeometry(window_->screen()->availableGeometry());
+    }
+    maximized_ = false;
+    window_->showNormal();
 }
 
 void WindowChrome::minimize()
@@ -187,6 +191,7 @@ void WindowChrome::toggleMaximized()
     if (window_->windowStates().testFlag(Qt::WindowMaximized)) {
         window_->showNormal();
     } else {
+        captureWindowState();
         window_->showMaximized();
     }
 }
@@ -200,12 +205,16 @@ void WindowChrome::setBlurMaterialsEnabled(bool enabled)
     if (window_.isNull()) {
         return;
     }
-    refreshNativeMaterial();
+    // Settings listeners run before the QML material-region bindings settle.
+    materialUpdateTimer_.start();
 }
 
 void WindowChrome::refreshNativeTheme()
 {
 #ifdef Q_OS_WIN
+    if (nativeHandle_ == 0) {
+        return;
+    }
     NativeWindowTheme::applyAppearanceToWindow(window_.data(), &dwmState_);
 #else
     NativeWindowTheme::applyAppearanceToWindow(window_.data());
@@ -218,10 +227,8 @@ void WindowChrome::refreshNativeMaterial()
         return;
     }
 #ifdef Q_OS_WIN
-    nativeHandle_ = window_->winId();
-    if (dwmState_.nativeHandle != nativeHandle_) {
-        dwmState_ = {};
-        dwmState_.nativeHandle = nativeHandle_;
+    if (nativeHandle_ == 0 || !window_->isExposed()) {
+        return;
     }
     if (!dwmState_.frameExtended) {
         dwmState_.frameExtended = extendDwmFrame();
@@ -230,10 +237,36 @@ void WindowChrome::refreshNativeMaterial()
         window_.data(), blurMaterialsEnabled_ && !materialRegions_.isEmpty(),
         NativeWindowTheme::BackdropMaterial::Acrylic, &dwmState_);
     setNativeMaterialAvailable(dwmState_.frameExtended && backdropApplied);
+    if (auto* quickWindow = qobject_cast<QQuickWindow*>(window_.data())) {
+        // Present the transparent client content after changing composition.
+        quickWindow->update();
+    }
 #elif defined(Q_OS_MACOS)
     refreshMacOsMaterial(window_.data());
+    updateMacOsTitleBarMetrics(window_.data());
 #endif
 }
+
+#ifdef Q_OS_MACOS
+void WindowChrome::refreshMaterialAfterPresentation()
+{
+    auto* quickWindow = qobject_cast<QQuickWindow*>(window_.data());
+    if (quickWindow == nullptr) {
+        return;
+    }
+    if (materialPresentationPending_) {
+        return;
+    }
+    materialPresentationPending_ = true;
+    QObject::connect(
+        quickWindow, &QQuickWindow::frameSwapped, this,
+        [this] {
+            materialPresentationPending_ = false;
+            materialUpdateTimer_.start();
+        }, Qt::ConnectionType(Qt::QueuedConnection | Qt::SingleShotConnection));
+    quickWindow->update();
+}
+#endif
 
 bool WindowChrome::eventFilter(QObject* watched, QEvent* event)
 {
@@ -241,20 +274,57 @@ bool WindowChrome::eventFilter(QObject* watched, QEvent* event)
     if (watched == window_.data()) {
         if (event->type() == QEvent::Show) {
             // Apply after Qt has completed the native show operation.
+#ifdef Q_OS_WIN
+            dwmState_ = {};
             materialUpdateTimer_.start();
+#else
+            refreshMaterialAfterPresentation();
+#endif
+        } else if (
 #ifdef Q_OS_MACOS
-        } else if (event->type() == QEvent::Expose
-                || event->type() == QEvent::WindowStateChange
+                event->type() == QEvent::Expose ||
+#endif
+                event->type() == QEvent::WindowStateChange
                 || event->type() == QEvent::ScreenChangeInternal) {
+#ifdef Q_OS_WIN
+            // Frame and backdrop settings belong to the resulting native state.
+            dwmState_ = {};
+            materialUpdateTimer_.start();
+#else
+            if (window_->isExposed()) {
+                refreshMaterialAfterPresentation();
+            }
+#endif
+#ifdef Q_OS_WIN
+        } else if (event->type() == QEvent::Expose
+            && window_->isExposed() && !dwmState_.frameExtended) {
+            // A show event can precede exposure; apply at the first exposure.
             materialUpdateTimer_.start();
 #endif
         } else if (event->type() == QEvent::PlatformSurface) {
             const auto* surfaceEvent = static_cast<QPlatformSurfaceEvent*>(event);
             if (surfaceEvent->surfaceEventType() == QPlatformSurfaceEvent::SurfaceCreated) {
+#ifdef Q_OS_WIN
+                QScopedValueRollback<bool> restoring(restoringWindowState_, true);
+                // Creation uses the system caption margins. Establish our
+                // client frame before applying the saved Qt client geometry.
+                nativeHandle_ = window_->winId();
+                SetWindowPos(reinterpret_cast<HWND>(nativeHandle_), nullptr, 0, 0, 0, 0,
+                    SWP_FRAMECHANGED | SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
+                if (normalGeometry_.isValid()
+                    && window_->windowStates() == Qt::WindowNoState) {
+                    window_->setGeometry(normalGeometry_);
+                }
+#endif
+#ifdef Q_OS_MACOS
+                observeMacOsWindow(window_.data());
+#endif
                 materialUpdateTimer_.start();
             } else {
                 materialUpdateTimer_.stop();
 #ifdef Q_OS_MACOS
+                stopObservingMacOsWindow();
+                stopObservingMacOsFullScreen();
                 releaseMacOsMaterial();
 #elif defined(Q_OS_WIN)
                 dwmState_ = {};
@@ -272,7 +342,7 @@ void WindowChrome::restoreWindowState()
 {
     const QJsonObject saved = PreferenceDocument::loadPreferencesObject()
         .value(QStringLiteral("ui")).toObject()
-        .value(QStringLiteral("main_window")).toObject();
+        .value(stateKey_).toObject();
     const QJsonObject geometry = saved.value(QStringLiteral("normal_geometry")).toObject();
     normalGeometry_ = QRect(geometry.value(QStringLiteral("x")).toInt(),
                             geometry.value(QStringLiteral("y")).toInt(),
@@ -315,21 +385,21 @@ void WindowChrome::restoreWindowState()
             window_->setScreen(screen);
         }
         screenName_ = screen->name();
+        if (saved.value(QStringLiteral("maximized")).toBool()) {
+            normalGeometry_ = available;
+        }
     }
     if (canRestorePosition) {
         window_->setGeometry(normalGeometry_);
     } else {
         window_->resize(normalGeometry_.size());
     }
-    maximized_ = saved.value(QStringLiteral("maximized")).toBool();
-    if (maximized_) {
-        window_->setWindowStates(Qt::WindowMaximized);
-    }
+    maximized_ = false;
 }
 
 void WindowChrome::captureWindowState()
 {
-    if (window_.isNull() || !window_->isVisible()) {
+    if (window_.isNull() || !window_->isVisible() || restoringWindowState_) {
         return;
     }
     const Qt::WindowStates states = window_->windowStates();
@@ -353,7 +423,7 @@ void WindowChrome::saveWindowState()
     captureWindowState();
     QJsonObject root = PreferenceDocument::loadPreferencesObject();
     QJsonObject ui = root.value(QStringLiteral("ui")).toObject();
-    ui.insert(QStringLiteral("main_window"), QJsonObject{
+    ui.insert(stateKey_, QJsonObject{
         {QStringLiteral("normal_geometry"), QJsonObject{
              {QStringLiteral("x"), normalGeometry_.x()},
              {QStringLiteral("y"), normalGeometry_.y()},
@@ -366,18 +436,6 @@ void WindowChrome::saveWindowState()
         miacode::debug_log::appendLine(miacode::debug_log::Channel::Runtime,
                                      QStringLiteral("window"), QStringLiteral("action=state_save_failed"));
     }
-}
-
-void WindowChrome::refreshTitleBarMetrics()
-{
-#ifdef Q_OS_MACOS
-    if (window_.isNull()) {
-        return;
-    }
-    applyMacOs(window_.data());
-#else
-    setTitleBarLeadingInset(0);
-#endif
 }
 
 bool WindowChrome::nativeEventFilter(const QByteArray& eventType, void* message, qintptr* result)
@@ -399,7 +457,7 @@ bool WindowChrome::nativeEventFilter(const QByteArray& eventType, void* message,
         return true;
     }
 
-    if (nativeMessage->message == WM_NCCALCSIZE && nativeMessage->wParam == TRUE) {
+    if (nativeMessage->message == WM_NCCALCSIZE) {
         if (IsZoomed(handle) && !window_->windowStates().testFlag(Qt::WindowFullScreen)) {
             MONITORINFO monitorInfo{};
             monitorInfo.cbSize = sizeof(monitorInfo);
@@ -407,8 +465,10 @@ bool WindowChrome::nativeEventFilter(const QByteArray& eventType, void* message,
             if (GetMonitorInfoW(monitor, &monitorInfo)) {
                 // QML owns the caption, so its client origin is the work-area
                 // origin rather than the native caption's client origin.
-                auto* parameters = reinterpret_cast<NCCALCSIZE_PARAMS*>(nativeMessage->lParam);
-                parameters->rgrc[0] = monitorInfo.rcWork;
+                auto* clientRect = nativeMessage->wParam == TRUE
+                    ? &reinterpret_cast<NCCALCSIZE_PARAMS*>(nativeMessage->lParam)->rgrc[0]
+                    : reinterpret_cast<RECT*>(nativeMessage->lParam);
+                *clientRect = monitorInfo.rcWork;
             }
         }
 
@@ -417,7 +477,7 @@ bool WindowChrome::nativeEventFilter(const QByteArray& eventType, void* message,
     }
 
     if (nativeMessage->message == WM_NCHITTEST) {
-        if (IsZoomed(handle)) {
+        if (IsZoomed(handle) || window_->windowStates().testFlag(Qt::WindowFullScreen)) {
             *result = HTCLIENT;
             return true;
         }
@@ -462,7 +522,6 @@ bool WindowChrome::nativeEventFilter(const QByteArray& eventType, void* message,
     }
 
     if (nativeMessage->message == WM_DWMCOMPOSITIONCHANGED) {
-        // Qt also updates composition settings while handling this message.
         dwmState_ = {};
         materialUpdateTimer_.start();
     }
@@ -482,23 +541,37 @@ bool WindowChrome::extendDwmFrame() const
         return false;
     }
 
-    // The system backdrop covers the window independently of frame margins.
-    // Keep the native caption style for animations, with its painting outside
-    // the client area owned by QML. A full glass frame exposes DWM buttons.
+    const auto handle = reinterpret_cast<HWND>(nativeHandle_);
+    // QML owns the caption; retain the native frame's animation styles.
     const MARGINS margins{1, 1, 0, 1};
-    return SUCCEEDED(DwmExtendFrameIntoClientArea(reinterpret_cast<HWND>(nativeHandle_), &margins));
+    const HRESULT frameResult = DwmExtendFrameIntoClientArea(handle, &margins);
+    return SUCCEEDED(frameResult);
 #else
     return false;
 #endif
 }
 
 #ifndef Q_OS_MACOS
+void WindowChrome::handleTitleBarDoubleClick()
+{
+    toggleMaximized();
+}
+
 void WindowChrome::refreshMacOsMaterial(QWindow* window)
 {
     Q_UNUSED(window);
 }
 
-void WindowChrome::applyMacOs(QWindow* window)
+void WindowChrome::observeMacOsWindow(QWindow* window)
+{
+    Q_UNUSED(window);
+}
+
+void WindowChrome::stopObservingMacOsWindow()
+{
+}
+
+void WindowChrome::updateMacOsTitleBarMetrics(QWindow* window)
 {
     Q_UNUSED(window);
 }

@@ -16,7 +16,6 @@
 #include "app/platform/PlatformDiagnostics.h"
 #include "app/runtime/Session.h"
 #include "app/services/ApplicationServices.h"
-#include "app/ui/chrome/NativeWindowTheme.h"
 #include "app/ui/preferences/LocaleService.h"
 #include "app/ui/drop/ChartDropBridge.h"
 #include "app/ui/document/DocumentModel.h"
@@ -64,6 +63,7 @@ Bootstrap::~Bootstrap()
     delete coverWindow_.data();
     releaseRootWindowResources();
     engine_.reset();
+    detachedPreviewWindowChrome_.reset();
     windowChrome_.reset();
     applicationContext_.reset();
     backend_.reset();
@@ -152,6 +152,9 @@ bool Bootstrap::start(const QString& startupOpenTarget)
         windowChrome_->setBlurMaterialsEnabled(settings->blurMaterialsEnabled());
         connect(settings, &WorkbenchSettings::blurMaterialsEnabledChanged, this, [this, settings] {
             windowChrome_->setBlurMaterialsEnabled(settings->blurMaterialsEnabled());
+            if (detachedPreviewWindowChrome_) {
+                detachedPreviewWindowChrome_->setBlurMaterialsEnabled(settings->blurMaterialsEnabled());
+            }
         });
     }
     applicationContext_->setWindowChrome(windowChrome_.get());
@@ -259,6 +262,16 @@ bool Bootstrap::start(const QString& startupOpenTarget)
         miacode::app::entry::logQuickWindowGpuDevice(
             window, QStringLiteral("qml_ui_root_window"));
 
+        if (auto* previewWindow = window->findChild<QQuickWindow*>(
+                QStringLiteral("detachedPreviewWindow")); previewWindow != nullptr) {
+            detachedPreviewWindowChrome_ = std::make_unique<WindowChrome>(this);
+            detachedPreviewWindowChrome_->setBlurMaterialsEnabled(windowChrome_->blurMaterialsEnabled());
+            previewWindow->setIcon(appIcon_);
+            detachedPreviewWindowChrome_->attach(previewWindow, QStringLiteral("preview_window"));
+            previewWindow->setProperty("windowChrome",
+                QVariant::fromValue<QObject*>(detachedPreviewWindowChrome_.get()));
+        }
+
         window->setVisible(false);
         windowChrome_->attach(window);
         appendUiRuntimeLog(QStringLiteral("window_chrome_attached"));
@@ -269,13 +282,18 @@ bool Bootstrap::start(const QString& startupOpenTarget)
                 if (rootWindow_ != nullptr) {
                     windowChrome_->refreshNativeTheme();
                 }
+                if (detachedPreviewWindowChrome_) {
+                    detachedPreviewWindowChrome_->refreshNativeTheme();
+                }
             });
         }
         if (!rootLifecycle_.canShowRoot()) {
             releaseRootWindowResources();
             return false;
         }
-        window->setVisible(true);
+        windowChrome_->showRestored();
+        window->raise();
+        window->requestActivate();
         backend_->setRootWindowFrameGeometry(window->frameGeometry());
         // The stage-media route defers its first chart-path load until the
         // frontend window is ready. UIv2 has no native surface host to forward
@@ -338,6 +356,9 @@ void Bootstrap::beginAcceptedRootWindowShutdown(const QString& source)
     }
     if (!rootWindow_.isNull()) {
         windowChrome_->saveWindowState();
+        if (detachedPreviewWindowChrome_) {
+            detachedPreviewWindowChrome_->saveWindowState();
+        }
         rootWindow_->hide();
     }
     if (applicationServices_ != nullptr && applicationServices_->documentBridge() != nullptr
@@ -369,6 +390,7 @@ void Bootstrap::destroyAcceptedRootWindowResourcesAndQuit(const QString& source)
 
     releaseRootWindowResources();
     engine_.reset();
+    detachedPreviewWindowChrome_.reset();
     windowChrome_.reset();
     applicationContext_.reset();
     backend_.reset();

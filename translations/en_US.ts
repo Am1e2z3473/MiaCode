@@ -1232,48 +1232,48 @@ Failed: %2</translation>
         <translation>Updates</translation>
     </message>
     <message id="dialog.render_settings.audio.answer">
-        <source>Answer Volume</source>
-        <translation>Answer Volume</translation>
+        <source>Answer Sound</source>
+        <translation>Answer Sound</translation>
     </message>
     <message id="dialog.render_settings.audio.break">
-        <source>Break Volume</source>
-        <translation>Break Volume</translation>
+        <source>Break</source>
+        <translation>Break</translation>
     </message>
     <message id="dialog.render_settings.audio.break_slide">
-        <source>Break Slide Volume</source>
-        <translation>Break Slide Volume</translation>
+        <source>Break Slide</source>
+        <translation>Break Slide</translation>
     </message>
     <message id="dialog.render_settings.audio.ex">
-        <source>EX Volume</source>
-        <translation>EX Volume</translation>
+        <source>EX</source>
+        <translation>EX</translation>
     </message>
     <message id="dialog.render_settings.audio.firework">
-        <source>Firework Volume</source>
-        <translation>Firework Volume</translation>
+        <source>Hanabi</source>
+        <translation>Hanabi</translation>
     </message>
     <message id="dialog.render_settings.audio.global">
         <source>Global Volume</source>
         <translation>Global Volume</translation>
     </message>
     <message id="dialog.render_settings.audio.intro">
-        <source>Intro Volume</source>
-        <translation>Intro Volume</translation>
+        <source>Export Intro</source>
+        <translation>Export Intro</translation>
     </message>
     <message id="dialog.render_settings.audio.slide">
-        <source>Slide Volume</source>
-        <translation>Slide Volume</translation>
+        <source>Slide</source>
+        <translation>Slide</translation>
     </message>
     <message id="dialog.render_settings.audio.tap">
-        <source>Tap Volume</source>
-        <translation>Tap Volume</translation>
+        <source>Tap</source>
+        <translation>Tap</translation>
     </message>
     <message id="dialog.render_settings.audio.touch">
-        <source>Touch Volume</source>
-        <translation>Touch Volume</translation>
+        <source>Touch</source>
+        <translation>Touch</translation>
     </message>
     <message id="dialog.render_settings.audio.track">
-        <source>Track Volume</source>
-        <translation>Track Volume</translation>
+        <source>Track</source>
+        <translation>Track</translation>
     </message>
     <message id="dialog.render_settings.gameplay.center_display">
         <source>Center Display</source>
@@ -2957,9 +2957,17 @@ The file may be open in preview, a media player, File Explorer preview pane, or 
         <source>Picture Options</source>
         <translation>Picture Options</translation>
     </message>
-    <message id="preview.fullscreen.enter_tooltip">
-        <source>Fullscreen</source>
-        <translation>Fullscreen</translation>
+    <message id="preview.window.detach">
+        <source>Detach Preview</source>
+        <translation>Detach Preview</translation>
+    </message>
+    <message id="preview.window.dock">
+        <source>Return to Main Window</source>
+        <translation>Return to Main Window</translation>
+    </message>
+    <message id="preview.window.title">
+        <source>Preview</source>
+        <translation>Preview</translation>
     </message>
     <message id="preview.pause">
         <source>Pause</source>
@@ -3156,10 +3164,6 @@ The file may be open in preview, a media player, File Explorer preview pane, or 
     <message id="qml.errors">
         <source>Errors</source>
         <translation>Errors</translation>
-    </message>
-    <message id="qml.exit_fullscreen_preview">
-        <source>Exit fullscreen</source>
-        <translation>Exit fullscreen</translation>
     </message>
     <message id="qml.expand_bookmarks">
         <source>Expand bookmarks</source>

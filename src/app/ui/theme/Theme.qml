@@ -608,11 +608,15 @@ QtObject {
                       Math.min(1, c.b + 16 / 255), c.a)
             : c
     }
-    readonly property var chromeStateColors: nativeMaterialActive ? ({
-        hover: chromeHighlightColor(0.12),
-        pressed: chromeHighlightColor(0.20),
-        selected: chromeHighlightColor(0.16)
-    }) : colors.activityState
+    readonly property var chromeStateColors: chromeStateColorsFor(nativeMaterialActive)
+
+    function chromeStateColorsFor(materialActive) {
+        return materialActive ? ({
+            hover: chromeHighlightColor(0.12),
+            pressed: chromeHighlightColor(0.20),
+            selected: chromeHighlightColor(0.16)
+        }) : colors.activityState
+    }
     readonly property real popupOpacity: 0.96
     readonly property int popupEnterDuration: 120
     readonly property int popupExitDuration: 90
@@ -672,8 +676,8 @@ QtObject {
         return Qt.rgba(c.r, c.g, c.b, c.a * nativeMaterialTintOpacity)
     }
 
-    function chromeSurfaceColor(baseColor) {
-        if (!nativeMaterialActive)
+    function chromeSurfaceColor(baseColor, materialActive = nativeMaterialActive) {
+        if (!materialActive)
             return surfaceColor(baseColor)
         return nativeMaterialColor(baseColor)
     }

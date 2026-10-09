@@ -1232,48 +1232,48 @@ Failed: %2</source>
         <translation>更新</translation>
     </message>
     <message id="dialog.render_settings.audio.answer">
-        <source>Answer Volume</source>
-        <translation>Answer 音量</translation>
+        <source>Answer Sound</source>
+        <translation>正解音</translation>
     </message>
     <message id="dialog.render_settings.audio.break">
-        <source>Break Volume</source>
-        <translation>Break 音量</translation>
+        <source>Break</source>
+        <translation>Break</translation>
     </message>
     <message id="dialog.render_settings.audio.break_slide">
-        <source>Break Slide Volume</source>
-        <translation>Break Slide 音量</translation>
+        <source>Break Slide</source>
+        <translation>Break Slide</translation>
     </message>
     <message id="dialog.render_settings.audio.ex">
-        <source>EX Volume</source>
-        <translation>EX 音量</translation>
+        <source>EX</source>
+        <translation>EX</translation>
     </message>
     <message id="dialog.render_settings.audio.firework">
-        <source>Firework Volume</source>
-        <translation>Firework 音量</translation>
+        <source>Hanabi</source>
+        <translation>Hanabi</translation>
     </message>
     <message id="dialog.render_settings.audio.global">
         <source>Global Volume</source>
-        <translation>Global 音量</translation>
+        <translation>全局音量</translation>
     </message>
     <message id="dialog.render_settings.audio.intro">
-        <source>Intro Volume</source>
-        <translation>片头音量</translation>
+        <source>Export Intro</source>
+        <translation>导出片头</translation>
     </message>
     <message id="dialog.render_settings.audio.slide">
-        <source>Slide Volume</source>
-        <translation>Slide 音量</translation>
+        <source>Slide</source>
+        <translation>Slide</translation>
     </message>
     <message id="dialog.render_settings.audio.tap">
-        <source>Tap Volume</source>
-        <translation>Tap 音量</translation>
+        <source>Tap</source>
+        <translation>Tap</translation>
     </message>
     <message id="dialog.render_settings.audio.touch">
-        <source>Touch Volume</source>
-        <translation>Touch 音量</translation>
+        <source>Touch</source>
+        <translation>Touch</translation>
     </message>
     <message id="dialog.render_settings.audio.track">
-        <source>Track Volume</source>
-        <translation>Track 音量</translation>
+        <source>Track</source>
+        <translation>曲目</translation>
     </message>
     <message id="dialog.render_settings.gameplay.center_display">
         <source>Center Display</source>
@@ -2957,9 +2957,17 @@ The file may be open in preview, a media player, File Explorer preview pane, or 
         <source>Picture Options</source>
         <translation>画面选项</translation>
     </message>
-    <message id="preview.fullscreen.enter_tooltip">
-        <source>Fullscreen</source>
-        <translation>全屏</translation>
+    <message id="preview.window.detach">
+        <source>Detach Preview</source>
+        <translation>分离预览</translation>
+    </message>
+    <message id="preview.window.dock">
+        <source>Return to Main Window</source>
+        <translation>返回主窗口</translation>
+    </message>
+    <message id="preview.window.title">
+        <source>Preview</source>
+        <translation>预览</translation>
     </message>
     <message id="preview.pause">
         <source>Pause</source>
@@ -3156,10 +3164,6 @@ The file may be open in preview, a media player, File Explorer preview pane, or 
     <message id="qml.errors">
         <source>Errors</source>
         <translation>错误</translation>
-    </message>
-    <message id="qml.exit_fullscreen_preview">
-        <source>Exit fullscreen</source>
-        <translation>退出全屏</translation>
     </message>
     <message id="qml.expand_bookmarks">
         <source>Expand bookmarks</source>
