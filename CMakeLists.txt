@@ -691,7 +691,7 @@ set(MIACODE_UI_ICON_FILES
     src/app/ui/resources/icons/circle-play.svg
     src/app/ui/resources/icons/pause.svg
     src/app/ui/resources/icons/stop.svg
-    src/app/ui/resources/icons/fullscreen.svg
+    src/app/ui/resources/icons/preview-detach.svg
     src/app/ui/resources/icons/panel-left.svg
     src/app/ui/resources/icons/panel-bottom.svg
     src/app/ui/resources/icons/panel-right.svg

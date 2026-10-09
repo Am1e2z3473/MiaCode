@@ -329,7 +329,7 @@ bool miacode::runtime::DocumentSessionHost::switchToDifficultyField(int difficul
     state_.projectLastOpenedDifficultyId_ = difficultyId;
     // Widgets outline already wrote "chart". QML leaveOverlayPage resumes through
     // this function with the overlay key still set, and shellExportPageActive()
-    // is that key — leftover "export" keeps the fullscreen button hidden.
+    // uses that key to choose the preview canvas controls.
     if (state_.activeOutlineKey_.isEmpty()
         || state_.activeOutlineKey_ == QLatin1String("metadata")
         || state_.activeOutlineKey_ == QLatin1String("welcome")

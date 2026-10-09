@@ -1232,48 +1232,48 @@ Failed: %2</source>
         <translation>アップデート</translation>
     </message>
     <message id="dialog.render_settings.audio.answer">
-        <source>Answer Volume</source>
-        <translation>Answer</translation>
+        <source>Answer Sound</source>
+        <translation>アンサー音</translation>
     </message>
     <message id="dialog.render_settings.audio.break">
-        <source>Break Volume</source>
+        <source>Break</source>
         <translation>Break</translation>
     </message>
     <message id="dialog.render_settings.audio.break_slide">
-        <source>Break Slide Volume</source>
+        <source>Break Slide</source>
         <translation>Break Slide</translation>
     </message>
     <message id="dialog.render_settings.audio.ex">
-        <source>EX Volume</source>
+        <source>EX</source>
         <translation>EX</translation>
     </message>
     <message id="dialog.render_settings.audio.firework">
-        <source>Firework Volume</source>
-        <translation>Firework</translation>
+        <source>Hanabi</source>
+        <translation>花火</translation>
     </message>
     <message id="dialog.render_settings.audio.global">
         <source>Global Volume</source>
-        <translation>Global</translation>
+        <translation>全体音量</translation>
     </message>
     <message id="dialog.render_settings.audio.intro">
-        <source>Intro Volume</source>
-        <translation>開始音の音量</translation>
+        <source>Export Intro</source>
+        <translation>エクスポートのイントロ</translation>
     </message>
     <message id="dialog.render_settings.audio.slide">
-        <source>Slide Volume</source>
+        <source>Slide</source>
         <translation>Slide</translation>
     </message>
     <message id="dialog.render_settings.audio.tap">
-        <source>Tap Volume</source>
+        <source>Tap</source>
         <translation>Tap</translation>
     </message>
     <message id="dialog.render_settings.audio.touch">
-        <source>Touch Volume</source>
+        <source>Touch</source>
         <translation>Touch</translation>
     </message>
     <message id="dialog.render_settings.audio.track">
-        <source>Track Volume</source>
-        <translation>Track</translation>
+        <source>Track</source>
+        <translation>楽曲</translation>
     </message>
     <message id="dialog.render_settings.gameplay.center_display">
         <source>Center Display</source>
@@ -2957,9 +2957,17 @@ The file may be open in preview, a media player, File Explorer preview pane, or 
         <source>Picture Options</source>
         <translation>画面オプション</translation>
     </message>
-    <message id="preview.fullscreen.enter_tooltip">
-        <source>Fullscreen</source>
-        <translation>全画面</translation>
+    <message id="preview.window.detach">
+        <source>Detach Preview</source>
+        <translation>プレビューを別ウィンドウに表示</translation>
+    </message>
+    <message id="preview.window.dock">
+        <source>Return to Main Window</source>
+        <translation>メインウィンドウに戻す</translation>
+    </message>
+    <message id="preview.window.title">
+        <source>Preview</source>
+        <translation>プレビュー</translation>
     </message>
     <message id="preview.pause">
         <source>Pause</source>
@@ -3156,10 +3164,6 @@ The file may be open in preview, a media player, File Explorer preview pane, or 
     <message id="qml.errors">
         <source>Errors</source>
         <translation>エラー</translation>
-    </message>
-    <message id="qml.exit_fullscreen_preview">
-        <source>Exit fullscreen</source>
-        <translation>全画面を終了</translation>
     </message>
     <message id="qml.expand_bookmarks">
         <source>Expand bookmarks</source>

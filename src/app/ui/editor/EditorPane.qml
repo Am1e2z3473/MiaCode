@@ -31,6 +31,7 @@ Item {
     // Metadata actions use one shared column width so the button geometry does
     // not change with translated label length or with the input-field width.
     readonly property int metadataActionButtonWidth: 168
+    readonly property real minimumWidth: 2 * metadataActionButtonWidth + 8 + 40
     property double pendingActivationSequence: 0
     property var pendingActivationCompletion: null
     property var pendingActivationCancellation: null
