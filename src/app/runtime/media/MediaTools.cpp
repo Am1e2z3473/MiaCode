@@ -357,27 +357,25 @@ bool runFfmpegBlocking(
     QString progressBuffer;
     QString stderrTail;
     const auto pump = [&]() {
-        if (determinate) {
-            const QByteArray out = process.readAllStandardOutput();
-            if (!out.isEmpty()) {
-                progressBuffer += QString::fromLatin1(out);
-                const int lastNewline = progressBuffer.lastIndexOf(QLatin1Char('\n'));
-                if (lastNewline >= 0) {
-                    const QString complete = progressBuffer.left(lastNewline);
-                    progressBuffer = progressBuffer.mid(lastNewline + 1);
-                    static const QRegularExpression outTimePattern(QStringLiteral(R"(out_time_us=(\d+))"));
-                    qint64 lastMicros = -1;
-                    QRegularExpressionMatchIterator it = outTimePattern.globalMatch(complete);
-                    while (it.hasNext()) {
-                        lastMicros = it.next().captured(1).toLongLong();
-                    }
-                    if (lastMicros >= 0) {
-                        const double seconds = static_cast<double>(lastMicros) / 1000000.0;
-                        // Cap at 99% until the process actually exits so the
-                        // bar doesn't read "done" while ffmpeg is still muxing.
-                        jobProgress->report(
-                            qBound(0, qRound(seconds / totalDurationSeconds * 100.0), 99), label);
-                    }
+        const QByteArray out = process.readAllStandardOutput();
+        if (determinate && !out.isEmpty()) {
+            progressBuffer += QString::fromLatin1(out);
+            const int lastNewline = progressBuffer.lastIndexOf(QLatin1Char('\n'));
+            if (lastNewline >= 0) {
+                const QString complete = progressBuffer.left(lastNewline);
+                progressBuffer = progressBuffer.mid(lastNewline + 1);
+                static const QRegularExpression outTimePattern(QStringLiteral(R"(out_time_us=(\d+))"));
+                qint64 lastMicros = -1;
+                QRegularExpressionMatchIterator it = outTimePattern.globalMatch(complete);
+                while (it.hasNext()) {
+                    lastMicros = it.next().captured(1).toLongLong();
+                }
+                if (lastMicros >= 0) {
+                    const double seconds = static_cast<double>(lastMicros) / 1000000.0;
+                    // Cap at 99% until the process actually exits so the
+                    // bar doesn't read "done" while ffmpeg is still muxing.
+                    jobProgress->report(
+                        qBound(0, qRound(seconds / totalDurationSeconds * 100.0), 99), label);
                 }
             }
         }
@@ -764,21 +762,38 @@ bool prependPvBlack(
 
 constexpr int kAlignmentAudioSampleRate = 12000;
 constexpr int kAlignmentEnvelopeRate = 50;
+constexpr int kAlignmentAnalysisSeconds = 180;
 
 bool decodeAudioStreamWithFfmpeg(
     const QString& ffmpegPath,
     const QString& mediaPath,
-    miacode::latency_analysis::DecodedAudio* decoded)
+    miacode::latency_analysis::DecodedAudio* decoded,
+    miacode::JobProgressService* jobProgress,
+    bool* cancelled)
 {
-    if (decoded == nullptr || ffmpegPath.isEmpty() || mediaPath.isEmpty()) {
+    if (decoded == nullptr || ffmpegPath.isEmpty() || mediaPath.isEmpty() || jobProgress == nullptr) {
         return false;
     }
+    if (cancelled != nullptr) {
+        *cancelled = false;
+    }
+
+    const miacode::LocalizedText title = miacode::localizedText("media_tools.align_pv_to_audio");
+    const miacode::LocalizedText label = miacode::localizedText("media_tools.analyzing_audio_alignment");
+    const quint64 jobToken = jobProgress->begin(title, label, /*cancellable=*/true);
+    jobProgress->reportIndeterminate(label);
+    const auto endJob = [jobProgress, jobToken]() {
+        if (jobProgress->token() == jobToken) {
+            jobProgress->end();
+        }
+    };
 
     QProcess process;
     process.setStandardErrorFile(QProcess::nullDevice());
     process.start(ffmpegPath, {
         QStringLiteral("-hide_banner"), QStringLiteral("-loglevel"), QStringLiteral("error"),
         QStringLiteral("-i"), mediaPath,
+        QStringLiteral("-t"), QString::number(kAlignmentAnalysisSeconds),
         QStringLiteral("-map"), QStringLiteral("0:a:0"),
         QStringLiteral("-vn"), QStringLiteral("-sn"), QStringLiteral("-dn"),
         QStringLiteral("-ac"), QStringLiteral("1"),
@@ -786,6 +801,7 @@ bool decodeAudioStreamWithFfmpeg(
         QStringLiteral("-f"), QStringLiteral("f32le"), QStringLiteral("pipe:1")
     }, QIODevice::ReadOnly);
     if (!process.waitForStarted(5000)) {
+        endJob();
         return false;
     }
 
@@ -793,8 +809,19 @@ bool decodeAudioStreamWithFfmpeg(
     while (process.state() != QProcess::NotRunning) {
         process.waitForReadyRead(100);
         pcmBytes.append(process.readAllStandardOutput());
+        QCoreApplication::processEvents(QEventLoop::AllEvents);
+        if (jobProgress->cancelRequested()) {
+            process.kill();
+            process.waitForFinished(2000);
+            endJob();
+            if (cancelled != nullptr) {
+                *cancelled = true;
+            }
+            return false;
+        }
     }
     pcmBytes.append(process.readAllStandardOutput());
+    endJob();
     if (process.exitStatus() != QProcess::NormalExit || process.exitCode() != 0) {
         return false;
     }
@@ -941,6 +968,44 @@ QString resolveChartMp4Path(const QString& chartPath, const QString& videoFieldV
     return QString();
 }
 
+bool stageVideoForAlignment(
+    const QString& sourcePath,
+    const QString& backupPath,
+    miacode::LocalizedText* error)
+{
+    logFileLockDiag(QStringLiteral("alignment_stage_src"), sourcePath);
+    if (!removeWithRetry(backupPath)) {
+        if (error != nullptr) {
+            *error = miacode::localizedText("media_tools.failed_to_write_file_1")
+                .arg(backupPath);
+        }
+        return false;
+    }
+    if (renameWithRetry(sourcePath, backupPath)) {
+        return true;
+    }
+    if (error != nullptr) {
+        *error = miacode::localizedText("media_tools.failed_to_stage_original_file")
+            .arg(sourcePath);
+    }
+    return false;
+}
+
+bool restoreAlignmentSource(
+    const QString& backupPath,
+    const QString& sourcePath,
+    miacode::LocalizedText* error)
+{
+    if (renameWithRetry(backupPath, sourcePath)) {
+        return true;
+    }
+    if (error != nullptr) {
+        *error = miacode::localizedText("media_tools.failed_to_restore_backup_to")
+            .arg(sourcePath);
+    }
+    return false;
+}
+
 bool alignVideoStreams(
     const QString& ffmpegPath,
     const QString& videoPath,
@@ -954,42 +1019,22 @@ bool alignVideoStreams(
         QStringLiteral("%1_bak.%2").arg(videoInfo.completeBaseName(), videoInfo.suffix()));
     const QString tempPath = videoInfo.dir().filePath(QStringLiteral(".miacode_pv_align_tmp.mp4"));
     QFile::remove(tempPath);
-    if (!copyFileReplacing(videoPath, backupPath, error)) {
+    if (!stageVideoForAlignment(videoPath, backupPath, error)) {
         return false;
     }
 
-    double durationSeconds = 0.0;
-    probeMediaDurationSeconds(ffmpegPath, backupPath, &durationSeconds, nullptr);
-    const double adjustmentSeconds = qAbs(videoAudioOffsetSeconds);
-    const QString adjustment = QString::number(adjustmentSeconds, 'f', 6);
-    QString videoFilter;
-    QString audioFilter;
-    if (videoAudioOffsetSeconds > 0.0) {
-        videoFilter = QStringLiteral("trim=start=%1,setpts=PTS-%1/TB,scale=trunc(iw/2)*2:trunc(ih/2)*2,format=yuv420p")
-                          .arg(adjustment);
-        audioFilter = QStringLiteral("atrim=start=%1,asetpts=PTS-%1/TB").arg(adjustment);
-    } else {
-        const QString delayMilliseconds = QString::number(qRound64(adjustmentSeconds * 1000.0));
-        videoFilter = QStringLiteral("tpad=start_mode=add:start_duration=%1:color=black,scale=trunc(iw/2)*2:trunc(ih/2)*2,format=yuv420p")
-                          .arg(adjustment);
-        audioFilter = QStringLiteral("adelay=%1:all=1").arg(delayMilliseconds);
-    }
-
+    const QString outputTimestampOffset =
+        QString::number(-videoAudioOffsetSeconds, 'f', 6);
     QStringList args;
     args << QStringLiteral("-hide_banner")
          << QStringLiteral("-y")
          << QStringLiteral("-i") << backupPath
-         << QStringLiteral("-filter_complex")
-         << QStringLiteral("[0:v:0]%1[v];[0:a:0]%2[a]").arg(videoFilter, audioFilter)
-         << QStringLiteral("-map") << QStringLiteral("[v]")
-         << QStringLiteral("-map") << QStringLiteral("[a]")
-         << QStringLiteral("-c:v") << QStringLiteral("libx264")
-         << QStringLiteral("-preset") << QStringLiteral("veryfast")
-         << QStringLiteral("-crf") << QStringLiteral("18")
-         << QStringLiteral("-pix_fmt") << QStringLiteral("yuv420p")
-         << QStringLiteral("-c:a") << QStringLiteral("aac")
-         << QStringLiteral("-b:a") << QStringLiteral("192k")
-         << QStringLiteral("-movflags") << QStringLiteral("+faststart")
+         << QStringLiteral("-output_ts_offset") << outputTimestampOffset
+         << QStringLiteral("-map") << QStringLiteral("0:v:0")
+         << QStringLiteral("-map") << QStringLiteral("0:a:0")
+         << QStringLiteral("-map_metadata") << QStringLiteral("0")
+         << QStringLiteral("-c") << QStringLiteral("copy")
+         << QStringLiteral("-avoid_negative_ts") << QStringLiteral("disabled")
          << tempPath;
     if (!runFfmpegBlocking(
             ffmpegPath,
@@ -997,13 +1042,24 @@ bool alignVideoStreams(
             jobProgress,
             miacode::localizedText("media_tools.processing_pv_mp4"),
             miacode::localizedText("media_tools.processing_pv_mp4"),
-            durationSeconds + (videoAudioOffsetSeconds < 0.0 ? adjustmentSeconds : 0.0),
+            0.0,
             error,
             cancelled)) {
         QFile::remove(tempPath);
+        restoreAlignmentSource(backupPath, videoPath, error);
         return false;
     }
-    return replaceFileWithTemp(tempPath, videoPath, error);
+    if (renameWithRetry(tempPath, videoPath)) {
+        return true;
+    }
+    QFile::remove(tempPath);
+    if (!restoreAlignmentSource(backupPath, videoPath, error)) {
+        return false;
+    }
+    if (error != nullptr) {
+        *error = miacode::localizedText("media_tools.replace_failed").arg(videoPath);
+    }
+    return false;
 }
 
 } // namespace
@@ -1102,16 +1158,25 @@ void miacode::runtime::MediaJobsHost::onAlignBackgroundVideoToTrack()
 
     miacode::latency_analysis::DecodedAudio trackAudio;
     miacode::latency_analysis::DecodedAudio videoAudio;
-    if (!decodeAudioStreamWithFfmpeg(ffmpegPath, videoPath, &videoAudio)) {
+    bool decodeCancelled = false;
+    if (!decodeAudioStreamWithFfmpeg(
+            ffmpegPath, videoPath, &videoAudio, session_.jobProgressService(), &decodeCancelled)) {
         requests->postNotice(
-            miacode::NoticeSeverity::Warning, title,
-            miacode::localizedText("media_tools.video_audio_missing"));
+            decodeCancelled ? miacode::NoticeSeverity::Information
+                            : miacode::NoticeSeverity::Warning,
+            title,
+            decodeCancelled ? miacode::localizedText("media_tools.video_alignment_cancelled")
+                            : miacode::localizedText("media_tools.video_audio_missing"));
         return;
     }
-    if (!decodeAudioStreamWithFfmpeg(ffmpegPath, trackPath, &trackAudio)) {
+    if (!decodeAudioStreamWithFfmpeg(
+            ffmpegPath, trackPath, &trackAudio, session_.jobProgressService(), &decodeCancelled)) {
         requests->postNotice(
-            miacode::NoticeSeverity::Warning, title,
-            miacode::localizedText("media_tools.video_alignment_offset_failed"));
+            decodeCancelled ? miacode::NoticeSeverity::Information
+                            : miacode::NoticeSeverity::Warning,
+            title,
+            decodeCancelled ? miacode::localizedText("media_tools.video_alignment_cancelled")
+                            : miacode::localizedText("media_tools.video_alignment_offset_failed"));
         return;
     }
 
@@ -1133,7 +1198,7 @@ void miacode::runtime::MediaJobsHost::onAlignBackgroundVideoToTrack()
     releasePreviewMediaForFileOperation();
     miacode::LocalizedText error;
     bool cancelled = false;
-        if (!alignVideoStreams(
+    if (!alignVideoStreams(
             ffmpegPath, videoPath, videoAudioOffsetSeconds, session_.jobProgressService(), &error,
             &cancelled)) {
         requests->postNotice(
