@@ -2969,10 +2969,6 @@ The file may be open in preview, a media player, File Explorer preview pane, or 
         <source>Preview</source>
         <translation>プレビュー</translation>
     </message>
-    <message id="preview.fullscreen.enter_tooltip">
-        <source>Fullscreen</source>
-        <translation>全画面</translation>
-    </message>
     <message id="preview.pause">
         <source>Pause</source>
         <translation>一時停止</translation>
@@ -3168,10 +3164,6 @@ The file may be open in preview, a media player, File Explorer preview pane, or 
     <message id="qml.errors">
         <source>Errors</source>
         <translation>エラー</translation>
-    </message>
-    <message id="qml.exit_fullscreen_preview">
-        <source>Exit fullscreen</source>
-        <translation>全画面を終了</translation>
     </message>
     <message id="qml.expand_bookmarks">
         <source>Expand bookmarks</source>
