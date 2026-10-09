@@ -762,7 +762,6 @@ bool prependPvBlack(
 
 constexpr int kAlignmentAudioSampleRate = 12000;
 constexpr int kAlignmentEnvelopeRate = 50;
-constexpr int kAlignmentAnalysisSeconds = 180;
 
 bool decodeAudioStreamWithFfmpeg(
     const QString& ffmpegPath,
@@ -793,7 +792,6 @@ bool decodeAudioStreamWithFfmpeg(
     process.start(ffmpegPath, {
         QStringLiteral("-hide_banner"), QStringLiteral("-loglevel"), QStringLiteral("error"),
         QStringLiteral("-i"), mediaPath,
-        QStringLiteral("-t"), QString::number(kAlignmentAnalysisSeconds),
         QStringLiteral("-map"), QStringLiteral("0:a:0"),
         QStringLiteral("-vn"), QStringLiteral("-sn"), QStringLiteral("-dn"),
         QStringLiteral("-ac"), QStringLiteral("1"),
@@ -968,44 +966,6 @@ QString resolveChartMp4Path(const QString& chartPath, const QString& videoFieldV
     return QString();
 }
 
-bool stageVideoForAlignment(
-    const QString& sourcePath,
-    const QString& backupPath,
-    miacode::LocalizedText* error)
-{
-    logFileLockDiag(QStringLiteral("alignment_stage_src"), sourcePath);
-    if (!removeWithRetry(backupPath)) {
-        if (error != nullptr) {
-            *error = miacode::localizedText("media_tools.failed_to_write_file_1")
-                .arg(backupPath);
-        }
-        return false;
-    }
-    if (renameWithRetry(sourcePath, backupPath)) {
-        return true;
-    }
-    if (error != nullptr) {
-        *error = miacode::localizedText("media_tools.failed_to_stage_original_file")
-            .arg(sourcePath);
-    }
-    return false;
-}
-
-bool restoreAlignmentSource(
-    const QString& backupPath,
-    const QString& sourcePath,
-    miacode::LocalizedText* error)
-{
-    if (renameWithRetry(backupPath, sourcePath)) {
-        return true;
-    }
-    if (error != nullptr) {
-        *error = miacode::localizedText("media_tools.failed_to_restore_backup_to")
-            .arg(sourcePath);
-    }
-    return false;
-}
-
 bool alignVideoStreams(
     const QString& ffmpegPath,
     const QString& videoPath,
@@ -1019,22 +979,42 @@ bool alignVideoStreams(
         QStringLiteral("%1_bak.%2").arg(videoInfo.completeBaseName(), videoInfo.suffix()));
     const QString tempPath = videoInfo.dir().filePath(QStringLiteral(".miacode_pv_align_tmp.mp4"));
     QFile::remove(tempPath);
-    if (!stageVideoForAlignment(videoPath, backupPath, error)) {
+    if (!copyFileReplacing(videoPath, backupPath, error)) {
         return false;
     }
 
-    const QString outputTimestampOffset =
-        QString::number(-videoAudioOffsetSeconds, 'f', 6);
+    double durationSeconds = 0.0;
+    probeMediaDurationSeconds(ffmpegPath, backupPath, &durationSeconds, nullptr);
+    const double adjustmentSeconds = qAbs(videoAudioOffsetSeconds);
+    const QString adjustment = QString::number(adjustmentSeconds, 'f', 6);
+    QString videoFilter;
+    QString audioFilter;
+    if (videoAudioOffsetSeconds > 0.0) {
+        videoFilter = QStringLiteral("trim=start=%1,setpts=PTS-%1/TB,scale=trunc(iw/2)*2:trunc(ih/2)*2,format=yuv420p")
+                          .arg(adjustment);
+        audioFilter = QStringLiteral("atrim=start=%1,asetpts=PTS-%1/TB").arg(adjustment);
+    } else {
+        const QString delayMilliseconds = QString::number(qRound64(adjustmentSeconds * 1000.0));
+        videoFilter = QStringLiteral("tpad=start_mode=add:start_duration=%1:color=black,scale=trunc(iw/2)*2:trunc(ih/2)*2,format=yuv420p")
+                          .arg(adjustment);
+        audioFilter = QStringLiteral("adelay=%1:all=1").arg(delayMilliseconds);
+    }
+
     QStringList args;
     args << QStringLiteral("-hide_banner")
          << QStringLiteral("-y")
          << QStringLiteral("-i") << backupPath
-         << QStringLiteral("-output_ts_offset") << outputTimestampOffset
-         << QStringLiteral("-map") << QStringLiteral("0:v:0")
-         << QStringLiteral("-map") << QStringLiteral("0:a:0")
-         << QStringLiteral("-map_metadata") << QStringLiteral("0")
-         << QStringLiteral("-c") << QStringLiteral("copy")
-         << QStringLiteral("-avoid_negative_ts") << QStringLiteral("disabled")
+         << QStringLiteral("-filter_complex")
+         << QStringLiteral("[0:v:0]%1[v];[0:a:0]%2[a]").arg(videoFilter, audioFilter)
+         << QStringLiteral("-map") << QStringLiteral("[v]")
+         << QStringLiteral("-map") << QStringLiteral("[a]")
+         << QStringLiteral("-c:v") << QStringLiteral("libx264")
+         << QStringLiteral("-preset") << QStringLiteral("veryfast")
+         << QStringLiteral("-crf") << QStringLiteral("18")
+         << QStringLiteral("-pix_fmt") << QStringLiteral("yuv420p")
+         << QStringLiteral("-c:a") << QStringLiteral("aac")
+         << QStringLiteral("-b:a") << QStringLiteral("192k")
+         << QStringLiteral("-movflags") << QStringLiteral("+faststart")
          << tempPath;
     if (!runFfmpegBlocking(
             ffmpegPath,
@@ -1042,24 +1022,13 @@ bool alignVideoStreams(
             jobProgress,
             miacode::localizedText("media_tools.processing_pv_mp4"),
             miacode::localizedText("media_tools.processing_pv_mp4"),
-            0.0,
+            durationSeconds + (videoAudioOffsetSeconds < 0.0 ? adjustmentSeconds : 0.0),
             error,
             cancelled)) {
         QFile::remove(tempPath);
-        restoreAlignmentSource(backupPath, videoPath, error);
         return false;
     }
-    if (renameWithRetry(tempPath, videoPath)) {
-        return true;
-    }
-    QFile::remove(tempPath);
-    if (!restoreAlignmentSource(backupPath, videoPath, error)) {
-        return false;
-    }
-    if (error != nullptr) {
-        *error = miacode::localizedText("media_tools.replace_failed").arg(videoPath);
-    }
-    return false;
+    return replaceFileWithTemp(tempPath, videoPath, error);
 }
 
 } // namespace
