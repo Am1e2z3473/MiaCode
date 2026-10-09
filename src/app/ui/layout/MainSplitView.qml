@@ -148,9 +148,9 @@ Item {
             return
         if (root.previewDetached) {
             if (detachedPreviewWindow.visibility === Window.FullScreen)
-                detachedPreviewWindow.showNormal()
+                detachedPreviewWindow.windowChrome.showRestored()
             else
-                detachedPreviewWindow.showFullScreen()
+                detachedPreviewWindow.windowChrome.showFullscreen()
             return
         }
         fullscreenPreview.visible = true
@@ -251,7 +251,7 @@ Item {
         if (root.exportVideoActive && fullscreenPreview.visible)
             fullscreenPreview.visible = false
         if (root.exportVideoActive && detachedPreviewWindow.visibility === Window.FullScreen)
-            detachedPreviewWindow.showNormal()
+            detachedPreviewWindow.windowChrome.showRestored()
     }
 
     PreviewPane {
@@ -279,6 +279,7 @@ Item {
         objectName: "detachedPreviewWindow"
         readonly property Item backdropSource: detachedPreviewContent
         property var windowChrome: null
+        readonly property bool settingsInTitleBar: Qt.platform.os !== "windows"
         readonly property bool nativeMaterialActive: windowChrome
             && windowChrome.nativeMaterialAvailable && Theme.blurMaterialsEnabled
             && !Theme.backgroundActive
@@ -287,12 +288,12 @@ Item {
             : qsTrId("preview.window.title")
         title: captionTitle.replace(/ — /g, " - ") + (root.documentTitle.length > 0
             ? " - " + qsTrId("preview.window.title") : "")
-        transientParent: root.Window.window
+        transientParent: null
         visible: false
         width: 560
         height: 680
         minimumWidth: preview.minimumWidth
-        minimumHeight: preview.minimumHeight + detachedTitleBar.height
+        minimumHeight: preview.minimumHeight + detachedTitleBar.height + detachedToolBar.height
         flags: {
             let value = Qt.Window
             if (root.Window.window.platform.captionButtons) {
@@ -309,7 +310,9 @@ Item {
                 value |= Qt.ExpandedClientAreaHint | Qt.NoTitleBarBackgroundHint
             return value
         }
-        color: nativeMaterialActive ? "transparent" : Theme.colors.background.panel
+        // Allocate the alpha surface before WindowChrome creates the native handle.
+        color: Qt.platform.os === "osx" || Qt.platform.os === "windows"
+            ? "transparent" : Theme.colors.background.panel
         background: null
         font.family: Theme.uiFont
         font.pixelSize: Theme.uiFontSize
@@ -335,7 +338,8 @@ Item {
             when: (Qt.platform.os === "osx" || Qt.platform.os === "windows") && target !== null
             value: detachedPreviewWindow.visible && detachedTitleBar.visible
                 && Theme.blurMaterialsEnabled && !Theme.backgroundActive
-                ? [{ rect: Qt.rect(0, 0, detachedPreviewWindow.width, detachedTitleBar.height) }]
+                ? [{ rect: Qt.rect(0, 0, detachedPreviewWindow.width,
+                    detachedTitleBar.height + detachedToolBar.height) }]
                 : []
             restoreMode: Binding.RestoreNone
         }
@@ -359,12 +363,15 @@ Item {
             leadingInset: detachedPreviewWindow.windowChrome
                 ? detachedPreviewWindow.windowChrome.titleBarLeadingInset : 0
             leadingToolAreaWidth: leadingInset
-            trailingToolAreaWidth: detachedSettingsActions.width + 8
+            trailingToolAreaWidth: detachedPreviewWindow.settingsInTitleBar
+                ? detachedSettingsActions.width + 8 : 0
 
             Row {
                 id: detachedSettingsActions
+                parent: detachedPreviewWindow.settingsInTitleBar ? detachedTitleBar : detachedToolBar
                 anchors.right: parent.right
-                anchors.rightMargin: detachedTitleBar.captionButtonsWidth + 8
+                anchors.rightMargin: detachedPreviewWindow.settingsInTitleBar
+                    ? detachedTitleBar.captionButtonsWidth + 8 : 8
                 anchors.verticalCenter: parent.verticalCenter
                 height: parent.height
                 spacing: 5
@@ -395,11 +402,28 @@ Item {
         }
 
         Rectangle {
+            id: detachedToolBar
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.top: detachedTitleBar.bottom
+            visible: !detachedPreviewWindow.settingsInTitleBar && detachedTitleBar.visible
+            height: visible ? Theme.windowChromeRowHeight : 0
+            color: Theme.chromeSurfaceColor(Theme.colors.background.activityBar,
+                detachedPreviewWindow.nativeMaterialActive)
+
+            WindowGestureArea {
+                anchors.fill: parent
+                hostWindow: detachedPreviewWindow
+                windowChrome: detachedPreviewWindow.windowChrome
+            }
+        }
+
+        Rectangle {
             id: detachedPreviewContent
             color: Theme.colors.background.panel
             anchors.left: parent.left
             anchors.right: parent.right
-            anchors.top: detachedTitleBar.bottom
+            anchors.top: detachedToolBar.bottom
             anchors.bottom: parent.bottom
         }
 
@@ -411,7 +435,7 @@ Item {
         Shortcut {
             sequence: "Escape"
             enabled: detachedPreviewWindow.visibility === Window.FullScreen
-            onActivated: detachedPreviewWindow.showNormal()
+            onActivated: detachedPreviewWindow.windowChrome.showRestored()
         }
     }
 

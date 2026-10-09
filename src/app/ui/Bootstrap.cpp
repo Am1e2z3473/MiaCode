@@ -16,7 +16,6 @@
 #include "app/platform/PlatformDiagnostics.h"
 #include "app/runtime/Session.h"
 #include "app/services/ApplicationServices.h"
-#include "app/ui/chrome/NativeWindowTheme.h"
 #include "app/ui/preferences/LocaleService.h"
 #include "app/ui/drop/ChartDropBridge.h"
 #include "app/ui/document/DocumentModel.h"
@@ -292,7 +291,9 @@ bool Bootstrap::start(const QString& startupOpenTarget)
             releaseRootWindowResources();
             return false;
         }
-        window->setVisible(true);
+        windowChrome_->showRestored();
+        window->raise();
+        window->requestActivate();
         backend_->setRootWindowFrameGeometry(window->frameGeometry());
         // The stage-media route defers its first chart-path load until the
         // frontend window is ready. UIv2 has no native surface host to forward

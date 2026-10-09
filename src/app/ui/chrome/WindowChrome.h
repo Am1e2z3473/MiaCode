@@ -33,6 +33,7 @@ public:
 
     void attach(QWindow* window, const QString& stateKey = QStringLiteral("main_window"));
     Q_INVOKABLE void showRestored();
+    Q_INVOKABLE void showFullscreen();
     Q_INVOKABLE void minimize();
     Q_INVOKABLE void toggleMaximized();
     Q_INVOKABLE void handleTitleBarDoubleClick();
@@ -57,7 +58,9 @@ signals:
 private:
     bool eventFilter(QObject* watched, QEvent* event) override;
     void refreshNativeMaterial();
+#ifdef Q_OS_MACOS
     void refreshMaterialAfterPresentation();
+#endif
     bool extendDwmFrame() const;
     void observeMacOsWindow(QWindow* window);
     void stopObservingMacOsWindow();
@@ -76,10 +79,13 @@ private:
     QRect normalGeometry_;
     QString screenName_;
     bool maximized_ = false;
+    bool restoringWindowState_ = false;
     QString stateKey_;
     QTimer stateCaptureTimer_;
     QTimer materialUpdateTimer_;
+#ifdef Q_OS_MACOS
     bool materialPresentationPending_ = false;
+#endif
     quintptr nativeHandle_ = 0;
 #ifdef Q_OS_WIN
     NativeWindowTheme::AppliedState dwmState_;
