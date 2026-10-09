@@ -33,7 +33,6 @@ public:
 
     void attach(QWindow* window, const QString& stateKey = QStringLiteral("main_window"));
     Q_INVOKABLE void showRestored();
-    Q_INVOKABLE void showFullscreen();
     Q_INVOKABLE void minimize();
     Q_INVOKABLE void toggleMaximized();
     Q_INVOKABLE void handleTitleBarDoubleClick();

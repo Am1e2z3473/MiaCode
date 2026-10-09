@@ -173,16 +173,6 @@ void WindowChrome::showRestored()
     window_->showNormal();
 }
 
-void WindowChrome::showFullscreen()
-{
-    if (window_.isNull()) {
-        return;
-    }
-    captureWindowState();
-    QScopedValueRollback<bool> restoring(restoringWindowState_, true);
-    window_->showFullScreen();
-}
-
 void WindowChrome::minimize()
 {
     if (window_.isNull()) {

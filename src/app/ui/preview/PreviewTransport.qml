@@ -10,14 +10,10 @@ Item {
     required property var preferences
     required property var exportSession
     property bool dataAvailable: true
-    // True while the export page is up. The canvas menu hides there:
-    // entering preview fullscreen on that page crashes the Intel iGPU D3D11
-    // driver with hardware decode. Supplied by the caller, which knows the
-    // active page.
     property bool exportPageActive: false
-    property bool showCanvasMenuButton: !root.exportPageActive
-    property bool fullscreenActive: false
-    signal fullscreenRequested()
+    property bool detached: false
+    signal detachRequested()
+    signal dockRequested()
 
     function closeMenus() {
         rateMenu.close()
@@ -89,15 +85,14 @@ Item {
 
     // Shorten "pos / dur" only when the control row would actually collide —
     // independent of NoteStatistics column switching.
-    readonly property int _visibleButtonCount: 3
+    readonly property int _visibleButtonCount: 4
         + (rangeModeButton.visible ? 1 : 0)
         + (canvasMenuButton.visible ? 1 : 0)
-        + (fullscreenButton.visible ? 1 : 0)
     readonly property real _fixedChromeWidth: stopButton.implicitWidth + playButton.implicitWidth
         + (rangeModeButton.visible ? rangeModeButton.implicitWidth : 0)
         + rateButton.implicitWidth
         + (canvasMenuButton.visible ? canvasMenuButton.implicitWidth : 0)
-        + (fullscreenButton.visible ? fullscreenButton.implicitWidth : 0)
+        + detachButton.implicitWidth
         + transportRow.spacing * _visibleButtonCount
     readonly property real minimumWidth: _fixedChromeWidth + 16 + 40
     readonly property bool timeFitsFull: {
@@ -261,7 +256,7 @@ Item {
             id: canvasMenuButton
             Layout.preferredWidth: implicitWidth
             Layout.preferredHeight: implicitHeight
-            visible: root.showCanvasMenuButton
+            visible: !root.exportPageActive
             active: canvasMenu.active
             iconSource: Qt.resolvedUrl("icons/preview-settings.svg")
             filledIconSource: Qt.resolvedUrl("icons/preview-settings-fill.svg")
@@ -277,14 +272,20 @@ Item {
         }
 
         IconButton {
-            id: fullscreenButton
+            id: detachButton
             Layout.preferredWidth: implicitWidth
             Layout.preferredHeight: implicitHeight
-            visible: root.showCanvasMenuButton
-            iconSource: Qt.resolvedUrl("icons/fullscreen.svg")
-            tooltip: root.fullscreenActive ? qsTrId("qml.exit_fullscreen_preview")
-                                           : qsTrId("preview.fullscreen.enter_tooltip")
-            onClicked: root.fullscreenRequested()
+            objectName: "previewDetachButton"
+            iconSource: Qt.resolvedUrl("icons/preview-detach.svg")
+            active: root.detached
+            tooltip: root.detached ? qsTrId("preview.window.dock")
+                                   : qsTrId("preview.window.detach")
+            onClicked: {
+                if (root.detached)
+                    root.dockRequested()
+                else
+                    root.detachRequested()
+            }
         }
     }
 

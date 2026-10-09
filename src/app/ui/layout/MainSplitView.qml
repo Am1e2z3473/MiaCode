@@ -4,7 +4,6 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Window
 import MiaCode.UI
-import "qrc:/preview/runtime/qml" as Preview
 
 Item {
     id: root
@@ -33,7 +32,7 @@ Item {
         ? detachedPreviewWindow.Overlay.overlay : root.Overlay.overlay
     property bool previewSurfaceMoving: false
     readonly property rect activityBarMaterialRect: Qt.rect(0, 0,
-        root.compact || !horizontalSplit.visible ? 0 : sidebar.activityBarWidth,
+        root.compact ? 0 : sidebar.activityBarWidth,
         horizontalSplit.height)
     readonly property real minimumEditorWidth: Math.max(editorPane.minimumWidth,
         bottomPanel.minimumWidth)
@@ -140,22 +139,6 @@ Item {
         return editorPane.applyChartTransform(opId)
     }
 
-    function showFullscreenPreview() {
-        if (!root.documentSession.hasDocument)
-            return
-        // Stop-gap for the export-page + fullscreen Intel iGPU D3D11 crash.
-        if (root.exportVideoActive)
-            return
-        if (root.previewDetached) {
-            if (detachedPreviewWindow.visibility === Window.FullScreen)
-                detachedPreviewWindow.windowChrome.showRestored()
-            else
-                detachedPreviewWindow.windowChrome.showFullscreen()
-            return
-        }
-        fullscreenPreview.visible = true
-    }
-
     function detachPreview() {
         preview.closeMenus()
         root.previewSurfaceMoving = true
@@ -214,22 +197,6 @@ Item {
             workspaceSplit.moveItem(currentPreviewIndex, targetPreviewIndex)
     }
 
-    readonly property bool freeAspectActive:
-        root.preferences && root.preferences.previewCanvasFreeAspect
-
-    function fittedFullscreenWidth(hostWidth, hostHeight) {
-        const aspect = Math.max(1.0, root.previewSession.canvasAspectRatio || 1.0)
-        const safeWidth = Math.max(1, hostWidth)
-        const safeHeight = Math.max(1, hostHeight)
-        return Math.max(1, Math.min(safeWidth, safeHeight * aspect))
-    }
-
-    function fittedFullscreenHeight(hostWidth, hostHeight) {
-        const aspect = Math.max(1.0, root.previewSession.canvasAspectRatio || 1.0)
-        const frameWidth = fittedFullscreenWidth(hostWidth, hostHeight)
-        return Math.max(1, Math.min(hostHeight, frameWidth / aspect))
-    }
-
     Connections {
         target: root.preferencesModel
         function onInterfaceChanged() {
@@ -237,39 +204,19 @@ Item {
         }
     }
 
-    Connections {
-        target: root.documentSession
-        function onDocumentStateChanged() {
-            if (!root.documentSession.hasDocument)
-                fullscreenPreview.visible = false
-        }
-    }
-
-    // Leaving fullscreen on the export page is the same stop-gap as above; the
-    // page identity comes from the QML router rather than from the backend.
-    onExportVideoActiveChanged: {
-        if (root.exportVideoActive && fullscreenPreview.visible)
-            fullscreenPreview.visible = false
-        if (root.exportVideoActive && detachedPreviewWindow.visibility === Window.FullScreen)
-            detachedPreviewWindow.windowChrome.showRestored()
-    }
-
     PreviewPane {
         id: preview
         parent: root.previewDetached ? detachedPreviewContent : previewHost
         anchors.fill: parent
         documentAvailable: root.documentSession.hasDocument
-        surfaceActive: !fullscreenPreview.visible && !root.previewSurfaceMoving
+        surfaceActive: !root.previewSurfaceMoving
         detached: root.previewDetached
-        fullscreenActive: root.previewDetached
-                          && detachedPreviewWindow.visibility === Window.FullScreen
         previewSession: root.previewSession
         preferences: root.preferences
         exportSession: root.pages.exportSession
         exportPageActive: root.exportVideoActive
         latencyActive: root.viewState.latencyEditorActive
                        && root.pages.activePageId === "latency"
-        onFullscreenRequested: root.showFullscreenPreview()
         onDetachRequested: root.detachPreview()
         onDockRequested: root.dockPreview()
     }
@@ -442,8 +389,6 @@ Item {
     Item {
         id: horizontalSplit
         anchors.fill: parent
-        // Fullscreen composites its surface over the shared wallpaper, with the workspace out of the stack.
-        visible: !fullscreenPreview.visible
         readonly property int orientation: Qt.Horizontal
 
         Sidebar {
@@ -657,69 +602,5 @@ Item {
             ? centerSplit.height * root.preferences.bottomPanelHeightRatio : 0
         when: !centerSplit.resizing
         restoreMode: Binding.RestoreNone
-    }
-
-    Rectangle {
-        id: fullscreenPreview
-        anchors.fill: parent
-        visible: false
-        z: 80
-        color: Theme.surfaceColor(Theme.colors.background.panel)
-
-        Item {
-            id: fullscreenStage
-            anchors.left: parent.left
-            anchors.right: parent.right
-            anchors.top: parent.top
-            anchors.bottom: fullscreenTransport.top
-
-            Loader {
-                anchors.centerIn: parent
-                width: root.freeAspectActive
-                       ? parent.width
-                       : root.fittedFullscreenWidth(parent.width, parent.height)
-                height: root.freeAspectActive
-                        ? parent.height
-                        : root.fittedFullscreenHeight(parent.width, parent.height)
-                active: fullscreenPreview.visible && width >= 64 && height >= 64
-
-                sourceComponent: Preview.PreviewSurface {
-                    anchors.fill: parent
-                    runtime: root.previewSession.runtime
-                    mediaHost: root.previewSession.mediaHost
-                    logger: root.previewSession
-                    surfaceRole: "fullscreen"
-                    backgroundColor: "transparent"
-                    hudTextColor: Theme.colors.previewHud.text
-                    hudShadowColor: Theme.colors.previewHud.shadow
-                }
-            }
-
-            // Over the stage, under the exit button: QML stacking is declaration order.
-            PreviewRateToast {
-                anchors.fill: parent
-                previewSession: root.previewSession
-            }
-
-            IconButton {
-                anchors.right: parent.right
-                anchors.top: parent.top
-                anchors.margins: 12
-                iconSource: Qt.resolvedUrl("icons/fullscreen.svg")
-                tooltip: qsTrId("qml.exit_fullscreen_preview")
-                onClicked: fullscreenPreview.visible = false
-            }
-        }
-
-        PreviewTransport {
-            id: fullscreenTransport
-            anchors.left: parent.left
-            anchors.right: parent.right
-            anchors.bottom: parent.bottom
-            previewSession: root.previewSession
-            preferences: root.preferences
-            exportSession: root.pages.exportSession
-            showCanvasMenuButton: false
-        }
     }
 }

@@ -13,16 +13,12 @@ Rectangle {
     property bool latencyActive: false
     // See PreviewTransport: the canvas menu hides on the export page.
     property bool exportPageActive: false
-    // MainSplitView keeps the transport chrome mounted for layout stability, but
-    // exactly one PreviewSurface may subscribe to the runtime at a time. The
-    // compact and fullscreen owners use the same rule.
+    // Suspend the scene subscription while moving the pane between windows.
     property bool surfaceActive: true
     property bool detached: false
-    property bool fullscreenActive: false
     readonly property real minimumHeight: heading.implicitHeight + transport.implicitHeight
                                           + statistics.implicitHeight + 64
     readonly property real minimumWidth: transport.minimumWidth
-    signal fullscreenRequested()
     signal detachRequested()
     signal dockRequested()
     readonly property alias cornerSourceItem: heading
@@ -100,20 +96,6 @@ Rectangle {
             }
 
         }
-
-        IconButton {
-            objectName: "previewDetachButton"
-            iconSource: Qt.resolvedUrl("icons/preview-detach.svg")
-            active: root.detached
-            tooltip: root.detached ? qsTrId("preview.window.dock")
-                                   : qsTrId("preview.window.detach")
-            onClicked: {
-                if (root.detached)
-                    root.dockRequested()
-                else
-                    root.detachRequested()
-            }
-        }
     }
 
     PreviewRenderModeMenu {
@@ -165,10 +147,11 @@ Rectangle {
         preferences: root.preferences
         exportSession: root.exportSession
         exportPageActive: root.exportPageActive
-        fullscreenActive: root.fullscreenActive
+        detached: root.detached
         dataAvailable: root.documentAvailable
         enabled: root.documentAvailable
-        onFullscreenRequested: root.fullscreenRequested()
+        onDetachRequested: root.detachRequested()
+        onDockRequested: root.dockRequested()
     }
 
     NoteStatistics {
