@@ -780,8 +780,8 @@ QtObject {
         "#69A6FF", "#78C85A", "#DCC548", "#E35C50", "#7A4FD1", "#D548B6", "#E29A46"
     ]
     readonly property color difficultyColorFallback: "#8A8F98"
-    readonly property int difficultySwatchSize: 10
-    readonly property int difficultySwatchRadius: 4
+    readonly property int difficultySwatchSize: 12
+    readonly property int difficultySwatchRadius: 2
     function difficultyColor(difficultyId) {
         return difficultyId >= 1 && difficultyId <= difficultyColors.length
             ? difficultyColors[difficultyId - 1]
