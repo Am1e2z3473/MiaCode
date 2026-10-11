@@ -255,10 +255,13 @@ PreviewJudgeFireworkLayerState buildPreviewJudgeFireworkLayerState(
     }
 
     layerState.drawFirework = drawFirework;
+    layerState.warmup = isFireworkWarmupMarker(*latestTriggerMarker);
     layerState.drawColorBall = drawColorBall;
     layerState.drawColorBallBig = drawColorBallBig;
     layerState.drawFallbackColorBall = drawFallbackColorBall;
-    layerState.center = mapLogicalPointToRect(latestTriggerMarker->touchPoint, playfieldRect);
+    layerState.center = layerState.warmup
+        ? layerState.clipCenter
+        : mapLogicalPointToRect(latestTriggerMarker->touchPoint, playfieldRect);
     layerState.clipRadius = clipRadius;
     layerState.triggerSecond = latestTriggerSecond;
     layerState.clipTimeSeconds = clipTime;

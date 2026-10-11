@@ -2075,14 +2075,10 @@ void PreviewRuntime::armFireworkPsoWarmupIfReady()
 
 void PreviewRuntime::appendFireworkWarmupMarker()
 {
-    // Synthetic off-screen firework. type=="touch" + isFirework so the
-    // firework layer-state builder accepts it; touchPoint far off-canvas
-    // (non-zero, which the builder requires) so the GPU clips every triangle
-    // — the PSO still compiles and the colour-ball texture still uploads, but
-    // no pixels are visible. `second` places the trigger ~0.15 s into the
-    // ~1.33 s curve (recomputed against the live playhead on every
-    // re-append) so the textured colour-ball branch is active, exercising
-    // both the material pipeline and the texture sampler.
+    // This marker uses an off-canvas touchPoint as its identity. The layer
+    // builder places its transparent warm-up quad at the playfield centre so
+    // the renderer submits the firework pipeline and texture bindings.
+    // `second` places the trigger inside the active colour-ball interval.
     TimelineNoteMarker synth;
     synth.type = QStringLiteral("touch");
     synth.isFirework = true;
