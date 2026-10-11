@@ -143,7 +143,7 @@ inline double previewTrackVolume(const PreviewAudioSettings& settings)
 }
 
 // Derive the latency-page audition levels from the user's normal preview mix.
-// Pure function: every SFX kind plays at `sfxPercent` (independent of the user's
+// Pure function: only answer plays at `sfxPercent` (independent of the user's
 // per-kind SFX volumes), while the song keeps its normal *effective* volume
 // (global*track folded into trackVolume, globalVolume pinned to 1.0). This is the
 // LatencyAudition half of the single level-dispatch entry

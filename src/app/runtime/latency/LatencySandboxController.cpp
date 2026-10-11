@@ -14,14 +14,12 @@
 #include "core/analysis/TimelineSlowRefresh.h"
 #include "timeline/quick/TimelineQuickStateBridge.h"
 
-#include <QTimer>
 #include <QtMath>
 
 namespace miacode::latency {
 
 namespace {
 
-constexpr int kPollIntervalMs = 33;  // ~30Hz UI poll for the page's own widgets
 constexpr double kFallbackAudioDurationSeconds = 180.0;
 
 }  // namespace
@@ -29,10 +27,7 @@ constexpr double kFallbackAudioDurationSeconds = 180.0;
 LatencySandboxController::LatencySandboxController(Session* owner, QObject* parent)
     : QObject(parent)
     , owner_(owner)
-    , tickTimer_(new QTimer(this))
 {
-    tickTimer_->setInterval(kPollIntervalMs);
-    connect(tickTimer_, &QTimer::timeout, this, &LatencySandboxController::onTick);
 }
 
 LatencySandboxController::~LatencySandboxController()
@@ -53,14 +48,6 @@ void LatencySandboxController::setOnPage(bool onPage)
     } else {
         teardownSandboxScene();
     }
-}
-
-double LatencySandboxController::playheadSeconds() const
-{
-    if (owner_.isNull()) {
-        return 0.0;
-    }
-    return qMax(0.0, owner_->state_.pauseSecond_);
 }
 
 void LatencySandboxController::setBpm(double bpm)
@@ -91,7 +78,7 @@ void LatencySandboxController::setOffsetSeconds(double seconds)
 
 void LatencySandboxController::setSubdivision(int subdivision)
 {
-    if (subdivision != 4 && subdivision != 8) {
+    if (subdivision != 4 && subdivision != 8 && subdivision != 16) {
         subdivision = 4;
     }
     if (subdivision_ == subdivision) {
@@ -156,8 +143,6 @@ void LatencySandboxController::installSandboxScene()
         owner_->state_.previewSfxRuntime_->clearRetainedPreviewPlaybackTransaction();
     }
 
-    auditionRunning_ = false;
-    lastPolledSecond_ = -1.0;
     // Tell the playback gates the test chart is a previewable chart, so the
     // real transport (startQtPreviewPlayback / onTogglePreviewPause) plays it.
     owner_->state_.latencySandboxAuditionActive_ = true;
@@ -175,19 +160,10 @@ void LatencySandboxController::installSandboxScene()
     owner_->applyPreviewAudioSettingsToRuntime();
     setupSandboxPreviewState();
     applyPlayheadToScene(restoreSecond);
-
-    if (tickTimer_ != nullptr) {
-        tickTimer_->start();
-    }
-    emit auditionStateChanged(false);
-    emit playheadAdvanced(restoreSecond);
 }
 
 void LatencySandboxController::teardownSandboxScene()
 {
-    if (tickTimer_ != nullptr) {
-        tickTimer_->stop();
-    }
     if (!owner_.isNull()) {
         owner_->stopQtPreviewPlayback(true);  // stop the real transport if it's running
         owner_->state_.latencySandboxAuditionActive_ = false;
@@ -195,8 +171,6 @@ void LatencySandboxController::teardownSandboxScene()
         // Don't let a later difficulty reuse the sandbox's "ready" snapshot.
         owner_->state_.latestTimelinePreviewSnapshotReady_ = false;
     }
-    auditionRunning_ = false;
-    lastPolledSecond_ = -1.0;
 
     restoreOriginalTimeline();
     if (!owner_.isNull()) {
@@ -204,18 +178,6 @@ void LatencySandboxController::teardownSandboxScene()
         // teardown), so this dispatch resolves to the user's normal mix — no
         // snapshot needed. This is the deterministic restore on every page exit.
         owner_->applyPreviewAudioSettingsToRuntime();
-    }
-
-    emit auditionStateChanged(false);
-    emit playheadAdvanced(0.0);
-}
-
-void LatencySandboxController::toggleAudition()
-{
-    // Reuse the real Play/Pause transport so the audition is identical to a
-    // difficulty page (preview render, bottom timeline, slider, SFX, song).
-    if (!owner_.isNull()) {
-        owner_->onTogglePreviewPause();
     }
 }
 
@@ -225,26 +187,6 @@ void LatencySandboxController::exitIfActive()
     // playback (onPage_ is true only while the latency page is selected).
     if (onPage_ && !owner_.isNull()) {
         owner_->stopQtPreviewPlayback(true);
-    }
-}
-
-void LatencySandboxController::onTick()
-{
-    // Lightweight poll: mirror the real transport's state onto the page's own
-    // widgets (audition button + position label). The preview/timeline/slider
-    // are driven by the real transport itself.
-    if (owner_.isNull()) {
-        return;
-    }
-    const bool playing = owner_->state_.playing_;
-    const double second = qMax(0.0, owner_->state_.pauseSecond_);
-    if (playing != auditionRunning_) {
-        auditionRunning_ = playing;
-        emit auditionStateChanged(playing);
-    }
-    if (lastPolledSecond_ < 0.0 || qAbs(second - lastPolledSecond_) > 1e-3) {
-        lastPolledSecond_ = second;
-        emit playheadAdvanced(second);
     }
 }
 

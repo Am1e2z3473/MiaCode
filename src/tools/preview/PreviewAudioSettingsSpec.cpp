@@ -315,6 +315,33 @@ bool verifyApplicationCheerPreference(QTextStream& err)
                    QStringLiteral("applying a local preset should not revert canonical cheer preference"), err);
 }
 
+bool verifyLatencyAuditionLevels(QTextStream& err)
+{
+    PreviewAudioSettings mix;
+    mix.globalVolume = 0.5;
+    mix.trackVolume = 0.8;
+    mix.answerVolume = 0.1;
+    mix.normalize();
+    bool ok = true;
+    for (int percent : {0, 35, 100}) {
+        const PreviewAudioSettings levels = makePreviewLatencyAuditionLevels(mix, percent);
+        ok &= requireNear(previewTrackVolume(levels), previewTrackVolume(mix), 1e-9,
+                          QStringLiteral("latency audition keeps the song level"), err);
+        ok &= requireNear(previewSfxVolumeForKind(levels, QStringLiteral("answer")),
+                          percent / 100.0, 1e-9,
+                          QStringLiteral("latency answer follows the audition slider"), err);
+        for (const QString& kind : {QStringLiteral("judge"), QStringLiteral("break"),
+                                    QStringLiteral("break_slide"), QStringLiteral("slide"),
+                                    QStringLiteral("ex"), QStringLiteral("touch"),
+                                    QStringLiteral("touchhold"), QStringLiteral("firework"),
+                                    QStringLiteral("track_start")}) {
+            ok &= require(previewSfxVolumeForKind(levels, kind) == 0.0,
+                          QStringLiteral("latency audition silences %1").arg(kind), err);
+        }
+    }
+    return ok;
+}
+
 // The PV-preview intro audition plays the song through the normal transport:
 // every note SFX kind is silent and only the song follows the fade gain.
 bool verifyIntroSegmentLevels(QTextStream& err)
@@ -363,6 +390,9 @@ int main(int argc, char* argv[])
         return 1;
     }
     if (!verifyApplicationCheerPreference(err)) {
+        return 1;
+    }
+    if (!verifyLatencyAuditionLevels(err)) {
         return 1;
     }
     if (!verifyIntroSegmentLevels(err)) {

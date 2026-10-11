@@ -12,7 +12,6 @@
 #include "timeline/TimelineRenderData.h"
 
 class Session;
-class QTimer;
 
 namespace miacode::latency {
 
@@ -28,15 +27,8 @@ namespace miacode::latency {
 //     slow-refresh produces for a real difficulty;
 //   * marks `latencySandboxAuditionActive_` so the playback gates treat it as a
 //     previewable chart (see TimelineSection::hasPreviewableChart);
-//   * routes Play/Pause to the real transport (Session::onTogglePreviewPause
-//     / startQtPreviewPlayback / pauseQtPreviewPlaybackExact), which then drives
-//     the preview render, bottom timeline, slider, SFX, and song audio
-//     identically to a difficulty;
+// The shared playback controls drive the preview, timeline, SFX and song audio.
 //   * restores the previous chart's preview state on exit.
-//
-// A lightweight poll timer mirrors the real playback state (playing? / current
-// second) onto the latency page's own widgets (audition button + position
-// label) via the signals below.
 //
 // Lives as a member of Session (a friend), so it can reuse Session's
 // preview/timeline/transport helpers directly.
@@ -63,35 +55,26 @@ public:
     bool isOnPage() const { return onPage_; }
     void setOnPage(bool onPage);
 
-    // Mirrors the real transport's playing state (updated by the poll timer).
-    bool isAuditionRunning() const { return auditionRunning_; }
-
     double bpm() const { return bpm_; }
     double offsetSeconds() const { return offsetSeconds_; }
     int subdivision() const { return subdivision_; }
     int sfxVolumePercent() const { return sfxVolumePercent_; }
-    double playheadSeconds() const;
 
     // Parameters that drive synthesis. While on the page (and not actively
     // playing) these rebuild the installed test chart.
     void setBpm(double bpm);
     void setOffsetSeconds(double seconds);
-    void setSubdivision(int subdivision);  // 4 or 8; other values clamped to 4
+    void setSubdivision(int subdivision);  // 4, 8 or 16; other values clamped to 4
     void setSfxVolumePercent(int percent);
 
-    // Play/Pause toggle for the page button — delegates to the real transport.
-    void toggleAudition();
     // Stop any in-progress audition playback (used on file-path change). Only
     // acts while on the latency page; never touches normal-difficulty playback.
     void exitIfActive();
 
 signals:
-    void auditionStateChanged(bool running);
     void parametersChanged();
-    void playheadAdvanced(double seconds);
 
 private:
-    void onTick();                 // UI poll: mirror real playback state → page
     void installSandboxScene();    // cache real chart, install the test chart
     void teardownSandboxScene();   // stop playback + restore the real chart
     void regenerateAndPushIfActive();
@@ -101,16 +84,13 @@ private:
     double resolveAudioDurationSeconds() const;
 
     QPointer<Session> owner_;
-    QTimer* tickTimer_ = nullptr;
 
     bool onPage_ = false;
-    bool auditionRunning_ = false;   // cached mirror of state_.playing_
-    double lastPolledSecond_ = -1.0;
 
     double bpm_ = 120.0;
     double offsetSeconds_ = 0.0;
     int subdivision_ = 4;
-    int sfxVolumePercent_ = 80;
+    int sfxVolumePercent_ = 60;
 
     // Captured-on-enter state, restored when leaving the page.
     bool hasCachedTimeline_ = false;

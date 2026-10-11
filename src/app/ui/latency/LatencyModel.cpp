@@ -19,13 +19,6 @@ LatencyModel::LatencyModel(miacode::LatencyEngine*& engineSlot,
     , engineSlot_(&engineSlot)
 {
     if (miacode::latency::LatencySandboxController* controller = sandbox()) {
-        connect(controller, &miacode::latency::LatencySandboxController::auditionStateChanged, this,
-                [this](bool) { emit auditionChanged(); });
-        connect(controller, &miacode::latency::LatencySandboxController::playheadAdvanced, this,
-                [this](double seconds) {
-                    playheadSeconds_ = seconds;
-                    emit playheadChanged();
-                });
         connect(controller, &miacode::latency::LatencySandboxController::parametersChanged, this,
                 [this]() { emit valuesChanged(); });
     }
@@ -120,7 +113,7 @@ void LatencyModel::setSubdivision(int value)
 int LatencyModel::sfxVolumePercent() const
 {
     miacode::latency::LatencySandboxController* controller = sandbox();
-    return controller != nullptr ? controller->sfxVolumePercent() : 80;
+    return controller != nullptr ? controller->sfxVolumePercent() : 60;
 }
 
 void LatencyModel::setSfxVolumePercent(int value)
@@ -129,28 +122,6 @@ void LatencyModel::setSfxVolumePercent(int value)
         controller->setSfxVolumePercent(value);
         emit valuesChanged();
     }
-}
-
-bool LatencyModel::auditionRunning() const
-{
-    miacode::latency::LatencySandboxController* controller = sandbox();
-    return controller != nullptr && controller->isAuditionRunning();
-}
-
-void LatencyModel::toggleAudition()
-{
-    if (miacode::latency::LatencySandboxController* controller = sandbox()) {
-        controller->toggleAudition();
-    }
-}
-
-QString LatencyModel::positionText() const
-{
-    const qint64 totalMs = qMax<qint64>(0, qRound64(playheadSeconds_ * 1000.0));
-    return QStringLiteral("%1:%2.%3")
-        .arg(totalMs / 60000, 2, 10, QLatin1Char('0'))
-        .arg((totalMs / 1000) % 60, 2, 10, QLatin1Char('0'))
-        .arg(totalMs % 1000, 3, 10, QLatin1Char('0'));
 }
 
 bool LatencyModel::trackAvailable() const
