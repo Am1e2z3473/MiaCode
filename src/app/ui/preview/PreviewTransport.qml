@@ -13,6 +13,7 @@ Item {
     property bool dataAvailable: true
     property bool exportPageActive: false
     property bool detached: false
+    property bool topEdgeHighlighted: false
     signal detachRequested()
     signal dockRequested()
 
@@ -31,9 +32,16 @@ Item {
     Rectangle {
         anchors.left: parent.left
         anchors.right: parent.right
-        anchors.top: parent.top
-        height: 1 / Screen.devicePixelRatio
-        color: Theme.separatorColor
+        // 高亮围绕面板上方的分隔槽居中，与工作区拖动分隔线共用基准。
+        y: root.topEdgeHighlighted
+            ? -Theme.splitDividerThickness
+                + Math.floor((Theme.splitDividerThickness - height)
+                             * root.Screen.devicePixelRatio / 2) / root.Screen.devicePixelRatio
+            : 0
+        z: 1
+        height: root.topEdgeHighlighted ? Theme.splitHandleActiveThickness
+                                       : 1 / root.Screen.devicePixelRatio
+        color: root.topEdgeHighlighted ? Theme.colors.accent.focus : Theme.separatorColor
     }
 
     function formatTime(totalSeconds) {
