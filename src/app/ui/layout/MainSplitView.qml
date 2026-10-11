@@ -539,6 +539,7 @@ Item {
             readonly property int orientation: Qt.Vertical
             readonly property real snapEnterDistance: 4
             readonly property real snapLeaveDistance: 7
+            readonly property real snapAlignmentTolerance: 0.5 / root.Screen.devicePixelRatio
             // 复用 SplitHandle 的活动线绘制公式，换算到面板顶部坐标。
             readonly property real dragLineCenterOffset: -Theme.splitDividerThickness
                 + Math.floor((Theme.splitDividerThickness - Theme.splitHandleActiveThickness)
@@ -570,6 +571,28 @@ Item {
                 }
             }
 
+            function snapTarget() {
+                const targetCenter = snapAvailable
+                    ? root.transportItem.mapToItem(centerSplit, 0,
+                        root.transportItem.topEdgeCenterY).y : NaN
+                const targetTop = targetCenter - dragLineCenterOffset
+                const targetHeight = centerSplit.height - targetTop
+                return {
+                    center: targetCenter,
+                    height: targetHeight,
+                    reachable: isFinite(targetHeight)
+                        && targetHeight >= bottomPanel.SplitView.minimumHeight
+                        && targetHeight <= bottomPanel.SplitView.maximumHeight
+                }
+            }
+
+            function isAlignedToSnapTarget(rawTop) {
+                const target = snapTarget()
+                return target.reachable
+                    && Math.abs(rawTop + dragLineCenterOffset - target.center)
+                        <= snapAlignmentTolerance
+            }
+
             function beginDrag(pointerY) {
                 pressY = pointerY
                 pressTop = bottomPanel.mapToItem(centerSplit, 0, 0).y
@@ -577,7 +600,7 @@ Item {
                 heightAtPress = bottomPanel.height
                 dragHeight = heightAtPress
                 moved = false
-                snapped = false
+                snapped = isAlignedToSnapTarget(rawTop)
                 dragging = true
             }
 
@@ -597,19 +620,12 @@ Item {
                 // 原始边界按鼠标位移计算，吸附后的面板位置用于显示。
                 rawTop = pressTop + pointerY - pressY
                 let requestedHeight = centerSplit.height - rawTop
-                const targetCenter = snapAvailable
-                    ? root.transportItem.mapToItem(centerSplit, 0,
-                        root.transportItem.topEdgeCenterY).y : NaN
-                const targetTop = targetCenter - dragLineCenterOffset
-                const targetHeight = centerSplit.height - targetTop
-                const targetReachable = isFinite(targetHeight)
-                    && targetHeight >= bottomPanel.SplitView.minimumHeight
-                    && targetHeight <= bottomPanel.SplitView.maximumHeight
+                const target = snapTarget()
                 const distance = snapped ? snapLeaveDistance : snapEnterDistance
-                snapped = targetReachable
-                    && Math.abs(rawTop + dragLineCenterOffset - targetCenter) <= distance
+                snapped = target.reachable
+                    && Math.abs(rawTop + dragLineCenterOffset - target.center) <= distance
                 if (snapped)
-                    requestedHeight = targetHeight
+                    requestedHeight = target.height
                 applyHeight(requestedHeight)
             }
 
