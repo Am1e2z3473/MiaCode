@@ -1,6 +1,7 @@
 #include "timeline/quick/TimelineQuickWaveformLayer.h"
 
 #include <QMatrix4x4>
+#include <QQuickWindow>
 
 #include <cmath>
 #include <limits>
@@ -58,10 +59,11 @@ void setWaveformVertex(
 }
 
 QSGGeometryNode* buildWaveformEnvelopeNode(
-    const miacode::timeline::TimelineSceneState& state)
+    const miacode::timeline::TimelineSceneState& state,
+    qreal devicePixelRatio)
 {
-    constexpr int kVerticesPerSample = 2;
-    constexpr int kIndicesPerSegment = 6;
+    constexpr int kVerticesPerSample = 4;
+    constexpr int kIndicesPerSegment = 18;
     if (state.waveformBars.isEmpty()) {
         return nullptr;
     }
@@ -171,6 +173,7 @@ QSGGeometryNode* buildWaveformEnvelopeNode(
     geometry->setIndexDataPattern(QSGGeometry::StaticPattern);
 
     auto* vertices = geometry->vertexDataAsColoredPoint2D();
+    const qreal halfPixel = 0.5 / devicePixelRatio;
     for (int sampleIndex = 0; sampleIndex < samples.size(); ++sampleIndex) {
         const WaveformEnvelopeSample& sample = samples.at(sampleIndex);
         QColor color = sample.color;
@@ -184,9 +187,15 @@ QSGGeometryNode* buildWaveformEnvelopeNode(
         }
         const PremultipliedVertexColor vertexColor =
             sample.valid ? waveformVertexColor(color, 1.0) : PremultipliedVertexColor{};
+        const PremultipliedVertexColor transparentColor = waveformVertexColor(color, 0.0);
+        const qreal middle = (sample.top + sample.bottom) * 0.5;
         const int base = sampleIndex * kVerticesPerSample;
-        setWaveformVertex(vertices, base + 0, sample.x, sample.top, vertexColor);
-        setWaveformVertex(vertices, base + 1, sample.x, sample.bottom, vertexColor);
+        // A one-device-pixel fringe makes sub-pixel scrolling vary edge coverage
+        // continuously while the extrema and the solid interior stay in place.
+        setWaveformVertex(vertices, base + 0, sample.x, sample.top - halfPixel, transparentColor);
+        setWaveformVertex(vertices, base + 1, sample.x, qMin(sample.top + halfPixel, middle), vertexColor);
+        setWaveformVertex(vertices, base + 2, sample.x, qMax(sample.bottom - halfPixel, middle), vertexColor);
+        setWaveformVertex(vertices, base + 3, sample.x, sample.bottom + halfPixel, transparentColor);
     }
 
     auto* indices = geometry->indexDataAsUInt();
@@ -197,12 +206,14 @@ QSGGeometryNode* buildWaveformEnvelopeNode(
         }
         const quint32 left = static_cast<quint32>(sampleIndex * kVerticesPerSample);
         const quint32 right = static_cast<quint32>((sampleIndex + 1) * kVerticesPerSample);
-        indices[indexOffset++] = left;
-        indices[indexOffset++] = right;
-        indices[indexOffset++] = left + 1;
-        indices[indexOffset++] = right;
-        indices[indexOffset++] = right + 1;
-        indices[indexOffset++] = left + 1;
+        for (quint32 band = 0; band < 3; ++band) {
+            indices[indexOffset++] = left + band;
+            indices[indexOffset++] = right + band;
+            indices[indexOffset++] = left + band + 1;
+            indices[indexOffset++] = right + band;
+            indices[indexOffset++] = right + band + 1;
+            indices[indexOffset++] = left + band + 1;
+        }
     }
 
     auto* material = new QSGVertexColorMaterial();
@@ -219,6 +230,7 @@ struct TimelineQuickWaveformRootNode : public QSGNode {
     quint64 revision = 0;
     quint64 layoutRevision = 0;
     quint64 appearanceRevision = 0;
+    qreal devicePixelRatio = 0.0;
 };
 
 QSGClipNode* ensureClipRoot(TimelineQuickWaveformRootNode* root)
@@ -287,7 +299,8 @@ void clearChildren(QSGNode* node)
 
 QSGNode* TimelineQuickWaveformLayer::updateNode(
     QSGNode* oldNode,
-    const miacode::timeline::TimelineSceneState& state) const
+    const miacode::timeline::TimelineSceneState& state,
+    QQuickWindow* window) const
 {
     auto* root = dynamic_cast<TimelineQuickWaveformRootNode*>(oldNode);
     if (root == nullptr) {
@@ -297,6 +310,8 @@ QSGNode* TimelineQuickWaveformLayer::updateNode(
     QSGClipNode* clipRoot = ensureClipRoot(root);
     QSGTransformNode* transformRoot = ensureTransformRoot(clipRoot);
     QSGNode* contentRoot = ensureContentRoot(transformRoot);
+    const qreal devicePixelRatio = window != nullptr
+        ? qMax<qreal>(1.0, window->effectiveDevicePixelRatio()) : 1.0;
     if (clipRoot != nullptr) {
         clipRoot->setClipRect(QRectF(
             state.timelineLeft,
@@ -312,15 +327,17 @@ QSGNode* TimelineQuickWaveformLayer::updateNode(
     }
     if (root->revision == state.waveformRevision
         && root->layoutRevision == state.layoutRevision
-        && root->appearanceRevision == state.appearanceRevision) {
+        && root->appearanceRevision == state.appearanceRevision
+        && qFuzzyCompare(root->devicePixelRatio, devicePixelRatio)) {
         return root;
     }
     clearChildren(contentRoot);
-    if (QSGGeometryNode* envelope = buildWaveformEnvelopeNode(state)) {
+    if (QSGGeometryNode* envelope = buildWaveformEnvelopeNode(state, devicePixelRatio)) {
         contentRoot->appendChildNode(envelope);
     }
     root->revision = state.waveformRevision;
     root->layoutRevision = state.layoutRevision;
     root->appearanceRevision = state.appearanceRevision;
+    root->devicePixelRatio = devicePixelRatio;
     return root;
 }
