@@ -635,9 +635,8 @@ PreviewAudioSettings makePreviewLatencyAuditionLevels(const PreviewAudioSettings
     PreviewAudioSettings levels = mix;
     // Keep the song audio at the user's normal effective volume by collapsing the
     // chained (global * track) multiplier into a single trackVolume term and
-    // pinning globalVolume to 1.0. SFX kinds then get the sandbox slider's value
-    // directly (independent of the user's normal mix), so the test taps are easy
-    // to hear regardless of how quietly the user runs the song.
+    // pinning globalVolume to 1.0. Only answer uses the sandbox slider's value,
+    // independently of the user's normal SFX mix.
     const double effectiveTrackVolume = previewTrackVolume(mix);
     levels.globalVolume = 1.0;
     levels.globalRestoreVolume = 1.0;
@@ -645,20 +644,22 @@ PreviewAudioSettings makePreviewLatencyAuditionLevels(const PreviewAudioSettings
     levels.trackRestoreVolume = levels.trackVolume;
 
     const double sfxLevel = qBound(0.0, static_cast<double>(sfxPercent) / 100.0, 1.0);
-    levels.tapVolume = sfxLevel;
-    levels.tapRestoreVolume = sfxLevel;
-    levels.exVolume = sfxLevel;
-    levels.exRestoreVolume = sfxLevel;
-    levels.breakVolume = sfxLevel;
-    levels.breakRestoreVolume = sfxLevel;
-    levels.breakSlideVolume = sfxLevel;
-    levels.breakSlideRestoreVolume = sfxLevel;
-    levels.slideVolume = sfxLevel;
-    levels.slideRestoreVolume = sfxLevel;
-    levels.touchVolume = sfxLevel;
-    levels.touchRestoreVolume = sfxLevel;
-    levels.fireworkVolume = sfxLevel;
-    levels.fireworkRestoreVolume = sfxLevel;
+    levels.tapVolume = 0.0;
+    levels.tapRestoreVolume = 0.0;
+    levels.exVolume = 0.0;
+    levels.exRestoreVolume = 0.0;
+    levels.breakVolume = 0.0;
+    levels.breakRestoreVolume = 0.0;
+    levels.breakSlideVolume = 0.0;
+    levels.breakSlideRestoreVolume = 0.0;
+    levels.slideVolume = 0.0;
+    levels.slideRestoreVolume = 0.0;
+    levels.touchVolume = 0.0;
+    levels.touchRestoreVolume = 0.0;
+    levels.fireworkVolume = 0.0;
+    levels.fireworkRestoreVolume = 0.0;
+    levels.introVolume = 0.0;
+    levels.introRestoreVolume = 0.0;
     levels.answerVolume = sfxLevel;
     levels.answerRestoreVolume = sfxLevel;
     levels.normalize();

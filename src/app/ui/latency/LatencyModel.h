@@ -26,8 +26,6 @@ class LatencyModel final : public QObject
     Q_PROPERTY(int clockCount READ clockCount WRITE setClockCount NOTIFY valuesChanged)
     Q_PROPERTY(int subdivision READ subdivision WRITE setSubdivision NOTIFY valuesChanged)
     Q_PROPERTY(int sfxVolumePercent READ sfxVolumePercent WRITE setSfxVolumePercent NOTIFY valuesChanged)
-    Q_PROPERTY(bool auditionRunning READ auditionRunning NOTIFY auditionChanged)
-    Q_PROPERTY(QString positionText READ positionText NOTIFY playheadChanged)
     Q_PROPERTY(bool trackAvailable READ trackAvailable NOTIFY valuesChanged)
     Q_PROPERTY(QString bpmDetectResult READ bpmDetectResult NOTIFY detectionChanged)
     Q_PROPERTY(QString offsetDetectResult READ offsetDetectResult NOTIFY detectionChanged)
@@ -50,8 +48,6 @@ public:
     int sfxVolumePercent() const;
     void setSfxVolumePercent(int value);
 
-    bool auditionRunning() const;
-    QString positionText() const;
     bool trackAvailable() const;
     QString bpmDetectResult() const { return bpmDetectResult_; }
     QString offsetDetectResult() const { return offsetDetectResult_; }
@@ -60,14 +56,11 @@ public:
     Q_INVOKABLE void enter();
     Q_INVOKABLE void leave();
     Q_INVOKABLE void refreshFromDocument();
-    Q_INVOKABLE void toggleAudition();
     Q_INVOKABLE void detectBpm();
     Q_INVOKABLE void detectOffset();
 
 signals:
     void valuesChanged();
-    void auditionChanged();
-    void playheadChanged();
     void detectionChanged();
 
 private:
@@ -84,7 +77,6 @@ private:
     double bpm_ = 120.0;
     double offsetSeconds_ = 0.0;
     int clockCount_ = 4;
-    double playheadSeconds_ = 0.0;
     QString bpmDetectResult_;
     QString offsetDetectResult_;
 

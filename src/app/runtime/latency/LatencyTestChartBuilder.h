@@ -10,7 +10,7 @@ namespace miacode::latency {
 // existing timeline + SFX engine without ever modifying the user's real
 // document.
 //
-// `subdivision` must be 4 or 8. Anything else is clamped to 4.
+// `subdivision` must be 4, 8 or 16. Anything else is clamped to 4.
 // `durationSeconds` is the desired play length; the generator emits
 // enough notes to cover that span plus a small tail margin.
 // If `durationSeconds <= 0`, falls back to a 180-second default so the

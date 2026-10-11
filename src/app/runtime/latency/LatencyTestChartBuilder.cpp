@@ -38,7 +38,7 @@ QString buildTestChartText(double bpm, int subdivision, double durationSeconds)
     if (!(bpm > 0.0)) {
         return QString();
     }
-    if (subdivision != 4 && subdivision != 8) {
+    if (subdivision != 4 && subdivision != 8 && subdivision != 16) {
         subdivision = 4;
     }
     if (!(durationSeconds > 0.0)) {

@@ -160,13 +160,13 @@ Item {
                         checked: root.latency.subdivision === 8
                         onClicked: root.latency.subdivision = 8
                     }
-                    Item { Layout.fillWidth: true }
-                    AppButton {
-                        objectName: "latencyAuditionButton"
-                        emphasized: !root.latency.auditionRunning
-                        text: root.latency.auditionRunning ? qsTrId("preview.pause") : qsTrId("qml.start_audition")
-                        onClicked: root.latency.toggleAudition()
+                    AppChoiceButton {
+                        ButtonGroup.group: subdivisionGroup
+                        text: "1/16"
+                        checked: root.latency.subdivision === 16
+                        onClicked: root.latency.subdivision = 16
                     }
+                    Item { Layout.fillWidth: true }
                 }
 
                 LabeledSlider {

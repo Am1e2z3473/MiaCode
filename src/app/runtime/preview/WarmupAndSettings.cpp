@@ -804,7 +804,7 @@ void miacode::runtime::StageMediaHost::applyPreviewAudioSettingsToRuntime()
     // dispatch point (chart load, play start, latency page enter/leave, latency
     // slider, audio-settings dialog) — never a snapshot that has to be restored on
     // the way out. While the latency page owns the shared runtime (isOnPage()),
-    // the mode is LatencyAudition: the test taps use the page's independent SFX
+    // the mode is LatencyAudition: the answer sound uses the page's independent SFX
     // slider and the song keeps its normal effective volume; otherwise the user's
     // real mix is applied verbatim. Because the levels are re-derived from
     // (mode, previewAudioSettings_, latencySfx), a missed page-exit can never
