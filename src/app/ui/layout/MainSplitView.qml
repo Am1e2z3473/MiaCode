@@ -539,6 +539,11 @@ Item {
             readonly property int orientation: Qt.Vertical
             readonly property real snapEnterDistance: 4
             readonly property real snapLeaveDistance: 7
+            // 复用 SplitHandle 的活动线绘制公式，换算到面板顶部坐标。
+            readonly property real dragLineCenterOffset: -Theme.splitDividerThickness
+                + Math.floor((Theme.splitDividerThickness - Theme.splitHandleActiveThickness)
+                             * root.Screen.devicePixelRatio / 2) / root.Screen.devicePixelRatio
+                + Theme.splitHandleActiveThickness / 2
             readonly property bool snapAvailable: root.bottomPanelEffectivelyVisible
                 && !root.previewDetached && !root.previewSurfaceMoving
                 && previewHost.visible && preview.visible && root.transportItem.visible
@@ -592,14 +597,17 @@ Item {
                 // 原始边界按鼠标位移计算，吸附后的面板位置用于显示。
                 rawTop = pressTop + pointerY - pressY
                 let requestedHeight = centerSplit.height - rawTop
-                const targetTop = snapAvailable
-                    ? root.transportItem.mapToItem(centerSplit, 0, 0).y : NaN
+                const targetCenter = snapAvailable
+                    ? root.transportItem.mapToItem(centerSplit, 0,
+                        root.transportItem.topEdgeCenterY).y : NaN
+                const targetTop = targetCenter - dragLineCenterOffset
                 const targetHeight = centerSplit.height - targetTop
                 const targetReachable = isFinite(targetHeight)
                     && targetHeight >= bottomPanel.SplitView.minimumHeight
                     && targetHeight <= bottomPanel.SplitView.maximumHeight
                 const distance = snapped ? snapLeaveDistance : snapEnterDistance
-                snapped = targetReachable && Math.abs(rawTop - targetTop) <= distance
+                snapped = targetReachable
+                    && Math.abs(rawTop + dragLineCenterOffset - targetCenter) <= distance
                 if (snapped)
                     requestedHeight = targetHeight
                 applyHeight(requestedHeight)

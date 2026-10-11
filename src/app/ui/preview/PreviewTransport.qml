@@ -14,6 +14,7 @@ Item {
     property bool exportPageActive: false
     property bool detached: false
     property bool topEdgeHighlighted: false
+    readonly property real topEdgeCenterY: 0.5 / root.Screen.devicePixelRatio
     signal detachRequested()
     signal dockRequested()
 
@@ -32,12 +33,8 @@ Item {
     Rectangle {
         anchors.left: parent.left
         anchors.right: parent.right
-        // 高亮围绕面板上方的分隔槽居中，与工作区拖动分隔线共用基准。
-        y: root.topEdgeHighlighted
-            ? -Theme.splitDividerThickness
-                + Math.floor((Theme.splitDividerThickness - height)
-                             * root.Screen.devicePixelRatio / 2) / root.Screen.devicePixelRatio
-            : 0
+        // 普通线与高亮线围绕顶部边线的中心绘制。
+        y: root.topEdgeCenterY - height / 2
         z: 1
         height: root.topEdgeHighlighted ? Theme.splitHandleActiveThickness
                                        : 1 / root.Screen.devicePixelRatio
