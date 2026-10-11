@@ -149,7 +149,7 @@ JobRegistry/调度放在拟定的 app/services/jobs，供 Net 与通用网络共
 
 必须至少填写 uploader/tag/title 之一。对三个字符串 trim；uploader 按等值匹配，tag 与 title 按包含匹配；Tag 去掉一个不区分大小写的 tag: 前缀。所有填写项为 AND。候选来源的上传者/Tag/曲名回退保持兼容，在服务内完成最终过滤，返回的数据不依赖 QML 二次处理。
 
-起止日期必须同时提供或同时省略。提供时先归一化先后顺序，再按明确 IANA timeZone 的本地日期包含首尾日；默认宿主报告的时区，网页可显式覆盖。实现使用“起始午夜 ≤ 时刻 < 结束日期的下一午夜”处理 DST。列表字段解析保持 v1 的多个 Tag 来源及合法 ID/时间检查；响应记录 skippedRows 与告警。
+起止日期均为可选。两项省略时查询全部时间；仅提供开始日期时包含该日及之后的记录，仅提供结束日期时包含该日及之前的记录。两项提供时归一化先后顺序。按明确 IANA timeZone 的本地日期包含边界日；默认宿主报告的时区，网页可显式覆盖。实现比较本地日期处理 DST。下载页面默认留空日期，手动输入与日历选值共享 selectedDate；格式异常恢复上次有效日期，清空输入移除对应边界。列表字段解析保持 v1 的多个 Tag 来源及合法 ID/时间检查；响应记录 skippedRows 与告警。
 
 候选缓存建议 5 分钟，按 provider、来源字段、规范化值与大小写模式隔离。缓存候选与最终查询快照分别存储；缓存命中仍做 AND 过滤。ChartQueryRequest 另含 forceRefresh（默认 false），为 true 时绕过候选缓存。零结果是有效查询，不与网络/解析错误混淆。
 
@@ -371,7 +371,7 @@ SDK 建议放在新的应用客户端包（例如 packages/miacode-client），�
 - `net.downloads.create` 使用目录授权或托管目录；资源流写入 QSaveFile，在同一输出根的暂存目录计算 SHA-256、写 manifest 并发布。`zipArtifacts[]` 表示各谱面目录中的 `download.zip`；ZIP 包含所选 PV，`legacy_triplet` 保留三资源模式。冲突默认 fail，可指定 replace。
 - 下载恢复由可信桌面宿主使用版本化任务控制，继承原任务引用，保留成功 manifest 和输出。公开 `jobs.resume/retry` 的后续适配器能力按目录管理。
 - `net.previews.prepare` 按主体、chartId、remoteVersion 和一小时有效期复用缓存，PV absent 属于完整缓存；prepare 返回句柄，open 独立使用文档身份和离开文档决策。release 撤销句柄，缓存目录由 provider 生命周期持有，已打开媒体保持文件可用。
-- `document.snapshot` 返回 workspaceId、documentOpenGeneration、revision、dirty、hasDocument、origin。net_preview 来源参与文档、运行时、会话和保存处理；保存通过另存为建立 local 文档。
+- `document.snapshot` 返回 workspaceId、documentOpenGeneration、revision、dirty、hasDocument、origin。net_preview 来源参与文档、运行时、会话和保存处理；保存通过另存为建立 local 文档。跨目录另存为迁移音轨、背景、PV、`&video=` 引用文件与 `.miacode` 项目设置；外部视频转为副本目录内的相对引用。资源和谱面写入成功后更新文档路径与保存点，资源失败恢复目标原有文件。
 
 运行时任务和幂等记录归当前进程，capability 报告 process_lifetime。下载固定样本通过本地 HTTP 服务，输出随测试目录清理。
 

@@ -1,4 +1,5 @@
 #include "app/services/ChartWorkspaceFileService.h"
+#include "core/chart/ChartAssetPaths.h"
 
 #include <QFile>
 #include <QTemporaryDir>
@@ -130,21 +131,115 @@ bool verifyFailedOpenRetainsWorkspace(QTextStream& out)
                   QStringLiteral("failed open leaves the current workspace untouched"), out);
 }
 
-bool verifyPreviewSaveAs(QTextStream& out)
+QByteArray readBytes(const QString& path)
+{
+    QFile file(path);
+    return file.open(QIODevice::ReadOnly) ? file.readAll() : QByteArray();
+}
+
+bool verifyProjectSaveAs(QTextStream& out, miacode::ChartDocumentOrigin origin)
 {
     QTemporaryDir directory;
-    const auto original = directory.filePath(QStringLiteral("preview.txt"));
-    const auto saved = directory.filePath(QStringLiteral("local.txt"));
-    if (!writeBytes(original, "&title=Online\n&lv_5=12\n&inote_5=(120){4}1,E\n")) return false;
+    const QDir source(directory.filePath(QStringLiteral("source")));
+    const QDir target(directory.filePath(QStringLiteral("target")));
+    const QString original = source.filePath(QStringLiteral("maidata.txt"));
+    const QString saved = target.filePath(QStringLiteral("copy.simai"));
+    if (!QDir().mkpath(source.filePath(QStringLiteral(".miacode")))
+        || !QDir().mkpath(source.filePath(QStringLiteral("videos")))
+        || !QDir().mkpath(target.filePath(QStringLiteral(".miacode")))) return false;
+    const QByteArray chart = "&title=Online\n&video=videos/custom.mp4\n&lv_5=12\n&inote_5=(120){4}1,E\n";
+    const QStringList resources{QStringLiteral("track.flac"), QStringLiteral("bg.jpg"),
+        QStringLiteral("pv.mp4"), QStringLiteral("videos/custom.mp4"),
+        QStringLiteral(".miacode/preferences.json"), QStringLiteral(".miacode/miacode_settings.json")};
+    if (!writeBytes(original, chart)) return false;
+    for (const QString& resource : resources) {
+        if (!writeBytes(source.filePath(resource), resource.toUtf8())) return false;
+    }
+    if (!writeBytes(target.filePath(QStringLiteral("track.mp3")), "old track")
+        || !writeBytes(target.filePath(QStringLiteral(".miacode/preferences.json")), "old settings")) return false;
     miacode::ChartWorkspace workspace;
     miacode::ChartWorkspaceFileService files(workspace);
-    const auto opened = files.open(original, miacode::ChartDocumentOrigin::NetPreview);
+    if (!files.open(original, origin).accepted) return false;
     const auto generation = workspace.snapshot().documentOpenGeneration;
     workspace.replaceActiveDifficultyChart(QStringLiteral("(120){4}2,E"));
-    return expect(opened.accepted && workspace.isNetPreview() && !files.save(0).accepted
-        && !files.saveAs(original, 0).accepted && files.saveAs(saved, 0).accepted
-        && !workspace.isNetPreview() && workspace.snapshot().documentOpenGeneration == generation,
-        QStringLiteral("preview save requires a local copy and preserves document generation"), out);
+    if (origin == miacode::ChartDocumentOrigin::NetPreview
+        && !expect(!files.save(0).accepted && !files.saveAs(original, 0).accepted,
+                   QStringLiteral("preview saving establishes a separate local project"), out)) return false;
+    bool ok = expect(files.saveAs(saved, 0).accepted && !workspace.isNetPreview()
+        && workspace.snapshot().documentOpenGeneration == generation
+        && readBytes(saved).contains("(120){4}2,E"),
+        QStringLiteral("save as preserves the document and its generation"), out);
+    for (const QString& resource : resources) {
+        ok &= expect(readBytes(target.filePath(resource)) == readBytes(source.filePath(resource)),
+                     QStringLiteral("save as carries %1").arg(resource), out);
+    }
+    ok &= expect(miacode::chart_assets::resolveTrackPath(saved) == target.filePath(QStringLiteral("track.flac"))
+        && miacode::chart_assets::resolveChartVideoPath(saved, workspace.document().videoPath)
+            == target.filePath(QStringLiteral("videos/custom.mp4")),
+        QStringLiteral("saved media resolves in the target project"), out);
+    QDir(source.path()).removeRecursively();
+    ok &= expect(files.open(saved).accepted
+        && miacode::chart_assets::resolveTrackPath(saved) == target.filePath(QStringLiteral("track.flac"))
+        && miacode::chart_assets::resolveChartVideoPath(saved, workspace.document().videoPath)
+            == target.filePath(QStringLiteral("videos/custom.mp4")),
+        QStringLiteral("saved project reopens with media after its source is removed"), out);
+    return ok;
+}
+
+bool verifyExternalVideoSaveAs(QTextStream& out)
+{
+    QTemporaryDir directory;
+    const QDir source(directory.filePath(QStringLiteral("source")));
+    const QString external = directory.filePath(QStringLiteral("external.mp4"));
+    const QString original = source.filePath(QStringLiteral("maidata.txt"));
+    const QString saved = directory.filePath(QStringLiteral("target/maidata.txt"));
+    QDir().mkpath(source.path());
+    if (!writeBytes(external, "external video") || !writeBytes(original,
+        (QStringLiteral("&video=%1\n&lv_5=12\n&inote_5=(120){4}1,E\n").arg(external)).toUtf8())) return false;
+    miacode::ChartWorkspace workspace;
+    miacode::ChartWorkspaceFileService files(workspace);
+    if (!files.open(original).accepted) return false;
+    const auto revision = workspace.snapshot().revision;
+    bool ok = expect(files.saveAs(saved, 5).accepted && !workspace.snapshot().dirty
+        && workspace.snapshot().revision == revision + 1
+        && workspace.document().videoPath == QLatin1String("media/external.mp4"),
+        QStringLiteral("section save relocates external video in one workspace transaction"), out);
+    QFile::remove(external);
+    ok &= expect(files.open(saved).accepted
+        && readBytes(miacode::chart_assets::resolveChartVideoPath(saved, workspace.document().videoPath)) == "external video",
+        QStringLiteral("external video becomes an independent local resource"), out);
+    return ok;
+}
+
+bool verifyFailedProjectSaveAs(QTextStream& out)
+{
+    QTemporaryDir directory;
+    const QDir source(directory.filePath(QStringLiteral("source")));
+    const QDir target(directory.filePath(QStringLiteral("target")));
+    QDir().mkpath(source.filePath(QStringLiteral(".miacode")));
+    // A directory at a resource's destination forces a failure after the track replacement.
+    QDir().mkpath(target.filePath(QStringLiteral("bg.jpg")));
+    const QString original = source.filePath(QStringLiteral("maidata.txt"));
+    const QString saved = target.filePath(QStringLiteral("maidata.txt"));
+    if (!writeBytes(original, "&lv_5=12\n&inote_5=(120){4}1,E\n")
+        || !writeBytes(source.filePath(QStringLiteral("track.mp3")), "new track")
+        || !writeBytes(source.filePath(QStringLiteral("bg.jpg")), "new background")
+        || !writeBytes(target.filePath(QStringLiteral("track.mp3")), "old track")
+        || !writeBytes(saved, "old chart")) return false;
+    miacode::ChartWorkspace workspace;
+    miacode::ChartWorkspaceFileService files(workspace);
+    if (!files.open(original, miacode::ChartDocumentOrigin::NetPreview).accepted) return false;
+    workspace.replaceActiveDifficultyChart(QStringLiteral("(120){4}2,E"));
+    const auto before = workspace.snapshot();
+    const auto result = files.saveAs(saved, 0);
+    return expect(!result.accepted && workspace.isNetPreview()
+        && workspace.snapshot().filePath == before.filePath
+        && workspace.snapshot().revision == before.revision
+        && workspace.snapshot().dirty == before.dirty
+        && readBytes(target.filePath(QStringLiteral("track.mp3"))) == "old track"
+        && readBytes(saved) == "old chart"
+        && readBytes(source.filePath(QStringLiteral("track.mp3"))) == "new track",
+        QStringLiteral("resource failure restores the target and preserves the source workspace"), out);
 }
 
 }  // namespace
@@ -154,7 +249,10 @@ int main()
     QTextStream out(stderr);
     if (!verifyOpenSaveAndSaveAs(out)
         || !verifyOpenAcceptsEmptyInoteFile(out)
-        || !verifyPreviewSaveAs(out)
+        || !verifyProjectSaveAs(out, miacode::ChartDocumentOrigin::Local)
+        || !verifyProjectSaveAs(out, miacode::ChartDocumentOrigin::NetPreview)
+        || !verifyExternalVideoSaveAs(out)
+        || !verifyFailedProjectSaveAs(out)
         || !verifyFailedOpenRetainsWorkspace(out)) return 1;
     QTextStream result(stdout);
     result << "Chart workspace file-service checks passed." << Qt::endl;

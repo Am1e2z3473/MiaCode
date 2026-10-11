@@ -10,6 +10,8 @@ ComboBox {
     id: root
 
     property bool compact: false
+    property color backgroundColor: Theme.colors.background.elevated
+    property bool outlined: false
     // Font pickers render each choice in its own family, including their
     // context-specific default. Ordinary dropdowns keep the UI font.
     property string fontFamilyRole: ""
@@ -72,10 +74,13 @@ ComboBox {
                : root.down ? Theme.colors.buttonState.pressed
                : root.hovered ? Theme.colors.buttonState.hover
                : root.popup.visible || root.visualFocus ? Theme.colors.buttonState.selected
-               : Theme.colors.background.elevated)
+               : root.backgroundColor)
         border.width: 1 / root.Screen.devicePixelRatio
         border.color: root.enabled && (root.visualFocus || root.popup.visible)
-                      ? Theme.colors.accent.primary : Theme.floatingBorderColor
+                      ? Theme.colors.accent.primary
+                      : root.outlined
+                          ? root.enabled && root.hovered ? Theme.colors.border.control : Theme.colors.border.normal
+                          : Theme.floatingBorderColor
         border.pixelAligned: false
     }
 

@@ -519,40 +519,14 @@ bool miacode::runtime::DocumentSessionHost::saveToPath(const QString& path)
         );
         return false;
     }
-    QSaveFile file(path);
-    if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
-        _mc_op_.fail(QStringLiteral("QSaveFile::open: %1").arg(file.errorString()));
-        postSaveFailureThrough(session_.uiRequestService(), miacode::localizedText("document.open_write_failed") + path);
-        miacode::debug_log::appendTimingLine(
-            miacode::debug_log::Channel::Runtime,
-            QStringLiteral("close_timing/document"),
-            QStringLiteral("save_to_path"),
-            totalTimer.elapsed(),
-            QStringLiteral("result=open_failed target=%1").arg(targetName)
-        );
+    const auto saved = session_.applicationServices_.files().saveAs(normalizedPath, 0);
+    if (!saved.accepted) {
+        _mc_op_.fail(saved.error);
+        postSaveFailureThrough(session_.uiRequestService(),
+                               miacode::localizedText("document.write_failed") + path);
         return false;
     }
-    QByteArray data;
-    const QString serialized = session_.applicationServices_.workspace().document().toText();
-    if (state_.currentEncoding_ == Session::TextEncoding::System) {
-        QStringEncoder encoder(QStringConverter::System);
-        data = encoder.encode(serialized);
-    } else {
-        QStringEncoder encoder(QStringConverter::Utf8);
-        data = encoder.encode(serialized);
-    }
-    if (file.write(data) != data.size() || !file.commit()) {
-        _mc_op_.fail(QStringLiteral("write_or_commit_failed err=%1").arg(file.errorString()));
-        postSaveFailureThrough(session_.uiRequestService(), miacode::localizedText("document.write_failed") + path);
-        miacode::debug_log::appendTimingLine(
-            miacode::debug_log::Channel::Runtime,
-            QStringLiteral("close_timing/document"),
-            QStringLiteral("save_to_path"),
-            totalTimer.elapsed(),
-            QStringLiteral("result=write_failed target=%1").arg(targetName)
-        );
-        return false;
-    }
+    const QString serialized = session_.applicationServices_.workspace().snapshot().sourceText;
     if (normalizedPath != state_.currentFilePath_) {
         session_.setCurrentFilePath(normalizedPath);
     }
@@ -560,7 +534,6 @@ bool miacode::runtime::DocumentSessionHost::saveToPath(const QString& path)
     session_.addRecentFilePath(normalizedPath);
     session_.saveProjectRenderState();
     resetAutosaveState(serialized);
-    session_.applicationServices_.workspace().markSaved(normalizedPath);
     const QString autosaveDirectoryPath = resolveAutosaveDirectoryPath();
     if (!autosaveDirectoryPath.isEmpty()) {
         rebuildAutosaveMetadata(autosaveDirectoryPath);

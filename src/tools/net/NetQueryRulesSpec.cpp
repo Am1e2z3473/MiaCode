@@ -73,7 +73,18 @@ int main(int argc, char** argv)
     dst.endDate = QDate(2026, 11, 1);
     ok &= check(filterAndSortNetCharts(dstCharts, dst).size() == 3, "reversed date ranges normalize");
     dst.endDate = {};
-    ok &= check(validateNetQuery(dst) == QStringLiteral("request.invalid"), "single-ended date range fails validation");
+    ok &= check(validateNetQuery(dst).isEmpty()
+        && filterAndSortNetCharts(dstCharts, dst).size() == 1,
+        "start-only range includes dates from the boundary onward");
+    dst.startDate = {};
+    dst.endDate = QDate(2026, 11, 1);
+    ok &= check(validateNetQuery(dst).isEmpty()
+        && filterAndSortNetCharts(dstCharts, dst).size() == 3,
+        "end-only range includes dates through the boundary day");
+    dst.endDate = {};
+    ok &= check(validateNetQuery(dst).isEmpty()
+        && filterAndSortNetCharts(dstCharts, dst).size() == dstCharts.size(),
+        "empty date bounds include the complete search history");
     NetQueryRequest empty;
     ok &= check(!validateNetQuery(empty).isEmpty(), "query requires a search field");
     request.sort = QStringLiteral("unknown");

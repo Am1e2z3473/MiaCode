@@ -517,17 +517,30 @@ SimaiDocument ChartWorkspace::documentForSectionSave(int difficultyId) const
 
 bool ChartWorkspace::markSectionSaved(int difficultyId, const QString& filePath)
 {
-    if (!hasDocument_) return false;
-    const QString nextFilePath = filePath.isEmpty() ? filePath_ : filePath;
-    if (difficultyId == 0) return markSaved(nextFilePath);
+    if (!hasDocument_ || (difficultyId != 0 && difficultyId != MetadataSection
+        && document_.difficulty(difficultyId) == nullptr)) return false;
+    return markSectionSaved(difficultyId, filePath, document_.videoPath,
+                            documentForSectionSave(difficultyId).videoPath);
+}
 
-    if (difficultyId != MetadataSection && document_.difficulty(difficultyId) == nullptr) return false;
+bool ChartWorkspace::markSectionSaved(int difficultyId, const QString& filePath,
+                                     const QString& currentVideoPath, const QString& savedVideoPath)
+{
+    if (!hasDocument_) return false;
+    if (difficultyId != 0 && difficultyId != MetadataSection
+        && document_.difficulty(difficultyId) == nullptr) return false;
+    const QString nextFilePath = filePath.isEmpty() ? filePath_ : filePath;
+    if (difficultyId == 0 && document_.videoPath == currentVideoPath
+        && currentVideoPath == savedVideoPath) return markSaved(nextFilePath);
     savedDocument_ = documentForSectionSave(difficultyId);
+    if (document_.videoPath != currentVideoPath) {
+        document_.videoPath = currentVideoPath;
+        sourceText_ = document_.toText();
+    }
+    savedDocument_.videoPath = savedVideoPath;
     savedSourceText_ = savedDocument_.toText();
     if (filePath_ != nextFilePath) origin_ = ChartDocumentOrigin::Local;
     filePath_ = nextFilePath;
-    // The document as a whole can still differ: other sections keep whatever
-    // they had, saved or not.
     dirty_ = sourceText_ != savedSourceText_;
     commit();
     return true;
