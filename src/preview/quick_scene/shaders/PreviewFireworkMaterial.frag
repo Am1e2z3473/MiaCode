@@ -17,6 +17,7 @@ layout(std140, binding = 0) uniform buf {
     vec4 colorBallBig;
     vec4 sourceRect;
     vec4 timing;
+    vec4 starStates[24];
 };
 
 const float kSectorAlphaScale = 0.9;
@@ -31,6 +32,7 @@ const int kRenderFlagDrawBigBall = 0x2;
 const int kRenderFlagDrawSmallBall = 0x4;
 const int kRenderFlagUseTexture = 0x8;
 const int kRenderFlagDrawFallbackBall = 0x10;
+const int kRenderFlagWarmup = 0x20;
 
 vec4 compositeSourceOver(vec4 sourceColor, vec4 destColor);
 
@@ -67,107 +69,31 @@ float fourPointStar(vec2 point, float radius, float widthRatio, float concavity)
     return 1.0 - smoothstep(1.0 - feather, 1.0 + feather, shape);
 }
 
-float hashStar(float value)
+vec4 rainbowStarLayer(vec2 localPos)
 {
-    return fract(sin(value * 127.1 + 311.7) * 43758.5453);
-}
-
-float starAngle(int index, int batch, float angleSeed)
-{
-    // Sample the full circle directly: clustering and empty arcs are intentionally allowed.
-    return hashStar(float(index + batch * 23) + 0.19 + angleSeed) * 6.28318530718;
-}
-
-float starRingRadius(int index, int batch)
-{
-    // Inner stars sit inside the colour-glow ring; outer stars sit just inside the judgment ring.
-    // Keep slight variation within each ring without drifting into the centre.
-    const float radii[12] = float[12](
-        0.86, 0.42, 0.88, 0.45,
-        0.84, 0.40, 0.89, 0.44,
-        0.85, 0.41, 0.87, 0.46
-    );
-    int shuffledIndex = (index * 7 + batch * 3) % 12;
-    return radii[shuffledIndex];
-}
-
-float starSize(int index, int batch)
-{
-    // Deterministic variation keeps playback stable while spanning the requested visible range.
-    return mix(0.040, 0.050, hashStar(float(index + batch * 29) + 0.37));
-}
-
-float starDelay(int index, int batch)
-{
-    const float batchStarts[2] = float[2](0.0, 0.08);
-    // Reveal the inner ring first, then the outer ring about 10 ms later.
-    // Keep only a small per-ring jitter so an early outer star cannot overtake a late inner star.
-    bool isOuterRing = starRingRadius(index, batch) >= 0.80;
-    float ringDelay = isOuterRing ? 0.010 : 0.0;
-    float withinRingJitter = hashStar(float(index + batch * 31) + 0.71) * 0.004;
-    return batchStarts[batch] + ringDelay + withinRingJitter;
-}
-
-vec4 rainbowStarLayer(vec2 localPos, float clipTime, float maxRadius, float angleSeed)
-{
-    const float kStarFadeInSeconds = 0.115;
-    const float kStarFadeOutSeconds = 0.25;
-    const float kStarPulseSeconds = kStarFadeInSeconds + kStarFadeOutSeconds;
     vec4 layer = vec4(0.0);
-    for (int batch = 0; batch < 2; ++batch) {
-        for (int index = 0; index < 12; ++index) {
-            float localTime = clipTime - starDelay(index, batch);
-            if (localTime < 0.0 || localTime >= kStarPulseSeconds) {
-                continue;
-            }
-            // Preserve the fast appearance, then add 0.2 s to the shrink/fade phase only.
-            float pulse = localTime < kStarFadeInSeconds
-                ? sin(1.57079632679 * clamp(localTime / kStarFadeInSeconds, 0.0, 1.0))
-                : cos(1.57079632679 * clamp(
-                    (localTime - kStarFadeInSeconds) / kStarFadeOutSeconds,
-                    0.0,
-                    1.0
-                ));
-            float fadeOut01 = clamp(
-                (localTime - kStarFadeInSeconds) / kStarFadeOutSeconds,
-                0.0,
-                1.0
-            );
-            float fadeIn01 = clamp(localTime / kStarFadeInSeconds, 0.0, 1.0);
-            float angle = starAngle(index, batch, angleSeed);
-            vec2 direction = vec2(cos(angle), sin(angle));
-            float widthRatio = 0.66 + float((index + batch * 2) % 5) * 0.035;
-            float visualPeakRadius = maxRadius * starSize(index, batch);
-            float peakRadius = visualPeakRadius / widthRatio;
-            float judgmentInset = max(2.0, maxRadius * 0.015);
-            // Appearance is alpha-only at full size; geometry starts shrinking only during fade-out.
-            float sizePulse = localTime < kStarFadeInSeconds
-                ? 1.0
-                : pow(max(pulse, 0.0), 0.72);
-            float radius = peakRadius * sizePulse;
-            float visualRadius = radius * widthRatio;
-            float initialCenterRadius = min(
-                maxRadius * starRingRadius(index, batch),
-                maxRadius - visualPeakRadius - judgmentInset
-            );
-            float appearanceOffset = maxRadius * 0.02 * smoothstep(0.0, 1.0, fadeIn01);
-            float disappearanceOffset = maxRadius * 0.04 * smoothstep(0.0, 1.0, fadeOut01);
-            float outwardOffset = appearanceOffset + disappearanceOffset;
-            float centerRadius = min(
-                initialCenterRadius + outwardOffset,
-                maxRadius - visualRadius - judgmentInset
-            );
-            vec2 center = direction * centerRadius;
-            // Keep the full horizontal span while the deeper waist preserves a slightly finer edge.
-            float outer = fourPointStar(localPos - center, radius, widthRatio, 1.82);
-            float core = fourPointStar(localPos - center, radius * 0.50, widthRatio * 0.80, 2.1);
-            float alpha = outer * pulse * 0.95;
-            int tintIndex = (index * 2 + batch + 1) % 5;
-            vec3 tint = mix(vec3(1.0, 0.98, 0.78), sectorBaseColor(tintIndex), 0.24);
-            vec3 color = mix(tint, vec3(1.0), core);
-            vec4 star = vec4(color * alpha, alpha);
-            layer = compositeSourceOver(star, layer);
+    for (int slot = 0; slot < 24; ++slot) {
+        vec4 starState = starStates[slot];
+        if (starState.w <= 0.0) {
+            continue;
         }
+        vec2 relative = localPos - starState.xy;
+        if (abs(relative.x) > starState.z || abs(relative.y) > starState.z) {
+            continue;
+        }
+        int index = slot % 12;
+        int batch = slot / 12;
+        float widthRatio = 0.66 + float((index + batch * 2) % 5) * 0.035;
+        float outer = fourPointStar(relative, starState.z, widthRatio, 1.82);
+        if (outer <= 0.0) {
+            continue;
+        }
+        float core = fourPointStar(relative, starState.z * 0.50, widthRatio * 0.80, 2.1);
+        float alpha = outer * starState.w * 0.95;
+        int tintIndex = (index * 2 + batch + 1) % 5;
+        vec3 tint = mix(vec3(1.0, 0.98, 0.78), sectorBaseColor(tintIndex), 0.24);
+        vec3 color = mix(tint, vec3(1.0), core);
+        layer = compositeSourceOver(vec4(color * alpha, alpha), layer);
     }
     return layer;
 }
@@ -326,6 +252,10 @@ void main()
     float colorBallBigAlpha = colorBallBig.y;
     float fallbackColorBallAlpha = colorBallBig.z;
     int renderFlags = renderFlagsFromFloat(colorBallBig.w);
+    if (hasRenderFlag(renderFlags, kRenderFlagWarmup)) {
+        fragColor = vec4(0.0);
+        return;
+    }
     bool drawFirework = hasRenderFlag(renderFlags, kRenderFlagDrawStripe);
     bool drawColorBallBig = hasRenderFlag(renderFlags, kRenderFlagDrawBigBall);
     bool drawColorBallSmall = hasRenderFlag(renderFlags, kRenderFlagDrawSmallBall);
@@ -343,55 +273,57 @@ void main()
     if (drawFirework && radius <= outerRadius && fireworkAlpha > 0.0) {
         float angleDegrees = wrapAngleDegrees(degrees(atan(-localPos.y, localPos.x)));
         float fireworkContributionAlpha = fireworkAlpha * kSectorAlphaScale;
-        for (int sectorIndex = 0; sectorIndex < 15; ++sectorIndex) {
-            float sectorStart = kSectorPhaseDegrees + fireworkRotationDegrees + float(sectorIndex) * kSectorStepDegrees;
-            float sectorCoverage = fireworkSectorCoverage(angleDegrees, sectorStart, radius, outerRadius);
-            if (sectorCoverage > 0.0) {
-                float sectorAlpha = fireworkContributionAlpha * sectorCoverage;
-                float sectorCenter = sectorStart + kSectorSpanDegrees * 0.5;
-                float angularDistance = shortestAngleDistanceDegrees(angleDegrees, sectorCenter);
-                float axial01 = 1.0 - smoothstep(0.0, kSectorSpanDegrees * 0.5, angularDistance);
-                float radial01 = radius / max(outerRadius, 1.0);
-                float firstShot = shotProgress(timing.x, 0.0, 0.65);
-                float secondShot = shotProgress(timing.x, 0.425, 0.65);
-                float firstBlockCenter = clipRadius * mix(0.08, 1.02, firstShot);
-                float secondBlockCenter = clipRadius * mix(0.08, 1.02, secondShot);
-                float blockTrailingLength = clipRadius * 0.25;
-                float blockLeadingLength = clipRadius * 0.14;
-                float firstBlock = movingBallFieldMask(
-                    localPos,
-                    firstBlockCenter,
-                    blockTrailingLength,
-                    blockLeadingLength,
-                    clipRadius
-                );
-                float secondBlock = movingBallFieldMask(
-                    localPos,
-                    secondBlockCenter,
-                    blockTrailingLength,
-                    blockLeadingLength,
-                    clipRadius
-                ) * smoothstep(0.425, 0.475, timing.x);
-                float brightBlockLight = max(firstBlock, secondBlock);
-                float colorRise = smoothstep(0.16, 0.34, timing.x);
-                float colorFall = smoothstep(0.42, 0.70, timing.x);
-                float saturation = mix(0.92, 1.08, colorRise) * mix(1.0, 0.72, colorFall);
-                float brightness = mix(0.82, 1.05, colorRise) * mix(1.0, 0.72, colorFall);
-                brightness *= mix(1.07, 0.92, smoothstep(0.08, 1.0, radial01));
-                brightness *= mix(0.90, 1.04, axial01);
-                brightness *= mix(0.68, 1.02, brightBlockLight);
-                vec3 baseColor = sectorBaseColor(sectorIndex);
-                float baseLuma = dot(baseColor, vec3(0.2126, 0.7152, 0.0722));
-                vec3 beamColor = mix(vec3(baseLuma), baseColor, saturation);
-                beamColor = clamp(beamColor * brightness, vec3(0.0), vec3(1.0));
-                sectorAlpha *= mix(0.68, 0.94, brightBlockLight);
-                vec4 fireworkLayer = vec4(
-                    beamColor * sectorAlpha,
-                    sectorAlpha
-                );
-                rayLayer = compositeSourceOver(fireworkLayer, rayLayer);
-                break;
-            }
+        // Fifteen evenly spaced sectors cover the circle. Locate the nearest
+        // sector from the angle instead of checking all fifteen per pixel.
+        float sectorPhase = wrapAngleDegrees(
+            angleDegrees - kSectorPhaseDegrees - fireworkRotationDegrees);
+        int sectorIndex = int(floor((sectorPhase + kSectorSpanDegrees * 0.5) / kSectorStepDegrees)) % 15;
+        float sectorStart = kSectorPhaseDegrees + fireworkRotationDegrees + float(sectorIndex) * kSectorStepDegrees;
+        float sectorCoverage = fireworkSectorCoverage(angleDegrees, sectorStart, radius, outerRadius);
+        if (sectorCoverage > 0.0) {
+            float sectorAlpha = fireworkContributionAlpha * sectorCoverage;
+            float sectorCenter = sectorStart + kSectorSpanDegrees * 0.5;
+            float angularDistance = shortestAngleDistanceDegrees(angleDegrees, sectorCenter);
+            float axial01 = 1.0 - smoothstep(0.0, kSectorSpanDegrees * 0.5, angularDistance);
+            float radial01 = radius / max(outerRadius, 1.0);
+            float firstShot = shotProgress(timing.x, 0.0, 0.65);
+            float secondShot = shotProgress(timing.x, 0.425, 0.65);
+            float firstBlockCenter = clipRadius * mix(0.08, 1.02, firstShot);
+            float secondBlockCenter = clipRadius * mix(0.08, 1.02, secondShot);
+            float blockTrailingLength = clipRadius * 0.25;
+            float blockLeadingLength = clipRadius * 0.14;
+            float firstBlock = movingBallFieldMask(
+                localPos,
+                firstBlockCenter,
+                blockTrailingLength,
+                blockLeadingLength,
+                clipRadius
+            );
+            float secondBlock = movingBallFieldMask(
+                localPos,
+                secondBlockCenter,
+                blockTrailingLength,
+                blockLeadingLength,
+                clipRadius
+            ) * smoothstep(0.425, 0.475, timing.x);
+            float brightBlockLight = max(firstBlock, secondBlock);
+            float colorRise = smoothstep(0.16, 0.34, timing.x);
+            float colorFall = smoothstep(0.42, 0.70, timing.x);
+            float saturation = mix(0.92, 1.08, colorRise) * mix(1.0, 0.72, colorFall);
+            float brightness = mix(0.82, 1.05, colorRise) * mix(1.0, 0.72, colorFall);
+            brightness *= mix(1.07, 0.92, smoothstep(0.08, 1.0, radial01));
+            brightness *= mix(0.90, 1.04, axial01);
+            brightness *= mix(0.68, 1.02, brightBlockLight);
+            vec3 baseColor = sectorBaseColor(sectorIndex);
+            float baseLuma = dot(baseColor, vec3(0.2126, 0.7152, 0.0722));
+            vec3 beamColor = mix(vec3(baseLuma), baseColor, saturation);
+            beamColor = clamp(beamColor * brightness, vec3(0.0), vec3(1.0));
+            sectorAlpha *= mix(0.68, 0.94, brightBlockLight);
+            vec4 fireworkLayer = vec4(
+                beamColor * sectorAlpha,
+                sectorAlpha
+            );
+            rayLayer = compositeSourceOver(fireworkLayer, rayLayer);
         }
     }
 
@@ -423,7 +355,10 @@ void main()
     vec3 glowColor = mix(vec3(1.0, 0.72, 0.08), vec3(1.0, 1.0, 0.86), whiteCoreShape);
     layerColor = compositeSourceOver(vec4(glowColor * glowAlpha, glowAlpha), layerColor);
 
-    vec4 stars = rainbowStarLayer(localPos, clipTime, clipRadius, timing.z);
+    vec4 stars = vec4(0.0);
+    if (clipTime < 0.46 && radius >= clipRadius * 0.28) {
+        stars = rainbowStarLayer(localPos);
+    }
     layerColor = compositeSourceOver(stars, layerColor);
 
     if (drawColorBallBig) {
