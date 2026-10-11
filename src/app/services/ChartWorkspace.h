@@ -126,6 +126,9 @@ public:
     // Advance the save point for that section only. Callers write
     // textForSectionSave() first; this records that it landed.
     bool markSectionSaved(int difficultyId, const QString& filePath = QString());
+    // Commit relocated media references together with the section's save point.
+    bool markSectionSaved(int difficultyId, const QString& filePath,
+                          const QString& currentVideoPath, const QString& savedVideoPath);
     // 关闭文档: no document at all, rather than an empty one. A chart with no
     // difficulties is still a chart; this is the state before any chart.
     ChartWorkspaceResult closeDocument();

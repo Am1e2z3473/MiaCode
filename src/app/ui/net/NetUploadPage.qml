@@ -42,11 +42,11 @@ Item {
                 enabled: !root.uploadModel.busy
                 FieldGroup {
                     label: qsTrId("net.ui.username")
-                    AppTextField { Layout.fillWidth: true; Layout.minimumWidth: 0; Layout.preferredWidth: 240; text: root.uploadModel.username; Accessible.name: qsTrId("net.ui.username"); onTextEdited: root.uploadModel.username = text }
+                    AppTextField { backgroundColor: Theme.colors.background.panel; outlined: true; Layout.fillWidth: true; Layout.minimumWidth: 0; Layout.preferredWidth: 240; text: root.uploadModel.username; Accessible.name: qsTrId("net.ui.username"); onTextEdited: root.uploadModel.username = text }
                 }
                 FieldGroup {
                     label: qsTrId("net.ui.password")
-                    AppTextField { Layout.fillWidth: true; Layout.minimumWidth: 0; Layout.preferredWidth: 240; text: root.uploadModel.password; echoMode: TextInput.Password; Accessible.name: qsTrId("net.ui.password"); onTextEdited: root.uploadModel.password = text }
+                    AppTextField { backgroundColor: Theme.colors.background.panel; outlined: true; Layout.fillWidth: true; Layout.minimumWidth: 0; Layout.preferredWidth: 240; text: root.uploadModel.password; echoMode: TextInput.Password; Accessible.name: qsTrId("net.ui.password"); onTextEdited: root.uploadModel.password = text }
                 }
                 AppCheckBox { text: qsTrId("net.ui.remember_account"); checked: root.uploadModel.remember; enabled: root.uploadModel.secureStorageAvailable; onClicked: root.uploadModel.remember = checked }
                 AppButton { Layout.fillWidth: true; Layout.minimumWidth: 0; text: root.uploadModel.loggedIn ? qsTrId("net.ui.logout") : qsTrId("net.ui.login"); onClicked: root.uploadModel.loggedIn ? root.uploadModel.logout() : root.uploadModel.login() }
@@ -60,7 +60,7 @@ Item {
                 rowSpacing: 10
                 enabled: !root.uploadModel.busy
                 Caption { text: qsTrId("net.ui.chart_root") }
-                AppTextField { Layout.fillWidth: true; Layout.minimumWidth: 0; text: root.uploadModel.rootDirectory; Accessible.name: qsTrId("net.ui.chart_root"); onEditingFinished: root.uploadModel.rootDirectory = text }
+                AppTextField { backgroundColor: Theme.colors.background.panel; outlined: true; Layout.fillWidth: true; Layout.minimumWidth: 0; text: root.uploadModel.rootDirectory; Accessible.name: qsTrId("net.ui.chart_root"); onEditingFinished: root.uploadModel.rootDirectory = text }
                 AppButton { Layout.fillWidth: directoryForm.columns === 2; Layout.minimumWidth: 0; text: qsTrId("net.ui.browse"); onClicked: root.uploadModel.browse() }
                 AppButton { Layout.fillWidth: directoryForm.columns === 2; Layout.minimumWidth: 0; text: qsTrId("net.ui.add"); onClicked: root.uploadModel.addDirectory() }
             }

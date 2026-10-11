@@ -4,9 +4,129 @@
 #include <QFile>
 #include <QFileInfo>
 #include <QSaveFile>
+#include <QTemporaryDir>
+#include "core/chart/ChartAssetPaths.h"
 #include <QStringConverter>
+#include <memory>
 
 namespace miacode {
+namespace {
+
+class ProjectSaveTransaction
+{
+public:
+    explicit ProjectSaveTransaction(const QDir& target)
+        : target_(target)
+        , staging_(target.filePath(QStringLiteral(".miacode-saveas-XXXXXX")))
+    {
+    }
+
+    ~ProjectSaveTransaction()
+    {
+        if (committed_) return;
+        for (auto it = files_.crbegin(); it != files_.crend(); ++it) {
+            if (!it->published) continue;
+            QFile::remove(it->target);
+            if (!it->backup.isEmpty() && !QFile::rename(it->backup, it->target))
+                staging_.setAutoRemove(false);
+        }
+    }
+
+    bool add(const QString& source, const QString& relativeName)
+    {
+        if (!staging_.isValid()) return false;
+        const QString targetPath = target_.filePath(relativeName);
+        for (const auto& file : files_) {
+            if (file.target == targetPath) return file.source == source;
+        }
+        Entry file;
+        file.source = source;
+        file.target = targetPath;
+        if (!source.isEmpty()) {
+            file.staged = staging_.filePath(QString::number(files_.size()));
+            if (!QFile::copy(source, file.staged)) return false;
+        }
+        files_.append(file);
+        return true;
+    }
+
+    bool publish()
+    {
+        for (auto& file : files_) {
+            if (!QDir().mkpath(QFileInfo(file.target).absolutePath())) return false;
+            if (QFileInfo::exists(file.target)) {
+                if (!QFileInfo(file.target).isFile()) return false;
+                file.backup = staging_.filePath(QStringLiteral("backup-%1").arg(&file - files_.data()));
+                if (!QFile::rename(file.target, file.backup)) return false;
+            }
+            file.published = true;
+            if (!file.staged.isEmpty() && !QFile::rename(file.staged, file.target)) return false;
+        }
+        return true;
+    }
+
+    void commit() { committed_ = true; }
+
+private:
+    struct Entry {
+        QString source;
+        QString target;
+        QString staged;
+        QString backup;
+        bool published = false;
+    };
+    QDir target_;
+    QTemporaryDir staging_;
+    QVector<Entry> files_;
+    bool committed_ = false;
+};
+
+bool stageProjectFiles(ProjectSaveTransaction& transaction, const QDir& source,
+                       const QDir& target)
+{
+    const QStringList candidates = chart_assets::trackCandidateFileNames()
+        + chart_assets::backgroundMediaCandidateFileNames();
+    for (const QString& name : candidates) {
+        const QString path = source.filePath(name);
+        if (QFileInfo::exists(path)) {
+            if (!transaction.add(path, name)) return false;
+        } else if (QFileInfo::exists(target.filePath(name))) {
+            // Remove stale target candidates so resolution selects the saved project's media.
+            if (!transaction.add({}, name)) return false;
+        }
+    }
+    const QDir settings(source.filePath(QStringLiteral(".miacode")));
+    for (const auto& file : settings.entryInfoList(QDir::Files | QDir::Hidden)) {
+        if (!transaction.add(file.absoluteFilePath(), QStringLiteral(".miacode/") + file.fileName()))
+            return false;
+    }
+    const QDir targetSettings(target.filePath(QStringLiteral(".miacode")));
+    for (const auto& file : targetSettings.entryInfoList(QDir::Files | QDir::Hidden)) {
+        if (!QFileInfo::exists(settings.filePath(file.fileName()))
+            && !transaction.add({}, QStringLiteral(".miacode/") + file.fileName())) return false;
+    }
+    return true;
+}
+
+bool stageVideoFile(ProjectSaveTransaction& transaction, const QDir& source, QString& videoPath)
+{
+    const QString reference = videoPath.trimmed();
+    if (reference.isEmpty()) return true;
+    const QString path = QFileInfo(reference).isAbsolute()
+        ? reference : source.absoluteFilePath(reference);
+    const QFileInfo media(path);
+    if (!media.isFile()) return true;
+    QString relative = source.relativeFilePath(media.absoluteFilePath());
+    if (relative == QLatin1String("..") || relative.startsWith(QLatin1String("../"))
+        || QDir::isAbsolutePath(relative)) {
+        relative = QStringLiteral("media/") + media.fileName();
+    }
+    if (!transaction.add(media.absoluteFilePath(), relative)) return false;
+    videoPath = relative;
+    return true;
+}
+
+} // namespace
 
 ChartWorkspaceFileService::ChartWorkspaceFileService(ChartWorkspace& workspace)
     : workspace_(&workspace)
@@ -109,21 +229,37 @@ ChartWorkspaceFileResult ChartWorkspaceFileService::writeToPath(
             return {false, before.revision, QStringLiteral("save_as_required"), {}};
     }
 
-    // Not document().toText(): that is everything open, and a section save is
-    // the last save point with this one difficulty brought up to date.
-    const QByteArray payload = QStringEncoder(QStringConverter::Utf8)
-                                   .encode(workspace_->textForSectionSave(difficultyId));
+    SimaiDocument savedDocument = SimaiDocument::fromText(workspace_->textForSectionSave(difficultyId));
+    QString currentVideoPath = workspace_->document().videoPath;
+    const QDir sourceDirectory = QFileInfo(before.filePath).absoluteDir();
+    const QDir targetDirectory = QFileInfo(normalizedPath).absoluteDir();
+    const bool copyProject = !before.filePath.isEmpty()
+        && sourceDirectory.canonicalPath() != targetDirectory.canonicalPath();
+    if (!QDir().mkpath(targetDirectory.absolutePath()))
+        return {false, before.revision, QStringLiteral("mkpath_failed"), {}};
     QSaveFile file(normalizedPath);
     if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
         return {false, before.revision, QStringLiteral("open_failed"), {}};
     }
+    std::unique_ptr<ProjectSaveTransaction> transaction;
+    if (copyProject) {
+        transaction = std::make_unique<ProjectSaveTransaction>(targetDirectory);
+        if (!stageProjectFiles(*transaction, sourceDirectory, targetDirectory)
+            || !stageVideoFile(*transaction, sourceDirectory, savedDocument.videoPath)
+            || !stageVideoFile(*transaction, sourceDirectory, currentVideoPath)
+            || !transaction->publish()) {
+            return {false, before.revision, QStringLiteral("resource_copy_failed"), {}};
+        }
+    }
+    const QByteArray payload = QStringEncoder(QStringConverter::Utf8).encode(savedDocument.toText());
     if (file.write(payload) != payload.size()) {
         file.cancelWriting();
         return {false, before.revision, QStringLiteral("write_failed"), {}};
     }
     if (!file.commit()) return {false, before.revision, QStringLiteral("commit_failed"), {}};
 
-    workspace_->markSectionSaved(difficultyId, normalizedPath);
+    if (transaction) transaction->commit();
+    workspace_->markSectionSaved(difficultyId, normalizedPath, currentVideoPath, savedDocument.videoPath);
     return {true, workspace_->snapshot().revision, QString(), {}};
 }
 

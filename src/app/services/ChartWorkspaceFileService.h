@@ -42,6 +42,7 @@ public:
     // difficulty on disk exactly as it was. difficultyId 0 saves the whole
     // document, which is what the whole-source view means by its section.
     ChartWorkspaceFileResult save(int difficultyId) const;
+    // Cross-directory saves publish project media and settings before switching the workspace path.
     ChartWorkspaceFileResult saveAs(const QString& path, int difficultyId) const;
 
 private:

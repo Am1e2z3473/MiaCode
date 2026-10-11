@@ -29,7 +29,7 @@ QString validateNetQuery(const NetQueryRequest& request)
         && request.title.trimmed().isEmpty()) {
         return QStringLiteral("request.invalid");
     }
-    if (request.startDate.isValid() != request.endDate.isValid() || !request.timeZone.isValid()) {
+    if (!request.timeZone.isValid()) {
         return QStringLiteral("request.invalid");
     }
     const QStringList sorts{QStringLiteral("level_asc"), QStringLiteral("level_desc"),
@@ -117,8 +117,11 @@ QList<NetChartSummary> filterAndSortNetCharts(
     const QString uploader = request.uploader.trimmed();
     const QString tag = normalizedNetTag(request.tag);
     const QString title = request.title.trimmed();
-    const QDate start = qMin(request.startDate, request.endDate);
-    const QDate end = qMax(request.startDate, request.endDate);
+    QDate start = request.startDate;
+    QDate end = request.endDate;
+    if (start.isValid() && end.isValid() && start > end) {
+        std::swap(start, end);
+    }
     QSet<QString> seen;
     QList<NetChartSummary> result;
     for (const auto& chart : candidates) {
@@ -127,10 +130,10 @@ QList<NetChartSummary> filterAndSortNetCharts(
         if (!title.isEmpty() && !chart.title.contains(title, sensitivity)) continue;
         if (!tag.isEmpty() && std::none_of(chart.publicTags.cbegin(), chart.publicTags.cend(),
                 [&](const QString& value) { return value.contains(tag, sensitivity); })) continue;
-        if (start.isValid()) {
+        if (start.isValid() || end.isValid()) {
             // Comparing local dates includes both boundary days even across DST transitions.
             const QDate date = chart.timestampUtc.toTimeZone(request.timeZone).date();
-            if (date < start || date > end) continue;
+            if ((start.isValid() && date < start) || (end.isValid() && date > end)) continue;
         }
         seen.insert(chart.id);
         result.append(chart);

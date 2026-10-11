@@ -10,6 +10,8 @@ Item {
     signal closeRequested()
     property bool logVisible: false
     function runQuery() {
+        startDate.commitDate();
+        endDate.commitDate();
         net.query({uploader: uploader.text, tag: tag.text, title: song.text,
             startDate: startDate.text, endDate: endDate.text, caseSensitive: !fuzzy.checked,
             forceRefresh: refresh.checked, sort: sorting.currentValue})
@@ -49,23 +51,23 @@ Item {
                 enabled: !root.net.working
                 FieldGroup {
                     label: qsTrId("net.ui.user_id")
-                    AppTextField { id: uploader; Layout.fillWidth: true; Layout.minimumWidth: 0; Layout.preferredWidth: 110; Accessible.name: qsTrId("net.ui.user_id") }
+                    AppTextField { backgroundColor: Theme.colors.background.panel; outlined: true; id: uploader; Layout.fillWidth: true; Layout.minimumWidth: 0; Layout.preferredWidth: 110; Accessible.name: qsTrId("net.ui.user_id") }
                 }
                 FieldGroup {
                     label: "Tag"
-                    AppTextField { id: tag; Layout.fillWidth: true; Layout.minimumWidth: 0; Layout.preferredWidth: 110; Accessible.name: "Tag" }
+                    AppTextField { backgroundColor: Theme.colors.background.panel; outlined: true; id: tag; Layout.fillWidth: true; Layout.minimumWidth: 0; Layout.preferredWidth: 110; Accessible.name: "Tag" }
                 }
                 FieldGroup {
                     label: qsTrId("net.ui.song_title")
-                    AppTextField { id: song; Layout.fillWidth: true; Layout.minimumWidth: 0; Layout.preferredWidth: 140; Accessible.name: qsTrId("net.ui.song_title") }
+                    AppTextField { backgroundColor: Theme.colors.background.panel; outlined: true; id: song; Layout.fillWidth: true; Layout.minimumWidth: 0; Layout.preferredWidth: 140; Accessible.name: qsTrId("net.ui.song_title") }
                 }
                 FieldGroup {
                     label: qsTrId("net.start")
-                    AppDateField { id: startDate; Layout.fillWidth: true; Layout.minimumWidth: 0; selectedDate: new Date(new Date().getFullYear(), new Date().getMonth() - 1, new Date().getDate()) }
+                    AppDateField { backgroundColor: Theme.colors.background.panel; outlined: true; id: startDate; Accessible.name: qsTrId("net.ui.start_date"); Layout.fillWidth: true; Layout.minimumWidth: 0 }
                 }
                 FieldGroup {
                     label: qsTrId("net.ui.end")
-                    AppDateField { id: endDate; Layout.fillWidth: true; Layout.minimumWidth: 0 }
+                    AppDateField { backgroundColor: Theme.colors.background.panel; outlined: true; id: endDate; Accessible.name: qsTrId("net.ui.end_date"); Layout.fillWidth: true; Layout.minimumWidth: 0 }
                 }
                 AppButton { Layout.fillWidth: true; Layout.minimumWidth: 0; text: qsTrId("net.ui.query"); onClicked: root.runQuery() }
             }
@@ -78,7 +80,7 @@ Item {
                 rowSpacing: 8
                 enabled: !root.net.working
                 Caption { text: qsTrId("net.output_directory") }
-                AppTextField { Layout.fillWidth: true; Layout.minimumWidth: 0; text: root.net.outputDirectory; Accessible.name: qsTrId("net.output_directory"); onEditingFinished: root.net.outputDirectory = text }
+                AppTextField { backgroundColor: Theme.colors.background.panel; outlined: true; Layout.fillWidth: true; Layout.minimumWidth: 0; text: root.net.outputDirectory; Accessible.name: qsTrId("net.output_directory"); onEditingFinished: root.net.outputDirectory = text }
                 AppButton { text: qsTrId("net.ui.browse"); onClicked: root.net.browseOutputDirectory() }
                 AppCheckBox { id: zip; Layout.minimumWidth: 0; text: qsTrId("net.ui.create_zip") }
             }
@@ -94,6 +96,8 @@ Item {
                     Caption { text: qsTrId("net.ui.sort") }
                     AppComboBox {
                         id: sorting
+                        backgroundColor: Theme.colors.background.panel
+                        outlined: true
                         Layout.fillWidth: true
                         Layout.minimumWidth: 0
                         Layout.preferredWidth: 220

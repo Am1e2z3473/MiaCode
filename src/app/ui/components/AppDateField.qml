@@ -6,23 +6,51 @@ import MiaCode.UI
 
 Item {
     id: root
-    property date selectedDate: new Date()
-    readonly property string text: Qt.formatDate(selectedDate, "yyyy-MM-dd")
+    property date selectedDate: new Date(NaN)
+    property color backgroundColor: Theme.colors.background.control
+    property bool outlined: false
+    readonly property bool hasDate: !isNaN(selectedDate.getTime())
+    readonly property string text: hasDate ? Qt.formatDate(selectedDate, "yyyy-MM-dd") : ""
+
+    function setDate(date) {
+        root.selectedDate = date;
+        dateInput.text = root.text;
+    }
+
+    function commitDate() {
+        const value = dateInput.text.trim();
+        if (value.length === 0) {
+            root.setDate(new Date(NaN));
+            return;
+        }
+        const parts = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(value);
+        if (parts) {
+            const year = Number(parts[1]);
+            const month = Number(parts[2]) - 1;
+            const day = Number(parts[3]);
+            const candidate = new Date(2000, 0, 1);
+            candidate.setFullYear(year, month, day);
+            if (year > 0 && candidate.getFullYear() === year
+                    && candidate.getMonth() === month && candidate.getDate() === day)
+                root.selectedDate = candidate;
+        }
+        dateInput.text = root.text;
+    }
+
+    onSelectedDateChanged: dateInput.text = root.text
+    Component.onCompleted: dateInput.text = root.text
     implicitWidth: 158
     implicitHeight: Theme.controlMinHeight
     AppTextField {
+        id: dateInput
+        backgroundColor: root.backgroundColor
+        outlined: root.outlined
         anchors.left: parent.left
         anchors.right: calendarButton.left
         anchors.verticalCenter: parent.verticalCenter
-        text: root.text
-        inputMask: "9999-99-99"
-        onEditingFinished: {
-            const parts = text.split("-");
-            const candidate = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
-            if (Qt.formatDate(candidate, "yyyy-MM-dd") === text)
-                root.selectedDate = candidate;
-            text = root.text;
-        }
+        placeholderText: "YYYY-MM-DD"
+        Accessible.name: root.Accessible.name
+        onEditingFinished: root.commitDate()
     }
     IconButton {
         id: calendarButton
@@ -37,7 +65,8 @@ Item {
             if (calendar.visible) {
                 calendar.close();
             } else {
-                calendar.monthDate = root.selectedDate;
+                root.commitDate();
+                calendar.monthDate = root.hasDate ? root.selectedDate : new Date();
                 calendar.open();
             }
         }
@@ -48,7 +77,7 @@ Item {
         popupType: Popup.Item
         margins: 12
         padding: 12
-        property date monthDate: root.selectedDate
+        property date monthDate: new Date()
         readonly property Item viewport: Overlay.overlay
         readonly property var calendarLocale: Qt.locale()
         readonly property real cellSize: {
@@ -196,7 +225,7 @@ Item {
                         }
                     }
                     onClicked: date => {
-                        root.selectedDate = date;
+                        root.setDate(date);
                         calendar.close();
                     }
                 }
