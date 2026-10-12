@@ -27,6 +27,7 @@ struct SimaiCompletionConfig {
 
 SimaiCompletionConfig defaultCompletionConfig();
 bool isValidCompletionValue(CompletionCandidateGroup group, const QString& value);
+QString sanitizeCompletionInput(const QString& value);
 QStringList normalizeCompletionValues(CompletionCandidateGroup group, const QStringList& values);
 QStringList squareDurationCandidates(const SimaiCompletionConfig& config);
 QStringList holdDurationCandidates(const SimaiCompletionConfig& config);

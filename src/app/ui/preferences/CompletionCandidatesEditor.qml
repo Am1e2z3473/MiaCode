@@ -8,24 +8,51 @@ Rectangle {
     id: root
     required property var preferencesModel
     property bool expanded: false
-    signal ensureVisibleRequested(Item item)
-    implicitHeight: heading.height + (contents.visible ? contents.height : 0)
+    required property Flickable scrollViewport
+    signal ensureVisibleRequested(Item item, string alignment)
+    signal scrollRequested(real distance)
+    implicitHeight: heading.height + (root.expanded ? contents.height : 0)
     radius: Theme.popupRadius
     color: Theme.surfaceColor(Theme.colors.background.surface)
     border.width: Theme.controlBorderWidth
     border.color: Theme.colors.border.normal
     clip: true
 
-    onExpandedChanged: if (!expanded) root.preferencesModel.finishCompletionEditing()
-    onVisibleChanged: if (!visible) root.expanded = false
+    onExpandedChanged: {
+        if (!expanded) {
+            root.releaseInputFocus()
+            root.preferencesModel.finishCompletionEditing()
+        }
+    }
+    onVisibleChanged: {
+        if (!visible) {
+            root.releaseInputFocus()
+            root.expanded = false
+        }
+    }
 
+    function ensureContentLayout() {
+        durations.ensureContentLayout()
+        divisions.ensureContentLayout()
+        groups.ensurePolished()
+    }
+    function releaseInputFocusOutside(origin, position) {
+        durations.releaseInputFocusOutside(origin, position)
+        divisions.releaseInputFocusOutside(origin, position)
+    }
+    function releaseInputFocus() {
+        durations.releaseInputFocus()
+        divisions.releaseInputFocus()
+    }
+    function requestAlignment(alignment) {
+        Qt.callLater(function() {
+            if (root.visible && root.expanded)
+                root.ensureVisibleRequested(root, alignment)
+        })
+    }
     function openGroup(group) {
         root.expanded = true
-        Qt.callLater(function() {
-            const list = group === "division" ? divisions : durations
-            root.ensureVisibleRequested(list)
-            list.focusFirst()
-        })
+        root.requestAlignment("top")
     }
 
     Item {
@@ -35,11 +62,11 @@ Rectangle {
         AbstractButton {
             id: toggle
             anchors.fill: parent
-            hoverEnabled: true
             Accessible.name: qsTrId("preferences.completion.customize")
-            Accessible.description: root.expanded ? qsTrId("preferences.completion.collapse")
-                                                  : qsTrId("preferences.completion.expand")
-            onClicked: root.expanded = !root.expanded
+            onClicked: {
+                root.expanded = !root.expanded
+                if (root.expanded) root.requestAlignment("bottom")
+            }
             contentItem: Item {
                 Row {
                     x: 12
@@ -67,10 +94,6 @@ Rectangle {
                 border.width: toggle.visualFocus ? Theme.controlBorderWidth : 0
                 border.color: Theme.colors.accent.focus
             }
-            Tooltip {
-                visible: toggle.hovered && !resetButton.hovered
-                text: toggle.Accessible.description
-            }
         }
         AppButton {
             id: resetButton
@@ -79,7 +102,27 @@ Rectangle {
             anchors.verticalCenter: parent.verticalCenter
             visible: root.expanded
             text: qsTrId("preferences.completion.reset")
+            Accessible.description: qsTrId("preferences.completion.reset_hint")
             onClicked: resetDialog.open()
+            Tooltip {
+                visible: resetButton.visible && resetButton.hovered
+                text: qsTrId("preferences.completion.reset_hint")
+            }
+            background: Rectangle {
+                color: "transparent"
+                radius: Theme.controlRadius
+                border.width: resetButton.visualFocus ? Theme.controlBorderWidth : 0
+                border.color: Theme.colors.accent.focus
+            }
+        }
+    }
+
+    TapHandler {
+        parent: root
+        acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
+        gesturePolicy: TapHandler.DragThreshold
+        onPressedChanged: {
+            if (pressed) root.releaseInputFocusOutside(root, point.position)
         }
     }
 
@@ -88,18 +131,8 @@ Rectangle {
         y: heading.height
         width: parent.width
         height: groups.implicitHeight + 24
-        opacity: 0
-        visible: root.expanded || opacity > 0
+        visible: root.expanded
         enabled: root.expanded
-        state: root.expanded ? "expanded" : "collapsed"
-        states: [
-            State { name: "expanded"; PropertyChanges { target: contents; opacity: 1 } },
-            State { name: "collapsed"; PropertyChanges { target: contents; opacity: 0 } }
-        ]
-        transitions: [
-            FadeTransition { from: "collapsed"; to: "expanded"; appearing: true },
-            FadeTransition { from: "expanded"; to: "collapsed"; appearing: false }
-        ]
         Rectangle {
             width: parent.width
             height: 1
@@ -120,7 +153,9 @@ Rectangle {
                 candidateModel: root.preferencesModel.completionDurations
                 title: qsTrId("preferences.completion.duration")
                 inputHint: qsTrId("preferences.completion.duration_hint")
-                onEnsureVisibleRequested: function(item) { root.ensureVisibleRequested(item) }
+                scrollViewport: root.scrollViewport
+                onEnsureVisibleRequested: function(item) { root.ensureVisibleRequested(item, "contain") }
+                onScrollRequested: function(distance) { root.scrollRequested(distance) }
             }
             CompletionCandidateList {
                 id: divisions
@@ -131,7 +166,9 @@ Rectangle {
                 candidateModel: root.preferencesModel.completionDivisions
                 title: qsTrId("preferences.completion.division")
                 inputHint: qsTrId("preferences.completion.division_hint")
-                onEnsureVisibleRequested: function(item) { root.ensureVisibleRequested(item) }
+                scrollViewport: root.scrollViewport
+                onEnsureVisibleRequested: function(item) { root.ensureVisibleRequested(item, "contain") }
+                onScrollRequested: function(distance) { root.scrollRequested(distance) }
             }
         }
     }

@@ -4627,6 +4627,10 @@ Error: %1</translation>
         <source>Restore defaults</source>
         <translation>Restore defaults</translation>
     </message>
+    <message id="preferences.completion.reset_hint">
+        <source>Restore default state</source>
+        <translation>Restore default state</translation>
+    </message>
     <message id="preferences.completion.reset_question">
         <source>Restore default candidates?</source>
         <translation>Restore default candidates?</translation>

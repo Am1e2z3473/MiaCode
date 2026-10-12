@@ -4627,6 +4627,10 @@ Error: %1</source>
         <source>Restore defaults</source>
         <translation>既定値に戻す</translation>
     </message>
+    <message id="preferences.completion.reset_hint">
+        <source>Restore default state</source>
+        <translation>既定の状態に戻す</translation>
+    </message>
     <message id="preferences.completion.reset_question">
         <source>Restore default candidates?</source>
         <translation>候補を既定値に戻しますか？</translation>

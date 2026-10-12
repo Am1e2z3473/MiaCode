@@ -31,17 +31,46 @@ AppDialog {
         root.returnToEditor = true
         root.open()
     }
-    function ensureCompletionItemVisible(item) {
+    function setEditorScrollPosition(position) {
         const flickable = editorViewport.contentItem
-        const position = item.mapToItem(editorSettingsColumn, 0, 0)
-        const visibleHeight = editorViewport.availableHeight
-        const itemHeight = Math.min(item.height, visibleHeight)
+        if (!flickable) return
+        const minimum = flickable.originY
+        const maximum = minimum + Math.max(0, flickable.contentHeight - flickable.height)
+        flickable.contentY = Math.max(minimum, Math.min(position, maximum))
+    }
+    function clampEditorScroll() {
+        const flickable = editorViewport.contentItem
+        if (flickable) root.setEditorScrollPosition(flickable.contentY)
+    }
+    function scrollCompletionBy(distance) {
+        root.setEditorScrollPosition(editorViewport.contentItem.contentY + distance)
+    }
+    function releaseCompletionInputFocus() {
+        completionCustomizer.releaseInputFocus()
+    }
+    function ensureCompletionItemVisible(item, alignment) {
+        if (alignment === "top" || alignment === "bottom") {
+            completionCustomizer.ensureContentLayout()
+            editorSettingsColumn.ensurePolished()
+            editorViewport.completionTopAligned = alignment === "top"
+            editorViewport.ensurePolished()
+            editorViewport.contentItem.ensurePolished()
+        }
+        const flickable = editorViewport.contentItem
+        const position = item.mapToItem(flickable.contentItem, 0, 0)
+        const visibleHeight = flickable.height
         let target = flickable.contentY
-        if (position.y < target) target = position.y
-        else if (position.y + itemHeight > target + visibleHeight)
-            target = position.y + itemHeight - visibleHeight
-        flickable.contentY = Math.max(0, Math.min(target,
-            Math.max(0, editorSettingsColumn.implicitHeight - visibleHeight)))
+        if (alignment === "top") {
+            target = position.y
+        } else if (alignment === "bottom") {
+            target = position.y + item.height - visibleHeight
+        } else {
+            const itemHeight = Math.min(item.height, visibleHeight)
+            if (position.y < target) target = position.y
+            else if (position.y + itemHeight > target + visibleHeight)
+                target = position.y + itemHeight - visibleHeight
+        }
+        root.setEditorScrollPosition(target)
     }
     onOpened: {
         if (root.requestedCompletionGroup.length > 0) {
@@ -49,7 +78,10 @@ AppDialog {
             completionCustomizer.openGroup(root.requestedCompletionGroup)
         }
     }
-    onAboutToHide: root.preferencesModel.finishCompletionEditing()
+    onAboutToHide: {
+        root.releaseCompletionInputFocus()
+        root.preferencesModel.finishCompletionEditing()
+    }
     onClosed: {
         root.requestedCompletionGroup = ""
         if (root.returnToEditor) {
@@ -269,13 +301,26 @@ AppDialog {
     }
 
     body: ColumnLayout {
+        id: preferencesBody
         spacing: Theme.settingsRowSpacing
+
+        TapHandler {
+            parent: preferencesBody
+            enabled: root.visible
+            acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
+            gesturePolicy: TapHandler.DragThreshold
+            onPressedChanged: {
+                if (pressed)
+                    completionCustomizer.releaseInputFocusOutside(preferencesBody, point.position)
+            }
+        }
 
         AppTabBar {
             id: preferencesTabs
             Layout.fillWidth: true
             onCurrentIndexChanged: {
                 root.capturingId = ""
+                root.releaseCompletionInputFocus()
                 if (currentIndex !== 2) completionCustomizer.expanded = false
             }
             tabs: [qsTrId("qml.interface"), qsTrId("dialog.preferences.background_group"), qsTrId("dialog.preferences.editor_group"), qsTrId("dialog.preferences.performance_group"), qsTrId("dialog.preferences.shortcuts_group"), qsTrId("dialog.preferences.updates_group")]
@@ -486,14 +531,48 @@ AppDialog {
             // ---- 编辑器 ----
             ScrollView {
                 id: editorViewport
+                property bool completionTopAligned: false
+                readonly property real scrollContentSpacing: 4
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 implicitHeight: 0
                 clip: true
+                rightPadding: editorScrollBar.width + scrollContentSpacing
                 contentWidth: availableWidth
-                contentHeight: editorSettingsColumn.implicitHeight
+                onAvailableHeightChanged: Qt.callLater(root.clampEditorScroll)
+                // 齿轮入口的滚动范围覆盖容器顶部之后的一个视口。
+                contentHeight: Math.max(editorSettingsColumn.implicitHeight,
+                    completionTopAligned ? completionCustomizer.y + availableHeight : 0)
+                onContentHeightChanged: Qt.callLater(root.clampEditorScroll)
                 ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
-                ScrollBar.vertical: AppScrollBar {}
+                ScrollBar.vertical: AppScrollBar {
+                    id: editorScrollBar
+                    parent: editorViewport
+                    orientation: Qt.Vertical
+                    x: editorViewport.width - width
+                    y: editorViewport.topPadding
+                    height: editorViewport.availableHeight
+                    policy: ScrollBar.AsNeeded
+                    onPressedChanged: if (pressed) root.releaseCompletionInputFocus()
+                }
+
+                TapHandler {
+                    parent: editorViewport
+                    enabled: root.visible
+                    acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
+                    gesturePolicy: TapHandler.DragThreshold
+                    onPressedChanged: {
+                        if (pressed)
+                            completionCustomizer.releaseInputFocusOutside(editorViewport, point.position)
+                    }
+                }
+
+                Connections {
+                    target: editorViewport.contentItem
+                    function onMovingChanged() {
+                        if (editorViewport.contentItem.moving) root.releaseCompletionInputFocus()
+                    }
+                }
 
                 ColumnLayout {
                     id: editorSettingsColumn
@@ -544,7 +623,15 @@ AppDialog {
                         Layout.fillWidth: true
                         visible: root.preferencesModel.editorAutoCompletion
                         preferencesModel: root.preferencesModel
-                        onEnsureVisibleRequested: function(item) { root.ensureCompletionItemVisible(item) }
+                        scrollViewport: editorViewport.contentItem
+                        onExpandedChanged: {
+                            if (!completionCustomizer.expanded)
+                                editorViewport.completionTopAligned = false
+                        }
+                        onEnsureVisibleRequested: function(item, alignment) {
+                            root.ensureCompletionItemVisible(item, alignment)
+                        }
+                        onScrollRequested: function(distance) { root.scrollCompletionBy(distance) }
                     }
                     AppSwitch {
                         objectName: "preferencesScrollPastEndSwitch"

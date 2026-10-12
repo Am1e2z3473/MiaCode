@@ -29,6 +29,8 @@ PreferencesModel::PreferencesModel(miacode::PreferencesStore*& storeSlot,
     , storeSlot_(&storeSlot)
     , settings_(&settings)
 {
+    completionDurations_.setHalfWidthInputEnabled(editorHalfWidthInput());
+    completionDivisions_.setHalfWidthInputEnabled(editorHalfWidthInput());
     reloadCompletionCandidates();
     connect(&settings, &WorkbenchSettings::editorSettingsChanged,
             this, &PreferencesModel::reloadCompletionCandidates);
@@ -224,6 +226,9 @@ void PreferencesModel::setEditorLineSpacing(double factor)
 
 void PreferencesModel::reloadCompletionCandidates()
 {
+    const bool halfWidthInputEnabled = editorHalfWidthInput();
+    completionDurations_.setHalfWidthInputEnabled(halfWidthInputEnabled);
+    completionDivisions_.setHalfWidthInputEnabled(halfWidthInputEnabled);
     const auto& config = settings_->editorCompletionConfig();
     completionDurations_.replaceValues(config.durations);
     completionDivisions_.replaceValues(config.divisions);
@@ -286,6 +291,8 @@ void PreferencesModel::setEditorInputHandlingMode(int mode)
     }
     store()->applyEditorHalfWidthInputEnabled(correctFullWidth, false);
     store()->applyEditorImeInputDisabled(blockInputMethods, true);
+    completionDurations_.setHalfWidthInputEnabled(correctFullWidth);
+    completionDivisions_.setHalfWidthInputEnabled(correctFullWidth);
     emit editorChanged();
 }
 
@@ -300,6 +307,8 @@ void PreferencesModel::setEditorHalfWidthInput(bool enabled)
         return;
     }
     store()->applyEditorHalfWidthInputEnabled(enabled, true);
+    completionDurations_.setHalfWidthInputEnabled(enabled);
+    completionDivisions_.setHalfWidthInputEnabled(enabled);
     emit editorChanged();
 }
 

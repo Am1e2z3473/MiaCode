@@ -7,6 +7,17 @@
 
 namespace miacode::editor {
 
+namespace {
+
+bool isForbiddenCompletionCharacter(QChar ch)
+{
+    return ch.isSpace() || ch.category() == QChar::Other_Control
+        || ch == QLatin1Char('[') || ch == QLatin1Char(']')
+        || ch == QLatin1Char('{') || ch == QLatin1Char('}');
+}
+
+}  // namespace
+
 bool isBracketOpening(QChar ch)
 {
     return ch == QLatin1Char('(') || ch == QLatin1Char('[') || ch == QLatin1Char('{');
@@ -37,13 +48,25 @@ SimaiCompletionConfig defaultCompletionConfig()
 
 bool isValidCompletionValue(CompletionCandidateGroup group, const QString& value)
 {
-    static const QRegularExpression forbidden(QStringLiteral("[\\[\\]{}\\r\\n]"));
-    if (value.isEmpty() || value.contains(forbidden)) return false;
+    if (value.isEmpty()) return false;
+    for (const QChar ch : value) {
+        if (isForbiddenCompletionCharacter(ch)) return false;
+    }
     if (group == CompletionCandidateGroup::Duration)
         return SimaiParser::isValidHoldDurationSignature(value);
     bool ok = false;
     const int division = value.toInt(&ok);
     return ok && division > 0;
+}
+
+QString sanitizeCompletionInput(const QString& value)
+{
+    QString sanitized;
+    sanitized.reserve(value.size());
+    for (const QChar ch : value) {
+        if (!isForbiddenCompletionCharacter(ch)) sanitized.append(ch);
+    }
+    return sanitized;
 }
 
 QStringList normalizeCompletionValues(CompletionCandidateGroup group, const QStringList& values)
