@@ -119,15 +119,6 @@ ManifestParseResult parseManifest(const QByteArray& payload,
                        QStringLiteral("manifest version is unparseable: '%1'").arg(versionText));
     }
 
-    const QString releasePageUrl = root.value(QStringLiteral("releasePageUrl")).toString();
-    const QUrl parsedUrl(releasePageUrl);
-    if (releasePageUrl.isEmpty() || !parsedUrl.isValid()
-        || parsedUrl.scheme() != QLatin1String("https")) {
-        // 这个 URL 会被交给系统浏览器打开，所以 scheme 必须是 https。
-        return failure(ManifestStatus::Invalid,
-                       QStringLiteral("release page url is not https: '%1'").arg(releasePageUrl));
-    }
-
     const QJsonValue platformsValue = root.value(QStringLiteral("platforms"));
     if (!platformsValue.isObject()) {
         return failure(ManifestStatus::Invalid, QStringLiteral("manifest has no platforms object"));
@@ -155,15 +146,19 @@ ManifestParseResult parseManifest(const QByteArray& payload,
                        QStringLiteral("no package for platform '%1': the entry has no file or url")
                            .arg(platformKey));
     }
+    const QUrl packageUrl(package.url);
+    if (!packageUrl.isValid() || packageUrl.scheme() != QLatin1String("https")) {
+        // 下载按钮把这个 URL 交给系统浏览器打开，所以 scheme 必须是 https。
+        return failure(ManifestStatus::Invalid,
+                       QStringLiteral("package url is not https: '%1'").arg(package.url));
+    }
 
     ManifestParseResult result;
     result.status = ManifestStatus::Ok;
-    result.manifest.channel = root.value(QStringLiteral("channel")).toString();
     result.manifest.major = *major;
     result.manifest.versionText = versionText;
     result.manifest.version = *version;
     result.manifest.releasedAt = root.value(QStringLiteral("releasedAt")).toString();
-    result.manifest.releasePageUrl = releasePageUrl;
     result.manifest.mandatory = root.value(QStringLiteral("mandatory")).toBool(false);
     result.manifest.notesByLanguage = root.value(QStringLiteral("notes")).toObject();
     result.manifest.notes = result.manifest.localizedNotes(languageToken);

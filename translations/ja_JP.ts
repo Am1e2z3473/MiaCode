@@ -1243,18 +1243,6 @@ Failed: %2</source>
         <source>Check for updates at startup</source>
         <translation>起動時にアップデートを確認</translation>
     </message>
-    <message id="dialog.preferences.update.channel">
-        <source>Update channel</source>
-        <translation>アップデートチャンネル</translation>
-    </message>
-    <message id="dialog.preferences.update.channel.beta">
-        <source>Beta</source>
-        <translation>ベータ版</translation>
-    </message>
-    <message id="dialog.preferences.update.channel.stable">
-        <source>Stable</source>
-        <translation>安定版</translation>
-    </message>
     <message id="dialog.preferences.update.check_now">
         <source>Check now</source>
         <translation>今すぐ確認</translation>

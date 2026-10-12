@@ -18,7 +18,7 @@ enum class ManifestStatus {
     // 这份 manifest 不适用于你：schema 不识别、major 不匹配、没有本平台的包。
     // 这不是错误，调用方按「无可用更新」处理。
     NotApplicable,
-    // 结构坏了：JSON 非法、必需字段缺失、版本或 URL 不可用。
+    // 结构坏了：JSON 非法、必需字段缺失、版本不可用、本平台包的 URL 不是 https。
     Invalid,
 };
 
@@ -32,12 +32,10 @@ struct PlatformPackage {
 
 // 已经按平台和语言挑选完毕的一份 manifest —— 调用方不需要再做任何挑选。
 struct UpdateManifest {
-    QString channel;
     int major = 0;
     QString versionText;
     SemanticVersion version;
     QString releasedAt;
-    QString releasePageUrl;
     bool mandatory = false;
     QString notes;
     QJsonObject notesByLanguage;

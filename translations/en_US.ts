@@ -1243,18 +1243,6 @@ Failed: %2</translation>
         <source>Check for updates at startup</source>
         <translation>Check for updates at startup</translation>
     </message>
-    <message id="dialog.preferences.update.channel">
-        <source>Update channel</source>
-        <translation>Update channel</translation>
-    </message>
-    <message id="dialog.preferences.update.channel.beta">
-        <source>Beta</source>
-        <translation>Beta</translation>
-    </message>
-    <message id="dialog.preferences.update.channel.stable">
-        <source>Stable</source>
-        <translation>Stable</translation>
-    </message>
     <message id="dialog.preferences.update.check_now">
         <source>Check now</source>
         <translation>Check now</translation>

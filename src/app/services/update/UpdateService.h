@@ -26,7 +26,6 @@ class UpdateService final : public QObject
     Q_OBJECT
 
     Q_PROPERTY(bool checkEnabled READ checkEnabled WRITE setCheckEnabled NOTIFY settingsChanged)
-    Q_PROPERTY(QString channelToken READ channelToken WRITE setChannelToken NOTIFY settingsChanged)
     Q_PROPERTY(QString lastCheckText READ lastCheckText NOTIFY settingsChanged)
     Q_PROPERTY(bool checkInFlight READ checkInFlight NOTIFY findingChanged)
     Q_PROPERTY(bool updateAvailable READ updateAvailable NOTIFY findingChanged)
@@ -42,19 +41,12 @@ public:
 
     bool checkEnabled() const;
     void setCheckEnabled(bool enabled);
-    QString channelToken() const;
-    void setChannelToken(const QString& token);
     QString lastCheckText() const;
     bool checkInFlight() const { return inFlight_; }
     bool updateAvailable() const { return updateAvailable_; }
     QString availableVersion() const { return availableVersion_; }
     void setLanguageToken(const QString& token);
     QString currentVersion() const { return environment_.versionText; }
-
-    // 有效通道：用户显式选择优先，否则按本构建是否为 prerelease 决定。
-    // QML 的偏好设置页直接调用它，所以必须是 Q_INVOKABLE —— 普通公有方法
-    // QML 看不见。
-    Q_INVOKABLE QString effectiveChannel() const;
 
     // manual=true 绕过节流、绕过「已跳过版本」，且无论结果都发
     // manualCheckFinished。manual=false 是启动后的自动检查。
@@ -63,14 +55,14 @@ public:
     // 启动后延迟一段时间做一次自动检查。延迟是为了避开启动期的 I/O 高峰。
     Q_INVOKABLE void scheduleStartupCheck();
 
-    // 把用户送到 Release 页面。没有可用更新时什么都不做。
+    // 用浏览器下载本平台的包。没有可用更新时什么都不做。
     Q_INVOKABLE void openDownloadPage();
 
     // 记下当前可用版本为「已跳过」，并清掉指示标记。
     Q_INVOKABLE void skipAvailableVersion();
 
     // 提示要显示的全部字段：version / releasedAt / notes / sizeText /
-    // releasePageUrl / mandatory。
+    // downloadUrl / mandatory。
     Q_INVOKABLE QVariantMap availableDetail() const;
 
 signals:

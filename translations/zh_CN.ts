@@ -1243,18 +1243,6 @@ Failed: %2</source>
         <source>Check for updates at startup</source>
         <translation>启动时检查更新</translation>
     </message>
-    <message id="dialog.preferences.update.channel">
-        <source>Update channel</source>
-        <translation>更新通道</translation>
-    </message>
-    <message id="dialog.preferences.update.channel.beta">
-        <source>Beta</source>
-        <translation>预发布版</translation>
-    </message>
-    <message id="dialog.preferences.update.channel.stable">
-        <source>Stable</source>
-        <translation>正式版</translation>
-    </message>
     <message id="dialog.preferences.update.check_now">
         <source>Check now</source>
         <translation>立即检查</translation>

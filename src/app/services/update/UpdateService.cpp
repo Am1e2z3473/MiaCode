@@ -15,15 +15,13 @@ constexpr int kSuccessThrottleHours = 24;
 constexpr int kFailureThrottleHours = 4;
 constexpr int kStartupDelayMs = 8000;
 
-QUrl manifestUrl(int major, const QString& channel)
+QUrl manifestUrl(int major)
 {
-    // 固定 URL 的 asset，挂在永不变的 channel-manifest tag 上。
-    // 不走 GitHub REST API，所以没有匿名限流。
+    // 每个 major 一份手动发布到 OSS 的 manifest，不分通道：发布什么版本由
+    // 发布者决定，客户端只在它比自己新时提示。
     return QUrl(QStringLiteral(
-                    "https://github.com/fanfaredash/MiaCode/releases/download/"
-                    "channel-manifest/%1-%2.json")
-                    .arg(major)
-                    .arg(channel));
+                    "https://miacode.oss-cn-beijing.aliyuncs.com/update/%1/latest.json")
+                    .arg(major));
 }
 
 QString formatSize(qint64 bytes)
@@ -67,23 +65,6 @@ void UpdateService::setCheckEnabled(bool enabled)
     emit settingsChanged();
 }
 
-QString UpdateService::channelToken() const
-{
-    return store_.channelToken();
-}
-
-void UpdateService::setChannelToken(const QString& token)
-{
-    if (token != QLatin1String("stable") && token != QLatin1String("beta")) {
-        return;
-    }
-    if (token == store_.channelToken()) {
-        return;
-    }
-    store_.setChannelToken(token);
-    emit settingsChanged();
-}
-
 QString UpdateService::lastCheckText() const
 {
     const QDateTime at = store_.lastCheckAt();
@@ -91,20 +72,6 @@ QString UpdateService::lastCheckText() const
         return QString();
     }
     return QLocale::system().toString(at.toLocalTime(), QLocale::ShortFormat);
-}
-
-QString UpdateService::effectiveChannel() const
-{
-    const QString stored = store_.channelToken();
-    if (stored == QLatin1String("stable") || stored == QLatin1String("beta")) {
-        return stored;
-    }
-    // 用户没选过：本构建自己是预发布版就默认 beta，正式版默认 stable。
-    // 装 alpha 的人本来就是愿意吃预发布版的人，不该被降级到只看 stable。
-    if (currentVersionParsed_ && !currentVersion_.prerelease.isEmpty()) {
-        return QStringLiteral("beta");
-    }
-    return QStringLiteral("stable");
 }
 
 void UpdateService::restoreKnownFinding()
@@ -174,7 +141,7 @@ void UpdateService::checkNow(bool manual)
         // restoreKnownFinding() 只恢复得出版本号，详情要靠一次检查补上。节流
         // 是为了不反复打扰服务器，不是为了让一个已经亮起的标记一整天点不开 ——
         // 那比不提示更糟：用户点开对话框，只看到一个禁用的下载按钮。
-        const bool needsDetail = updateAvailable_ && finding_.releasePageUrl.isEmpty();
+        const bool needsDetail = updateAvailable_ && finding_.package.url.isEmpty();
         if (!store_.checkEnabled() || (!needsDetail && !throttleAllows())) {
             return;
         }
@@ -184,7 +151,7 @@ void UpdateService::checkNow(bool manual)
     // 回调可能在真实 fetcher 那边异步很久之后才回来，而这中间用户完全可能
     // 已经退出。QPointer 在对象析构后自动置空，照 AnalysisService 的既有写法。
     QPointer<UpdateService> guard(this);
-    fetcher_.fetch(manifestUrl(environment_.major, effectiveChannel()),
+    fetcher_.fetch(manifestUrl(environment_.major),
                    [guard, manual](bool fetchOk, QByteArray payload, QString reason) {
                        if (guard.isNull()) {
                            return;
@@ -302,19 +269,19 @@ QVariantMap UpdateService::availableDetail() const
         {QStringLiteral("releasedAt"), finding_.releasedAt},
         {QStringLiteral("notes"), finding_.localizedNotes(environment_.languageToken)},
         {QStringLiteral("sizeText"), formatSize(finding_.package.bytes)},
-        {QStringLiteral("releasePageUrl"), finding_.releasePageUrl},
+        {QStringLiteral("downloadUrl"), finding_.package.url},
         {QStringLiteral("mandatory"), finding_.mandatory},
     };
 }
 
 void UpdateService::openDownloadPage()
 {
-    if (!updateAvailable_ || finding_.releasePageUrl.isEmpty()) {
+    if (!updateAvailable_ || finding_.package.url.isEmpty()) {
         return;
     }
-    // 跳 Release 页面而不是包直链：页面上有完整更新说明和全部平台的包，
-    // 用户能自己核对架构（Windows x64 / ARM64 极易选错）。
-    QDesktopServices::openUrl(QUrl(finding_.releasePageUrl));
+    // OSS 上没有发布页面：直接下载 manifest 按本机平台挑好的包，更新说明
+    // 已经在提示对话框里展示过。
+    QDesktopServices::openUrl(QUrl(finding_.package.url));
 }
 
 void UpdateService::skipAvailableVersion()

@@ -682,17 +682,6 @@ AppDialog {
                     onToggled: if (root.updateService) root.updateService.checkEnabled = checked
                 }
 
-                LabeledCombo {
-                    objectName: "preferencesUpdateChannelCombo"
-                    label: qsTrId("dialog.preferences.update.channel")
-                    options: [
-                        { value: "stable", label: qsTrId("dialog.preferences.update.channel.stable") },
-                        { value: "beta", label: qsTrId("dialog.preferences.update.channel.beta") }
-                    ]
-                    currentValue: root.updateService ? root.updateService.effectiveChannel() : "stable"
-                    onPicked: function(value) { if (root.updateService) root.updateService.channelToken = value }
-                }
-
                 Text {
                     Layout.fillWidth: true
                     visible: root.updateService && root.updateService.lastCheckText.length > 0
