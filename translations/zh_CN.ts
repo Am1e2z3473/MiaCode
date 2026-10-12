@@ -3,6 +3,58 @@
 <TS version="2.1" language="zh_CN">
 <context>
     <name></name>
+    <message id="about.version">
+        <source>Version: %1</source>
+        <translation>版本号：%1</translation>
+    </message>
+    <message id="dialog.preferences.group.appearance">
+        <source>Appearance</source>
+        <translation>外观</translation>
+    </message>
+    <message id="dialog.preferences.group.workspace">
+        <source>Workspace</source>
+        <translation>工作区</translation>
+    </message>
+    <message id="dialog.preferences.group.background_image">
+        <source>Background image</source>
+        <translation>背景图片</translation>
+    </message>
+    <message id="dialog.preferences.group.presentation">
+        <source>Presentation</source>
+        <translation>显示效果</translation>
+    </message>
+    <message id="dialog.preferences.group.typography">
+        <source>Typography</source>
+        <translation>文字排版</translation>
+    </message>
+    <message id="dialog.preferences.group.input">
+        <source>Input</source>
+        <translation>输入</translation>
+    </message>
+    <message id="dialog.preferences.group.editing_aids">
+        <source>Editing aids</source>
+        <translation>编辑辅助</translation>
+    </message>
+    <message id="dialog.preferences.group.video">
+        <source>Video</source>
+        <translation>视频</translation>
+    </message>
+    <message id="dialog.preferences.group.rendering">
+        <source>Rendering</source>
+        <translation>渲染</translation>
+    </message>
+    <message id="dialog.preferences.group.chart_transforms">
+        <source>Chart transforms</source>
+        <translation>谱面变换</translation>
+    </message>
+    <message id="dialog.preferences.group.playback">
+        <source>Playback</source>
+        <translation>播放</translation>
+    </message>
+    <message id="dialog.preferences.group.timeline">
+        <source>Timeline</source>
+        <translation>时间轴</translation>
+    </message>
     <message id="sidebar.menu">
         <source>Menu</source>
         <translation>菜单</translation>

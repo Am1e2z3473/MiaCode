@@ -4,14 +4,6 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import MiaCode.UI
 
-// 偏好设置. Every control writes straight through to the model, which persists
-// on each change — there is no OK/Apply, matching the Widgets dialog it
-// replaces. Language and theme changes update their presentation through the
-// corresponding model notifications.
-//
-// 快捷键 is a page here, not a dialog of its own: a modal opened from a modal
-// stacked two scrims over the same settings and put the key capture behind an
-// extra Escape.
 AppDialog {
     id: root
 
@@ -32,38 +24,39 @@ AppDialog {
         root.open()
     }
     function setEditorScrollPosition(position) {
-        const flickable = editorViewport.contentItem
+        const flickable = editorViewport.scrollViewport
         if (!flickable) return
         const minimum = flickable.originY
         const maximum = minimum + Math.max(0, flickable.contentHeight - flickable.height)
         flickable.contentY = Math.max(minimum, Math.min(position, maximum))
     }
     function clampEditorScroll() {
-        const flickable = editorViewport.contentItem
+        const flickable = editorViewport.scrollViewport
         if (flickable) root.setEditorScrollPosition(flickable.contentY)
     }
     function scrollCompletionBy(distance) {
-        root.setEditorScrollPosition(editorViewport.contentItem.contentY + distance)
+        root.setEditorScrollPosition(editorViewport.scrollViewport.contentY + distance)
     }
     function releaseCompletionInputFocus() {
         completionCustomizer.releaseInputFocus()
     }
     function ensureCompletionItemVisible(item, alignment) {
-        if (alignment === "top" || alignment === "bottom") {
+        if (alignment === "top") {
             completionCustomizer.ensureContentLayout()
             editorSettingsColumn.ensurePolished()
-            editorViewport.completionTopAligned = alignment === "top"
             editorViewport.ensurePolished()
-            editorViewport.contentItem.ensurePolished()
+            editorViewport.scrollViewport.ensurePolished()
         }
-        const flickable = editorViewport.contentItem
+        const flickable = editorViewport.scrollViewport
         const position = item.mapToItem(flickable.contentItem, 0, 0)
         const visibleHeight = flickable.height
         let target = flickable.contentY
         if (alignment === "top") {
+            editorViewport.completionAlignmentY = position.y
+            editorViewport.completionTopAligned = true
+            editorViewport.ensurePolished()
+            flickable.ensurePolished()
             target = position.y
-        } else if (alignment === "bottom") {
-            target = position.y + item.height - visibleHeight
         } else {
             const itemHeight = Math.min(item.height, visibleHeight)
             if (position.y < target) target = position.y
@@ -74,7 +67,7 @@ AppDialog {
     }
     onOpened: {
         if (root.requestedCompletionGroup.length > 0) {
-            preferencesTabs.currentIndex = 2
+            root.currentPageIndex = root.pageIds.indexOf("editor")
             completionCustomizer.openGroup(root.requestedCompletionGroup)
         }
     }
@@ -91,32 +84,165 @@ AppDialog {
     }
 
     title: qsTrId("dialog.preferences.title")
-    preferredWidth: 700
-    preferredHeight: Theme.dialogHeight
-    fillBody: true
-    footer: DialogFooter {
-        cancelText: qsTrId("action.close")
-        onRejected: root.reject()
-    }
+    preferredWidth: 960
+    preferredHeight: Theme.dialogHeight + 140
+    leftPadding: 0
+    rightPadding: 0
+    topPadding: 0
+    bottomPadding: 0
+    header: null
+    footer: null
 
-    // Id of the command whose binding is being recorded; "" when idle.
+    property int currentPageIndex: 0
     property string capturingId: ""
     property var shortcutRows: []
+    readonly property var aboutInfo: root.preferences.aboutInfo()
+    readonly property real sidebarWidth: root.width < 650 ? 140 : 180
+    readonly property int settingsRowHeight: Theme.controlMinHeight + 10
+    readonly property int settingsLabelWidth: root.width < 650 ? 120 : 140
+    readonly property int sectionSpacing: 2 * Theme.settingsRowSpacing
+    readonly property var pageIds: ["interface", "background", "editor", "performance", "shortcuts", "about"]
+    readonly property var pageTitles: [
+        qsTrId("qml.interface"), qsTrId("dialog.preferences.background_group"),
+        qsTrId("dialog.preferences.editor_group"), qsTrId("dialog.preferences.performance_group"),
+        qsTrId("dialog.preferences.shortcuts_group"),
+        qsTrId("action.about")
+    ]
 
+    onCurrentPageIndexChanged: {
+        root.capturingId = ""
+        root.releaseCompletionInputFocus()
+        if (root.currentPageIndex !== root.pageIds.indexOf("editor"))
+            completionCustomizer.expanded = false
+    }
     onAboutToShow: {
         root.capturingId = ""
         completionCustomizer.expanded = false
         root.refreshShortcuts()
     }
 
-    // Reassigning the model resets ListView.contentY, which threw the reader
-    // back to the top of the list after every recorded binding. Restore the
-    // scroll position around the rebuild.
+    function openPage(pageId) {
+        root.currentPageIndex = root.pageIds.indexOf(pageId)
+        root.open()
+    }
+
+    function focusPage(index) {
+        root.currentPageIndex = (index + root.pageIds.length) % root.pageIds.length
+        const button = root.currentPageIndex === root.pageIds.length - 1
+            ? aboutButton : navigation.itemAt(root.currentPageIndex)
+        button.forceActiveFocus(Qt.TabFocusReason)
+    }
+
+    function shortcutGroup(id) {
+        switch (id.split(".")[0]) {
+        case "transform": return qsTrId("dialog.preferences.group.chart_transforms")
+        case "preview": return qsTrId("dialog.preferences.group.playback")
+        case "timeline": return qsTrId("dialog.preferences.group.timeline")
+        case "editor": return qsTrId("dialog.preferences.editor_group")
+        default: return qsTrId("dialog.preferences.shortcuts_group")
+        }
+    }
+
     function refreshShortcuts() {
         const keepY = shortcutList.contentY
-        root.shortcutRows = root.shortcuts.editableShortcuts()
+        root.shortcutRows = root.shortcuts.editableShortcuts().map(row =>
+            Object.assign({group: root.shortcutGroup(row.id)}, row))
         shortcutList.contentY = Math.max(
             0, Math.min(keepY, Math.max(0, shortcutList.contentHeight - shortcutList.height)))
+    }
+
+    component PreferenceGroup: SettingsSection {
+        Layout.fillWidth: true
+        showDivider: false
+        titleFontSize: Theme.uiFontSize + 1
+        spacing: 12
+        rowSpacing: 6
+    }
+
+    component PreferencePage: ScrollView {
+        id: page
+        default property alias fields: fieldColumn.data
+        contentWidth: availableWidth
+        rightPadding: pageScrollBar.width + 4
+        clip: true
+        ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
+        ScrollBar.vertical: AppScrollBar {
+            id: pageScrollBar
+            parent: page
+            x: page.width - width
+            y: page.topPadding
+            height: page.availableHeight
+        }
+
+        ColumnLayout {
+            id: fieldColumn
+            width: page.availableWidth
+            spacing: root.sectionSpacing
+        }
+    }
+
+    component PreferenceCombo: LabeledCombo {
+        Layout.minimumHeight: root.settingsRowHeight
+        labelWidth: root.settingsLabelWidth
+    }
+
+    component PreferenceSlider: LabeledSlider {
+        Layout.minimumHeight: root.settingsRowHeight
+        labelWidth: root.settingsLabelWidth
+    }
+
+    component PreferenceSwitch: AppSwitch {
+        Layout.fillWidth: true
+        Layout.minimumHeight: root.settingsRowHeight
+        indicatorOnRight: true
+    }
+
+    component NavigationButton: ChromeRow {
+        id: navigationButton
+        required property int pageIndex
+        Layout.fillWidth: true
+        implicitHeight: root.settingsRowHeight
+        selected: root.currentPageIndex === navigationButton.pageIndex
+        text: root.pageTitles[navigationButton.pageIndex]
+        labelFont: Qt.font({
+            family: Theme.uiFont,
+            pixelSize: Theme.uiFontSize,
+            weight: navigationButton.selected ? Font.DemiBold : Font.Normal
+        })
+        Accessible.role: Accessible.PageTab
+        Accessible.name: navigationButton.text
+        Accessible.selected: navigationButton.selected
+        onClicked: root.currentPageIndex = navigationButton.pageIndex
+        Keys.onUpPressed: root.focusPage(navigationButton.pageIndex - 1)
+        Keys.onDownPressed: root.focusPage(navigationButton.pageIndex + 1)
+        Keys.onPressed: event => {
+            if (event.key === Qt.Key_Home) {
+                root.focusPage(0)
+                event.accepted = true
+            } else if (event.key === Qt.Key_End) {
+                root.focusPage(root.pageIds.length - 1)
+                event.accepted = true
+            }
+        }
+    }
+
+    component AboutInfoLabel: Text {
+        Layout.preferredWidth: root.settingsLabelWidth
+        color: Theme.colors.text.secondary
+        font.family: Theme.uiFont
+        font.pixelSize: Theme.uiFontSize
+    }
+
+    component AboutInfoValue: TextEdit {
+        Layout.fillWidth: true
+        readOnly: true
+        selectByMouse: true
+        color: Theme.colors.text.primary
+        selectionColor: Theme.colors.state.textSelection
+        selectedTextColor: Theme.colors.text.active
+        font.family: Theme.uiFont
+        font.pixelSize: Theme.uiFontSize
+        wrapMode: TextEdit.Wrap
     }
 
     component PreviewPositionCard: AbstractButton {
@@ -300,9 +426,42 @@ AppDialog {
         }
     }
 
-    body: ColumnLayout {
+    background: FloatingCard {
+        id: dialogSurface
+        popup: root
+        tintColor: Theme.dialogTintColor
+        blurRadius: Theme.dialogBlurRadius
+        shadowBlur: 0.68
+        shadowOpacity: Theme.dialogShadowOpacity
+        shadowVerticalOffset: 3
+        tintDelegate: Item {
+            readonly property real tintOpacity: dialogSurface.materialActive ? Theme.dialogTintOpacity : 1
+            readonly property color sidebarTint: Theme.colors.background.surface
+            readonly property color panelTint: Theme.colors.background.panel
+
+            Rectangle {
+                width: root.sidebarWidth
+                height: parent.height
+                topLeftRadius: Theme.popupRadius
+                bottomLeftRadius: Theme.popupRadius
+                color: Qt.rgba(parent.sidebarTint.r, parent.sidebarTint.g,
+                               parent.sidebarTint.b, parent.tintOpacity)
+            }
+            Rectangle {
+                x: root.sidebarWidth
+                width: parent.width - x
+                height: parent.height
+                topRightRadius: Theme.popupRadius
+                bottomRightRadius: Theme.popupRadius
+                color: Qt.rgba(parent.panelTint.r, parent.panelTint.g,
+                               parent.panelTint.b, parent.tintOpacity)
+            }
+        }
+    }
+
+    contentItem: RowLayout {
         id: preferencesBody
-        spacing: Theme.settingsRowSpacing
+        spacing: 0
 
         TapHandler {
             parent: preferencesBody
@@ -315,568 +474,737 @@ AppDialog {
             }
         }
 
-        AppTabBar {
-            id: preferencesTabs
-            Layout.fillWidth: true
-            onCurrentIndexChanged: {
-                root.capturingId = ""
-                root.releaseCompletionInputFocus()
-                if (currentIndex !== 2) completionCustomizer.expanded = false
-            }
-            tabs: [qsTrId("qml.interface"), qsTrId("dialog.preferences.background_group"), qsTrId("dialog.preferences.editor_group"), qsTrId("dialog.preferences.performance_group"), qsTrId("dialog.preferences.shortcuts_group"), qsTrId("dialog.preferences.updates_group")]
-        }
-
-        Rectangle {
-            Layout.fillWidth: true
-            Layout.preferredHeight: 1 / Screen.devicePixelRatio
-            color: Theme.separatorColor
-        }
-
-        AppTabPages {
-            Layout.fillWidth: true
+        Item {
+            Layout.preferredWidth: root.sidebarWidth
             Layout.fillHeight: true
-            currentIndex: preferencesTabs.currentIndex
 
-            // ---- 界面 ----
-            ColumnLayout {
-                Layout.fillWidth: true
-                Layout.fillHeight: false
-                Layout.alignment: Qt.AlignTop
-                spacing: Theme.settingsRowSpacing
-
-                LabeledCombo {
-                    objectName: "preferencesLanguageCombo"
-                    label: qsTrId("dialog.preferences.language")
-                    options: root.preferencesModel.languageOptions
-                    currentValue: root.preferencesModel.languageToken
-                    onPicked: function(value) { root.preferencesModel.languageToken = value }
-                }
-                LabeledCombo {
-                    objectName: "preferencesSidebarModeCombo"
-                    label: qsTrId("dialog.preferences.sidebar_mode")
-                    options: [
-                        { value: false, label: qsTrId("dialog.preferences.sidebar_mode.standard") },
-                        { value: true, label: qsTrId("dialog.preferences.sidebar_mode.efficient") }
-                    ]
-                    currentValue: root.preferences.efficientSidebarEnabled
-                    onPicked: value => root.preferences.efficientSidebarEnabled = value
-                }
-                LabeledCombo {
-                    objectName: "preferencesThemeModeCombo"
-                    label: qsTrId("dialog.preferences.theme.mode")
-                    options: root.preferencesModel.themeModeOptions
-                    currentValue: root.preferencesModel.themeModeToken
-                    onPicked: function(value) { root.preferencesModel.themeModeToken = value }
-                }
-                LabeledCombo {
-                    objectName: "preferencesLightThemeCombo"
-                    visible: root.preferencesModel.themeModeToken !== "dark"
-                    label: qsTrId("dialog.preferences.theme.light_palette")
-                    options: root.preferencesModel.themePaletteOptions
-                    currentValue: root.preferencesModel.lightThemeToken
-                    onPicked: function(value) { root.preferencesModel.lightThemeToken = value }
-                }
-                LabeledCombo {
-                    objectName: "preferencesDarkThemeCombo"
-                    visible: root.preferencesModel.themeModeToken !== "light"
-                    label: qsTrId("dialog.preferences.theme.dark_palette")
-                    options: root.preferencesModel.themePaletteOptions
-                    currentValue: root.preferencesModel.darkThemeToken
-                    onPicked: function(value) { root.preferencesModel.darkThemeToken = value }
-                }
-                RowLayout {
-                    Layout.fillWidth: true
-                    spacing: 5
-
-                    Text {
-                        Layout.preferredWidth: 120
-                        Layout.alignment: Qt.AlignTop
-                        Layout.topMargin: Math.round((Theme.controlMinHeight - implicitHeight) / 2)
-                        text: qsTrId("dialog.preferences.interface_layout")
-                        color: Theme.colors.text.secondary
-                        font.family: Theme.uiFont
-                        font.pixelSize: Theme.uiFontSize
-                        wrapMode: Text.WordWrap
-                    }
-
-                    RowLayout {
-                        Layout.fillWidth: true
-                        Layout.topMargin: Theme.chromeInsetY
-                        spacing: 24
-
-                        PreviewPositionCard {
-                            objectName: "preferencesPreviewRightCard"
-                            Layout.fillWidth: true
-                            Layout.maximumWidth: 200
-                            previewOnLeft: false
-                            selected: !root.preferencesModel.previewOnLeft
-                            onClicked: root.preferencesModel.previewOnLeft = false
-                        }
-                        PreviewPositionCard {
-                            objectName: "preferencesPreviewLeftCard"
-                            Layout.fillWidth: true
-                            Layout.maximumWidth: 200
-                            previewOnLeft: true
-                            selected: root.preferencesModel.previewOnLeft
-                            onClicked: root.preferencesModel.previewOnLeft = true
-                        }
-                        Item { Layout.fillWidth: true }
-                    }
-                }
-                AppSwitch {
-                    objectName: "preferencesBlurMaterialsSwitch"
-                    text: qsTrId("dialog.preferences.blur_materials")
-                    checked: root.preferencesModel.blurMaterialsEnabled
-                    onToggled: root.preferencesModel.blurMaterialsEnabled = checked
-                }
+            Rectangle {
+                anchors.right: parent.right
+                width: 1 / Screen.devicePixelRatio
+                height: parent.height
+                color: Theme.separatorColor
             }
 
-            // ---- 背景 ----
             ColumnLayout {
-                objectName: "preferencesBackgroundPage"
-                Layout.fillWidth: true
-                Layout.fillHeight: false
-                Layout.alignment: Qt.AlignTop
-                spacing: Theme.settingsRowSpacing
+                anchors.fill: parent
+                anchors.leftMargin: 10
+                anchors.rightMargin: 10
+                anchors.topMargin: 24
+                anchors.bottomMargin: 24
+                spacing: 4
 
-                AppSwitch {
-                    text: qsTrId("qml.enable_application_background")
-                    checked: root.appBackground.enabled
-                    onToggled: root.appBackground.enabled = checked
+                Repeater {
+                    id: navigation
+                    model: root.pageIds.length - 1
+                    delegate: NavigationButton {
+                        required property int index
+                        pageIndex: index
+                    }
                 }
-                RowLayout {
-                    Layout.fillWidth: true
-                    Text {
-                        font.pixelSize: Theme.uiFontSize
-                        Layout.fillWidth: true
-                        text: root.appBackground.imagePath.length > 0
-                              ? root.appBackground.imagePath
-                              : qsTrId("qml.no_background_image_selected")
-                        color: root.appBackground.imageReadable
-                               ? Theme.colors.text.primary : Theme.colors.text.secondary
-                        elide: Text.ElideMiddle
-                        font.family: Theme.uiFont
-                    }
-                    AppButton {
-                        text: qsTrId("cover.choose_image")
-                        onClicked: root.appBackground.chooseImage()
-                    }
-                    AppButton {
-                        text: qsTrId("dialog.preferences.background.clear")
-                        enabled: root.appBackground.imagePath.length > 0
-                        onClicked: root.appBackground.clearImage()
-                    }
+                Item { Layout.fillHeight: true }
+                NavigationButton {
+                    id: aboutButton
+                    objectName: "preferencesAboutButton"
+                    pageIndex: root.pageIds.length - 1
                 }
                 Text {
-                    font.pixelSize: Theme.uiFontSize
+                    objectName: "preferencesVersion"
                     Layout.fillWidth: true
-                    visible: root.appBackground.errorMessage.length > 0
-                    text: root.appBackground.errorMessage
-                    color: Theme.colors.syntax.error
+                    Layout.leftMargin: Theme.rowPaddingX
+                    Layout.rightMargin: Theme.rowPaddingX
+                    Layout.topMargin: -3
+                    text: qsTrId("about.version").arg(root.aboutInfo.version)
                     font.family: Theme.uiFont
+                    font.pixelSize: Theme.captionFontSize
+                    color: Theme.colors.text.secondary
+                    opacity: 0.6
                     wrapMode: Text.WordWrap
                 }
-                LabeledSlider {
-                    label: qsTrId("qml.image_opacity")
-                    from: 0.1; to: 0.8; stepSize: 0.01
-                    value: root.appBackground.opacity
-                    readout: Math.round(root.appBackground.opacity * 100) + "%"
-                    onMoved: function(value) { root.appBackground.opacity = value }
-                }
-                LabeledSlider {
-                    label: qsTrId("qml.background_mask_opacity")
-                    from: 0; to: 1; stepSize: 0.01
-                    value: root.appBackground.panelAlpha / 255.0
-                    readout: Math.round(root.appBackground.panelAlpha / 255.0 * 100) + "%"
-                    onMoved: function(value) { root.appBackground.panelAlpha = Math.round(value * 255) }
-                }
-                LabeledSlider {
-                    label: qsTrId("qml.blur_radius")
-                    from: 0; to: 64; stepSize: 1
-                    value: root.appBackground.blur
-                    readout: Math.round(root.appBackground.blur)
-                    onMoved: function(value) { root.appBackground.blur = Math.round(value) }
-                }
-                LabeledCombo {
-                    label: qsTrId("qml.scale_mode")
-                    options: [
-                        { value: "cover", label: qsTrId("dialog.preferences.background.scale.cover") },
-                        { value: "contain", label: qsTrId("dialog.preferences.background.scale.contain") },
-                        { value: "stretch", label: qsTrId("dialog.preferences.background.scale.stretch") },
-                        { value: "center", label: qsTrId("dialog.preferences.background.scale.center") },
-                        { value: "repeat", label: qsTrId("dialog.preferences.background.scale.repeat") }
-                    ]
-                    currentValue: root.appBackground.sizeMode
-                    onPicked: function(value) { root.appBackground.sizeMode = value }
-                }
-                LabeledCombo {
-                    label: qsTrId("dialog.preferences.background.position")
-                    options: [
-                        { value: "center", label: qsTrId("dialog.preferences.background.position.center") },
-                        { value: "left", label: qsTrId("dialog.preferences.background.position.left") },
-                        { value: "right", label: qsTrId("dialog.preferences.background.position.right") },
-                        { value: "top", label: qsTrId("dialog.preferences.background.position.top") },
-                        { value: "bottom", label: qsTrId("dialog.preferences.background.position.bottom") },
-                        { value: "left_top", label: qsTrId("dialog.preferences.background.position.left_top") },
-                        { value: "right_top", label: qsTrId("dialog.preferences.background.position.right_top") },
-                        { value: "left_bottom", label: qsTrId("dialog.preferences.background.position.left_bottom") },
-                        { value: "right_bottom", label: qsTrId("dialog.preferences.background.position.right_bottom") }
-                    ]
-                    currentValue: root.appBackground.position
-                    onPicked: function(value) { root.appBackground.position = value }
-                }
+            }
+        }
 
+        ColumnLayout {
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            Layout.leftMargin: root.width < 650 ? 18 : 32
+            Layout.rightMargin: root.width < 650 ? 18 : 32
+            Layout.topMargin: 24
+            Layout.bottomMargin: 24
+            spacing: root.sectionSpacing
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: Theme.settingsRowSpacing
+
+                Text {
+                    Layout.fillWidth: true
+                    text: root.pageTitles[root.currentPageIndex]
+                    font.family: Theme.uiFont
+                    font.pixelSize: Theme.uiFontSize + 8
+                    font.weight: Font.DemiBold
+                    color: Theme.colors.text.heading
+                    elide: Text.ElideRight
+                }
+                IconButton {
+                    objectName: "preferencesCloseButton"
+                    iconSource: Qt.resolvedUrl("icons/close.svg")
+                    tooltip: qsTrId("action.close")
+                    onClicked: root.reject()
+                }
             }
 
-            // ---- 编辑器 ----
-            ScrollView {
-                id: editorViewport
-                property bool completionTopAligned: false
-                readonly property real scrollContentSpacing: 4
+            AppTabPages {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                implicitHeight: 0
-                clip: true
-                rightPadding: editorScrollBar.width + scrollContentSpacing
-                contentWidth: availableWidth
-                onAvailableHeightChanged: Qt.callLater(root.clampEditorScroll)
-                // 齿轮入口的滚动范围覆盖容器顶部之后的一个视口。
-                contentHeight: Math.max(editorSettingsColumn.implicitHeight,
-                    completionTopAligned ? completionCustomizer.y + availableHeight : 0)
-                onContentHeightChanged: Qt.callLater(root.clampEditorScroll)
-                ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
-                ScrollBar.vertical: AppScrollBar {
-                    id: editorScrollBar
-                    parent: editorViewport
-                    orientation: Qt.Vertical
-                    x: editorViewport.width - width
-                    y: editorViewport.topPadding
-                    height: editorViewport.availableHeight
-                    policy: ScrollBar.AsNeeded
-                    onPressedChanged: if (pressed) root.releaseCompletionInputFocus()
-                }
+                currentIndex: root.currentPageIndex
 
-                TapHandler {
-                    parent: editorViewport
-                    enabled: root.visible
-                    acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
-                    gesturePolicy: TapHandler.DragThreshold
-                    onPressedChanged: {
-                        if (pressed)
-                            completionCustomizer.releaseInputFocusOutside(editorViewport, point.position)
+                PreferencePage {
+                    PreferenceGroup {
+                        title: qsTrId("dialog.preferences.group.appearance")
+                        first: true
+
+                        PreferenceCombo {
+                            objectName: "preferencesThemeModeCombo"
+                            label: qsTrId("dialog.preferences.theme.mode")
+                            options: root.preferencesModel.themeModeOptions
+                            currentValue: root.preferencesModel.themeModeToken
+                            onPicked: function(value) { root.preferencesModel.themeModeToken = value }
+                        }
+
+                        PreferenceCombo {
+                            objectName: "preferencesLightThemeCombo"
+                            visible: root.preferencesModel.themeModeToken !== "dark"
+                            label: qsTrId("dialog.preferences.theme.light_palette")
+                            options: root.preferencesModel.themePaletteOptions
+                            currentValue: root.preferencesModel.lightThemeToken
+                            onPicked: function(value) { root.preferencesModel.lightThemeToken = value }
+                        }
+
+                        PreferenceCombo {
+                            objectName: "preferencesDarkThemeCombo"
+                            visible: root.preferencesModel.themeModeToken !== "light"
+                            label: qsTrId("dialog.preferences.theme.dark_palette")
+                            options: root.preferencesModel.themePaletteOptions
+                            currentValue: root.preferencesModel.darkThemeToken
+                            onPicked: function(value) { root.preferencesModel.darkThemeToken = value }
+                        }
+
+                        PreferenceSwitch {
+                            objectName: "preferencesBlurMaterialsSwitch"
+                            text: qsTrId("dialog.preferences.blur_materials")
+                            checked: root.preferencesModel.blurMaterialsEnabled
+                            onToggled: root.preferencesModel.blurMaterialsEnabled = checked
+                        }
+                    }
+
+                    PreferenceGroup {
+                        title: qsTrId("dialog.preferences.group.workspace")
+
+                        PreferenceCombo {
+                            objectName: "preferencesLanguageCombo"
+                            label: qsTrId("dialog.preferences.language")
+                            options: root.preferencesModel.languageOptions
+                            currentValue: root.preferencesModel.languageToken
+                            onPicked: function(value) {
+                                root.preferencesModel.languageToken = value
+                                root.refreshShortcuts()
+                            }
+                        }
+
+                        PreferenceCombo {
+                            objectName: "preferencesSidebarModeCombo"
+                            label: qsTrId("dialog.preferences.sidebar_mode")
+                            options: [
+                                { value: false, label: qsTrId("dialog.preferences.sidebar_mode.standard") },
+                                { value: true, label: qsTrId("dialog.preferences.sidebar_mode.efficient") }
+                            ]
+                            currentValue: root.preferences.efficientSidebarEnabled
+                            onPicked: value => root.preferences.efficientSidebarEnabled = value
+                        }
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: 5
+
+                            Text {
+                                Layout.preferredWidth: root.settingsLabelWidth
+                                Layout.alignment: Qt.AlignTop
+                                Layout.topMargin: Math.round((Theme.controlMinHeight - implicitHeight) / 2)
+                                text: qsTrId("dialog.preferences.interface_layout")
+                                color: Theme.colors.text.secondary
+                                font.family: Theme.uiFont
+                                font.pixelSize: Theme.uiFontSize
+                                wrapMode: Text.WordWrap
+                            }
+
+                            RowLayout {
+                                Layout.fillWidth: true
+                                Layout.topMargin: Theme.chromeInsetY
+                                spacing: 12
+
+                                PreviewPositionCard {
+                                    objectName: "preferencesPreviewRightCard"
+                                    Layout.fillWidth: true
+                                    Layout.maximumWidth: 200
+                                    previewOnLeft: false
+                                    selected: !root.preferencesModel.previewOnLeft
+                                    onClicked: root.preferencesModel.previewOnLeft = false
+                                }
+                                PreviewPositionCard {
+                                    objectName: "preferencesPreviewLeftCard"
+                                    Layout.fillWidth: true
+                                    Layout.maximumWidth: 200
+                                    previewOnLeft: true
+                                    selected: root.preferencesModel.previewOnLeft
+                                    onClicked: root.preferencesModel.previewOnLeft = true
+                                }
+                                Item { Layout.fillWidth: true }
+                            }
+                        }
                     }
                 }
 
-                Connections {
-                    target: editorViewport.contentItem
-                    function onMovingChanged() {
-                        if (editorViewport.contentItem.moving) root.releaseCompletionInputFocus()
+                PreferencePage {
+                    objectName: "preferencesBackgroundPage"
+                    PreferenceGroup {
+                        title: qsTrId("dialog.preferences.group.background_image")
+                        first: true
+
+                        PreferenceSwitch {
+                            text: qsTrId("qml.enable_application_background")
+                            checked: root.appBackground.enabled
+                            onToggled: root.appBackground.enabled = checked
+                        }
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            Layout.minimumHeight: root.settingsRowHeight
+                            spacing: 8
+                            Text {
+                                font.pixelSize: Theme.uiFontSize
+                                Layout.fillWidth: true
+                                text: root.appBackground.imagePath.length > 0
+                                      ? root.appBackground.imagePath
+                                      : qsTrId("qml.no_background_image_selected")
+                                color: root.appBackground.imageReadable
+                                       ? Theme.colors.text.primary : Theme.colors.text.secondary
+                                elide: Text.ElideMiddle
+                                font.family: Theme.uiFont
+                            }
+                            AppButton {
+                                text: qsTrId("cover.choose_image")
+                                onClicked: root.appBackground.chooseImage()
+                            }
+                            AppButton {
+                                text: qsTrId("dialog.preferences.background.clear")
+                                enabled: root.appBackground.imagePath.length > 0
+                                onClicked: root.appBackground.clearImage()
+                            }
+                        }
+
+                        Text {
+                            font.pixelSize: Theme.uiFontSize
+                            Layout.fillWidth: true
+                            visible: root.appBackground.errorMessage.length > 0
+                            text: root.appBackground.errorMessage
+                            color: Theme.colors.syntax.error
+                            font.family: Theme.uiFont
+                            wrapMode: Text.WordWrap
+                        }
+
+                        PreferenceSlider {
+                            label: qsTrId("qml.image_opacity")
+                            from: 0.1; to: 0.8; stepSize: 0.01
+                            value: root.appBackground.opacity
+                            readout: Math.round(root.appBackground.opacity * 100) + "%"
+                            onMoved: function(value) { root.appBackground.opacity = value }
+                        }
+                    }
+
+                    PreferenceGroup {
+                        title: qsTrId("dialog.preferences.group.presentation")
+
+                        PreferenceCombo {
+                            label: qsTrId("qml.scale_mode")
+                            options: [
+                                { value: "cover", label: qsTrId("dialog.preferences.background.scale.cover") },
+                                { value: "contain", label: qsTrId("dialog.preferences.background.scale.contain") },
+                                { value: "stretch", label: qsTrId("dialog.preferences.background.scale.stretch") },
+                                { value: "center", label: qsTrId("dialog.preferences.background.scale.center") },
+                                { value: "repeat", label: qsTrId("dialog.preferences.background.scale.repeat") }
+                            ]
+                            currentValue: root.appBackground.sizeMode
+                            onPicked: function(value) { root.appBackground.sizeMode = value }
+                        }
+
+                        PreferenceCombo {
+                            label: qsTrId("dialog.preferences.background.position")
+                            options: [
+                                { value: "center", label: qsTrId("dialog.preferences.background.position.center") },
+                                { value: "left", label: qsTrId("dialog.preferences.background.position.left") },
+                                { value: "right", label: qsTrId("dialog.preferences.background.position.right") },
+                                { value: "top", label: qsTrId("dialog.preferences.background.position.top") },
+                                { value: "bottom", label: qsTrId("dialog.preferences.background.position.bottom") },
+                                { value: "left_top", label: qsTrId("dialog.preferences.background.position.left_top") },
+                                { value: "right_top", label: qsTrId("dialog.preferences.background.position.right_top") },
+                                { value: "left_bottom", label: qsTrId("dialog.preferences.background.position.left_bottom") },
+                                { value: "right_bottom", label: qsTrId("dialog.preferences.background.position.right_bottom") }
+                            ]
+                            currentValue: root.appBackground.position
+                            onPicked: function(value) { root.appBackground.position = value }
+                        }
+
+                        PreferenceSlider {
+                            label: qsTrId("qml.background_mask_opacity")
+                            from: 0; to: 1; stepSize: 0.01
+                            value: root.appBackground.panelAlpha / 255.0
+                            readout: Math.round(root.appBackground.panelAlpha / 255.0 * 100) + "%"
+                            onMoved: function(value) { root.appBackground.panelAlpha = Math.round(value * 255) }
+                        }
+
+                        PreferenceSlider {
+                            label: qsTrId("qml.blur_radius")
+                            from: 0; to: 64; stepSize: 1
+                            value: root.appBackground.blur
+                            readout: Math.round(root.appBackground.blur)
+                            onMoved: function(value) { root.appBackground.blur = Math.round(value) }
+                        }
+                    }
+                }
+
+                ScrollView {
+                    id: editorViewport
+                    readonly property Flickable scrollViewport: contentItem as Flickable
+                    property bool completionTopAligned: false
+                    property real completionAlignmentY: 0
+                    readonly property real scrollContentSpacing: 4
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    implicitHeight: 0
+                    clip: true
+                    rightPadding: editorScrollBar.width + scrollContentSpacing
+                    contentWidth: availableWidth
+                    onAvailableHeightChanged: Qt.callLater(root.clampEditorScroll)
+                    contentHeight: Math.max(editorSettingsColumn.implicitHeight,
+                        completionTopAligned ? completionAlignmentY + availableHeight : 0)
+                    onContentHeightChanged: Qt.callLater(root.clampEditorScroll)
+                    ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
+                    ScrollBar.vertical: AppScrollBar {
+                        id: editorScrollBar
+                        parent: editorViewport
+                        orientation: Qt.Vertical
+                        x: editorViewport.width - width
+                        y: editorViewport.topPadding
+                        height: editorViewport.availableHeight
+                        policy: ScrollBar.AsNeeded
+                        onPressedChanged: if (pressed) root.releaseCompletionInputFocus()
+                    }
+
+                    TapHandler {
+                        parent: editorViewport
+                        enabled: root.visible
+                        acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
+                        gesturePolicy: TapHandler.DragThreshold
+                        onPressedChanged: {
+                            if (pressed)
+                                completionCustomizer.releaseInputFocusOutside(editorViewport, point.position)
+                        }
+                    }
+
+                    Connections {
+                        target: editorViewport.scrollViewport
+                        function onMovingChanged() {
+                            if (editorViewport.scrollViewport.moving) root.releaseCompletionInputFocus()
+                        }
+                    }
+
+                    ColumnLayout {
+                        id: editorSettingsColumn
+                        width: editorViewport.availableWidth
+                        spacing: root.sectionSpacing
+
+                        PreferenceGroup {
+                            title: qsTrId("dialog.preferences.group.typography")
+                            first: true
+
+                            PreferenceSlider {
+                                objectName: "preferencesFontSizeSlider"
+                                label: qsTrId("dialog.preferences.editor_font_size")
+                                from: root.preferencesModel.editorFontSizeMinimum
+                                to: root.preferencesModel.editorFontSizeMaximum
+                                value: root.preferencesModel.editorFontSize
+                                readout: root.preferencesModel.editorFontSize + " pt"
+                                onMoved: function(v) { root.preferencesModel.editorFontSize = Math.round(v) }
+                            }
+
+                            PreferenceCombo {
+                                objectName: "preferencesLineSpacingCombo"
+                                label: qsTrId("dialog.preferences.editor_line_spacing")
+                                options: root.preferencesModel.lineSpacingOptions
+                                currentValue: root.preferencesModel.editorLineSpacing
+                                onPicked: function(value) { root.preferencesModel.editorLineSpacing = value }
+                            }
+
+                            PreferenceSwitch {
+                                objectName: "preferencesAutoWrapSwitch"
+                                text: qsTrId("preferences.editor_auto_wrap")
+                                checked: root.preferencesModel.editorAutoWrap
+                                onToggled: root.preferencesModel.editorAutoWrap = checked
+                            }
+                        }
+
+                        PreferenceGroup {
+                            title: qsTrId("dialog.preferences.group.input")
+
+                            PreferenceCombo {
+                                objectName: "preferencesInputHandlingCombo"
+                                label: qsTrId("preferences.input_handling")
+                                options: [
+                                    { value: 0, label: qsTrId("preferences.correct_full_width_only") },
+                                    { value: 1, label: qsTrId("preferences.block_input_methods_and_correct_full_width") },
+                                    { value: 2, label: qsTrId("preferences.leave_input_unchanged") }
+                                ]
+                                currentValue: root.preferencesModel.editorInputHandlingMode
+                                onPicked: function(value) { root.preferencesModel.editorInputHandlingMode = value }
+                            }
+
+                            PreferenceSwitch {
+                                objectName: "preferencesAutoCompletionSwitch"
+                                text: qsTrId("preferences.auto_completion")
+                                checked: root.preferencesModel.editorAutoCompletion
+                                onToggled: root.preferencesModel.editorAutoCompletion = checked
+                            }
+                        }
+
+                        CompletionCandidatesEditor {
+                            id: completionCustomizer
+                            Layout.fillWidth: true
+                            visible: root.preferencesModel.editorAutoCompletion
+                            preferencesModel: root.preferencesModel
+                            scrollViewport: editorViewport.scrollViewport
+                            onExpandedChanged: {
+                                if (!completionCustomizer.expanded)
+                                    editorViewport.completionTopAligned = false
+                            }
+                            onEnsureVisibleRequested: function(item, alignment) {
+                                root.ensureCompletionItemVisible(item, alignment)
+                            }
+                            onScrollRequested: function(distance) { root.scrollCompletionBy(distance) }
+                        }
+
+                        PreferenceGroup {
+                            title: qsTrId("dialog.preferences.group.editing_aids")
+
+                            PreferenceSwitch {
+                                objectName: "preferencesScrollPastEndSwitch"
+                                text: qsTrId("preferences.editor_scroll_past_end")
+                                checked: root.preferencesModel.editorScrollPastEnd
+                                onToggled: root.preferencesModel.editorScrollPastEnd = checked
+                            }
+
+                            PreferenceSwitch {
+                                objectName: "preferencesSelectionBeatDisplaySwitch"
+                                text: qsTrId("preferences.editor_selection_beat_display")
+                                checked: root.preferencesModel.editorSelectionBeatDisplay
+                                onToggled: root.preferencesModel.editorSelectionBeatDisplay = checked
+                            }
+
+                            PreferenceSwitch {
+                                objectName: "preferencesOverviewRulerSwitch"
+                                text: qsTrId("preferences.editor_overview_ruler")
+                                checked: root.preferencesModel.editorOverviewRulerEnabled
+                                onToggled: root.preferencesModel.editorOverviewRulerEnabled = checked
+                            }
+                        }
+                    }
+                }
+
+                PreferencePage {
+                    PreferenceGroup {
+                        title: qsTrId("dialog.preferences.group.video")
+                        first: true
+
+                        PreferenceCombo {
+                            objectName: "preferencesVideoDecodeCombo"
+                            label: qsTrId("qml.video_decoding")
+                            options: [{ value: false, label: qsTrId("qml.hardware_decoding") }, { value: true, label: qsTrId("qml.software_decoding") }]
+                            currentValue: root.preferencesModel.videoDecodePrefersSoftware
+                            onPicked: function(value) { root.preferencesModel.videoDecodePrefersSoftware = value }
+                        }
+
+                        PreferenceCombo {
+                            objectName: "preferencesPvFrameRateCombo"
+                            label: qsTrId("qml.pv_frame_rate")
+                            options: root.preferencesModel.appFrameRateOptions
+                            currentValue: root.preferencesModel.stageMediaFrameRateMode
+                            onPicked: function(value) { root.preferencesModel.stageMediaFrameRateMode = value }
+                        }
+                    }
+
+                    PreferenceGroup {
+                        title: qsTrId("dialog.preferences.group.rendering")
+
+                        PreferenceCombo {
+                            objectName: "preferencesCanvasFrameRateCombo"
+                            label: qsTrId("qml.canvas_frame_rate")
+                            options: root.preferencesModel.canvasFrameRateOptions
+                            currentValue: root.preferencesModel.canvasFrameRateMode
+                            onPicked: function(value) { root.preferencesModel.canvasFrameRateMode = value }
+                        }
+
+                        PreferenceCombo {
+                            objectName: "preferencesTimelineFrameRateCombo"
+                            label: qsTrId("qml.timeline_frame_rate")
+                            options: root.preferencesModel.appFrameRateOptions
+                            currentValue: root.preferencesModel.timelineFrameRateMode
+                            onPicked: function(value) { root.preferencesModel.timelineFrameRateMode = value }
+                        }
                     }
                 }
 
                 ColumnLayout {
-                    id: editorSettingsColumn
-                    width: editorViewport.availableWidth
-                    spacing: Theme.settingsRowSpacing
+                    spacing: root.sectionSpacing
 
-                    LabeledSlider {
-                        objectName: "preferencesFontSizeSlider"
-                        label: qsTrId("dialog.preferences.editor_font_size")
-                        from: root.preferencesModel.editorFontSizeMinimum
-                        to: root.preferencesModel.editorFontSizeMaximum
-                        value: root.preferencesModel.editorFontSize
-                        readout: root.preferencesModel.editorFontSize + " pt"
-                        onMoved: function(v) { root.preferencesModel.editorFontSize = Math.round(v) }
-                    }
-                    LabeledCombo {
-                        objectName: "preferencesLineSpacingCombo"
-                        label: qsTrId("dialog.preferences.editor_line_spacing")
-                        options: root.preferencesModel.lineSpacingOptions
-                        currentValue: root.preferencesModel.editorLineSpacing
-                        onPicked: function(value) { root.preferencesModel.editorLineSpacing = value }
-                    }
-                    LabeledCombo {
-                        objectName: "preferencesInputHandlingCombo"
-                        label: qsTrId("preferences.input_handling")
-                        options: [
-                            { value: 0, label: qsTrId("preferences.correct_full_width_only") },
-                            { value: 1, label: qsTrId("preferences.block_input_methods_and_correct_full_width") },
-                            { value: 2, label: qsTrId("preferences.leave_input_unchanged") }
-                        ]
-                        currentValue: root.preferencesModel.editorInputHandlingMode
-                        onPicked: function(value) { root.preferencesModel.editorInputHandlingMode = value }
-                    }
-                    AppSwitch {
-                        objectName: "preferencesAutoWrapSwitch"
-                        text: qsTrId("preferences.editor_auto_wrap")
-                        checked: root.preferencesModel.editorAutoWrap
-                        onToggled: root.preferencesModel.editorAutoWrap = checked
-                    }
-                    AppSwitch {
-                        objectName: "preferencesAutoCompletionSwitch"
-                        text: qsTrId("preferences.auto_completion")
-                        checked: root.preferencesModel.editorAutoCompletion
-                        onToggled: root.preferencesModel.editorAutoCompletion = checked
-                    }
-                    CompletionCandidatesEditor {
-                        id: completionCustomizer
+                    ListView {
+                        id: shortcutList
+                        objectName: "shortcutList"
+                        property bool reservesPlainSpace: root.capturingId.length > 0
                         Layout.fillWidth: true
-                        visible: root.preferencesModel.editorAutoCompletion
-                        preferencesModel: root.preferencesModel
-                        scrollViewport: editorViewport.contentItem
-                        onExpandedChanged: {
-                            if (!completionCustomizer.expanded)
-                                editorViewport.completionTopAligned = false
+                        Layout.fillHeight: true
+                        clip: true
+                        focus: true
+                        spacing: 6
+                        model: root.shortcutRows
+                        section.property: "group"
+                        section.criteria: ViewSection.FullString
+                        section.delegate: Column {
+                            required property string section
+                            readonly property bool first: root.shortcutRows.length > 0
+                                                          && section === root.shortcutRows[0].group
+                            width: ListView.view.width
+                            spacing: 0
+
+                            Item { width: 1; height: parent.first ? 0 : root.sectionSpacing }
+                            Text {
+                                text: parent.section
+                                font.family: Theme.uiFont
+                                font.pixelSize: Theme.uiFontSize + 1
+                                font.weight: Font.DemiBold
+                                color: Theme.colors.text.section
+                            }
+                            Item { width: 1; height: 12 }
                         }
-                        onEnsureVisibleRequested: function(item, alignment) {
-                            root.ensureCompletionItemVisible(item, alignment)
-                        }
-                        onScrollRequested: function(distance) { root.scrollCompletionBy(distance) }
-                    }
-                    AppSwitch {
-                        objectName: "preferencesScrollPastEndSwitch"
-                        text: qsTrId("preferences.editor_scroll_past_end")
-                        checked: root.preferencesModel.editorScrollPastEnd
-                        onToggled: root.preferencesModel.editorScrollPastEnd = checked
-                    }
-                    AppSwitch {
-                        objectName: "preferencesSelectionBeatDisplaySwitch"
-                        text: qsTrId("preferences.editor_selection_beat_display")
-                        checked: root.preferencesModel.editorSelectionBeatDisplay
-                        onToggled: root.preferencesModel.editorSelectionBeatDisplay = checked
-                    }
-                    AppSwitch {
-                        objectName: "preferencesOverviewRulerSwitch"
-                        text: qsTrId("preferences.editor_overview_ruler")
-                        checked: root.preferencesModel.editorOverviewRulerEnabled
-                        onToggled: root.preferencesModel.editorOverviewRulerEnabled = checked
-                    }
-                }
-            }
+                        ScrollBar.vertical: AppScrollBar {}
 
-            // ---- 性能 ----
-            ColumnLayout {
-                Layout.fillWidth: true
-                Layout.fillHeight: false
-                Layout.alignment: Qt.AlignTop
-                spacing: Theme.settingsRowSpacing
-
-                LabeledCombo {
-                    objectName: "preferencesVideoDecodeCombo"
-                    label: qsTrId("qml.video_decoding")
-                    options: [{ value: false, label: qsTrId("qml.hardware_decoding") }, { value: true, label: qsTrId("qml.software_decoding") }]
-                    currentValue: root.preferencesModel.videoDecodePrefersSoftware
-                    onPicked: function(value) { root.preferencesModel.videoDecodePrefersSoftware = value }
-                }
-                LabeledCombo {
-                    objectName: "preferencesCanvasFrameRateCombo"
-                    label: qsTrId("qml.canvas_frame_rate")
-                    options: root.preferencesModel.canvasFrameRateOptions
-                    currentValue: root.preferencesModel.canvasFrameRateMode
-                    onPicked: function(value) { root.preferencesModel.canvasFrameRateMode = value }
-                }
-                LabeledCombo {
-                    objectName: "preferencesPvFrameRateCombo"
-                    label: qsTrId("qml.pv_frame_rate")
-                    options: root.preferencesModel.appFrameRateOptions
-                    currentValue: root.preferencesModel.stageMediaFrameRateMode
-                    onPicked: function(value) { root.preferencesModel.stageMediaFrameRateMode = value }
-                }
-                LabeledCombo {
-                    objectName: "preferencesTimelineFrameRateCombo"
-                    label: qsTrId("qml.timeline_frame_rate")
-                    options: root.preferencesModel.appFrameRateOptions
-                    currentValue: root.preferencesModel.timelineFrameRateMode
-                    onPicked: function(value) { root.preferencesModel.timelineFrameRateMode = value }
-                }
-            }
-
-            // ---- 快捷键 ----
-            // Clicking a row arms capture: the next key press carrying at least one
-            // non-modifier becomes that command's binding. Escape cancels the
-            // capture rather than closing 偏好设置, so an accidental arm cannot lose
-            // the row being edited.
-            ColumnLayout {
-                Layout.fillWidth: true
-                Layout.fillHeight: true
-                spacing: Theme.settingsRowSpacing
-
-                Text {
-                    font.pixelSize: Theme.uiFontSize
-                    Layout.fillWidth: true
-                    text: root.capturingId.length > 0
-                          ? qsTrId("qml.press_a_new_shortcut_esc_cancels")
-                          : qsTrId("qml.click_a_row_to_record_a_new_shortcut")
-                    color: Theme.colors.text.secondary
-                    font.family: Theme.uiFont
-                }
-
-                ListView {
-                    id: shortcutList
-                    objectName: "shortcutList"
-                    property bool reservesPlainSpace: root.capturingId.length > 0
-                    Layout.fillWidth: true
-                    Layout.fillHeight: true
-                    clip: true
-                    focus: true
-                    model: root.shortcutRows
-                    ScrollBar.vertical: AppScrollBar {}
-
-                    Keys.onPressed: function(event) {
-                        if (root.capturingId.length === 0)
-                            return
-                        event.accepted = true
-                        if (event.key === Qt.Key_Escape) {
+                        Keys.onPressed: function(event) {
+                            if (root.capturingId.length === 0)
+                                return
+                            event.accepted = true
+                            if (event.key === Qt.Key_Escape) {
+                                root.capturingId = ""
+                                return
+                            }
+                            if (event.key === Qt.Key_Control || event.key === Qt.Key_Shift
+                                    || event.key === Qt.Key_Alt || event.key === Qt.Key_Meta)
+                                return
+                            const text = root.shortcuts.shortcutTextForKeyEvent(event.key, event.modifiers)
+                            if (text.length === 0)
+                                return
+                            root.shortcuts.setShortcutText(root.capturingId, text)
                             root.capturingId = ""
-                            return
+                            root.refreshShortcuts()
                         }
-                        if (event.key === Qt.Key_Control || event.key === Qt.Key_Shift
-                                || event.key === Qt.Key_Alt || event.key === Qt.Key_Meta)
-                            return
-                        const text = root.shortcuts.shortcutTextForKeyEvent(event.key, event.modifiers)
-                        if (text.length === 0)
-                            return
-                        root.shortcuts.setShortcutText(root.capturingId, text)
-                        root.capturingId = ""
-                        root.refreshShortcuts()
-                    }
 
-                    // The row is NOT one big button: the reset button sits beside
-                    // the clickable area, not inside it, so the highlight stops
-                    // where the recording hit area stops.
-                    delegate: RowLayout {
-                        id: shortcutRow
-                        required property var modelData
-                        width: ListView.view.width
-                        spacing: 8
+                        // The row is NOT one big button: the reset button sits beside
+                        // the clickable area, not inside it, so the highlight stops
+                        // where the recording hit area stops.
+                        delegate: RowLayout {
+                            id: shortcutRow
+                            required property var modelData
+                            width: ListView.view.width
+                            spacing: 8
 
-                        ChromeRow {
-                            id: captureArea
-                            Layout.fillWidth: true
-                            implicitHeight: 34
-                            selected: root.capturingId === shortcutRow.modelData.id
-                            onClicked: {
-                                root.capturingId = shortcutRow.modelData.id
-                                shortcutList.forceActiveFocus()
-                            }
-                            contentItem: RowLayout {
-                                spacing: 8
-                                Text {
-                                    font.pixelSize: Theme.uiFontSize
-                                    Layout.fillWidth: true
-                                    text: qsTrId(shortcutRow.modelData.labelKey)
-                                          || shortcutRow.modelData.labelFallback
-                                    elide: Text.ElideRight
-                                    color: Theme.colors.text.active
-                                    font.family: Theme.uiFont
-                                    verticalAlignment: Text.AlignVCenter
+                            ChromeRow {
+                                id: captureArea
+                                Layout.fillWidth: true
+                                implicitHeight: root.settingsRowHeight
+                                selected: root.capturingId === shortcutRow.modelData.id
+                                onClicked: {
+                                    root.capturingId = shortcutRow.modelData.id
+                                    shortcutList.forceActiveFocus()
                                 }
-                                Text {
-                                    font.pixelSize: Theme.uiFontSize
-                                    Layout.preferredWidth: 170
-                                    text: root.capturingId === shortcutRow.modelData.id
-                                          ? qsTrId("qml.recording")
-                                          : shortcutRow.modelData.shortcutText
-                                    color: shortcutRow.modelData.isDefault
-                                           ? Theme.colors.text.secondary
-                                           : Theme.colors.accent.primary
-                                    font.family: Theme.uiFont
-                                    verticalAlignment: Text.AlignVCenter
+                                contentItem: RowLayout {
+                                    spacing: 8
+                                    Text {
+                                        font.pixelSize: Theme.uiFontSize
+                                        Layout.fillWidth: true
+                                        text: qsTrId(shortcutRow.modelData.labelKey)
+                                              || shortcutRow.modelData.labelFallback
+                                        elide: Text.ElideRight
+                                        color: Theme.colors.text.active
+                                        font.family: Theme.uiFont
+                                        verticalAlignment: Text.AlignVCenter
+                                    }
+                                    Text {
+                                        font.pixelSize: Theme.uiFontSize
+                                        Layout.preferredWidth: 170
+                                        text: root.capturingId === shortcutRow.modelData.id
+                                              ? qsTrId("qml.recording")
+                                              : shortcutRow.modelData.shortcutText
+                                        color: shortcutRow.modelData.isDefault
+                                               ? Theme.colors.text.secondary
+                                               : Theme.colors.accent.primary
+                                        font.family: Theme.uiFont
+                                        verticalAlignment: Text.AlignVCenter
+                                    }
                                 }
                             }
-                        }
 
-                        AppButton {
-                            text: qsTrId("qml.restore_defaults")
-                            enabled: !shortcutRow.modelData.isDefault
-                            onClicked: {
-                                root.shortcuts.resetShortcut(shortcutRow.modelData.id)
-                                root.refreshShortcuts()
+                            AppButton {
+                                text: qsTrId("qml.restore_defaults")
+                                enabled: !shortcutRow.modelData.isDefault
+                                onClicked: {
+                                    root.shortcuts.resetShortcut(shortcutRow.modelData.id)
+                                    root.refreshShortcuts()
+                                }
                             }
                         }
                     }
-                }
-
-                AppButton {
-                    objectName: "preferencesResetShortcutsButton"
-                    Layout.alignment: Qt.AlignLeft
-                    text: qsTrId("qml.restore_all_defaults")
-                    onClicked: {
-                        root.shortcuts.resetAllShortcuts()
-                        root.refreshShortcuts()
-                    }
-                }
-            }
-
-            // ---- 更新 ----
-            // A manual check always answers — up to date, no package for this
-            // platform, or failed — because a check the reader started themselves
-            // must not fail silently. An automatic "available" result never lands
-            // here: it only sets updateAvailable, surfaced by the status bar badge.
-            ColumnLayout {
-                Layout.fillWidth: true
-                Layout.fillHeight: false
-                Layout.alignment: Qt.AlignTop
-                spacing: Theme.settingsRowSpacing
-
-                AppSwitch {
-                    objectName: "preferencesUpdateCheckSwitch"
-                    text: qsTrId("dialog.preferences.update.auto_check")
-                    checked: root.updateService ? root.updateService.checkEnabled : false
-                    onToggled: if (root.updateService) root.updateService.checkEnabled = checked
-                }
-
-                Text {
-                    Layout.fillWidth: true
-                    visible: root.updateService && root.updateService.lastCheckText.length > 0
-                    text: qsTrId("dialog.preferences.update.last_check").arg(
-                        root.updateService ? root.updateService.lastCheckText : "")
-                    color: Theme.colors.text.secondary
-                    font.family: Theme.uiFont
-                    font.pixelSize: Theme.secondaryFontSize
-                    wrapMode: Text.WordWrap
-                }
-
-                RowLayout {
-                    spacing: 8
 
                     AppButton {
-                        objectName: "preferencesUpdateCheckNowButton"
-                        text: qsTrId("dialog.preferences.update.check_now")
-                        enabled: root.updateService && !root.updateService.checkInFlight
-                        onClicked: if (root.updateService) root.updateService.checkNow(true)
-                    }
-
-                    Text {
-                        id: updateManualResult
-                        property string outcome: ""
-                        text: {
-                            if (outcome === "up-to-date") return qsTrId("dialog.preferences.update.up_to_date")
-                            if (outcome === "no-package") return qsTrId("dialog.preferences.update.no_package")
-                            if (outcome === "" || outcome === "available") return ""
-                            return qsTrId("dialog.preferences.update.failed")
+                        objectName: "preferencesResetShortcutsButton"
+                        Layout.alignment: Qt.AlignRight
+                        text: qsTrId("qml.restore_all_defaults")
+                        onClicked: {
+                            root.shortcuts.resetAllShortcuts()
+                            root.refreshShortcuts()
                         }
-                        objectName: "preferencesUpdateManualResultText"
-                        Layout.fillWidth: true
-                        color: Theme.colors.text.secondary
-                        font.family: Theme.uiFont
-                        font.pixelSize: Theme.secondaryFontSize
-                        wrapMode: Text.WordWrap
                     }
                 }
 
-                Connections {
-                    target: root.updateService
-                    function onManualCheckFinished(outcome, detail) {
-                        updateManualResult.outcome = outcome
-                        if (outcome === "available") {
-                            root.updateRequested()
-                            return
+                PreferencePage {
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 12
+
+                        Image {
+                            Layout.preferredWidth: 48
+                            Layout.preferredHeight: 48
+                            source: "qrc:/icons/app.png"
+                            sourceSize: Qt.size(96, 96)
+                            fillMode: Image.PreserveAspectFit
+                        }
+
+                        ColumnLayout {
+                            spacing: 2
+                            Text {
+                                text: "MiaCode"
+                                color: Theme.colors.text.active
+                                font.family: Theme.uiFont
+                                font.pixelSize: Theme.uiFontSize + 6
+                                font.bold: true
+                            }
+                            Text {
+                                objectName: "aboutVersion"
+                                text: "v" + root.aboutInfo.version
+                                color: Theme.colors.text.secondary
+                            }
+                            Text {
+                                objectName: "aboutUpdateHint"
+                                visible: root.updateService && root.updateService.updateAvailable
+                                text: qsTrId("status.update_available").arg(
+                                    root.updateService ? root.updateService.availableVersion : "")
+                                color: Theme.colors.text.active
+                                font.family: Theme.uiFont
+                                font.pixelSize: Theme.secondaryFontSize
+
+                                MouseArea {
+                                    anchors.fill: parent
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: root.updateRequested()
+                                }
+                            }
+                        }
+                        Item { Layout.fillWidth: true }
+                    }
+
+                    GridLayout {
+                        Layout.fillWidth: true
+                        columns: 2
+                        columnSpacing: Theme.settingsLabelSpacing
+                        rowSpacing: 12
+
+                        AboutInfoLabel { text: root.aboutInfo.platformLabel }
+                        // Selectable: these are the two lines a bug report asks for.
+                        AboutInfoValue { text: root.aboutInfo.platform }
+                        AboutInfoLabel { text: root.aboutInfo.buildTypeLabel }
+                        AboutInfoValue { text: root.aboutInfo.buildType }
+                    }
+
+                    PreferenceGroup {
+                        title: qsTrId("dialog.preferences.updates_group")
+
+                        PreferenceSwitch {
+                            objectName: "preferencesUpdateCheckSwitch"
+                            text: qsTrId("dialog.preferences.update.auto_check")
+                            checked: root.updateService ? root.updateService.checkEnabled : false
+                            onToggled: if (root.updateService) root.updateService.checkEnabled = checked
+                        }
+
+                        Text {
+                            Layout.fillWidth: true
+                            visible: root.updateService && root.updateService.lastCheckText.length > 0
+                            text: qsTrId("dialog.preferences.update.last_check").arg(
+                                root.updateService ? root.updateService.lastCheckText : "")
+                            color: Theme.colors.text.secondary
+                            font.family: Theme.uiFont
+                            font.pixelSize: Theme.secondaryFontSize
+                            wrapMode: Text.WordWrap
+                        }
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            Layout.minimumHeight: root.settingsRowHeight
+                            spacing: 12
+
+                            Text {
+                                id: updateManualResult
+                                property string outcome: ""
+                                text: {
+                                    if (outcome === "up-to-date") return qsTrId("dialog.preferences.update.up_to_date")
+                                    if (outcome === "no-package") return qsTrId("dialog.preferences.update.no_package")
+                                    if (outcome === "" || outcome === "available") return ""
+                                    return qsTrId("dialog.preferences.update.failed")
+                                }
+                                objectName: "preferencesUpdateManualResultText"
+                                Layout.fillWidth: true
+                                color: Theme.colors.text.secondary
+                                font.family: Theme.uiFont
+                                font.pixelSize: Theme.secondaryFontSize
+                                wrapMode: Text.WordWrap
+                            }
+
+                            AppButton {
+                                objectName: "preferencesUpdateCheckNowButton"
+                                text: qsTrId("dialog.preferences.update.check_now")
+                                enabled: root.updateService && !root.updateService.checkInFlight
+                                onClicked: if (root.updateService) root.updateService.checkNow(true)
+                            }
+                        }
+
+                        Connections {
+                            target: root.updateService
+                            function onManualCheckFinished(outcome, detail) {
+                                updateManualResult.outcome = outcome
+                                if (outcome === "available") {
+                                    root.updateRequested()
+                                    return
+                                }
+                            }
                         }
                     }
                 }
             }
         }
     }
-
 }

@@ -44,29 +44,25 @@ Rectangle {
         durations.releaseInputFocus()
         divisions.releaseInputFocus()
     }
-    function requestAlignment(alignment) {
-        Qt.callLater(function() {
-            if (root.visible && root.expanded)
-                root.ensureVisibleRequested(root, alignment)
-        })
-    }
     function openGroup(group) {
         root.expanded = true
-        root.requestAlignment("top")
+        Qt.callLater(function() {
+            if (root.visible && root.expanded) {
+                root.ensureContentLayout()
+                root.ensureVisibleRequested(group === "division" ? divisions : durations, "top")
+            }
+        })
     }
 
     Item {
         id: heading
         width: parent.width
-        height: Math.max(46, Theme.controlMinHeight + 16)
+        height: Theme.controlMinHeight + 10
         AbstractButton {
             id: toggle
             anchors.fill: parent
             Accessible.name: qsTrId("preferences.completion.customize")
-            onClicked: {
-                root.expanded = !root.expanded
-                if (root.expanded) root.requestAlignment("bottom")
-            }
+            onClicked: root.expanded = !root.expanded
             contentItem: Item {
                 Row {
                     x: 12
@@ -84,7 +80,7 @@ Rectangle {
                         text: qsTrId("preferences.completion.customize")
                         color: Theme.colors.text.primary
                         font.family: Theme.uiFont
-                        font.pixelSize: Theme.uiFontSize
+                        font.pixelSize: Theme.uiFontSize + 1
                     }
                 }
             }
@@ -133,11 +129,6 @@ Rectangle {
         height: groups.implicitHeight + 24
         visible: root.expanded
         enabled: root.expanded
-        Rectangle {
-            width: parent.width
-            height: 1
-            color: Theme.separatorColor
-        }
         RowLayout {
             id: groups
             x: 12
