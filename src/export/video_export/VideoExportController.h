@@ -97,6 +97,12 @@ inline QString normalizedIntroBannerMode(const QString& mode)
         : QStringLiteral("DX");
 }
 
+// A dialog task keeps the user's choice; "auto" shows the chart's detected type.
+inline QString resolvedIntroBannerMode(const QString& selected, const QString& detected)
+{
+    return normalizedIntroBannerMode(isAutoIntroBannerMode(selected) ? detected : selected);
+}
+
 inline QString introBannerModeAbbreviation(const QString& mode)
 {
     return normalizedIntroBannerMode(mode) == QStringLiteral("Standard")

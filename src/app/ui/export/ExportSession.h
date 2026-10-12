@@ -333,6 +333,9 @@ private:
     QString unavailableReason_;
     QVariantList difficulties_;
     VideoExportTask task_;
+    // The seed's chart-detected card type; task_.intro.mode holds the user's
+    // choice (auto/DX/SD) once preferences or the previous seed are applied.
+    QString detectedIntroMode_ = QStringLiteral("Standard");
     double chartDurationSeconds_ = 0.0;
     // Dragging the PV start writes the chart's project preferences once the
     // drag settles; the path is captured with the value so a pending write can
