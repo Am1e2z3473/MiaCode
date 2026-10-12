@@ -37,6 +37,60 @@ QImage paint(const PreviewFrameState& state)
     return image;
 }
 
+bool verifyHudViewportConsistency(QTextStream& err)
+{
+    PreviewFrameState state;
+    state.render.showTimestamp = true;
+    state.render.showChartInfoHud = true;
+    state.render.showObjectStatsHud = true;
+    state.render.showDebugInfo = true;
+    state.render.centerDisplayMode = miacode::preview_gameplay::CenterDisplayMode::AchievementDxPlus;
+    state.chartTitle = QStringLiteral("愛の残滓");
+    state.chartArtist = QStringLiteral("藍月なくる");
+    state.chartDifficultyLabel = QStringLiteral("MASTER 13+");
+    state.chartDesigner = QStringLiteral("テスト譜師 Agjp");
+    state.playheadSeconds = 103.262;
+    state.hudStatsSnapshot.combo = 320;
+    state.hudStatsSnapshot.totalNotes = 567;
+    state.hudStatsSnapshot.tapPlayed = 133;
+    state.hudStatsSnapshot.tapTotal = 289;
+    state.hudStatsSnapshot.finaleRate = 59.83;
+    state.hudStatsSnapshot.deluxeRate = 59.522;
+    bool ok = true;
+    const auto render = [&](const QSize& logicalSize, int dpi) {
+        QImage image(1920, 1080, QImage::Format_ARGB32_Premultiplied);
+        image.setDotsPerMeterX(qRound(dpi / 0.0254));
+        image.setDotsPerMeterY(qRound(dpi / 0.0254));
+        image.fill(Qt::transparent);
+        {
+            QPainter painter(&image);
+            // Compare layout at the same raster resolution, removing only the
+            // viewport scale. A narrow pane must retain the export's layout.
+            painter.scale(1920.0 / logicalSize.width(), 1080.0 / logicalSize.height());
+            const auto transform = painter.worldTransform();
+            miacode::preview::hud::paintPreviewHudOverlay(painter, state, logicalSize);
+            miacode::preview::hud::paintCenterDisplay(painter, state, logicalSize);
+            ok &= require(painter.worldTransform() == transform, "HUD restores caller's transform", err);
+        }
+        image.setDotsPerMeterX(qRound(96 / 0.0254));
+        image.setDotsPerMeterY(qRound(96 / 0.0254));
+        return image;
+    };
+    for (const QString& font : {QString(), QStringLiteral(MIACODE_SOURCE_ROOT "/assets/fonts/MapleMonoNormalNL-CN-Regular.ttf")}) {
+        state.hudFontSettings.paths.fill(font);
+        const QImage exported = render(QSize(1920, 1080), 96);
+        for (const QSize& viewport : {QSize(640, 360), QSize(800, 450), QSize(1280, 720), QSize(3840, 2160)}) {
+            for (int dpi : {96, 120, 144}) {
+                const bool matches = render(viewport, dpi) == exported;
+                if (!matches) err << "viewport=" << viewport.width() << "x" << viewport.height()
+                    << " dpi=" << dpi << " font=" << font << Qt::endl;
+                ok &= require(matches, "preview HUD layout matches export across viewport sizes and DPI", err);
+            }
+        }
+    }
+    return ok;
+}
+
 bool verifyHudSpacing(QTextStream& err)
 {
     struct Canvas { QSize size; qreal scale; };
@@ -126,6 +180,7 @@ int main(int argc, char** argv)
     QGuiApplication app(argc, argv);
     QTextStream err(stderr);
     bool ok = verifyHudSpacing(err);
+    ok &= verifyHudViewportConsistency(err);
     VideoExportSnapshot source;
     source.chartTextUtf8 = QStringLiteral("&title=HUD Spec\n&first=0\n&lv_5=12\n&inote_5=(120){4}1,\n");
     source.difficultyId = 5;
