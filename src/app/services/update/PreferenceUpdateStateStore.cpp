@@ -9,7 +9,6 @@ namespace {
 
 constexpr auto kGroup = "updates";
 constexpr auto kEnabled = "enabled";
-constexpr auto kChannel = "channel";
 constexpr auto kLastCheckAt = "lastCheckAt";
 constexpr auto kLastOutcome = "lastOutcome";
 constexpr auto kSkippedVersion = "skippedVersion";
@@ -40,16 +39,6 @@ bool PreferenceUpdateStateStore::checkEnabled() const
 void PreferenceUpdateStateStore::setCheckEnabled(bool enabled)
 {
     writeValue(kEnabled, enabled);
-}
-
-QString PreferenceUpdateStateStore::channelToken() const
-{
-    return readGroup().value(QLatin1String(kChannel)).toString();
-}
-
-void PreferenceUpdateStateStore::setChannelToken(const QString& token)
-{
-    writeValue(kChannel, token);
 }
 
 QDateTime PreferenceUpdateStateStore::lastCheckAt() const

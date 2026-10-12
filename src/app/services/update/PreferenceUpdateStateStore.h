@@ -12,9 +12,6 @@ public:
     bool checkEnabled() const override;
     void setCheckEnabled(bool enabled) override;
 
-    QString channelToken() const override;
-    void setChannelToken(const QString& token) override;
-
     QDateTime lastCheckAt() const override;
     QString lastOutcome() const override;
     void recordCheck(const QDateTime& atUtc, const QString& outcome) override;

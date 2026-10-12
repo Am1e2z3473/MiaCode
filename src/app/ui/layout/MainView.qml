@@ -500,7 +500,7 @@ Item {
         }
         choices: [
             { id: "download", label: qsTrId("dialog.update.download"), role: "accept",
-              enabled: !!detail.releasePageUrl },
+              enabled: !!detail.downloadUrl },
             { id: "later", label: qsTrId("action.later"), role: "reject" },
             { id: "skip", label: qsTrId("dialog.update.skip"), role: "reject" }
         ]

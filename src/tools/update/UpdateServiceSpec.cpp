@@ -45,8 +45,6 @@ class MemoryStore final : public UpdateStateStore
 public:
     bool checkEnabled() const override { return enabled; }
     void setCheckEnabled(bool value) override { enabled = value; }
-    QString channelToken() const override { return channel; }
-    void setChannelToken(const QString& token) override { channel = token; }
     QDateTime lastCheckAt() const override { return checkedAt; }
     QString lastOutcome() const override { return outcome; }
     void recordCheck(const QDateTime& atUtc, const QString& value) override
@@ -61,7 +59,6 @@ public:
     void setKnownVersion(const QString& version) override { known = version; }
 
     bool enabled = true;
-    QString channel;
     QDateTime checkedAt;
     QString outcome;
     QString skipped;
@@ -73,12 +70,9 @@ QByteArray manifestPayload(const QString& version)
 {
     const QJsonObject root{
         {QStringLiteral("schema"), 1},
-        {QStringLiteral("channel"), QStringLiteral("beta")},
         {QStringLiteral("major"), 2},
         {QStringLiteral("version"), version},
         {QStringLiteral("releasedAt"), QStringLiteral("2026-09-20")},
-        {QStringLiteral("releasePageUrl"),
-         QStringLiteral("https://github.com/fanfaredash/MiaCode/releases/tag/v") + version},
         {QStringLiteral("notes"), QJsonObject{{QStringLiteral("en_US"), QStringLiteral("notes")}}},
         {QStringLiteral("platforms"), QJsonObject{
              {QStringLiteral("macos-arm64"), QJsonObject{
@@ -112,37 +106,18 @@ int main(int argc, char** argv)
     QTextStream err(stderr);
     bool ok = true;
 
-    // ---- 通道默认值：prerelease 构建默认 beta ----
-    {
-        FakeFetcher fetcher;
-        MemoryStore store;
-        fetcher.nextPayload = manifestPayload(QStringLiteral("2.1.0"));
-        UpdateService service(fetcher, store, testEnvironment());
-        service.checkNow(true);
-        ok &= expect(fetcher.requestedUrls.size() == 1
-                         && fetcher.requestedUrls.first().endsWith(QLatin1String("/2-beta.json")),
-                     QStringLiteral("a prerelease build defaults to the beta channel"), err);
-    }
-    {
+    // ---- 每个 major 只有一份 OSS manifest，预发布与正式构建读同一个地址 ----
+    for (const QString& version : {QStringLiteral("2.0.0-alpha"), QStringLiteral("2.0.0")}) {
         FakeFetcher fetcher;
         MemoryStore store;
         UpdateEnvironment environment = testEnvironment();
-        environment.versionText = QStringLiteral("2.0.0");
+        environment.versionText = version;
         fetcher.nextPayload = manifestPayload(QStringLiteral("2.1.0"));
         UpdateService service(fetcher, store, environment);
         service.checkNow(true);
-        ok &= expect(fetcher.requestedUrls.first().endsWith(QLatin1String("/2-stable.json")),
-                     QStringLiteral("a release build defaults to the stable channel"), err);
-    }
-    {
-        FakeFetcher fetcher;
-        MemoryStore store;
-        store.channel = QStringLiteral("stable");
-        fetcher.nextPayload = manifestPayload(QStringLiteral("2.1.0"));
-        UpdateService service(fetcher, store, testEnvironment());
-        service.checkNow(true);
-        ok &= expect(fetcher.requestedUrls.first().endsWith(QLatin1String("/2-stable.json")),
-                     QStringLiteral("an explicit channel choice overrides the build default"), err);
+        ok &= expect(fetcher.requestedUrls == QStringList{QStringLiteral(
+                         "https://miacode.oss-cn-beijing.aliyuncs.com/update/2/latest.json")},
+                     QStringLiteral("every %1 build reads the major's single OSS manifest").arg(version), err);
     }
 
     // ---- 找到更新 ----
@@ -318,13 +293,13 @@ int main(int argc, char** argv)
         UpdateService service(fetcher, store, testEnvironment());
         ok &= expect(service.updateAvailable()
                          && service.availableDetail()
-                                .value(QStringLiteral("releasePageUrl")).toString().isEmpty(),
+                                .value(QStringLiteral("downloadUrl")).toString().isEmpty(),
                      QStringLiteral("a remembered version lights the badge before any detail exists"), err);
         service.checkNow(false);
         ok &= expect(fetcher.fetchCount == 1,
                      QStringLiteral("the throttle gives way while the badge has no detail to show"), err);
-        ok &= expect(!service.availableDetail()
-                          .value(QStringLiteral("releasePageUrl")).toString().isEmpty(),
+        ok &= expect(service.availableDetail().value(QStringLiteral("downloadUrl")).toString()
+                         == QLatin1String("https://example.invalid/mac.7z"),
                      QStringLiteral("the refetch fills in the detail the badge promised"), err);
     }
     {

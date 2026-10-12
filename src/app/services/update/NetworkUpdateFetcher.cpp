@@ -27,7 +27,7 @@ void NetworkUpdateFetcher::fetch(const QUrl& url, Callback callback)
 {
     QNetworkRequest request(url);
     request.setTransferTimeout(kTimeoutMs);
-    // GitHub 的 release 下载 URL 会 302 到对象存储，必须跟随。
+    // OSS 前面可能挂 CDN 或换域名，跟随不降级的重定向。
     request.setAttribute(QNetworkRequest::RedirectPolicyAttribute,
                          QVariant::fromValue(QNetworkRequest::NoLessSafeRedirectPolicy));
     request.setMaximumRedirectsAllowed(5);

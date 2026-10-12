@@ -33,12 +33,9 @@ QJsonObject validManifest()
 {
     return QJsonObject{
         {QStringLiteral("schema"), 1},
-        {QStringLiteral("channel"), QStringLiteral("beta")},
         {QStringLiteral("major"), 2},
         {QStringLiteral("version"), QStringLiteral("2.1.0-beta.3")},
         {QStringLiteral("releasedAt"), QStringLiteral("2026-09-20")},
-        {QStringLiteral("releasePageUrl"),
-         QStringLiteral("https://github.com/fanfaredash/MiaCode/releases/tag/v2.1.0-beta.3")},
         {QStringLiteral("mandatory"), false},
         {QStringLiteral("notes"), QJsonObject{
              {QStringLiteral("zh_CN"), QStringLiteral("中文说明")},
@@ -79,8 +76,8 @@ int main(int argc, char** argv)
         ok &= expect(result.manifest.package.bytes == 84231168
                          && result.manifest.package.file == QLatin1String("mac.7z"),
                      QStringLiteral("the platform entry is selected by key"), err);
-        ok &= expect(result.manifest.releasePageUrl.contains(QLatin1String("releases/tag/")),
-                     QStringLiteral("the release page url survives"), err);
+        ok &= expect(result.manifest.package.url == QLatin1String("https://example.invalid/mac.7z"),
+                     QStringLiteral("the platform download url survives"), err);
     }
 
     // ---- 语言回退 ----
@@ -180,19 +177,16 @@ int main(int argc, char** argv)
         ok &= expect(result.status == ManifestStatus::Invalid,
                      QStringLiteral("an unparseable version is invalid"), err);
     }
-    {
+    for (const QString& url : {QStringLiteral("javascript:alert(1)"), QStringLiteral("http://example.invalid/mac.7z")}) {
         QJsonObject root = validManifest();
-        root.remove(QStringLiteral("releasePageUrl"));
+        QJsonObject platforms = root.value(QStringLiteral("platforms")).toObject();
+        QJsonObject entry = platforms.value(mac).toObject();
+        entry.insert(QStringLiteral("url"), url);
+        platforms.insert(mac, entry);
+        root.insert(QStringLiteral("platforms"), platforms);
         const auto result = parseManifest(toPayload(root), 2, mac, QStringLiteral("zh_CN"));
         ok &= expect(result.status == ManifestStatus::Invalid,
-                     QStringLiteral("a manifest without a release page is invalid"), err);
-    }
-    {
-        QJsonObject root = validManifest();
-        root.insert(QStringLiteral("releasePageUrl"), QStringLiteral("javascript:alert(1)"));
-        const auto result = parseManifest(toPayload(root), 2, mac, QStringLiteral("zh_CN"));
-        ok &= expect(result.status == ManifestStatus::Invalid,
-                     QStringLiteral("a non-https release page is rejected"), err);
+                     QStringLiteral("a non-https download url is rejected: %1").arg(url), err);
     }
     {
         QJsonObject root = validManifest();

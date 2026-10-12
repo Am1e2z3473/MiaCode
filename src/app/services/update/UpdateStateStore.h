@@ -15,10 +15,6 @@ public:
     virtual bool checkEnabled() const = 0;
     virtual void setCheckEnabled(bool enabled) = 0;
 
-    // "" 表示用户没选过（跟随构建），否则是 "stable" / "beta"。
-    virtual QString channelToken() const = 0;
-    virtual void setChannelToken(const QString& token) = 0;
-
     virtual QDateTime lastCheckAt() const = 0;
     // "ok" 或 "error"，决定下次节流窗口的长短。
     virtual QString lastOutcome() const = 0;
