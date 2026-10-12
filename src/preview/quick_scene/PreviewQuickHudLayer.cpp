@@ -10,6 +10,7 @@
 
 #include <QFontMetrics>
 #include <QPainter>
+#include <QPainterStateGuard>
 #include <QPaintDevice>
 #include <QPainterPath>
 #include <QQuickWindow>
@@ -31,7 +32,6 @@ struct HudInformationLayoutKey {
     qreal padding = 0;
     qreal shadow = 0;
     int minimumPointSize = 1;
-    int logicalDpi = 96;
     QFont font;
     QString fontPath;
     QStringList samples;
@@ -176,6 +176,24 @@ void drawHudTextWithColors(
         });
 }
 
+// Layout in one design space before rasterising into the viewport. Integer
+// font sizes, minimum gaps and fit decisions must not depend on pane width or
+// the screen DPI; export and live preview differ only in raster resolution.
+QRectF hudReferenceStage(QPainter& painter, const QSize& canvasSize)
+{
+    constexpr qreal referenceShortSide = 1080;
+    const qreal scale = qMin(canvasSize.width(), canvasSize.height()) / referenceShortSide;
+    painter.scale(scale, scale);
+    return QRectF(0, 0, canvasSize.width() / scale, canvasSize.height() / scale);
+}
+
+QFont hudReferenceFont(QFont font)
+{
+    constexpr qreal referenceDpi = 96;
+    font.setPixelSize(qMax(1, qRound(font.pointSizeF() * referenceDpi / 72.0)));
+    return font;
+}
+
 struct HudGlyphVerticalBounds {
     qreal top = 0.0;
     qreal bottom = 0.0;
@@ -219,9 +237,9 @@ qreal hudLineAdvance(const QFont& font, const QFontMetrics& metrics,
 {
     const qreal em = hudFontPixelSize(font, metrics);
     const qreal glyphSpan = bounds.valid ? bounds.bottom - bounds.top : metrics.height();
-    // A common 1.35em baseline rhythm, with at least 0.15em of clear space
+    // A common 1.25em baseline rhythm, with at least 0.12em of clear space
     // after the glyph and its shadow, independent of the font's line tables.
-    return std::ceil(qMax(1.35 * em, glyphSpan + shadowOffset + qMax<qreal>(2, 0.15 * em)));
+    return std::ceil(qMax(1.25 * em, glyphSpan + shadowOffset + qMax<qreal>(2, 0.12 * em)));
 }
 
 using miacode::preview::hud::HudInformationLayout;
@@ -277,6 +295,7 @@ HudInformationLayout layoutChartInformation(const HudInformationLayoutKey& key, 
         for (int size = key.font.pointSize(); size >= key.minimumPointSize; --size) {
             QFont font = key.font;
             font.setPointSize(size);
+            font = hudReferenceFont(font);
             const QFontMetrics metrics(font, painter.device());
             const auto glyphs = hudGlyphVerticalBounds(font, metrics, fields);
             const qreal ascent = glyphs.valid ? -glyphs.top : metrics.ascent();
@@ -345,6 +364,7 @@ HudInformationLayout layoutObjectStatistics(const HudInformationLayoutKey& key, 
     for (int size = key.font.pointSize(); size >= key.minimumPointSize; --size) {
         QFont font = key.font;
         font.setPointSize(size);
+        font = hudReferenceFont(font);
         const QFontMetrics metrics(font, painter.device());
         for (const bool compact : {false, true}) {
             QStringList lines = key.samples;
@@ -363,8 +383,8 @@ HudInformationLayout layoutObjectStatistics(const HudInformationLayoutKey& key, 
             for (int row = 1; row < rows; ++row) {
                 // Separate rate headings from their values and the next group.
                 const qreal groupGap = compact
-                    ? (row == 1 ? 0.15 * em : row == 2 ? 0.4 * em : 0)
-                    : (row == 1 || row == 3 ? 0.15 * em : row == 2 || row == 4 ? 0.4 * em : 0);
+                    ? (row == 1 ? 0.12 * em : row == 2 ? 0.35 * em : 0)
+                    : (row == 1 || row == 3 ? 0.12 * em : row == 2 || row == 4 ? 0.35 * em : 0);
                 rowOffsets[row] = rowOffsets[row - 1] + advance + groupGap;
             }
             const qreal height = ascent + descent + rowOffsets.last();
@@ -875,7 +895,9 @@ void paintPreviewHudOverlay(
         return;
     }
 
-    const QRectF stageRect = miacode::preview::scene::stageRectForSize(canvasSize);
+    if (canvasSize.isEmpty()) return;
+    QPainterStateGuard painterState(&painter);
+    const QRectF stageRect = hudReferenceStage(painter, canvasSize);
     constexpr qreal kHudReferenceShortSide = 1024.0;
     constexpr qreal kHudReferencePadding = 18.0;
     constexpr int kHudReferenceDebugFontPointSize = 13;
@@ -895,6 +917,7 @@ void paintPreviewHudOverlay(
         miacode::preview::scene::PreviewHudFontArea::Timestamp,
         timeFontPointSize,
         QFont::DemiBold);
+    timestampFont = hudReferenceFont(timestampFont);
     // Built on demand, NOT alongside timestampFont: the chart-info HUD is off by
     // default, and previewHudTimestampFontForArea() is not free — it runs the
     // per-area custom-family lookup plus a QFontInfo() resolve to validate the
@@ -917,6 +940,7 @@ void paintPreviewHudOverlay(
             miacode::preview::scene::PreviewHudFontArea::DebugInfo,
             debugFontPointSize,
             QFont::Medium);
+        fpsFont = hudReferenceFont(fpsFont);
         const qreal shadowOffset = qMax<qreal>(1.0, 2.0 * hudScale);
         const auto formatMetric = [](double value) {
             return value > 0.0 ? QString::number(value, 'f', 1) : QStringLiteral("na");
@@ -1076,7 +1100,6 @@ void paintPreviewHudOverlay(
     key.padding = hudPadding;
     key.shadow = shadowOffset;
     key.minimumPointSize = qMax(1, qRound(6 * hudScale));
-    key.logicalDpi = painter.device()->logicalDpiY();
     const bool informationHudSupported = stageRect.width() >= qRound(stageRect.height() * 4.0 / 3.0);
 
     if (state->render.showChartInfoHud && informationHudSupported) {
@@ -1148,7 +1171,9 @@ void paintCenterDisplay(
     if (state.render.centerDisplayMode == miacode::preview_gameplay::CenterDisplayMode::Off) {
         return;
     }
-    const QRectF stageRect = miacode::preview::scene::stageRectForSize(canvasSize);
+    if (canvasSize.isEmpty()) return;
+    QPainterStateGuard painterState(&painter);
+    const QRectF stageRect = hudReferenceStage(painter, canvasSize);
     // Size/position the center display in the playfield's 1080 logical space, the same
     // design space MajdataPlay's CenterInfoDisplayer lives in, so it tracks the notes ring
     // (and the "Stage Display Scale" / layoutSquareScale) instead of the stage HUD reference.
