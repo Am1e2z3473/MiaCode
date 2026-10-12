@@ -4583,6 +4583,66 @@ Error: %1</translation>
         <source>Preferences: configure interface appearance and styling, the editor and shortcuts.</source>
         <translation>Preferences: configure interface appearance and styling, the editor and shortcuts.</translation>
     </message>
+    <message id="preferences.completion.customize">
+        <source>Custom candidates</source>
+        <translation>Custom candidates</translation>
+    </message>
+    <message id="preferences.completion.expand">
+        <source>Expand custom candidates</source>
+        <translation>Expand custom candidates</translation>
+    </message>
+    <message id="preferences.completion.collapse">
+        <source>Collapse custom candidates</source>
+        <translation>Collapse custom candidates</translation>
+    </message>
+    <message id="preferences.completion.duration">
+        <source>Duration</source>
+        <translation>Duration</translation>
+    </message>
+    <message id="preferences.completion.division">
+        <source>Beat subdivision</source>
+        <translation>Beat subdivision</translation>
+    </message>
+    <message id="preferences.completion.duration_hint">
+        <source>Enter duration</source>
+        <translation>Enter duration</translation>
+    </message>
+    <message id="preferences.completion.division_hint">
+        <source>Enter subdivision</source>
+        <translation>Enter subdivision</translation>
+    </message>
+    <message id="preferences.completion.reorder">
+        <source>Drag to reorder; use Up or Down when focused</source>
+        <translation>Drag to reorder; use Up or Down when focused</translation>
+    </message>
+    <message id="preferences.completion.delete">
+        <source>Delete candidate</source>
+        <translation>Delete candidate</translation>
+    </message>
+    <message id="preferences.completion.keep_one">
+        <source>Keep at least one candidate</source>
+        <translation>Keep at least one candidate</translation>
+    </message>
+    <message id="preferences.completion.reset">
+        <source>Restore defaults</source>
+        <translation>Restore defaults</translation>
+    </message>
+    <message id="preferences.completion.reset_question">
+        <source>Restore default candidates?</source>
+        <translation>Restore default candidates?</translation>
+    </message>
+    <message id="preferences.completion.invalid_duration">
+        <source>Enter a valid hold duration</source>
+        <translation>Enter a valid hold duration</translation>
+    </message>
+    <message id="preferences.completion.invalid_division">
+        <source>Enter a positive integer</source>
+        <translation>Enter a positive integer</translation>
+    </message>
+    <message id="preferences.completion.duplicate">
+        <source>This candidate already exists</source>
+        <translation>This candidate already exists</translation>
+    </message>
 </context>
 
 

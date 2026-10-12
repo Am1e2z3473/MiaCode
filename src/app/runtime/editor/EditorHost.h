@@ -19,6 +19,8 @@ public:
     void applyEditorOverwriteModeEnabled(bool enabled, bool persistPreference);
     void applyEditorAutoCompletionEnabled(bool enabled, bool persistPreference);
     void applyEditorImeInputDisabled(bool disabled, bool persistPreference);
+    void applyEditorCompletionCandidates(const QStringList& durations,
+                                        const QStringList& divisions, bool persistPreference);
     QString resolveProjectRenderStateFilePath() const;
     void loadProjectRenderState();
     void saveProjectRenderState() const;

@@ -40,6 +40,7 @@ Item {
     property var pendingActivationCancellation: null
 
     signal openRequested()
+    signal completionSettingsRequested(string group)
     readonly property Item cornerSourceItem: tabs.visible ? tabs : null
 
     function undo() {
@@ -378,6 +379,7 @@ Item {
         analysisSession: root.analysisSession
         preferences: root.preferences
         onNormalizeChartRequested: root.pages.openNormalizeWholeChart()
+        onCompletionSettingsRequested: function(group) { root.completionSettingsRequested(group) }
     }
 
     Flickable {

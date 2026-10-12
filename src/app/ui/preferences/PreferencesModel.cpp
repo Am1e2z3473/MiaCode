@@ -29,10 +29,19 @@ PreferencesModel::PreferencesModel(miacode::PreferencesStore*& storeSlot,
     , storeSlot_(&storeSlot)
     , settings_(&settings)
 {
+    reloadCompletionCandidates();
+    connect(&settings, &WorkbenchSettings::editorSettingsChanged,
+            this, &PreferencesModel::reloadCompletionCandidates);
+    connect(&completionDurations_, &CompletionCandidateModel::savedValuesChanged,
+            this, &PreferencesModel::persistCompletionCandidates);
+    connect(&completionDivisions_, &CompletionCandidateModel::savedValuesChanged,
+            this, &PreferencesModel::persistCompletionCandidates);
     connect(&settings, &WorkbenchSettings::blurMaterialsEnabledChanged,
             this, &PreferencesModel::interfaceChanged);
     connect(&miacode::LocaleService::instance(), &miacode::LocaleService::languageChanged,
             this, [this](const QString&) {
+                completionDurations_.retranslateErrors();
+                completionDivisions_.retranslateErrors();
                 emit interfaceChanged();
                 emit performanceChanged();
             });
@@ -213,6 +222,34 @@ void PreferencesModel::setEditorLineSpacing(double factor)
     emit editorChanged();
 }
 
+void PreferencesModel::reloadCompletionCandidates()
+{
+    const auto& config = settings_->editorCompletionConfig();
+    completionDurations_.replaceValues(config.durations);
+    completionDivisions_.replaceValues(config.divisions);
+}
+
+void PreferencesModel::persistCompletionCandidates()
+{
+    if (store() == nullptr) return;
+    store()->applyEditorCompletionCandidates(completionDurations_.savedValues(),
+                                            completionDivisions_.savedValues(), true);
+}
+
+void PreferencesModel::finishCompletionEditing()
+{
+    completionDurations_.finishEditing();
+    completionDivisions_.finishEditing();
+}
+
+void PreferencesModel::resetCompletionCandidates()
+{
+    const auto defaults = editor::defaultCompletionConfig();
+    completionDurations_.replaceValues(defaults.durations, true);
+    completionDivisions_.replaceValues(defaults.divisions, true);
+    persistCompletionCandidates();
+}
+
 bool PreferencesModel::editorAutoCompletion() const
 {
     return store() != nullptr && store()->editorAutoCompletionEnabled();
@@ -223,6 +260,7 @@ void PreferencesModel::setEditorAutoCompletion(bool enabled)
     if (store() == nullptr || enabled == editorAutoCompletion()) {
         return;
     }
+    if (!enabled) finishCompletionEditing();
     store()->applyEditorAutoCompletionEnabled(enabled, true);
     emit editorChanged();
 }

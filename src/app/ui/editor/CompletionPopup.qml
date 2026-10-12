@@ -12,6 +12,9 @@ AppDropdownPanel {
     required property var editor
     required property var controller
     readonly property bool pointerInside: popupHover.hovered
+    signal settingsRequested(string group)
+    readonly property bool customizable: root.controller.completionGroup.length > 0
+    readonly property real settingsSlotWidth: customizable ? Theme.compactControlHeight + 3 : 0
 
     parent: Overlay.overlay
     modal: false
@@ -19,7 +22,8 @@ AppDropdownPanel {
     closePolicy: Popup.NoAutoClose
     visible: editor.navigationVisible && controller.completionActive && controller.completionCandidates.length > 0
 
-    readonly property real maximumHeight: 260
+    readonly property real maximumHeight: root.parent
+        ? Math.max(0, Math.min(260, root.parent.height - 2 * root.margins)) : 260
     property real candidatesWidth: 0
 
     // A vertical ListView never computes contentWidth, so the previous
@@ -35,7 +39,9 @@ AppDropdownPanel {
         root.candidatesWidth = widest
     }
 
-    width: Math.max(120, Math.ceil(root.candidatesWidth) + root.leftPadding + root.rightPadding + 24)
+    width: Math.min(root.parent ? Math.max(0, root.parent.width - 2 * root.margins) : Infinity,
+                    Math.max(120, Math.ceil(root.candidatesWidth)
+                        + root.leftPadding + root.rightPadding + 24 + root.settingsSlotWidth))
     height: Math.min(root.maximumHeight,
                      Math.max(Theme.controlMinHeight, candidateList.contentHeight)
                          + root.topPadding + root.bottomPadding)
@@ -91,45 +97,67 @@ AppDropdownPanel {
         function onHeightChanged() { root.updateAnchor() }
     }
 
-    contentItem: ListView {
-        id: candidateList
-        model: root.controller.completionCandidates
-        currentIndex: root.controller.completionIndex
-        clip: true
-        interactive: contentHeight > height
-        boundsBehavior: Flickable.StopAtBounds
-
-        HoverHandler {
-            id: popupHover
+    contentItem: Item {
+        Item {
+            x: -root.leftPadding
+            y: -root.topPadding
+            width: parent.width + root.leftPadding + root.rightPadding
+            height: parent.height + root.topPadding + root.bottomPadding
+            HoverHandler { id: popupHover }
         }
-
         TextMetrics {
             id: candidateMetrics
             font: root.editor.effectiveFont
         }
+        ListView {
+            id: candidateList
+            anchors.left: parent.left
+            anchors.top: parent.top
+            anchors.bottom: parent.bottom
+            anchors.right: settingsArea.left
+            model: root.controller.completionCandidates
+            currentIndex: root.controller.completionIndex
+            clip: true
+            interactive: contentHeight > height
+            boundsBehavior: Flickable.StopAtBounds
+            ScrollBar.vertical: AppScrollBar {}
 
-        delegate: ChromeRow {
-            stateColors: Theme.colors.popupState
-            id: candidateRow
-
-            // Declaring modelData as a required property switches the whole
-            // delegate to required properties, which turns off context property
-            // injection — so `index` has to be required too. Without it both
-            // `highlighted` and the click handler died with "index is not
-            // defined" and no candidate ever highlighted.
-            required property string modelData
-            required property int index
-
-            width: candidateList.width
-            implicitHeight: Math.max(Theme.controlMinHeight, root.editor.lineHeight,
-                                     implicitContentHeight + 2 * (Theme.chromePadding + Theme.chromeInsetY))
-            highlighted: candidateRow.index === root.controller.completionIndex
-            text: candidateRow.modelData
-            labelFont: root.editor.effectiveFont
-
-            onClicked: {
-                root.controller.selectCompletionIndex(candidateRow.index)
-                root.editor.acceptCompletionFromPopup()
+            delegate: ChromeRow {
+                id: candidateRow
+                required property string modelData
+                required property int index
+                stateColors: Theme.colors.popupState
+                width: candidateList.width
+                implicitHeight: Math.max(Theme.controlMinHeight, root.editor.lineHeight,
+                    implicitContentHeight + 2 * (Theme.chromePadding + Theme.chromeInsetY))
+                highlighted: candidateRow.index === root.controller.completionIndex
+                text: candidateRow.modelData
+                labelFont: root.editor.effectiveFont
+                onClicked: {
+                    root.controller.selectCompletionIndex(candidateRow.index)
+                    root.editor.acceptCompletionFromPopup()
+                }
+            }
+        }
+        Item {
+            id: settingsArea
+            anchors.right: parent.right
+            anchors.top: parent.top
+            anchors.bottom: parent.bottom
+            width: root.settingsSlotWidth
+            IconButton {
+                anchors.right: parent.right
+                anchors.bottom: parent.bottom
+                visible: root.customizable
+                compact: true
+                focusPolicy: Qt.NoFocus
+                iconSource: Qt.resolvedUrl("icons/settings.svg")
+                tooltip: qsTrId("preferences.completion.customize")
+                onClicked: {
+                    const group = root.controller.completionGroup
+                    root.controller.closeCompletion()
+                    root.settingsRequested(group)
+                }
             }
         }
     }

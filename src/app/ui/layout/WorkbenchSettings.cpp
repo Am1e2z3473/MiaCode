@@ -1,4 +1,5 @@
 #include "app/ui/layout/WorkbenchSettings.h"
+#include "app/services/EditorCompletionPreferences.h"
 
 #include "app/runtime/Shared.h"
 #include "AppVersion.h"
@@ -232,6 +233,10 @@ int WorkbenchSettings::fontSize() const { return fontSize_; }
 bool WorkbenchSettings::editorHalfWidthInputEnabled() const { return editorHalfWidthInputEnabled_; }
 bool WorkbenchSettings::editorOverwriteModeEnabled() const { return editorOverwriteModeEnabled_; }
 bool WorkbenchSettings::editorAutoCompletionEnabled() const { return editorAutoCompletionEnabled_; }
+const miacode::editor::SimaiCompletionConfig& WorkbenchSettings::editorCompletionConfig() const
+{
+    return editorCompletionConfig_;
+}
 bool WorkbenchSettings::editorImeInputDisabled() const { return editorImeInputDisabled_; }
 bool WorkbenchSettings::editorAutoWrap() const { return editorAutoWrap_; }
 bool WorkbenchSettings::editorScrollPastEnd() const { return editorScrollPastEnd_; }
@@ -255,6 +260,7 @@ void WorkbenchSettings::reloadEditorSettings()
     const bool halfWidth = editorUi.value(QStringLiteral("editor_half_width_input")).toBool(true);
     const bool overwrite = editorUi.value(QStringLiteral("editor_overwrite_mode")).toBool(false);
     const bool autoCompletion = editorUi.value(QStringLiteral("editor_auto_completion")).toBool(true);
+    const auto completionConfig = miacode::readEditorCompletionCandidates(editorUi);
     const bool imeDisabled = editorUi.value(QStringLiteral("editor_ime_input_disabled")).toBool(true);
     const bool autoWrap = editorUi.value(QLatin1String(kEditorAutoWrap)).toBool(true);
     const bool scrollPastEnd = editorUi.value(QLatin1String(kEditorScrollPastEnd)).toBool(true);
@@ -267,6 +273,7 @@ void WorkbenchSettings::reloadEditorSettings()
         && editorHalfWidthInputEnabled_ == halfWidth
         && editorOverwriteModeEnabled_ == overwrite
         && editorAutoCompletionEnabled_ == autoCompletion
+        && editorCompletionConfig_ == completionConfig
         && editorImeInputDisabled_ == imeDisabled
         && editorAutoWrap_ == autoWrap
         && editorScrollPastEnd_ == scrollPastEnd
@@ -279,6 +286,7 @@ void WorkbenchSettings::reloadEditorSettings()
     editorHalfWidthInputEnabled_ = halfWidth;
     editorOverwriteModeEnabled_ = overwrite;
     editorAutoCompletionEnabled_ = autoCompletion;
+    editorCompletionConfig_ = completionConfig;
     editorImeInputDisabled_ = imeDisabled;
     editorAutoWrap_ = autoWrap;
     editorScrollPastEnd_ = scrollPastEnd;

@@ -19,6 +19,7 @@ class EditorController final : public QObject
     Q_PROPERTY(bool completionActive READ completionActive NOTIFY completionChanged)
     Q_PROPERTY(QStringList completionCandidates READ completionCandidates NOTIFY completionChanged)
     Q_PROPERTY(int completionIndex READ completionIndex NOTIFY completionChanged)
+    Q_PROPERTY(QString completionGroup READ completionGroup NOTIFY completionChanged)
 
 public:
     explicit EditorController(QObject* parent = nullptr);
@@ -31,10 +32,12 @@ public:
     bool completionActive() const;
     QStringList completionCandidates() const;
     int completionIndex() const;
+    QString completionGroup() const;
 
     void setHalfWidthInputEnabled(bool enabled);
     void setOverwriteMode(bool enabled);
     void setAutoCompletionEnabled(bool enabled);
+    void setCompletionConfig(const miacode::editor::SimaiCompletionConfig& config);
     void setImeInputDisabled(bool disabled);
     void setWholeBpm(const QString& bpm);
 
@@ -67,6 +70,7 @@ private:
     bool autoCompletionEnabled_ = true;
     bool imeInputDisabled_ = true;
     QString wholeBpm_;
+    miacode::editor::SimaiCompletionConfig completionConfig_ = miacode::editor::defaultCompletionConfig();
     miacode::editor::SimaiCompletionSession completion_;
     QStringList visibleCandidates_;
     int completionIndex_ = -1;

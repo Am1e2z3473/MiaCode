@@ -75,6 +75,7 @@ Item {
         Math.max(1, workspaceSplit.width - (previewHost.visible ? Theme.splitDividerThickness : 0))
     signal openRequested()
     signal settingsRequested()
+    signal completionSettingsRequested(string group)
     signal audioSettingsRequested()
     signal previewSettingsRequested()
     signal mediaToolRequested(string toolId)
@@ -481,6 +482,7 @@ Item {
                         netUpload: root.netUpload
                         pages: root.pages
                         onOpenRequested: root.openRequested()
+                        onCompletionSettingsRequested: function(group) { root.completionSettingsRequested(group) }
                     }
 
                     // v2 video export center: QML chrome + ExportVideoController panel surface.

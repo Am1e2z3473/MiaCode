@@ -60,6 +60,21 @@ void EditorController::setImeInputDisabled(bool disabled)
     imeInputDisabled_ = disabled;
     emit settingsChanged();
 }
+QString EditorController::completionGroup() const
+{
+    if (!completion_.active) return {};
+    if (completion_.opening == QLatin1Char('[')) return QStringLiteral("duration");
+    if (completion_.opening == QLatin1Char('{')) return QStringLiteral("division");
+    return {};
+}
+
+void EditorController::setCompletionConfig(const miacode::editor::SimaiCompletionConfig& config)
+{
+    if (completionConfig_ == config) return;
+    completionConfig_ = config;
+    closeCompletion();
+}
+
 void EditorController::setWholeBpm(const QString& bpm)
 {
     if (wholeBpm_ == bpm) return;
@@ -111,6 +126,7 @@ miacode::editor::SimaiTextEditResult EditorController::process(const miacode::ed
     request.overwriteMode = overwriteMode_;
     request.autoCompletionEnabled = autoCompletionEnabled_ && request.autoCompletionEnabled;
     request.wholeBpm = wholeBpm_;
+    request.completionConfig = completionConfig_;
     request.completionActive = completion_.active;
     auto result = miacode::editor::applySimaiTextEditPolicy(request);
     if (result.completion.active) setCompletion(result.completion);
@@ -148,11 +164,11 @@ void EditorController::triggerCompletion(QChar glyph, const QString& text, int p
     miacode::editor::SimaiCompletionSession completion;
     if (miacode::editor::isBracketOpening(glyph)) {
         completion.opening = glyph;
-        completion.candidates = miacode::editor::candidatesForOpening(glyph, wholeBpm_, text);
+        completion.candidates = miacode::editor::candidatesForOpening(glyph, wholeBpm_, text, completionConfig_);
     } else if (glyph == QLatin1Char('h')) {
         if (position < text.size() && text.at(position) == QLatin1Char('[')) return;
         completion.opening = QLatin1Char('[');
-        completion.candidates = miacode::editor::holdDurationCandidates();
+        completion.candidates = miacode::editor::holdDurationCandidates(completionConfig_);
     } else return;
     completion.startPosition = position;
     completion.closingPresent = closingPresent;

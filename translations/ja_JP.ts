@@ -4583,6 +4583,66 @@ Error: %1</source>
         <source>Preferences: configure interface appearance and styling, the editor and shortcuts.</source>
         <translation>環境設定：画面の外観やスタイル、エディター、ショートカットを設定します。</translation>
     </message>
+    <message id="preferences.completion.customize">
+        <source>Custom candidates</source>
+        <translation>候補のカスタマイズ</translation>
+    </message>
+    <message id="preferences.completion.expand">
+        <source>Expand custom candidates</source>
+        <translation>カスタム候補を展開</translation>
+    </message>
+    <message id="preferences.completion.collapse">
+        <source>Collapse custom candidates</source>
+        <translation>カスタム候補を折りたたむ</translation>
+    </message>
+    <message id="preferences.completion.duration">
+        <source>Duration</source>
+        <translation>長さ</translation>
+    </message>
+    <message id="preferences.completion.division">
+        <source>Beat subdivision</source>
+        <translation>拍の分割</translation>
+    </message>
+    <message id="preferences.completion.duration_hint">
+        <source>Enter duration</source>
+        <translation>長さを入力</translation>
+    </message>
+    <message id="preferences.completion.division_hint">
+        <source>Enter subdivision</source>
+        <translation>拍の分割を入力</translation>
+    </message>
+    <message id="preferences.completion.reorder">
+        <source>Drag to reorder; use Up or Down when focused</source>
+        <translation>ドラッグで並べ替え。フォーカス時は上下キーで移動</translation>
+    </message>
+    <message id="preferences.completion.delete">
+        <source>Delete candidate</source>
+        <translation>候補を削除</translation>
+    </message>
+    <message id="preferences.completion.keep_one">
+        <source>Keep at least one candidate</source>
+        <translation>候補を少なくとも1件残してください</translation>
+    </message>
+    <message id="preferences.completion.reset">
+        <source>Restore defaults</source>
+        <translation>既定値に戻す</translation>
+    </message>
+    <message id="preferences.completion.reset_question">
+        <source>Restore default candidates?</source>
+        <translation>候補を既定値に戻しますか？</translation>
+    </message>
+    <message id="preferences.completion.invalid_duration">
+        <source>Enter a valid hold duration</source>
+        <translation>有効な長さを入力してください</translation>
+    </message>
+    <message id="preferences.completion.invalid_division">
+        <source>Enter a positive integer</source>
+        <translation>正の整数を入力してください</translation>
+    </message>
+    <message id="preferences.completion.duplicate">
+        <source>This candidate already exists</source>
+        <translation>この候補は既にあります</translation>
+    </message>
 </context>
 
 
