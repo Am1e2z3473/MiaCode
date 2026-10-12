@@ -39,10 +39,11 @@ struct LanguageOption {
 
 // One in-memory document for a repository lifetime. External file changes are
 // observed by a new repository, never by ordinary UI reads. Access is serialized;
-// snapshots are values suitable for passing to workers.
+// snapshots are values suitable for passing to workers. While `path` is missing
+// the first existing migration source is imported; sources are never written.
 class Repository {
 public:
-    explicit Repository(QString path, QString legacyPath = {});
+    explicit Repository(QString path, QStringList migrationSources = {});
     QJsonObject snapshot();
     QString storedSchema();
     bool replace(const QJsonObject& root);
@@ -54,7 +55,7 @@ private:
     bool flushLocked();
     QMutex mutex_;
     QString path_;
-    QString legacyPath_;
+    QStringList migrationSources_;
     QString storedSchema_;
     QJsonObject root_;
     bool initialized_ = false;
