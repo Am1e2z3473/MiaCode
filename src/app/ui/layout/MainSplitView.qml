@@ -83,18 +83,18 @@ Item {
         sidebar.showMediaToolsMenu()
     }
 
-    function persistBottomPanelHeightRatio(finalHeight) {
+    function persistBottomPanelHeightRatio(finalHeight, sizeAtPress) {
         if (!root.bottomPanelEffectivelyVisible || centerSplit.height <= 0)
             return
-        const height = Math.max(bottomPanelSnap.minimumHeight,
-            Math.min(bottomPanelSnap.maximumHeight, finalHeight))
-        if (height === bottomPanelSnap.heightAtPress)
+        const height = Math.max(bottomPanelSnap.minimumSize,
+            Math.min(bottomPanelSnap.maximumSize, finalHeight))
+        if (height === sizeAtPress)
             return
         // 比例按基础约束保存，吸附期间的固定高度属于临时布局约束。
         root.preferences.bottomPanelHeightRatio =
-            height <= bottomPanelSnap.minimumHeight
+            height <= bottomPanelSnap.minimumSize
                 ? root.preferences.bottomPanelMinimumHeightRatio
-                : height >= bottomPanelSnap.maximumHeight
+                : height >= bottomPanelSnap.maximumSize
                     ? root.preferences.bottomPanelMaximumHeightRatio
                     : height / centerSplit.height
     }
@@ -197,9 +197,14 @@ Item {
         root.viewState.sidebarVisible = contentWidth >= root.preferences.sidebarMinimumContentWidth / 2
     }
 
-    function persistPreviewWidthRatio() {
-        if (root.compact || root.previewDetached) return
-        root.preferences.previewWidthRatio = previewHost.width / root.previewEditorAvailableWidth
+    function persistPreviewWidthRatio(finalWidth) {
+        if (root.previewDetached || root.previewSurfaceMoving
+                || !previewHost.visible || !centerSplit.visible
+                || root.previewEditorAvailableWidth <= 0)
+            return
+        const width = Math.max(previewWidthSnap.minimumSize,
+            Math.min(previewWidthSnap.maximumSize, finalWidth))
+        root.preferences.previewWidthRatio = width / root.previewEditorAvailableWidth
     }
 
     function syncWorkspacePanelOrder() {
@@ -437,18 +442,12 @@ Item {
             Component.onCompleted: root.syncWorkspacePanelOrder()
 
             handle: SplitHandle {
-                onReleased: root.persistPreviewWidthRatio()
+                onReleased: previewWidthSnap.finishDrag(true)
             }
 
             SplitView {
                 id: centerSplit
                 orientation: Qt.Vertical
-                onResizingChanged: {
-                    if (resizing)
-                        bottomPanelSnap.beginDrag(bottomPanelPointer.point.position.y)
-                    else
-                        bottomPanelSnap.finishDrag(false)
-                }
 
                 SplitView.fillWidth: true
                 SplitView.minimumWidth: root.previewDetached ? root.minimumEditorWidth
@@ -505,9 +504,9 @@ Item {
                     timelineSession: root.timelineSession
                     previewSession: root.previewSession
                     SplitView.minimumHeight: bottomPanelSnap.constrained
-                        ? bottomPanelSnap.targetHeight : bottomPanelSnap.minimumHeight
+                        ? bottomPanelSnap.targetSize : bottomPanelSnap.minimumSize
                     SplitView.maximumHeight: bottomPanelSnap.constrained
-                        ? bottomPanelSnap.targetHeight : bottomPanelSnap.maximumHeight
+                        ? bottomPanelSnap.targetSize : bottomPanelSnap.maximumSize
                     onAnalysisRowActivated: (difficultyId, revision, line, column, endColumn, second) =>
                         editorPane.revealAnalysisRow(
                             difficultyId, revision, line, column, endColumn, second, root.analysisSession)
@@ -517,54 +516,58 @@ Item {
             Item {
                 id: previewHost
                 visible: !root.previewDetached && !root.viewState.netEditorActive
-                SplitView.minimumWidth: Math.max(preview.minimumWidth,
-                    Math.min(root.previewEditorAvailableWidth * root.preferences.previewMinimumWidthRatio,
-                             root.previewEditorAvailableWidth - bottomPanel.minimumWidth))
-                SplitView.maximumWidth: Math.max(preview.minimumWidth,
-                    Math.min(root.previewEditorAvailableWidth * root.preferences.previewMaximumWidthRatio,
-                             root.previewEditorAvailableWidth - bottomPanel.minimumWidth))
+                SplitView.minimumWidth: previewWidthSnap.constrained
+                    ? previewWidthSnap.targetSize : previewWidthSnap.minimumSize
+                SplitView.maximumWidth: previewWidthSnap.constrained
+                    ? previewWidthSnap.targetSize : previewWidthSnap.maximumSize
             }
         }
 
-        // 被动观察项位于原生分割槽的事件过滤范围之外。
-        Item {
+        SplitSnapController {
+            id: previewWidthSnap
+            x: workspaceSplit.x
+            y: workspaceSplit.y
+            splitView: workspaceSplit
+            resizedItem: previewHost
+            resizeDirection: root.preferencesModel.previewOnLeft ? 1 : -1
+            minimumSize: Math.max(preview.minimumWidth,
+                Math.min(root.previewEditorAvailableWidth * root.preferences.previewMinimumWidthRatio,
+                         root.previewEditorAvailableWidth - bottomPanel.minimumWidth))
+            maximumSize: Math.max(preview.minimumWidth,
+                Math.min(root.previewEditorAvailableWidth * root.preferences.previewMaximumWidthRatio,
+                         root.previewEditorAvailableWidth - bottomPanel.minimumWidth))
+            snapEnterDistance: 8
+            snapLeaveDistance: 14
+            targetSize: root.previewEditorAvailableWidth / 2
+            snapAvailable: dragAvailable && !root.previewDetached && !root.previewSurfaceMoving
+                && centerSplit.visible
+                && targetSize >= centerSplit.SplitView.minimumWidth
+                && (centerSplit.SplitView.maximumWidth < 0
+                    || targetSize <= centerSplit.SplitView.maximumWidth)
+            onFinished: finalSize => root.persistPreviewWidthRatio(finalSize)
+        }
+
+        SplitSnapController {
             id: bottomPanelSnap
             x: workspaceSplit.x + workspaceSplit.contentItem.x + centerSplit.x
             y: workspaceSplit.y + workspaceSplit.contentItem.y + centerSplit.y
-            width: centerSplit.width
-            height: centerSplit.height
-            z: 1
-            visible: dragAvailable
-
-            PointHandler {
-                id: bottomPanelPointer
-                target: null
-                acceptedButtons: Qt.LeftButton
-                onPointChanged: bottomPanelSnap.updateDrag(point.position.y)
-                onGrabChanged: transition => {
-                    if (transition === PointerHandler.CancelGrabPassive)
-                        bottomPanelSnap.finishDrag(false)
-                }
-            }
-
-            readonly property real minimumHeight: root.bottomPanelEffectivelyVisible
+            splitView: centerSplit
+            resizedItem: bottomPanel
+            resizeDirection: -1
+            snapEnterDistance: 4
+            snapLeaveDistance: 7
+            minimumSize: root.bottomPanelEffectivelyVisible
                 ? Math.max(bottomPanel.minimumHeight,
                     centerSplit.height * root.preferences.bottomPanelMinimumHeightRatio) : 0
-            readonly property real maximumHeight: root.bottomPanelEffectivelyVisible
+            maximumSize: root.bottomPanelEffectivelyVisible
                 ? Math.max(bottomPanel.minimumHeight, Math.min(
                     centerSplit.height * root.preferences.bottomPanelMaximumHeightRatio,
                     centerSplit.height - editorHost.SplitView.minimumHeight
                         - Theme.splitDividerThickness)) : 0
-            readonly property bool dragAvailable: root.bottomPanelEffectivelyVisible
-                && centerSplit.visible && centerSplit.height > 0
-            readonly property bool snapAvailable: dragAvailable
+            snapAvailable: dragAvailable
                 && !root.previewDetached && !root.previewSurfaceMoving
                 && previewHost.visible && preview.visible && root.transportItem.visible
-                && centerSplit.width > 0
                 && root.transportItem.width > 0 && root.transportItem.height > 0
-            readonly property real snapEnterDistance: 4
-            readonly property real snapLeaveDistance: 7
-            readonly property real snapAlignmentTolerance: 0.5 / root.Screen.devicePixelRatio
             readonly property real activeLineCenterOffset:
                 lineCenterOffset(Theme.splitHandleActiveThickness)
             readonly property real idleLineCenterOffset:
@@ -573,75 +576,16 @@ Item {
             readonly property real targetCenter: snapAvailable
                 ? previewHost.y + preview.y + root.transportItem.y
                     + root.transportItem.topEdgeCenterY - centerSplit.y : NaN
-            readonly property real targetHeight:
-                centerSplit.height - targetCenter + activeLineCenterOffset
-            readonly property real idleTargetHeight:
-                centerSplit.height - targetCenter + idleLineCenterOffset
-            readonly property bool targetReachable: snapAvailable && isFinite(targetHeight)
-                && targetHeight >= minimumHeight && targetHeight <= maximumHeight
-            readonly property bool idleTargetReachable: snapAvailable && isFinite(idleTargetHeight)
-                && idleTargetHeight >= minimumHeight && idleTargetHeight <= maximumHeight
-            readonly property bool constrained: tracking && centerSplit.resizing
-                && snapped && targetReachable
-            property bool tracking: false
-            property bool snapped: false
-            property real pressY: 0
-            property real pressTop: 0
-            property real rawTop: 0
-            property real heightAtPress: 0
-
-            onDragAvailableChanged: {
-                if (!dragAvailable)
-                    finishDrag(false)
-            }
-            onSnapAvailableChanged: updateSnap()
-            onTargetHeightChanged: updateSnap()
-            onTargetReachableChanged: updateSnap()
+            targetSize: centerSplit.height - targetCenter + activeLineCenterOffset
+            releaseSize: centerSplit.height - targetCenter + idleLineCenterOffset
+            onFinished: (finalSize, sizeAtPress) =>
+                root.persistBottomPanelHeightRatio(finalSize, sizeAtPress)
 
             function lineCenterOffset(thickness) {
                 return -Theme.splitDividerThickness
                     + Math.floor((Theme.splitDividerThickness - thickness)
                                  * root.Screen.devicePixelRatio / 2) / root.Screen.devicePixelRatio
                     + thickness / 2
-            }
-
-            function beginDrag(pointerY) {
-                if (!dragAvailable || !isFinite(pointerY))
-                    return
-                pressY = pointerY
-                pressTop = bottomPanel.mapToItem(centerSplit, 0, 0).y
-                rawTop = pressTop
-                heightAtPress = bottomPanel.height
-                tracking = true
-                snapped = targetReachable
-                    && Math.abs(rawTop + activeLineCenterOffset - targetCenter)
-                        <= snapAlignmentTolerance
-            }
-
-            function updateSnap() {
-                if (!tracking || !centerSplit.resizing)
-                    return
-                const distance = snapped ? snapLeaveDistance : snapEnterDistance
-                snapped = targetReachable
-                    && Math.abs(rawTop + activeLineCenterOffset - targetCenter) <= distance
-            }
-
-            function updateDrag(pointerY) {
-                if (!tracking || !centerSplit.resizing || !isFinite(pointerY))
-                    return
-                // 指针原始位移决定脱离吸附；Qt 按临时高度约束管理面板尺寸。
-                rawTop = pressTop + pointerY - pressY
-                updateSnap()
-            }
-
-            function finishDrag(alignIdle) {
-                if (!tracking)
-                    return
-                const finalHeight = alignIdle && constrained && idleTargetReachable
-                    ? idleTargetHeight : bottomPanel.height
-                root.persistBottomPanelHeightRatio(finalHeight)
-                snapped = false
-                tracking = false
             }
         }
 
