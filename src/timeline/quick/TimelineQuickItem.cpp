@@ -1,6 +1,5 @@
 #include "timeline/quick/TimelineQuickItem.h"
 
-
 #include <QDateTime>
 #include <QElapsedTimer>
 #include <QKeyEvent>
@@ -23,6 +22,7 @@
 #include "common/ProcessDiagnostics.h"
 #include "common/DebugOptions.h"
 #include "common/InputShortcutGesture.h"
+#include "common/PixelGeometry.h"
 #include "core/video/PreviewInteractionConfig.h"
 #include "timeline/TimelineThemeConfig.h"
 #include "audio/WaveformCache.h"
@@ -893,7 +893,7 @@ void TimelineQuickItem::setStateBridge(TimelineQuickStateBridge* stateBridge)
             connect(stateBridge_, &TimelineQuickStateBridge::renderStateChanged, this, &TimelineQuickItem::syncSourceState);
         bridgePlayheadConnection_ =
             connect(stateBridge_, &TimelineQuickStateBridge::playheadChanged, this, &TimelineQuickItem::playheadChanged);
-        stateBridge_->setQuickViewportSize(QSize(qMax(1, qRound(width())), qMax(1, qRound(height()))));
+        stateBridge_->setQuickViewportSize(miacode::pixel_geometry::coveringSize(boundingRect().size()));
     }
     syncSourceState();
     emit stateBridgeChanged();
@@ -1189,7 +1189,7 @@ miacode::timeline::TimelineSceneState TimelineQuickItem::currentSceneState() con
     if (stateBridge_ == nullptr) {
         return miacode::timeline::TimelineSceneState();
     }
-    const QSize viewportSize(qMax(1, qRound(width())), qMax(1, qRound(height())));
+    const QSize viewportSize = miacode::pixel_geometry::coveringSize(boundingRect().size());
     // Phase 7 — bucket size = one viewport. Build emits primitives
     // for [bucket-1, bucket+2] (3 viewports total: bucket itself + 1
     // buffer each side). Scrolling within a bucket reuses the
@@ -1611,9 +1611,7 @@ void TimelineQuickItem::geometryChange(const QRectF& newGeometry, const QRectF& 
 {
     QQuickItem::geometryChange(newGeometry, oldGeometry);
     if (newGeometry.size() != oldGeometry.size()) {
-        pendingViewportSize_ = QSize(
-            qMax(1, qRound(newGeometry.width())),
-            qMax(1, qRound(newGeometry.height())));
+        pendingViewportSize_ = miacode::pixel_geometry::coveringSize(newGeometry.size());
         viewportUpdatePending_ = true;
         polish();
     }

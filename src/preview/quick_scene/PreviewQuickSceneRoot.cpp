@@ -3,6 +3,7 @@
 #include "common/DebugOptions.h"
 #include "common/DebugLog.h"
 #include "common/Mmcss.h"
+#include "common/PixelGeometry.h"
 #include "preview/runtime/PreviewRuntime.h"
 #include "preview/quick_scene/PreviewQuickHudLayer.h"
 #include "core/scene/PreviewFrameState.h"
@@ -460,7 +461,7 @@ void PreviewQuickSceneRoot::setRuntime(PreviewRuntime* runtime)
             }
             update();
         });
-        runtime_->setFrameSize(boundingRect().size().toSize());
+        runtime_->setFrameSize(miacode::pixel_geometry::coveringSize(boundingRect().size()));
     }
     syncVisibleHostWindowBinding("set_runtime");
     appendQuickSceneLog(
@@ -489,7 +490,7 @@ QString PreviewQuickSceneRoot::touchPadAtItemPoint(const QPointF& itemPoint) con
         return QString();
     }
     const QRectF playfieldRect = miacode::preview::scene::playfieldRectForStage(
-        miacode::preview::scene::stageRectForSize(boundingRect().size().toSize()),
+        miacode::preview::scene::stageRectForSize(miacode::pixel_geometry::coveringSize(boundingRect().size())),
         stateSnapshot->render.layoutSquareScale
     );
     if (!playfieldRect.contains(itemPoint) || playfieldRect.width() <= 0.0) {
@@ -994,7 +995,7 @@ QSGNode* PreviewQuickSceneRoot::updatePaintNode(QSGNode* oldNode, UpdatePaintNod
     } else {
         state = frameState_;
     }
-    const QSize renderSize = boundingRect().size().toSize();
+    const QSize renderSize = miacode::pixel_geometry::coveringSize(boundingRect().size());
     const bool hasState = state != nullptr;
     const bool hasWindow = window() != nullptr;
     const quintptr windowHandle = reinterpret_cast<quintptr>(window());
@@ -1568,7 +1569,7 @@ void PreviewQuickSceneRoot::geometryChange(const QRectF& newGeometry, const QRec
     QQuickItem::geometryChange(newGeometry, oldGeometry);
     if (newGeometry.size() != oldGeometry.size()) {
         if (runtime_ != nullptr) {
-            runtime_->setFrameSize(newGeometry.size().toSize());
+            runtime_->setFrameSize(miacode::pixel_geometry::coveringSize(newGeometry.size()));
         }
         ++geometryChangeCount_;
         appendQuickSceneLog(
