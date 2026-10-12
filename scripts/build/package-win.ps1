@@ -717,9 +717,17 @@ foreach ($archiveFormat in $archiveFormats) {
                 if ($null -eq $pythonCommand) {
                     throw "7z.exe not found and Python is unavailable for the py7zr fallback."
                 }
-                & $pythonCommand.Source -m py7zr c $archivePath (Join-Path $archiveParentDir $archiveFolderName)
-                if ($LASTEXITCODE -ne 0) {
-                    throw "py7zr failed with exit code $LASTEXITCODE"
+                # py7zr stores member names as given, so an absolute source
+                # would embed the build machine's path; archive the folder by
+                # its relative name, as the 7z branch does.
+                Push-Location $archiveParentDir
+                try {
+                    & $pythonCommand.Source -m py7zr c $archivePath $archiveFolderName
+                    if ($LASTEXITCODE -ne 0) {
+                        throw "py7zr failed with exit code $LASTEXITCODE"
+                    }
+                } finally {
+                    Pop-Location
                 }
             }
         }
