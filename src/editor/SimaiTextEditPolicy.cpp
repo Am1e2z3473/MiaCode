@@ -173,7 +173,7 @@ SimaiTextEditResult applySimaiTextEditPolicy(const SimaiTextEditRequest& request
             ++result.transaction.position;
             result.consumed = true;
             openCompletion(&result, glyph, false,
-                           candidatesForOpening(glyph, request.wholeBpm, request.text));
+                           candidatesForOpening(glyph, request.wholeBpm, request.text, request.completionConfig));
             return result;
         }
         if (!selected && isBracketClosing(glyph) && pos < request.text.size()
@@ -193,8 +193,8 @@ SimaiTextEditResult applySimaiTextEditPolicy(const SimaiTextEditRequest& request
                 QString chart = request.text;
                 const auto& tx = result.transaction;
                 chart.replace(tx.replacementStart, tx.replacementEnd - tx.replacementStart, tx.replacementText);
-                candidates = candidatesForOpening(glyph, request.wholeBpm, chart);
-            } else candidates = candidatesForOpening(glyph, request.wholeBpm, request.text);
+                candidates = candidatesForOpening(glyph, request.wholeBpm, chart, request.completionConfig);
+            } else candidates = candidatesForOpening(glyph, request.wholeBpm, request.text, request.completionConfig);
             openCompletion(&result, glyph, true, candidates);
             return result;
         }
@@ -204,7 +204,7 @@ SimaiTextEditResult applySimaiTextEditPolicy(const SimaiTextEditRequest& request
             const int following = qMax(request.anchor, request.position);
             const bool beforeDuration = following < request.text.size()
                 && request.text.at(following) == QLatin1Char('[');
-            if (!beforeDuration) openCompletion(&result, QLatin1Char('['), false, holdDurationCandidates());
+            if (!beforeDuration) openCompletion(&result, QLatin1Char('['), false, holdDurationCandidates(request.completionConfig));
             return result;
         }
     }

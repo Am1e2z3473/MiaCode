@@ -4,6 +4,7 @@
 #include <QObject>
 #include <QString>
 #include <QVariantMap>
+#include "editor/SimaiCompletionCatalog.h"
 
 // 桌面工作台的持久化边界。QML 在拖动期间维护临时几何，只在用户完成
 // 操作后写入这里，从而避免分隔线移动时连续刷新配置文件。
@@ -86,6 +87,7 @@ public:
     bool editorHalfWidthInputEnabled() const;
     bool editorOverwriteModeEnabled() const;
     bool editorAutoCompletionEnabled() const;
+    const miacode::editor::SimaiCompletionConfig& editorCompletionConfig() const;
     bool editorImeInputDisabled() const;
     bool editorAutoWrap() const;
     void setEditorAutoWrap(bool enabled);
@@ -153,6 +155,7 @@ private:
     bool editorHalfWidthInputEnabled_ = true;
     bool editorOverwriteModeEnabled_ = false;
     bool editorAutoCompletionEnabled_ = true;
+    miacode::editor::SimaiCompletionConfig editorCompletionConfig_ = miacode::editor::defaultCompletionConfig();
     bool editorImeInputDisabled_ = true;
     bool editorAutoWrap_ = true;
     bool editorScrollPastEnd_ = true;

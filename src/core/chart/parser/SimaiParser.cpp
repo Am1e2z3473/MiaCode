@@ -12,6 +12,7 @@
 #include <QtMath>
 
 #include <algorithm>
+#include <cmath>
 
 namespace {
 

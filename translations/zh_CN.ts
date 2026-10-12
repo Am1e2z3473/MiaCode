@@ -4583,6 +4583,66 @@ Error: %1</source>
         <source>Preferences: configure interface appearance and styling, the editor and shortcuts.</source>
         <translation>首选项：设置界面外观、样式，编辑器与快捷键。</translation>
     </message>
+    <message id="preferences.completion.customize">
+        <source>Custom candidates</source>
+        <translation>自定义候选</translation>
+    </message>
+    <message id="preferences.completion.expand">
+        <source>Expand custom candidates</source>
+        <translation>展开自定义候选</translation>
+    </message>
+    <message id="preferences.completion.collapse">
+        <source>Collapse custom candidates</source>
+        <translation>收起自定义候选</translation>
+    </message>
+    <message id="preferences.completion.duration">
+        <source>Duration</source>
+        <translation>时值</translation>
+    </message>
+    <message id="preferences.completion.division">
+        <source>Beat subdivision</source>
+        <translation>节拍细分</translation>
+    </message>
+    <message id="preferences.completion.duration_hint">
+        <source>Enter duration</source>
+        <translation>输入时值</translation>
+    </message>
+    <message id="preferences.completion.division_hint">
+        <source>Enter subdivision</source>
+        <translation>输入节拍细分</translation>
+    </message>
+    <message id="preferences.completion.reorder">
+        <source>Drag to reorder; use Up or Down when focused</source>
+        <translation>拖动排序；聚焦后可用上下方向键调整</translation>
+    </message>
+    <message id="preferences.completion.delete">
+        <source>Delete candidate</source>
+        <translation>删除候选</translation>
+    </message>
+    <message id="preferences.completion.keep_one">
+        <source>Keep at least one candidate</source>
+        <translation>至少保留一项</translation>
+    </message>
+    <message id="preferences.completion.reset">
+        <source>Restore defaults</source>
+        <translation>恢复默认</translation>
+    </message>
+    <message id="preferences.completion.reset_question">
+        <source>Restore default candidates?</source>
+        <translation>恢复默认候选？</translation>
+    </message>
+    <message id="preferences.completion.invalid_duration">
+        <source>Enter a valid hold duration</source>
+        <translation>请输入有效时值</translation>
+    </message>
+    <message id="preferences.completion.invalid_division">
+        <source>Enter a positive integer</source>
+        <translation>请输入正整数</translation>
+    </message>
+    <message id="preferences.completion.duplicate">
+        <source>This candidate already exists</source>
+        <translation>候选值已存在</translation>
+    </message>
 </context>
 
 

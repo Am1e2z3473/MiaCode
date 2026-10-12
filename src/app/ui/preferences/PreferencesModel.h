@@ -5,6 +5,7 @@
 #include <QVariantList>
 
 #include "app/services/PreferencesStore.h"
+#include "app/ui/preferences/CompletionCandidateModel.h"
 
 namespace miacode::ui {
 class WorkbenchSettings;
@@ -51,6 +52,9 @@ public:
     Q_PROPERTY(bool editorSelectionBeatDisplay READ editorSelectionBeatDisplay WRITE setEditorSelectionBeatDisplay NOTIFY editorChanged)
     Q_PROPERTY(bool editorOverviewRulerEnabled READ editorOverviewRulerEnabled WRITE setEditorOverviewRulerEnabled NOTIFY editorChanged)
 
+    Q_PROPERTY(QAbstractItemModel* completionDurations READ completionDurations CONSTANT)
+    Q_PROPERTY(QAbstractItemModel* completionDivisions READ completionDivisions CONSTANT)
+
     // Performance
     Q_PROPERTY(bool videoDecodePrefersSoftware READ videoDecodePrefersSoftware WRITE setVideoDecodePrefersSoftware NOTIFY performanceChanged)
     Q_PROPERTY(double displayRefreshRate READ displayRefreshRate CONSTANT)
@@ -95,6 +99,11 @@ public:
     QVariantList lineSpacingOptions() const;
     double editorLineSpacing() const;
     void setEditorLineSpacing(double factor);
+    QAbstractItemModel* completionDurations() { return &completionDurations_; }
+    QAbstractItemModel* completionDivisions() { return &completionDivisions_; }
+    Q_INVOKABLE void finishCompletionEditing();
+    Q_INVOKABLE void resetCompletionCandidates();
+
     bool editorAutoCompletion() const;
     void setEditorAutoCompletion(bool enabled);
     int editorInputHandlingMode() const;
@@ -143,7 +152,11 @@ private:
     {
         return storeSlot_ != nullptr ? *storeSlot_ : nullptr;
     }
+    void persistCompletionCandidates();
+    void reloadCompletionCandidates();
     WorkbenchSettings* settings_ = nullptr;
+    CompletionCandidateModel completionDurations_{editor::CompletionCandidateGroup::Duration};
+    CompletionCandidateModel completionDivisions_{editor::CompletionCandidateGroup::Division};
     bool restartRequired_ = false;
 };
 

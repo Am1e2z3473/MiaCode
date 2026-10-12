@@ -352,6 +352,8 @@ add_executable(MiaCode WIN32 MACOSX_BUNDLE
     src/app/services/LatencyEngine.h
     src/app/services/MediaToolsEngine.h
     src/app/services/PreferencesStore.h
+    src/app/services/EditorCompletionPreferences.cpp
+    src/app/services/EditorCompletionPreferences.h
     src/app/services/PreviewSurface.h
     src/app/services/PlaybackControl.h
     src/app/services/PlaybackStateAuthority.h
@@ -387,6 +389,8 @@ add_executable(MiaCode WIN32 MACOSX_BUNDLE
     src/app/ui/preview/PreviewSettingsModel.h
     src/app/ui/preferences/PreferencesModel.cpp
     src/app/ui/preferences/PreferencesModel.h
+    src/app/ui/preferences/CompletionCandidateModel.cpp
+    src/app/ui/preferences/CompletionCandidateModel.h
     src/app/ui/preferences/AppBackgroundModel.cpp
     src/app/ui/preferences/AppBackgroundModel.h
     src/app/ui/latency/LatencyModel.cpp
@@ -661,6 +665,8 @@ set(MIACODE_UI_QML_FILES
     src/app/ui/media/PvBatchCompressionDialog.qml
     src/app/ui/media/PrependBlankDialog.qml
     src/app/ui/preferences/PreferencesDialog.qml
+    src/app/ui/preferences/CompletionCandidateList.qml
+    src/app/ui/preferences/CompletionCandidatesEditor.qml
     src/app/ui/pet/PetOverlay.qml
     src/app/ui/pet/model/Fox.qml
     src/app/ui/latency/LatencyPage.qml

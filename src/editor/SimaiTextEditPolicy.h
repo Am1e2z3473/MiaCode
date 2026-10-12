@@ -1,5 +1,7 @@
 #pragma once
 
+#include "editor/SimaiCompletionCatalog.h"
+
 #include <QChar>
 #include <QString>
 #include <QStringList>
@@ -19,6 +21,7 @@ struct SimaiTextEditRequest {
     bool overwriteMode = false;
     bool autoCompletionEnabled = true;
     QString wholeBpm;
+    SimaiCompletionConfig completionConfig = defaultCompletionConfig();
     // An active completion treats typed characters as its filter prefix.
     bool completionActive = false;
 };

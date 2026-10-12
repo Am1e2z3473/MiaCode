@@ -404,6 +404,7 @@ Item {
                 documentTitle: root.documentTitle
                 onOpenRequested: openFileDialog.open()
                 onSettingsRequested: preferencesDialog.open()
+                onCompletionSettingsRequested: function(group) { preferencesDialog.openCompletionSettings(group) }
                 onAudioSettingsRequested: audioSettingsDialog.open()
                 onPreviewSettingsRequested: previewSettingsDialog.open()
                 onMediaToolRequested: toolId => root.runMediaTool(toolId)
@@ -783,6 +784,7 @@ Item {
     PreferencesDialog {
         id: preferencesDialog
         objectName: "shellPreferencesDialog"
+        onCompletionSettingsClosed: splitView.sourceEditorItem.focusEditor()
         preferencesModel: root.preferencesModel
         shortcuts: root.shortcutModel
         preferences: root.preferences

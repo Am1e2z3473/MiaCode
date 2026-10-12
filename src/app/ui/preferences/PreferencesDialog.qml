@@ -22,6 +22,41 @@ AppDialog {
     property var updateService: null
 
     signal updateRequested()
+    signal completionSettingsClosed()
+    property string requestedCompletionGroup: ""
+    property bool returnToEditor: false
+
+    function openCompletionSettings(group) {
+        root.requestedCompletionGroup = group
+        root.returnToEditor = true
+        root.open()
+    }
+    function ensureCompletionItemVisible(item) {
+        const flickable = editorViewport.contentItem
+        const position = item.mapToItem(editorSettingsColumn, 0, 0)
+        const visibleHeight = editorViewport.availableHeight
+        const itemHeight = Math.min(item.height, visibleHeight)
+        let target = flickable.contentY
+        if (position.y < target) target = position.y
+        else if (position.y + itemHeight > target + visibleHeight)
+            target = position.y + itemHeight - visibleHeight
+        flickable.contentY = Math.max(0, Math.min(target,
+            Math.max(0, editorSettingsColumn.implicitHeight - visibleHeight)))
+    }
+    onOpened: {
+        if (root.requestedCompletionGroup.length > 0) {
+            preferencesTabs.currentIndex = 2
+            completionCustomizer.openGroup(root.requestedCompletionGroup)
+        }
+    }
+    onAboutToHide: root.preferencesModel.finishCompletionEditing()
+    onClosed: {
+        root.requestedCompletionGroup = ""
+        if (root.returnToEditor) {
+            root.returnToEditor = false
+            root.completionSettingsClosed()
+        }
+    }
 
     title: qsTrId("dialog.preferences.title")
     preferredWidth: 700
@@ -38,6 +73,7 @@ AppDialog {
 
     onAboutToShow: {
         root.capturingId = ""
+        completionCustomizer.expanded = false
         root.refreshShortcuts()
     }
 
@@ -238,7 +274,10 @@ AppDialog {
         AppTabBar {
             id: preferencesTabs
             Layout.fillWidth: true
-            onCurrentIndexChanged: root.capturingId = ""
+            onCurrentIndexChanged: {
+                root.capturingId = ""
+                if (currentIndex !== 2) completionCustomizer.expanded = false
+            }
             tabs: [qsTrId("qml.interface"), qsTrId("dialog.preferences.background_group"), qsTrId("dialog.preferences.editor_group"), qsTrId("dialog.preferences.performance_group"), qsTrId("dialog.preferences.shortcuts_group"), qsTrId("dialog.preferences.updates_group")]
         }
 
@@ -445,68 +484,86 @@ AppDialog {
             }
 
             // ---- 编辑器 ----
-            ColumnLayout {
+            ScrollView {
+                id: editorViewport
                 Layout.fillWidth: true
-                Layout.fillHeight: false
-                Layout.alignment: Qt.AlignTop
-                spacing: Theme.settingsRowSpacing
+                Layout.fillHeight: true
+                implicitHeight: 0
+                clip: true
+                contentWidth: availableWidth
+                contentHeight: editorSettingsColumn.implicitHeight
+                ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
+                ScrollBar.vertical: AppScrollBar {}
 
-                LabeledSlider {
-                    objectName: "preferencesFontSizeSlider"
-                    label: qsTrId("dialog.preferences.editor_font_size")
-                    from: root.preferencesModel.editorFontSizeMinimum
-                    to: root.preferencesModel.editorFontSizeMaximum
-                    value: root.preferencesModel.editorFontSize
-                    readout: root.preferencesModel.editorFontSize + " pt"
-                    onMoved: function(v) { root.preferencesModel.editorFontSize = Math.round(v) }
-                }
-                LabeledCombo {
-                    objectName: "preferencesLineSpacingCombo"
-                    label: qsTrId("dialog.preferences.editor_line_spacing")
-                    options: root.preferencesModel.lineSpacingOptions
-                    currentValue: root.preferencesModel.editorLineSpacing
-                    onPicked: function(value) { root.preferencesModel.editorLineSpacing = value }
-                }
-                LabeledCombo {
-                    objectName: "preferencesInputHandlingCombo"
-                    label: qsTrId("preferences.input_handling")
-                    options: [
-                        { value: 0, label: qsTrId("preferences.correct_full_width_only") },
-                        { value: 1, label: qsTrId("preferences.block_input_methods_and_correct_full_width") },
-                        { value: 2, label: qsTrId("preferences.leave_input_unchanged") }
-                    ]
-                    currentValue: root.preferencesModel.editorInputHandlingMode
-                    onPicked: function(value) { root.preferencesModel.editorInputHandlingMode = value }
-                }
-                AppSwitch {
-                    objectName: "preferencesAutoWrapSwitch"
-                    text: qsTrId("preferences.editor_auto_wrap")
-                    checked: root.preferencesModel.editorAutoWrap
-                    onToggled: root.preferencesModel.editorAutoWrap = checked
-                }
-                AppSwitch {
-                    objectName: "preferencesAutoCompletionSwitch"
-                    text: qsTrId("preferences.auto_completion")
-                    checked: root.preferencesModel.editorAutoCompletion
-                    onToggled: root.preferencesModel.editorAutoCompletion = checked
-                }
-                AppSwitch {
-                    objectName: "preferencesScrollPastEndSwitch"
-                    text: qsTrId("preferences.editor_scroll_past_end")
-                    checked: root.preferencesModel.editorScrollPastEnd
-                    onToggled: root.preferencesModel.editorScrollPastEnd = checked
-                }
-                AppSwitch {
-                    objectName: "preferencesSelectionBeatDisplaySwitch"
-                    text: qsTrId("preferences.editor_selection_beat_display")
-                    checked: root.preferencesModel.editorSelectionBeatDisplay
-                    onToggled: root.preferencesModel.editorSelectionBeatDisplay = checked
-                }
-                AppSwitch {
-                    objectName: "preferencesOverviewRulerSwitch"
-                    text: qsTrId("preferences.editor_overview_ruler")
-                    checked: root.preferencesModel.editorOverviewRulerEnabled
-                    onToggled: root.preferencesModel.editorOverviewRulerEnabled = checked
+                ColumnLayout {
+                    id: editorSettingsColumn
+                    width: editorViewport.availableWidth
+                    spacing: Theme.settingsRowSpacing
+
+                    LabeledSlider {
+                        objectName: "preferencesFontSizeSlider"
+                        label: qsTrId("dialog.preferences.editor_font_size")
+                        from: root.preferencesModel.editorFontSizeMinimum
+                        to: root.preferencesModel.editorFontSizeMaximum
+                        value: root.preferencesModel.editorFontSize
+                        readout: root.preferencesModel.editorFontSize + " pt"
+                        onMoved: function(v) { root.preferencesModel.editorFontSize = Math.round(v) }
+                    }
+                    LabeledCombo {
+                        objectName: "preferencesLineSpacingCombo"
+                        label: qsTrId("dialog.preferences.editor_line_spacing")
+                        options: root.preferencesModel.lineSpacingOptions
+                        currentValue: root.preferencesModel.editorLineSpacing
+                        onPicked: function(value) { root.preferencesModel.editorLineSpacing = value }
+                    }
+                    LabeledCombo {
+                        objectName: "preferencesInputHandlingCombo"
+                        label: qsTrId("preferences.input_handling")
+                        options: [
+                            { value: 0, label: qsTrId("preferences.correct_full_width_only") },
+                            { value: 1, label: qsTrId("preferences.block_input_methods_and_correct_full_width") },
+                            { value: 2, label: qsTrId("preferences.leave_input_unchanged") }
+                        ]
+                        currentValue: root.preferencesModel.editorInputHandlingMode
+                        onPicked: function(value) { root.preferencesModel.editorInputHandlingMode = value }
+                    }
+                    AppSwitch {
+                        objectName: "preferencesAutoWrapSwitch"
+                        text: qsTrId("preferences.editor_auto_wrap")
+                        checked: root.preferencesModel.editorAutoWrap
+                        onToggled: root.preferencesModel.editorAutoWrap = checked
+                    }
+                    AppSwitch {
+                        objectName: "preferencesAutoCompletionSwitch"
+                        text: qsTrId("preferences.auto_completion")
+                        checked: root.preferencesModel.editorAutoCompletion
+                        onToggled: root.preferencesModel.editorAutoCompletion = checked
+                    }
+                    CompletionCandidatesEditor {
+                        id: completionCustomizer
+                        Layout.fillWidth: true
+                        visible: root.preferencesModel.editorAutoCompletion
+                        preferencesModel: root.preferencesModel
+                        onEnsureVisibleRequested: function(item) { root.ensureCompletionItemVisible(item) }
+                    }
+                    AppSwitch {
+                        objectName: "preferencesScrollPastEndSwitch"
+                        text: qsTrId("preferences.editor_scroll_past_end")
+                        checked: root.preferencesModel.editorScrollPastEnd
+                        onToggled: root.preferencesModel.editorScrollPastEnd = checked
+                    }
+                    AppSwitch {
+                        objectName: "preferencesSelectionBeatDisplaySwitch"
+                        text: qsTrId("preferences.editor_selection_beat_display")
+                        checked: root.preferencesModel.editorSelectionBeatDisplay
+                        onToggled: root.preferencesModel.editorSelectionBeatDisplay = checked
+                    }
+                    AppSwitch {
+                        objectName: "preferencesOverviewRulerSwitch"
+                        text: qsTrId("preferences.editor_overview_ruler")
+                        checked: root.preferencesModel.editorOverviewRulerEnabled
+                        onToggled: root.preferencesModel.editorOverviewRulerEnabled = checked
+                    }
                 }
             }
 

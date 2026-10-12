@@ -66,6 +66,7 @@ ApplicationContext::ApplicationContext(miacode::ApplicationServices& services,
             inputHandlingMode != miacode::ui::PreferencesModel::LeaveInputUnchanged);
         editor_.setOverwriteMode(preferences_.editorOverwriteModeEnabled());
         editor_.setAutoCompletionEnabled(preferences_.editorAutoCompletionEnabled());
+        editor_.setCompletionConfig(preferences_.editorCompletionConfig());
         editor_.setImeInputDisabled(
             inputHandlingMode
             == miacode::ui::PreferencesModel::BlockInputMethodsAndCorrectFullWidth);

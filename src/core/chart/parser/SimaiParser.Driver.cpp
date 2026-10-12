@@ -1468,6 +1468,27 @@ QString validationSeverityPrefix(SimaiValidationSeverity severity, SimaiValidati
 
 }  // namespace
 
+bool SimaiParser::isValidHoldDurationSignature(const QString& signature)
+{
+    bool ok = false;
+    const double duration = parseHoldDurationSignature(signature, 120.0, &ok);
+    if (!ok || !std::isfinite(duration)) return false;
+    const QStringList parts = signature.split(QLatin1Char('#'));
+    if (parts.size() == 2) {
+        if (!parts.first().isEmpty()) {
+            bool bpmOk = false;
+            const double bpm = parts.first().toDouble(&bpmOk);
+            if (!bpmOk || !std::isfinite(bpm) || bpm <= 0.0) return false;
+        }
+        if (!parts.last().contains(QLatin1Char(':'))) {
+            bool secondsOk = false;
+            const double seconds = parts.last().toDouble(&secondsOk);
+            if (!secondsOk || !std::isfinite(seconds)) return false;
+        }
+    }
+    return true;
+}
+
 SimaiParseResult SimaiParser::parseForTimeline(
     const QString& text,
     const miacode::simai::SimaiTimingMetadata& timingMetadata)

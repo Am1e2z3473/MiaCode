@@ -57,6 +57,8 @@ struct SimaiValidationReport {
 class SimaiParser
 {
 public:
+    // Shares the hold parser's duration grammar without parsing a chart.
+    static bool isValidHoldDurationSignature(const QString& signature);
     static SimaiParseResult parseForTimeline(
         const QString& text,
         const miacode::simai::SimaiTimingMetadata& timingMetadata = miacode::simai::SimaiTimingMetadata());

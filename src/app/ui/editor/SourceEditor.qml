@@ -43,6 +43,8 @@ Rectangle {
     readonly property real editorRailRightMargin:
         width - alignRailCoordinate(width, editorRailSceneX)
     signal normalizeChartRequested()
+    signal completionSettingsRequested(string group)
+    function focusEditor() { sourceArea.forceActiveFocus() }
     readonly property var bookmarks: sourceArea.bookmarks
     readonly property bool canUndo: sourceArea.canUndo
     readonly property bool canRedo: sourceArea.canRedo
@@ -587,6 +589,7 @@ Rectangle {
         id: completionPopup
         editor: sourceArea
         controller: root.editorController
+        onSettingsRequested: function(group) { root.completionSettingsRequested(group) }
     }
     Binding {
         target: root.Window.window
