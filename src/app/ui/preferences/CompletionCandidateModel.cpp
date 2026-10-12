@@ -1,5 +1,7 @@
 #include "app/ui/preferences/CompletionCandidateModel.h"
 
+#include "editor/SimaiTextEditPolicy.h"
+
 #include <QCoreApplication>
 
 namespace miacode::ui {
@@ -56,9 +58,42 @@ QStringList CompletionCandidateModel::savedValues() const
     return values;
 }
 
+QString CompletionCandidateModel::normalizeDraftInput(const QString& text) const
+{
+    const QString normalized = halfWidthInputEnabled_ ? editor::normalizeSimaiInput(text) : text;
+    return editor::sanitizeCompletionInput(normalized);
+}
+
+QString CompletionCandidateModel::normalizeInput(const QString& text) const
+{
+    return normalizeDraftInput(text);
+}
+
+void CompletionCandidateModel::setHalfWidthInputEnabled(bool enabled)
+{
+    if (halfWidthInputEnabled_ == enabled) return;
+    halfWidthInputEnabled_ = enabled;
+
+    bool draftChanged = false;
+    for (Row& row : rows_) {
+        const QString normalizedDraft = normalizeDraftInput(row.draft);
+        if (row.draft != normalizedDraft) {
+            row.draft = normalizedDraft;
+            row.error = Error::None;
+            draftChanged = true;
+        }
+    }
+    if (draftChanged && rowCount() > 0) {
+        emit dataChanged(index(0), index(rowCount() - 1), {DraftRole, ErrorRole});
+    }
+}
+
 void CompletionCandidateModel::replaceValues(const QStringList& values, bool discardDrafts)
 {
-    const QStringList normalized = editor::normalizeCompletionValues(group_, values);
+    QStringList normalizedInput;
+    normalizedInput.reserve(values.size());
+    for (const QString& value : values) normalizedInput.append(normalizeDraftInput(value));
+    const QStringList normalized = editor::normalizeCompletionValues(group_, normalizedInput);
     if (!discardDrafts && !rows_.isEmpty() && savedValues() == normalized) return;
     beginResetModel();
     rows_.clear();
@@ -73,9 +108,9 @@ void CompletionCandidateModel::setDraft(const QString& key, const QString& text)
 {
     const int rowIndex = rowForKey(key);
     if (rowIndex < 0) return;
-    rows_[rowIndex].draft = text;
+    rows_[rowIndex].draft = normalizeDraftInput(text);
     rows_[rowIndex].error = Error::None;
-    const bool nonempty = !text.trimmed().isEmpty();
+    const bool nonempty = !rows_[rowIndex].draft.isEmpty();
     if (rows_[rowIndex].placeholder && nonempty) {
         rows_[rowIndex].placeholder = false;
         emit dataChanged(index(rowIndex), index(rowIndex), {DraftRole, PlaceholderRole, CanRemoveRole, ErrorRole});
@@ -127,7 +162,8 @@ bool CompletionCandidateModel::commit(const QString& key)
     if (rowIndex < 0 || key == pendingRemoval_) return false;
     Row& row = rows_[rowIndex];
     if (row.placeholder || (row.draft == row.saved && row.error == Error::None)) return true;
-    const QString value = row.draft.trimmed();
+    const QString value = normalizeDraftInput(row.draft);
+    row.draft = value;
     Error error = editor::isValidCompletionValue(group_, value) ? Error::None : Error::Invalid;
     if (error == Error::None) {
         for (const Row& other : rows_) {

@@ -4627,6 +4627,10 @@ Error: %1</source>
         <source>Restore defaults</source>
         <translation>恢复默认</translation>
     </message>
+    <message id="preferences.completion.reset_hint">
+        <source>Restore default state</source>
+        <translation>恢复到默认状态</translation>
+    </message>
     <message id="preferences.completion.reset_question">
         <source>Restore default candidates?</source>
         <translation>恢复默认候选？</translation>

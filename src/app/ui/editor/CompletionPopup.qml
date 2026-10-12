@@ -14,7 +14,7 @@ AppDropdownPanel {
     readonly property bool pointerInside: popupHover.hovered
     signal settingsRequested(string group)
     readonly property bool customizable: root.controller.completionGroup.length > 0
-    readonly property real settingsSlotWidth: customizable ? Theme.compactControlHeight + 3 : 0
+    readonly property real settingsSlotWidth: customizable ? Theme.controlMinHeight + 3 : 0
 
     parent: Overlay.overlay
     modal: false
@@ -149,7 +149,10 @@ AppDropdownPanel {
                 anchors.right: parent.right
                 anchors.bottom: parent.bottom
                 visible: root.customizable
-                compact: true
+                width: Theme.controlMinHeight
+                height: Theme.controlMinHeight
+                iconWidth: 20
+                iconHeight: 20
                 focusPolicy: Qt.NoFocus
                 iconSource: Qt.resolvedUrl("icons/settings.svg")
                 tooltip: qsTrId("preferences.completion.customize")

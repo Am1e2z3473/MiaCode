@@ -19,6 +19,8 @@ public:
 
     QStringList savedValues() const;
     void replaceValues(const QStringList& values, bool discardDrafts = false);
+    void setHalfWidthInputEnabled(bool enabled);
+    Q_INVOKABLE QString normalizeInput(const QString& text) const;
     void retranslateErrors();
     Q_INVOKABLE void setDraft(const QString& key, const QString& text);
     Q_INVOKABLE bool commit(const QString& key);
@@ -45,6 +47,7 @@ private:
     int rowForKey(const QString& key) const;
     int savedCount() const { return savedCount_; }
     QString errorMessage(Error error) const;
+    QString normalizeDraftInput(const QString& text) const;
     void notifyRemovalState();
 
     editor::CompletionCandidateGroup group_;
@@ -52,5 +55,6 @@ private:
     quint64 nextKey_ = 0;
     int savedCount_ = 0;
     QString pendingRemoval_;
+    bool halfWidthInputEnabled_ = true;
 };
 } // namespace miacode::ui
