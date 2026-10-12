@@ -127,11 +127,24 @@ bool verifyClipCenterStaysOnPlayfield(QTextStream& err)
     if (!requireNear(layerState.clipCenter.y(), 270.0, QStringLiteral("stage clip center y"), err)) {
         return false;
     }
+    if (!requireNear(layerState.clipRadius, 270.0,
+                     QStringLiteral("firework fills the full canvas circle including the outer ring"), err)) {
+        return false;
+    }
     const qreal farEdgeDistance = layerState.clipRadius + std::hypot(90.0, 90.0);
+    const auto scaledLayer = miacode::preview::scene::buildPreviewJudgeFireworkLayerState(
+        state, miacode::preview::scene::PreviewActiveMarkerView(state.noteMarkers),
+        QRectF(80.0, 40.0, 1080.0, 1080.0));
     return requireNear(layerState.outerRadius, layerState.clipRadius * 1.06,
                        QStringLiteral("off-centre burst keeps the same expansion radius"), err)
         && require(layerState.outerRadius < farEdgeDistance,
-                   QStringLiteral("burst edge stays inside the far playfield boundary"), err);
+                   QStringLiteral("burst edge stays inside the far playfield boundary"), err)
+        && requireNear(scaledLayer.clipRadius, 540.0,
+                       QStringLiteral("full-circle firework scales with the export canvas"), err)
+        && requireNear(scaledLayer.clipCenter.x(), 620.0,
+                       QStringLiteral("scaled canvas clip center x"), err)
+        && requireNear(scaledLayer.clipCenter.y(), 580.0,
+                       QStringLiteral("scaled canvas clip center y"), err);
 }
 
 }  // namespace

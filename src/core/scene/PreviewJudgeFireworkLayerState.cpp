@@ -9,7 +9,6 @@
 
 namespace {
 
-constexpr qreal kJudgeEffectFireworkClipInsetPixels = 1.0;
 constexpr qreal kJudgeEffectFireworkMinSpriteWidthPixels = 1.0;
 constexpr qreal kJudgeEffectFireworkTouchTriggerDelaySeconds =
     miacode::preview_gameplay::kJudgeEffectFireworkTouchTriggerDelaySeconds;
@@ -164,8 +163,7 @@ PreviewJudgeFireworkLayerState buildPreviewJudgeFireworkLayerState(
     }
 
     layerState.clipCenter = mapLogicalPointToRect(QPointF(kLogicalCanvasCenter, kLogicalCanvasCenter), playfieldRect);
-    const qreal outlineRadius = qMax<qreal>(1.0, mapLogicalLengthToRect(kLogicalDistanceEdge, playfieldRect));
-    const qreal clipRadius = qMax<qreal>(1.0, outlineRadius - kJudgeEffectFireworkClipInsetPixels);
+    const qreal clipRadius = qMax<qreal>(1.0, mapLogicalLengthToRect(kLogicalCanvasCenter, playfieldRect));
 
     const qreal elapsedSeconds = static_cast<qreal>(state.playheadSeconds) - latestTriggerSecond;
     const qreal clipTime = qBound<qreal>(0.0, elapsedSeconds, kJudgeEffectFireworkDurationSeconds);
