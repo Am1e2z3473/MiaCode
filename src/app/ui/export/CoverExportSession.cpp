@@ -151,9 +151,7 @@ QVariantMap CoverExportSession::trackOverrides() const
     track.insert(QStringLiteral("level"), banner.level);
     track.insert(QStringLiteral("difficulty"), banner.difficulty);
     track.insert(QStringLiteral("bpm"), banner.bpm);
-    track.insert(QStringLiteral("mode"), isAutoIntroBannerMode(cardMode_)
-        ? normalizedIntroBannerMode(banner.mode)
-        : normalizedIntroBannerMode(cardMode_));
+    track.insert(QStringLiteral("mode"), resolvedIntroBannerMode(cardMode_, banner.mode));
     track.insert(QStringLiteral("lvRenderMode"), levelTextRender_ ? QStringLiteral("text")
                                                                      : QStringLiteral("atlas"));
     track.insert(QStringLiteral("stillTextMode"), longTextMode_);

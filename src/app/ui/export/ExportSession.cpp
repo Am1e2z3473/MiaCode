@@ -290,6 +290,9 @@ IntroBannerSpec ExportSession::previewIntroSpec() const
 {
     IntroBannerSpec spec = task_.intro;
     spec.enabled = task_.intro.enabled && task_.fullRangeExport;
+    // The export rebuilds the card from the chart; the preview resolves "auto"
+    // the same way instead of handing it to the card, which reads it as DX.
+    spec.mode = resolvedIntroBannerMode(task_.intro.mode, detectedIntroMode_);
     return spec;
 }
 
@@ -557,6 +560,7 @@ void ExportSession::seedFromDifficulty(int difficultyId)
             miacode::video_export::copyVideoExportUserSettings(task_, &emptyTask);
         }
         task_ = std::move(emptyTask);
+        detectedIntroMode_ = QStringLiteral("Standard");
         chartDurationSeconds_ = 0.0;
         if (!hasSeededTask_) {
             applyPreferences();
@@ -575,6 +579,7 @@ void ExportSession::seedFromDifficulty(int difficultyId)
     // The seed re-reads the chart's stored PV start; write a pending drag first.
     flushIntroPvStart();
     VideoExportTask seededTask = engine()->buildSeedTask(difficultyId);
+    detectedIntroMode_ = normalizedIntroBannerMode(seededTask.intro.mode);
     if (hasSeededTask_) {
         miacode::video_export::copyVideoExportUserSettings(task_, &seededTask);
     }

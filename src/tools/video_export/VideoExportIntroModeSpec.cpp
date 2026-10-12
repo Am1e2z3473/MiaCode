@@ -122,6 +122,16 @@ bool verifyAutoCopyKeepsDetectedMode(QTextStream& err)
         return false;
     }
 
+    // Previews receive the user's choice; "auto" must show the detected type
+    // because the card draws every value other than "Standard" as DX.
+    if (!require(resolvedIntroBannerMode(QStringLiteral("auto"), QStringLiteral("Standard")) == QStringLiteral("Standard")
+                     && resolvedIntroBannerMode(QStringLiteral("auto"), QStringLiteral("DX")) == QStringLiteral("DX")
+                     && resolvedIntroBannerMode(QStringLiteral("DX"), QStringLiteral("Standard")) == QStringLiteral("DX")
+                     && resolvedIntroBannerMode(QStringLiteral("Standard"), QStringLiteral("DX")) == QStringLiteral("Standard"),
+                 QStringLiteral("preview resolves auto to the detected type and keeps manual choices"), err)) {
+        return false;
+    }
+
     return true;
 }
 
