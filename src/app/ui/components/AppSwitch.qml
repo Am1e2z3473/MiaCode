@@ -11,6 +11,7 @@ Switch {
     // A switch that heads a group of settings (片头 → 添加片头) reads as that
     // group's section caption rather than as one row inside it.
     property bool sectionTitle: false
+    property bool indicatorOnRight: false
 
     font.family: Theme.uiFont
     font.pixelSize: root.sectionTitle ? Theme.sectionTitleFontSize : Theme.uiFontSize
@@ -33,7 +34,7 @@ Switch {
     indicator: Rectangle {
         implicitWidth: 28
         implicitHeight: 16
-        x: root.leftPadding
+        x: root.indicatorOnRight ? root.width - root.rightPadding - width : root.leftPadding
         y: parent.height / 2 - height / 2
         radius: height / 2
         color: Theme.overlayColor(root.checked ? Theme.colors.toggle.checkedTrack
@@ -62,6 +63,7 @@ Switch {
                : root.sectionTitle ? Theme.colors.text.section
                : Theme.colors.text.secondary
         verticalAlignment: Text.AlignVCenter
-        leftPadding: root.indicator.width + root.spacing
+        leftPadding: root.indicatorOnRight ? 0 : root.indicator.width + root.spacing
+        rightPadding: root.indicatorOnRight ? root.indicator.width + root.spacing : 0
     }
 }

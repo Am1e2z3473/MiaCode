@@ -3,6 +3,58 @@
 <TS version="2.1" language="en_US">
 <context>
     <name></name>
+    <message id="about.version">
+        <source>Version: %1</source>
+        <translation>Version: %1</translation>
+    </message>
+    <message id="dialog.preferences.group.appearance">
+        <source>Appearance</source>
+        <translation>Appearance</translation>
+    </message>
+    <message id="dialog.preferences.group.workspace">
+        <source>Workspace</source>
+        <translation>Workspace</translation>
+    </message>
+    <message id="dialog.preferences.group.background_image">
+        <source>Background image</source>
+        <translation>Background image</translation>
+    </message>
+    <message id="dialog.preferences.group.presentation">
+        <source>Presentation</source>
+        <translation>Presentation</translation>
+    </message>
+    <message id="dialog.preferences.group.typography">
+        <source>Typography</source>
+        <translation>Typography</translation>
+    </message>
+    <message id="dialog.preferences.group.input">
+        <source>Input</source>
+        <translation>Input</translation>
+    </message>
+    <message id="dialog.preferences.group.editing_aids">
+        <source>Editing aids</source>
+        <translation>Editing aids</translation>
+    </message>
+    <message id="dialog.preferences.group.video">
+        <source>Video</source>
+        <translation>Video</translation>
+    </message>
+    <message id="dialog.preferences.group.rendering">
+        <source>Rendering</source>
+        <translation>Rendering</translation>
+    </message>
+    <message id="dialog.preferences.group.chart_transforms">
+        <source>Chart transforms</source>
+        <translation>Chart transforms</translation>
+    </message>
+    <message id="dialog.preferences.group.playback">
+        <source>Playback</source>
+        <translation>Playback</translation>
+    </message>
+    <message id="dialog.preferences.group.timeline">
+        <source>Timeline</source>
+        <translation>Timeline</translation>
+    </message>
     <message id="sidebar.menu">
         <source>Menu</source>
         <translation>Menu</translation>

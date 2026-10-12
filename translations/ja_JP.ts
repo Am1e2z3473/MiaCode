@@ -3,6 +3,58 @@
 <TS version="2.1" language="ja_JP">
 <context>
     <name></name>
+    <message id="about.version">
+        <source>Version: %1</source>
+        <translation>バージョン：%1</translation>
+    </message>
+    <message id="dialog.preferences.group.appearance">
+        <source>Appearance</source>
+        <translation>外観</translation>
+    </message>
+    <message id="dialog.preferences.group.workspace">
+        <source>Workspace</source>
+        <translation>ワークスペース</translation>
+    </message>
+    <message id="dialog.preferences.group.background_image">
+        <source>Background image</source>
+        <translation>背景画像</translation>
+    </message>
+    <message id="dialog.preferences.group.presentation">
+        <source>Presentation</source>
+        <translation>表示効果</translation>
+    </message>
+    <message id="dialog.preferences.group.typography">
+        <source>Typography</source>
+        <translation>文字組み</translation>
+    </message>
+    <message id="dialog.preferences.group.input">
+        <source>Input</source>
+        <translation>入力</translation>
+    </message>
+    <message id="dialog.preferences.group.editing_aids">
+        <source>Editing aids</source>
+        <translation>編集補助</translation>
+    </message>
+    <message id="dialog.preferences.group.video">
+        <source>Video</source>
+        <translation>動画</translation>
+    </message>
+    <message id="dialog.preferences.group.rendering">
+        <source>Rendering</source>
+        <translation>描画</translation>
+    </message>
+    <message id="dialog.preferences.group.chart_transforms">
+        <source>Chart transforms</source>
+        <translation>譜面変換</translation>
+    </message>
+    <message id="dialog.preferences.group.playback">
+        <source>Playback</source>
+        <translation>再生</translation>
+    </message>
+    <message id="dialog.preferences.group.timeline">
+        <source>Timeline</source>
+        <translation>タイムライン</translation>
+    </message>
     <message id="sidebar.menu">
         <source>Menu</source>
         <translation>メニュー</translation>

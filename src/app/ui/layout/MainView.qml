@@ -151,7 +151,7 @@ Item {
             if (root.chartEditorActive)
                 root.pages.openNormalizeWholeChart()
         }
-        onAboutRequested: aboutDialog.open()
+        onAboutRequested: preferencesDialog.openPage("about")
         onBeginnerGuideRequested: beginnerGuide.open()
         onPreferencesRequested: preferencesDialog.open()
         onNewDocumentRequested: root.commands.newDocument()
@@ -481,7 +481,7 @@ Item {
 
     // The only passive signal for an available update is the status bar badge;
     // this dialog opens only when the reader asks for it (badge click or the
-    // About dialog's hint), never on its own.
+    // Preferences' About page hint), never on its own.
     ChoiceDialog {
         id: updatePrompt
         objectName: "shellUpdateAvailableDialog"
@@ -771,14 +771,6 @@ Item {
         objectName: "shellPreviewSettingsDialog"
         parent: splitView.settingsDialogParent
         previewSettings: root.applicationContext.previewSettings
-    }
-
-    AboutDialog {
-        id: aboutDialog
-        objectName: "shellAboutDialog"
-        preferences: root.preferences
-        updateService: root.updates
-        onUpdateRequested: updatePrompt.present()
     }
 
     PreferencesDialog {

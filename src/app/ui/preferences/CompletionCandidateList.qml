@@ -21,7 +21,7 @@ Column {
     property real pointerOffsetY: 0
     property int sourceRow: -1
     property int dropRow: -1
-    readonly property real rowHeight: Math.max(36, Theme.controlMinHeight + 6)
+    readonly property real rowHeight: Theme.controlMinHeight + 10
     readonly property real rowStride: root.rowHeight + rows.spacing
     readonly property color accentColor: Theme.colors.accent.primary
     readonly property real scrollVelocity: {
@@ -38,7 +38,7 @@ Column {
             || (velocity > 0 && root.scrollViewport.contentY >= maximum)) return 0
         return velocity
     }
-    spacing: 8
+    spacing: 12
 
     function ensureContentLayout() {
         rows.ensurePolished()
@@ -104,7 +104,7 @@ Column {
         text: root.title
         color: Theme.colors.text.section
         font.family: Theme.uiFont
-        font.pixelSize: Theme.uiFontSize
+        font.pixelSize: Theme.uiFontSize + 1
         font.weight: Theme.sectionTitleFontWeight
     }
 

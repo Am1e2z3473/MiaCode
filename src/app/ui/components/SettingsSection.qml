@@ -9,6 +9,9 @@ ColumnLayout {
 
     required property string title
     property bool first: false
+    property bool showDivider: true
+    property int titleFontSize: Theme.sectionTitleFontSize
+    property int rowSpacing: Theme.settingsRowSpacing
     // Optional count shown after the title, e.g. how many items a list holds.
     property string badge: ""
     default property alias content: contentColumn.data
@@ -17,7 +20,7 @@ ColumnLayout {
 
     RowLayout {
         Layout.fillWidth: true
-        Layout.topMargin: root.first ? 0 : 8
+        Layout.topMargin: root.first || !root.showDivider ? 0 : 8
         spacing: Theme.settingsRowSpacing
 
         Text {
@@ -27,7 +30,7 @@ ColumnLayout {
             text: root.title
             color: Theme.colors.text.section
             font.family: Theme.uiFont
-            font.pixelSize: Theme.sectionTitleFontSize
+            font.pixelSize: root.titleFontSize
             font.weight: Theme.sectionTitleFontWeight
         }
         Rectangle {
@@ -48,6 +51,7 @@ ColumnLayout {
         }
 
         Rectangle {
+            visible: root.showDivider
             Layout.fillWidth: true
             Layout.alignment: Qt.AlignVCenter
             implicitHeight: 1 / Screen.devicePixelRatio
@@ -58,6 +62,6 @@ ColumnLayout {
     ColumnLayout {
         id: contentColumn
         Layout.fillWidth: true
-        spacing: Theme.settingsRowSpacing
+        spacing: root.rowSpacing
     }
 }

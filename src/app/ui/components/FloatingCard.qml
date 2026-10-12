@@ -16,6 +16,8 @@ Item {
     property real shadowBlur: 0.6
     property real shadowOpacity: Theme.popupShadowOpacity
     property real shadowVerticalOffset: 2
+    property Component tintDelegate: null
+    readonly property bool materialActive: backdrop.active
     readonly property Item backdropSource: root.Window.window?.backdropSource ?? null
 
     RectangularShadow {
@@ -43,11 +45,18 @@ Item {
     Rectangle {
         id: card
         anchors.fill: parent
+        visible: root.tintDelegate === null
         radius: root.cornerRadius
         // Translucent tint belongs to the sampled material. A plain floating
         // surface keeps its theme color opaque over both wallpaper and UI.
         color: backdrop.active ? root.tintColor
                : Qt.rgba(root.tintColor.r, root.tintColor.g, root.tintColor.b, 1.0)
+    }
+
+    Loader {
+        anchors.fill: parent
+        active: root.tintDelegate !== null
+        sourceComponent: root.tintDelegate
     }
 
     Rectangle {
