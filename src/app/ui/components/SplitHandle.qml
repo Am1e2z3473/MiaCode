@@ -16,7 +16,7 @@ Item {
     property bool handlePressed: Controls.SplitHandle.pressed
     property bool handleHovered: Controls.SplitHandle.hovered
     readonly property bool handleActive: handlePressed || handleHovered
-    readonly property bool verticalDivider: parent !== null
+    property bool verticalDivider: parent !== null
                                             && parent.orientation === Qt.Horizontal
     readonly property real lineThickness: handleActive
                                           ? Theme.splitHandleActiveThickness

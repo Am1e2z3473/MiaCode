@@ -96,16 +96,16 @@ WorkbenchSettings::WorkbenchSettings(QObject* parent)
     QSettings legacySettings;
     sidebarVisible_ = jsonBool(ui, kSidebarVisible, legacySettings, kLegacySidebarVisible, true);
     sidebarWidth_ = qBound(kSidebarMinimumContentWidth,
-                           jsonInt(ui, kSidebarWidth, legacySettings, kLegacySidebarWidth, 190),
+                           jsonInt(ui, kSidebarWidth, legacySettings, kLegacySidebarWidth, kSidebarDefaultWidth),
                            kSidebarMaximumContentWidth);
     bottomPanelVisible_ = jsonBool(ui, kBottomPanelVisible, legacySettings, kLegacyBottomPanelVisible, true);
     bottomPanelHeightRatio_ = qBound(kBottomPanelMinimumHeightRatio,
                                      jsonDouble(ui, kBottomPanelHeightRatio, legacySettings,
-                                                kLegacyBottomPanelHeightRatio, 0.35),
+                                                kLegacyBottomPanelHeightRatio, kBottomPanelDefaultHeightRatio),
                                      kBottomPanelMaximumHeightRatio);
     previewWidthRatio_ = qBound(kPreviewMinimumWidthRatio,
                                 jsonDouble(ui, kPreviewWidthRatio, legacySettings,
-                                           kLegacyPreviewWidthRatio, 0.5),
+                                           kLegacyPreviewWidthRatio, kPreviewDefaultWidthRatio),
                                 kPreviewMaximumWidthRatio);
     previewCanvasFreeAspect_ = jsonBool(ui, kPreviewCanvasFreeAspect, legacySettings,
                                         kLegacyPreviewCanvasFreeAspect, false);
@@ -192,13 +192,16 @@ QVariantMap WorkbenchSettings::aboutInfo() const
 bool WorkbenchSettings::efficientSidebarEnabled() const { return efficientSidebarEnabled_; }
 bool WorkbenchSettings::sidebarVisible() const { return sidebarVisible_; }
 int WorkbenchSettings::sidebarWidth() const { return sidebarWidth_; }
+int WorkbenchSettings::sidebarDefaultWidth() const { return kSidebarDefaultWidth; }
 int WorkbenchSettings::sidebarMinimumContentWidth() const { return kSidebarMinimumContentWidth; }
 int WorkbenchSettings::sidebarMaximumContentWidth() const { return kSidebarMaximumContentWidth; }
 bool WorkbenchSettings::bottomPanelVisible() const { return bottomPanelVisible_; }
 double WorkbenchSettings::bottomPanelHeightRatio() const { return bottomPanelHeightRatio_; }
+double WorkbenchSettings::bottomPanelDefaultHeightRatio() const { return kBottomPanelDefaultHeightRatio; }
 double WorkbenchSettings::bottomPanelMinimumHeightRatio() const { return kBottomPanelMinimumHeightRatio; }
 double WorkbenchSettings::bottomPanelMaximumHeightRatio() const { return kBottomPanelMaximumHeightRatio; }
 double WorkbenchSettings::previewWidthRatio() const { return previewWidthRatio_; }
+double WorkbenchSettings::previewDefaultWidthRatio() const { return kPreviewDefaultWidthRatio; }
 bool WorkbenchSettings::previewDetached() const { return previewDetached_; }
 double WorkbenchSettings::previewMinimumWidthRatio() const { return kPreviewMinimumWidthRatio; }
 double WorkbenchSettings::previewMaximumWidthRatio() const { return kPreviewMaximumWidthRatio; }

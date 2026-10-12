@@ -594,6 +594,7 @@ set(MIACODE_UI_QML_FILES
     src/app/ui/components/PanelHeader.qml
     src/app/ui/components/SplitHandle.qml
     src/app/ui/components/SplitSnapController.qml
+    src/app/ui/components/ResizeSnapState.qml
     src/app/ui/components/CornerMask.qml
     src/app/ui/components/Tooltip.qml
     src/app/ui/components/HoverChrome.qml
