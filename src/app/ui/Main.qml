@@ -197,7 +197,7 @@ ApplicationWindow {
                           ? qsTrId("drop_chart.preview.open_title")
                           : qsTrId("drop_chart.preview.title")
                     font.family: Theme.uiFont
-                    font.pixelSize: 16
+                    font.pixelSize: Theme.uiFontSize + 3
                 }
             }
         }

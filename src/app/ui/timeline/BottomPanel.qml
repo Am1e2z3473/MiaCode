@@ -79,7 +79,7 @@ Item {
                     color: issueRow.leadingColor
                     wrapMode: Text.Wrap
                     font.family: Theme.codeFont.family
-                    font.pixelSize: Theme.uiFontSize
+                    font.pixelSize: Theme.timelineFontSize
                 }
 
                 Label {
@@ -88,7 +88,7 @@ Item {
                     color: Theme.colors.text.primary
                     wrapMode: Text.Wrap
                     font.family: Theme.uiFont
-                    font.pixelSize: Theme.uiFontSize
+                    font.pixelSize: Theme.timelineFontSize
                 }
             }
         }
@@ -200,7 +200,7 @@ Item {
                         .arg(root.documentSession.syntaxWarningCount)
                 color: Theme.colors.text.secondary
                 font.family: Theme.uiFont
-                font.pixelSize: Theme.uiFontSize
+                font.pixelSize: Theme.timelineFontSize
             }
         }
 
@@ -236,7 +236,7 @@ Item {
                 : qsTrId("validation.no_syntax_errors_detected")
             color: Theme.colors.text.secondary
             font.family: Theme.uiFont
-            font.pixelSize: Theme.uiFontSize
+            font.pixelSize: Theme.timelineFontSize
         }
     }
 
@@ -266,7 +266,7 @@ Item {
                         .arg(root.muriWarningCount)
                 color: Theme.colors.text.secondary
                 font.family: Theme.uiFont
-                font.pixelSize: Theme.uiFontSize
+                font.pixelSize: Theme.timelineFontSize
             }
         }
 
@@ -301,7 +301,7 @@ Item {
                 : qsTrId("validation.no_muri_issues_detected")
             color: Theme.colors.text.secondary
             font.family: Theme.uiFont
-            font.pixelSize: Theme.uiFontSize
+            font.pixelSize: Theme.timelineFontSize
         }
     }
 

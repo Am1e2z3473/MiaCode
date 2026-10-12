@@ -155,7 +155,7 @@ Rectangle {
         stateColors: root.navigationStateColors
         implicitHeight: 36
         emphasizedText: true
-        textPixelSize: Theme.uiFontSize + 1
+        textPixelSize: Theme.uiFontSize
     }
 
     component SectionDivider: Item {
