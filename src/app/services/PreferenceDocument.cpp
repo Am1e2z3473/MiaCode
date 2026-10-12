@@ -26,20 +26,29 @@ constexpr auto kThemeKey = "theme";
 constexpr auto kLightThemeKey = "light_theme";
 constexpr auto kDarkThemeKey = "dark_theme";
 
-QString preferencesPath()
+QString configFilePath(const QString& fileName)
 {
     const QString configRoot = QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation);
     if (configRoot.isEmpty()) {
         return QString();
     }
-    const QDir configDir(configRoot);
-    return configDir.filePath("preferences.json");
+    return QDir(configRoot).filePath(fileName);
 }
 
-QString legacyPreferencesFilePath()
+// 2.x keeps its own document beside the 1.x preferences.json. The 1.x files
+// are read-only migration sources consulted only while this file is missing.
+QString preferencesPath()
 {
-    const QDir appDir(QCoreApplication::applicationDirPath());
-    return appDir.filePath(".miacode_preferences.json");
+    return configFilePath(QStringLiteral("preferences_v2.json"));
+}
+
+QStringList migrationSourcePaths()
+{
+    QStringList sources;
+    const QString v1 = configFilePath(QStringLiteral("preferences.json"));
+    if (!v1.isEmpty()) sources.append(v1);
+    sources.append(QDir(QCoreApplication::applicationDirPath()).filePath(".miacode_preferences.json"));
+    return sources;
 }
 
 bool supportedPreferencesSchema(const QJsonObject& root)
@@ -441,7 +450,7 @@ QString resolvedLanguageTokenFromStorage()
 
 PreferenceDocument::Repository& preferencesRepository()
 {
-    static PreferenceDocument::Repository repository(preferencesPath(), legacyPreferencesFilePath());
+    static PreferenceDocument::Repository repository(preferencesPath(), migrationSourcePaths());
     return repository;
 }
 }  // namespace
@@ -620,8 +629,8 @@ QString PreferenceDocument::currentPreferencesSchema()
     return QString::fromLatin1(kPreferencesSchema);
 }
 
-PreferenceDocument::Repository::Repository(QString path, QString legacyPath)
-    : path_(std::move(path)), legacyPath_(std::move(legacyPath))
+PreferenceDocument::Repository::Repository(QString path, QStringList migrationSources)
+    : path_(std::move(path)), migrationSources_(std::move(migrationSources))
 {}
 
 void PreferenceDocument::Repository::initializeLocked()
@@ -632,14 +641,35 @@ void PreferenceDocument::Repository::initializeLocked()
     initialized_ = true;
     using namespace miacode::preference_json_file;
     const ReadResult primary = read(path_);
-    const ReadResult source = primary.status == ReadStatus::Missing && !legacyPath_.isEmpty()
-        ? read(legacyPath_) : primary;
+    ReadResult source = primary;
+    QString sourcePath = path_;
+    // Sources are imported only while the primary is missing; a corrupt or
+    // unreadable primary is recovered in place and never re-imported.
+    if (primary.status == ReadStatus::Missing) {
+        for (const QString& candidate : std::as_const(migrationSources_)) {
+            if (candidate.isEmpty()) continue;
+            source = read(candidate);
+            sourcePath = candidate;
+            if (source.status != ReadStatus::Missing) break;
+        }
+        if (source.status == ReadStatus::Valid && !supportedPreferencesSchema(source.object)) {
+            // A source owned by another release is never written here, so an
+            // unknown version only skips the import instead of blocking saves.
+            miacode::preference_json_file::log(sourcePath,
+                QStringLiteral("unsupported-schema migration-skipped"), miacode::debug_log::Level::Warn);
+            source = {};
+        }
+    }
     sourceReadBlocked_ = source.status == ReadStatus::ReadError;
-    unreadSourcePath_ = primary.status == ReadStatus::Missing ? legacyPath_ : path_;
+    unreadSourcePath_ = sourcePath;
     unsupportedSchema_ = !supportedPreferencesSchema(source.object);
     if (unsupportedSchema_) {
-        miacode::preference_json_file::log(primary.status == ReadStatus::Missing ? legacyPath_ : path_,
+        miacode::preference_json_file::log(path_,
             QStringLiteral("unsupported-schema read-only-for-session"), miacode::debug_log::Level::Warn);
+    }
+    if (primary.status == ReadStatus::Missing && source.status == ReadStatus::Valid) {
+        miacode::preference_json_file::log(path_,
+            QStringLiteral("imported-from=%1").arg(sourcePath), miacode::debug_log::Level::Info);
     }
     storedSchema_ = source.object.value(QStringLiteral("schema")).toString();
     root_ = normalizedPreferencesRoot(source.object);

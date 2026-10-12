@@ -153,7 +153,7 @@ int main(int argc, char** argv)
     const QString legacyPath = temporary.filePath(QStringLiteral("legacy-unreadable"));
     const QString migratedPath = temporary.filePath(QStringLiteral("migrated.json"));
     expect(QDir().mkdir(legacyPath), "block legacy preference reading");
-    Repository legacyFailure(migratedPath, legacyPath);
+    Repository legacyFailure(migratedPath, {legacyPath});
     QJsonObject legacyPending = legacyFailure.snapshot();
     expect(legacyFailure.isDirty() && !QFile::exists(migratedPath),
            "unreadable legacy source cannot be hidden by new default primary");
@@ -166,11 +166,60 @@ int main(int argc, char** argv)
            "source recovery alone does not reload or overwrite the current session");
     expect(!legacyFailure.replace(legacyPending) && !QFile::exists(migratedPath),
            "unread legacy migration remains blocked for this repository lifetime");
-    Repository recoveredLegacy(migratedPath, legacyPath);
+    Repository recoveredLegacy(migratedPath, {legacyPath});
     expect(recoveredLegacy.snapshot().value("old_setting") == 42
                && read(migratedPath).object.value("old_setting") == 42
                && read(legacyPath).object.value("old_setting") == 42,
            "new lifetime migrates readable legacy data and preserves its source");
+
+    // 2.x imports the 1.x document only while its own file is missing and
+    // never writes the 1.x file back.
+    const QString v2Path = temporary.filePath(QStringLiteral("preferences_v2.json"));
+    const QString v1Path = temporary.filePath(QStringLiteral("preferences_v1.json"));
+    const QString exeLegacyPath = temporary.filePath(QStringLiteral("exe-legacy.json"));
+    const QByteArray v1Original("{\"schema\":\"miacode_preferences_v4\",\"ui\":{\"theme\":\"light\",\"editor_auto_close_brackets\":false},"
+                                "\"app\":{\"video_export\":{\"hud_font_path\":\"x.ttf\"},\"net_config\":true}}");
+    const auto v1Unchanged = [&] {
+        QFile file(v1Path);
+        return file.open(QIODevice::ReadOnly) && file.readAll() == v1Original;
+    };
+    expect(put(v1Path, v1Original), "v1 preferences fixture");
+    {
+        Repository imported(v2Path, {v1Path, exeLegacyPath});
+        const QJsonObject root = imported.snapshot();
+        expect(root.value("ui").toObject().value("theme") == "light"
+                   && !root.value("ui").toObject().value("editor_auto_completion").toBool(true)
+                   && read(v2Path).object == root && v1Unchanged(),
+               "missing v2 file imports normalized v1 values into its own file");
+        expect(imported.replace(withUi(root, QStringLiteral("theme"), QStringLiteral("dark")))
+                   && read(v2Path).object.value("ui").toObject().value("theme") == "dark" && v1Unchanged(),
+               "v2 edits persist to the v2 file and leave v1 bytes intact");
+    }
+    expect(put(v1Path, "{\"ui\":{\"theme\":\"system\"}}"), "v1 changes after import");
+    expect(Repository(v2Path, {v1Path}).snapshot().value("ui").toObject().value("theme") == "dark",
+           "existing v2 file is never re-imported from v1");
+    expect(put(v1Path, v1Original) && put(v2Path, "{broken"), "corrupt v2 fixture");
+    {
+        Repository corruptPrimary(v2Path, {v1Path});
+        expect(corruptPrimary.snapshot().value("ui").toObject().value("theme") == "dark"
+                   && read(v2Path).status == ReadStatus::Valid && v1Unchanged(),
+               "corrupt v2 file recovers to defaults without importing v1");
+    }
+    expect(QFile::remove(v2Path) && put(v1Path, "{\"schema\":\"miacode_preferences_v9\",\"ui\":{\"theme\":\"light\"}}"),
+           "future v1 schema fixture");
+    {
+        Repository futureSource(v2Path, {v1Path});
+        const QJsonObject root = futureSource.snapshot();
+        expect(root.value("schema") == PreferenceDocument::currentPreferencesSchema()
+                   && root.value("ui").toObject().value("theme") == "dark"
+                   && futureSource.replace(withUi(root, QStringLiteral("language"), QStringLiteral("ja"))),
+               "unknown v1 schema skips the import without blocking v2 saves");
+    }
+    expect(QFile::remove(v2Path) && QFile::remove(v1Path)
+               && put(exeLegacyPath, "{\"ui_theme\":\"light\"}"), "exe-directory legacy fixture");
+    expect(Repository(v2Path, {v1Path, exeLegacyPath}).snapshot().value("ui").toObject().value("theme") == "light"
+               && read(exeLegacyPath).object.value("ui_theme") == "light",
+           "missing v1 file falls back to the exe-directory legacy source");
 
     const QJsonObject legacy{{QStringLiteral("ui"), QJsonObject{{QStringLiteral("editor_auto_close_brackets"), false}}}};
     const QJsonObject migrated = PreferenceDocument::normalizePreferencesObject(legacy);
