@@ -36,6 +36,7 @@ install_manifest.txt
 tmp*/
 logs/
 experimental/
+/prototypes/
 
 # CTest scratch + local build/audit artifacts — never version-controlled.
 Testing/
