@@ -182,31 +182,46 @@ struct HudGlyphVerticalBounds {
     bool valid = false;
 };
 
-HudGlyphVerticalBounds hudGlyphVerticalBounds(const QFontMetrics& metrics, const QStringList& lines)
+qreal hudFontPixelSize(const QFont& font, const QFontMetrics& metrics)
 {
+    return font.pixelSize() > 0 ? font.pixelSize()
+        : qMax<qreal>(1, qRound(font.pointSizeF() * metrics.fontDpi() / 72.0));
+}
+
+HudGlyphVerticalBounds hudGlyphVerticalBounds(
+    const QFont& font, const QFontMetrics& metrics, const QStringList& lines)
+{
+    // Outlines include fallback glyphs, variable-font instances and synthetic
+    // weight. Resolve points using the paint device's DPI before measuring.
+    QFont outlineFont = font;
+    outlineFont.setPixelSize(qRound(hudFontPixelSize(font, metrics)));
     HudGlyphVerticalBounds bounds;
     for (const QString& line : lines) {
-        if (line.isEmpty()) {
-            continue;
-        }
-        const QRect glyphRect = metrics.boundingRect(line);
+        QPainterPath path;
+        path.addText(QPointF(0, 0), outlineFont, line);
+        if (path.isEmpty()) continue;
+        const QRectF glyphRect = path.boundingRect();
+        // Reserve rasterisation coverage beyond the outline on either edge.
+        const qreal top = std::floor(glyphRect.top()) - 1;
+        const qreal bottom = std::ceil(glyphRect.bottom()) + 1;
         if (!bounds.valid) {
-            bounds.top = glyphRect.top();
-            bounds.bottom = glyphRect.bottom();
-            bounds.valid = true;
+            bounds = {top, bottom, true};
         } else {
-            bounds.top = qMin(bounds.top, static_cast<qreal>(glyphRect.top()));
-            bounds.bottom = qMax(bounds.bottom, static_cast<qreal>(glyphRect.bottom()));
+            bounds.top = qMin(bounds.top, top);
+            bounds.bottom = qMax(bounds.bottom, bottom);
         }
     }
     return bounds;
 }
 
-qreal hudLineAdvance(const QFontMetrics& metrics, const QStringList& lines)
+qreal hudLineAdvance(const QFont& font, const QFontMetrics& metrics,
+    const HudGlyphVerticalBounds& bounds, qreal shadowOffset)
 {
-    const HudGlyphVerticalBounds bounds = hudGlyphVerticalBounds(metrics, lines);
-    const qreal glyphSpan = bounds.valid ? bounds.bottom - bounds.top + 1.0 : 0.0;
-    return qMax(static_cast<qreal>(metrics.lineSpacing()), glyphSpan);
+    const qreal em = hudFontPixelSize(font, metrics);
+    const qreal glyphSpan = bounds.valid ? bounds.bottom - bounds.top : metrics.height();
+    // A common 1.35em baseline rhythm, with at least 0.15em of clear space
+    // after the glyph and its shadow, independent of the font's line tables.
+    return std::ceil(qMax(1.35 * em, glyphSpan + shadowOffset + qMax<qreal>(2, 0.15 * em)));
 }
 
 using miacode::preview::hud::HudInformationLayout;
@@ -263,10 +278,10 @@ HudInformationLayout layoutChartInformation(const HudInformationLayoutKey& key, 
             QFont font = key.font;
             font.setPointSize(size);
             const QFontMetrics metrics(font, painter.device());
-            const auto glyphs = hudGlyphVerticalBounds(metrics, fields);
-            const qreal ascent = qMax<qreal>(metrics.ascent(), glyphs.valid ? -glyphs.top : 0);
-            const qreal descent = qMax<qreal>(metrics.descent(), glyphs.valid ? glyphs.bottom + 1 : 0);
-            const qreal advance = hudLineAdvance(metrics, fields);
+            const auto glyphs = hudGlyphVerticalBounds(font, metrics, fields);
+            const qreal ascent = glyphs.valid ? -glyphs.top : metrics.ascent();
+            const qreal descent = glyphs.valid ? glyphs.bottom : metrics.descent();
+            const qreal advance = hudLineAdvance(font, metrics, glyphs, key.shadow);
             const qreal bearing = informationLeftBearing(metrics, fields);
             qreal top = qMax(key.stage.top() + key.padding, key.chartTop);
             HudInformationLayout layout;
@@ -337,13 +352,22 @@ HudInformationLayout layoutObjectStatistics(const HudInformationLayoutKey& key, 
                 lines[0] = QStringLiteral("FiNALE");
                 lines[2] = QStringLiteral("DELUXE");
             }
-            const auto glyphs = hudGlyphVerticalBounds(metrics, lines);
-            const qreal ascent = qMax<qreal>(metrics.ascent(), glyphs.valid ? -glyphs.top : 0);
-            const qreal descent = qMax<qreal>(metrics.descent(), glyphs.valid ? glyphs.bottom + 1 : 0);
-            const qreal advance = hudLineAdvance(metrics, lines);
+            const auto glyphs = hudGlyphVerticalBounds(font, metrics, lines);
+            const qreal ascent = glyphs.valid ? -glyphs.top : metrics.ascent();
+            const qreal descent = glyphs.valid ? glyphs.bottom : metrics.descent();
+            const qreal advance = hudLineAdvance(font, metrics, glyphs, key.shadow);
             const qreal bearing = informationLeftBearing(metrics, lines);
             const int rows = compact ? 5 : lines.size();
-            const qreal height = ascent + descent + (rows - 1) * advance;
+            QVector<qreal> rowOffsets(rows, 0);
+            const qreal em = hudFontPixelSize(font, metrics);
+            for (int row = 1; row < rows; ++row) {
+                // Separate rate headings from their values and the next group.
+                const qreal groupGap = compact
+                    ? (row == 1 ? 0.15 * em : row == 2 ? 0.4 * em : 0)
+                    : (row == 1 || row == 3 ? 0.15 * em : row == 2 || row == 4 ? 0.4 * em : 0);
+                rowOffsets[row] = rowOffsets[row - 1] + advance + groupGap;
+            }
+            const qreal height = ascent + descent + rowOffsets.last();
             const qreal top = key.stage.bottom() - key.padding - key.shadow - height;
             const qreal right = key.stage.right() - key.padding - key.shadow;
             std::array<qreal, 2> columnWidths = {0, 0};
@@ -367,8 +391,8 @@ HudInformationLayout layoutObjectStatistics(const HudInformationLayoutKey& key, 
             layout.compact = compact;
             bool fits = true;
             for (int row = 0; row < rows; ++row) {
-                const QRectF available = informationRowRect(key, top + row * advance, ascent + descent, true);
-                const QRectF bounds(left, top + row * advance, blockWidth, ascent + descent);
+                const QRectF available = informationRowRect(key, top + rowOffsets[row], ascent + descent, true);
+                const QRectF bounds(left, top + rowOffsets[row], blockWidth, ascent + descent);
                 if (available.isEmpty() || blockWidth > available.width()
                     || bounds.adjusted(0, 0, key.shadow, key.shadow).intersects(key.timestamp)) {
                     fits = false;
@@ -381,7 +405,7 @@ HudInformationLayout layoutObjectStatistics(const HudInformationLayoutKey& key, 
                 const int row = rowFor(i);
                 const qreal columnOffset = columnFor(i) > 0 ? columnWidths[0] + key.padding : 0;
                 layout.baselines.append(QPointF(left + bearing + columnOffset,
-                    top + ascent + row * advance));
+                    top + ascent + rowOffsets[row]));
             }
             return layout;
         }
@@ -793,9 +817,14 @@ void paintPreviewHudOverlay(
             target, tag, baseline, text, font, shadowOffset, textColor, shadowColor);
         if (tag.startsWith(QLatin1String("debug."))) {
             const QFontMetrics metrics(font, target.device());
-            const QRectF bounds = QRectF(metrics.boundingRect(text)).translated(baseline)
-                .adjusted(0, 0, shadowOffset, shadowOffset);
-            debugRegion = debugRegion.united(bounds);
+            QRectF bounds = metrics.boundingRect(text);
+            const auto glyphs = hudGlyphVerticalBounds(font, metrics, {text});
+            if (glyphs.valid) {
+                bounds.setTop(glyphs.top);
+                bounds.setBottom(glyphs.bottom);
+            }
+            debugRegion = debugRegion.united(bounds.translated(baseline)
+                .adjusted(0, 0, shadowOffset, shadowOffset));
         } else if (tag == QLatin1String("timestamp")) {
             const QFontMetrics metrics(font, target.device());
             timestampRegion = QRectF(metrics.boundingRect(QStringLiteral("-88:88:888")))
@@ -806,7 +835,7 @@ void paintPreviewHudOverlay(
         QStringLiteral("overlay_enter"),
         [&] {
             return QStringLiteral(
-                "state=%1 canvas=%2x%3 layer_flags=0x%4 show_timestamp=%5 show_debug=%6 show_object_stats=%7 show_chart_info=%8 fix_hud_text_layout=%9 center_mode=%10 chart_title_len=%11 chart_artist_len=%12 chart_diff_len=%13 chart_designer_len=%14 progress_stats=%15 %16")
+                "state=%1 canvas=%2x%3 layer_flags=0x%4 show_timestamp=%5 show_debug=%6 show_object_stats=%7 show_chart_info=%8 center_mode=%9 chart_title_len=%10 chart_artist_len=%11 chart_diff_len=%12 chart_designer_len=%13 progress_stats=%14 %15")
                 .arg(pointerHex(state))
                 .arg(canvasSize.width())
                 .arg(canvasSize.height())
@@ -815,7 +844,6 @@ void paintPreviewHudOverlay(
                 .arg(state->render.showDebugInfo ? 1 : 0)
                 .arg(state->render.showObjectStatsHud ? 1 : 0)
                 .arg(state->render.showChartInfoHud ? 1 : 0)
-                .arg(state->render.fixHudTextLayout ? 1 : 0)
                 .arg(static_cast<int>(state->render.centerDisplayMode))
                 .arg(state->chartTitle.size())
                 .arg(state->chartArtist.size())
@@ -889,26 +917,12 @@ void paintPreviewHudOverlay(
             miacode::preview::scene::PreviewHudFontArea::DebugInfo,
             debugFontPointSize,
             QFont::Medium);
-        const QFontMetrics metrics(fpsFont);
-        const qreal leftX = stageRect.left() + hudPadding;
-        const qreal baseline0 = stageRect.top() + hudPadding + metrics.ascent();
         const qreal shadowOffset = qMax<qreal>(1.0, 2.0 * hudScale);
         const auto formatMetric = [](double value) {
             return value > 0.0 ? QString::number(value, 'f', 1) : QStringLiteral("na");
         };
-        int lineIndex = 0;
-        const auto drawDebugLine = [&](const QString& text) {
-            const QString tag = QStringLiteral("debug.%1").arg(lineIndex);
-            drawHudText(
-                painter,
-                tag,
-                QPointF(leftX, baseline0 + metrics.height() * lineIndex),
-                text,
-                fpsFont,
-                shadowOffset
-            );
-            ++lineIndex;
-        };
+        QStringList debugLines;
+        const auto drawDebugLine = [&](const QString& text) { debugLines.append(text); };
 
         drawDebugLine(
             QStringLiteral("Renderer: %1  API: %2")
@@ -971,64 +985,50 @@ void paintPreviewHudOverlay(
             default:
                 break;
             }
-            drawHudText(
-                painter,
-                QStringLiteral("debug.external_media"),
-                QPointF(leftX, baseline0 + metrics.height() * lineIndex++),
-                QStringLiteral("Media: external/%1").arg(mediaType),
-                fpsFont,
-                shadowOffset
+            drawDebugLine(
+                QStringLiteral("Media: external/%1").arg(mediaType)
             );
-            drawHudText(
-                painter,
-                QStringLiteral("debug.external_video"),
-                QPointF(leftX, baseline0 + metrics.height() * lineIndex++),
+            drawDebugLine(
                 QStringLiteral("Video: %1  Delta: %2 s")
                     .arg(
                         QStringLiteral("%1 @ %2 FPS")
                             .arg(state->media.externalVideoPlaybackActive ? QStringLiteral("active") : QStringLiteral("idle"))
                             .arg(formatMetric(state->media.externalVideoFrameRate))
                     )
-                    .arg(QString::number(state->media.externalClockDeltaSeconds, 'f', 3)),
-                fpsFont,
-                shadowOffset
+                    .arg(QString::number(state->media.externalClockDeltaSeconds, 'f', 3))
             );
-            drawHudText(
-                painter,
-                QStringLiteral("debug.external_video_decode"),
-                QPointF(leftX, baseline0 + metrics.height() * lineIndex++),
+            drawDebugLine(
                 QStringLiteral("Decode: %1")
                     .arg(state->media.externalVideoDecodeDesc.trimmed().isEmpty()
                         ? QStringLiteral("None")
-                        : state->media.externalVideoDecodeDesc),
-                fpsFont,
-                shadowOffset
+                        : state->media.externalVideoDecodeDesc)
             );
             const QString frameAgeText = state->media.externalVideoFrameAgeMs >= 0
                 ? QString::number(state->media.externalVideoFrameAgeMs)
                 : QStringLiteral("na");
-            drawHudText(
-                painter,
-                QStringLiteral("debug.external_age"),
-                QPointF(leftX, baseline0 + metrics.height() * lineIndex++),
+            drawDebugLine(
                 QStringLiteral("Age: %1 ms  AvgInt: %2  MaxInt: %3")
                     .arg(frameAgeText)
                     .arg(formatMetric(state->media.externalVideoFrameIntervalAvgMs))
-                    .arg(formatMetric(state->media.externalVideoFrameIntervalMaxMs)),
-                fpsFont,
-                shadowOffset
+                    .arg(formatMetric(state->media.externalVideoFrameIntervalMaxMs))
             );
-            drawHudText(
-                painter,
-                QStringLiteral("debug.external_stall"),
-                QPointF(leftX, baseline0 + metrics.height() * lineIndex++),
+            drawDebugLine(
                 QStringLiteral("Stall: %1  Count: %2  MediaT: %3 s")
                     .arg(state->media.externalVideoFrameStalled ? QStringLiteral("yes") : QStringLiteral("no"))
                     .arg(state->media.externalVideoFrameStallCount)
-                    .arg(QString::number(state->media.externalPlaybackSecond, 'f', 3)),
-                fpsFont,
-                shadowOffset
+                    .arg(QString::number(state->media.externalPlaybackSecond, 'f', 3))
             );
+        }
+        const QFontMetrics metrics(fpsFont, painter.device());
+        const auto glyphs = hudGlyphVerticalBounds(fpsFont, metrics, debugLines);
+        const qreal advance = hudLineAdvance(fpsFont, metrics, glyphs, shadowOffset);
+        const qreal ascent = glyphs.valid ? -glyphs.top : metrics.ascent();
+        const qreal bearing = informationLeftBearing(metrics, debugLines);
+        for (int i = 0; i < debugLines.size(); ++i) {
+            drawHudText(painter, QStringLiteral("debug.%1").arg(i),
+                QPointF(stageRect.left() + hudPadding + bearing,
+                    stageRect.top() + hudPadding + ascent + i * advance),
+                debugLines[i], fpsFont, shadowOffset);
         }
     }
 
