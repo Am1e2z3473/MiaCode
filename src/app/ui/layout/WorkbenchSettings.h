@@ -21,13 +21,16 @@ class WorkbenchSettings final : public QObject
     Q_PROPERTY(bool efficientSidebarEnabled READ efficientSidebarEnabled WRITE setEfficientSidebarEnabled NOTIFY efficientSidebarEnabledChanged)
     Q_PROPERTY(bool sidebarVisible READ sidebarVisible WRITE setSidebarVisible NOTIFY sidebarVisibleChanged)
     Q_PROPERTY(int sidebarWidth READ sidebarWidth WRITE setSidebarWidth NOTIFY sidebarWidthChanged)
+    Q_PROPERTY(int sidebarDefaultWidth READ sidebarDefaultWidth CONSTANT)
     Q_PROPERTY(int sidebarMinimumContentWidth READ sidebarMinimumContentWidth CONSTANT)
     Q_PROPERTY(int sidebarMaximumContentWidth READ sidebarMaximumContentWidth CONSTANT)
     Q_PROPERTY(bool bottomPanelVisible READ bottomPanelVisible WRITE setBottomPanelVisible NOTIFY bottomPanelVisibleChanged)
     Q_PROPERTY(double bottomPanelHeightRatio READ bottomPanelHeightRatio WRITE setBottomPanelHeightRatio NOTIFY bottomPanelHeightRatioChanged)
+    Q_PROPERTY(double bottomPanelDefaultHeightRatio READ bottomPanelDefaultHeightRatio CONSTANT)
     Q_PROPERTY(double bottomPanelMinimumHeightRatio READ bottomPanelMinimumHeightRatio CONSTANT)
     Q_PROPERTY(double bottomPanelMaximumHeightRatio READ bottomPanelMaximumHeightRatio CONSTANT)
     Q_PROPERTY(double previewWidthRatio READ previewWidthRatio WRITE setPreviewWidthRatio NOTIFY previewWidthRatioChanged)
+    Q_PROPERTY(double previewDefaultWidthRatio READ previewDefaultWidthRatio CONSTANT)
     Q_PROPERTY(bool previewDetached READ previewDetached WRITE setPreviewDetached NOTIFY previewDetachedChanged)
     Q_PROPERTY(double previewMinimumWidthRatio READ previewMinimumWidthRatio CONSTANT)
     Q_PROPERTY(double previewMaximumWidthRatio READ previewMaximumWidthRatio CONSTANT)
@@ -61,13 +64,16 @@ public:
     bool efficientSidebarEnabled() const;
     bool sidebarVisible() const;
     int sidebarWidth() const;
+    int sidebarDefaultWidth() const;
     int sidebarMinimumContentWidth() const;
     int sidebarMaximumContentWidth() const;
     bool bottomPanelVisible() const;
     double bottomPanelHeightRatio() const;
+    double bottomPanelDefaultHeightRatio() const;
     double bottomPanelMinimumHeightRatio() const;
     double bottomPanelMaximumHeightRatio() const;
     double previewWidthRatio() const;
+    double previewDefaultWidthRatio() const;
     bool previewDetached() const;
     double previewMinimumWidthRatio() const;
     double previewMaximumWidthRatio() const;
@@ -131,6 +137,9 @@ signals:
     void blurMaterialsEnabledChanged();
 
 private:
+    static constexpr int kSidebarDefaultWidth = 190;
+    static constexpr double kBottomPanelDefaultHeightRatio = 0.35;
+    static constexpr double kPreviewDefaultWidthRatio = 0.5;
     static constexpr int kSidebarMinimumContentWidth = 120;
     static constexpr int kSidebarMaximumContentWidth = 272;
     static constexpr double kBottomPanelMinimumHeightRatio = 0.15;
@@ -141,10 +150,10 @@ private:
     bool efficientSidebarEnabled_ = false;
     bool sidebarVisible_ = true;
     bool blurMaterialsEnabled_ = true;
-    int sidebarWidth_ = 190;
+    int sidebarWidth_ = kSidebarDefaultWidth;
     bool bottomPanelVisible_ = true;
-    double bottomPanelHeightRatio_ = 0.35;
-    double previewWidthRatio_ = 0.5;
+    double bottomPanelHeightRatio_ = kBottomPanelDefaultHeightRatio;
+    double previewWidthRatio_ = kPreviewDefaultWidthRatio;
     bool previewDetached_ = false;
     bool previewCanvasFreeAspect_ = false;
     bool previewHidePv_ = false;

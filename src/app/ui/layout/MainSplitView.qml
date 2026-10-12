@@ -84,6 +84,14 @@ Item {
         sidebar.showMediaToolsMenu()
     }
 
+    ResizeSnapState {
+        id: sidebarSnap
+        minimumSize: root.preferences.sidebarMinimumContentWidth
+        maximumSize: root.preferences.sidebarMaximumContentWidth
+        targets: [{ size: root.preferences.sidebarDefaultWidth }]
+        alignmentTolerance: 0.5 / root.Screen.devicePixelRatio
+    }
+
     function persistBottomPanelHeightRatio(finalHeight, sizeAtPress) {
         if (!root.bottomPanelEffectivelyVisible || centerSplit.height <= 0)
             return
@@ -193,8 +201,10 @@ Item {
     }
 
     function resizeSidebar(contentWidth) {
+        sidebarSnap.update(contentWidth)
         root.sidebarDragWidth = Math.max(root.preferences.sidebarMinimumContentWidth,
-            Math.min(root.preferences.sidebarMaximumContentWidth, contentWidth))
+            Math.min(root.preferences.sidebarMaximumContentWidth,
+                     sidebarSnap.snapped ? sidebarSnap.targetSize : contentWidth))
         root.viewState.sidebarVisible = contentWidth >= root.preferences.sidebarMinimumContentWidth / 2
     }
 
@@ -443,6 +453,7 @@ Item {
             Component.onCompleted: root.syncWorkspacePanelOrder()
 
             handle: SplitHandle {
+                verticalDivider: true
                 onReleased: previewWidthSnap.finishDrag(true)
             }
 
@@ -451,17 +462,20 @@ Item {
                 orientation: Qt.Vertical
 
                 SplitView.fillWidth: true
-                SplitView.minimumWidth: root.previewDetached ? root.minimumEditorWidth
-                    : Math.max(root.minimumEditorWidth,
-                    Math.min(root.previewEditorAvailableWidth * (1.0 - root.preferences.previewMaximumWidthRatio),
-                             root.previewEditorAvailableWidth - preview.minimumWidth))
+                SplitView.minimumWidth: previewHost.visible
+                    ? root.previewEditorAvailableWidth * (1 - root.preferences.previewMaximumWidthRatio)
+                    : root.minimumEditorWidth
+                SplitView.maximumWidth: previewHost.visible
+                    ? root.previewEditorAvailableWidth * (1 - root.preferences.previewMinimumWidthRatio) : Infinity
 
                 handle: SplitHandle {
+                    verticalDivider: false
                     onReleased: bottomPanelSnap.finishDrag(true)
                 }
 
                 Item {
                     id: editorHost
+                    clip: true
                     SplitView.fillHeight: true
                     SplitView.minimumHeight: 180
 
@@ -532,20 +546,11 @@ Item {
             splitView: workspaceSplit
             resizedItem: previewHost
             resizeDirection: root.preferencesModel.previewOnLeft ? 1 : -1
-            minimumSize: Math.max(preview.minimumWidth,
-                Math.min(root.previewEditorAvailableWidth * root.preferences.previewMinimumWidthRatio,
-                         root.previewEditorAvailableWidth - bottomPanel.minimumWidth))
-            maximumSize: Math.max(preview.minimumWidth,
-                Math.min(root.previewEditorAvailableWidth * root.preferences.previewMaximumWidthRatio,
-                         root.previewEditorAvailableWidth - bottomPanel.minimumWidth))
-            snapEnterDistance: 8
-            snapLeaveDistance: 14
-            targetSize: root.previewEditorAvailableWidth / 2
+            minimumSize: root.previewEditorAvailableWidth * root.preferences.previewMinimumWidthRatio
+            maximumSize: root.previewEditorAvailableWidth * root.preferences.previewMaximumWidthRatio
+            targets: [{ size: root.previewEditorAvailableWidth * root.preferences.previewDefaultWidthRatio }]
             snapAvailable: dragAvailable && !root.previewDetached && !root.previewSurfaceMoving
                 && centerSplit.visible
-                && targetSize >= centerSplit.SplitView.minimumWidth
-                && (centerSplit.SplitView.maximumWidth < 0
-                    || targetSize <= centerSplit.SplitView.maximumWidth)
             onFinished: finalSize => root.persistPreviewWidthRatio(finalSize)
         }
 
@@ -556,8 +561,6 @@ Item {
             splitView: centerSplit
             resizedItem: bottomPanel
             resizeDirection: -1
-            snapEnterDistance: 4
-            snapLeaveDistance: 7
             minimumSize: root.bottomPanelEffectivelyVisible
                 ? Math.max(bottomPanel.minimumHeight,
                     centerSplit.height * root.preferences.bottomPanelMinimumHeightRatio) : 0
@@ -567,6 +570,7 @@ Item {
                     centerSplit.height - editorHost.SplitView.minimumHeight
                         - Theme.splitDividerThickness)) : 0
             snapAvailable: dragAvailable
+            readonly property bool lineSnapAvailable: dragAvailable
                 && !root.previewDetached && !root.previewSurfaceMoving
                 && previewHost.visible && preview.visible && root.transportItem.visible
                 && root.transportItem.width > 0 && root.transportItem.height > 0
@@ -575,11 +579,22 @@ Item {
             readonly property real idleLineCenterOffset:
                 lineCenterOffset(1 / root.Screen.devicePixelRatio)
             // 两个宿主属于同一 SplitView；显式坐标依赖随预览布局变化更新。
-            readonly property real targetCenter: snapAvailable
+            readonly property real targetCenter: lineSnapAvailable
                 ? previewHost.y + preview.y + root.transportItem.y
                     + root.transportItem.topEdgeCenterY - centerSplit.y : NaN
-            targetSize: centerSplit.height - targetCenter + activeLineCenterOffset
-            releaseSize: centerSplit.height - targetCenter + idleLineCenterOffset
+            readonly property bool lineConstrained: constrained && snappedTargetIndex === 1
+            targets: {
+                const values = [{ size: centerSplit.height * root.preferences.bottomPanelDefaultHeightRatio }]
+                if (lineSnapAvailable) {
+                    values.push({
+                        size: centerSplit.height - targetCenter + activeLineCenterOffset,
+                        releaseSize: centerSplit.height - targetCenter + idleLineCenterOffset,
+                        enterDistance: 4,
+                        leaveDistance: 7
+                    })
+                }
+                return values
+            }
             onFinished: (finalSize, sizeAtPress) =>
                 root.persistBottomPanelHeightRatio(finalSize, sizeAtPress)
 
@@ -601,7 +616,7 @@ Item {
             width: Theme.splitDividerThickness
             height: Theme.splitHandleActiveThickness
             z: 1
-            visible: bottomPanelSnap.constrained
+            visible: bottomPanelSnap.lineConstrained
             color: Theme.colors.accent.focus
             enabled: false
         }
@@ -681,12 +696,12 @@ Item {
 
         SplitHandle {
             id: sidebarHandle
+            verticalDivider: true
             x: sidebar.width + sidebarToggle.width
             width: visible && (root.viewState.sidebarVisible || root.preferences.efficientSidebarEnabled)
                 ? Theme.splitDividerThickness : 0
             height: parent.height
             visible: !root.compact
-            enabled: root.viewState.sidebarVisible || !root.preferences.efficientSidebarEnabled
             showDivider: root.viewState.sidebarVisible || root.preferences.efficientSidebarEnabled
             handlePressed: sidebarDrag.pressed
             handleHovered: sidebarDrag.containsMouse
@@ -706,6 +721,7 @@ Item {
                     startX = mapToItem(horizontalSplit, mouse.x, mouse.y).x
                     startWidth = root.viewState.sidebarVisible ? root.preferences.sidebarWidth : 0
                     root.sidebarDragWidth = root.preferences.sidebarWidth
+                    sidebarSnap.begin(startWidth)
                     root.sidebarResizing = true
                 }
                 onPositionChanged: mouse => {
@@ -714,10 +730,12 @@ Item {
                 }
                 onReleased: {
                     root.persistSidebarWidth()
+                    sidebarSnap.end()
                     root.sidebarResizing = false
                 }
                 onCanceled: {
                     root.persistSidebarWidth()
+                    sidebarSnap.end()
                     root.sidebarResizing = false
                 }
             }
@@ -727,7 +745,7 @@ Item {
     Binding {
         target: root.transportItem
         property: "topEdgeHighlighted"
-        value: bottomPanelSnap.constrained
+        value: bottomPanelSnap.lineConstrained
         restoreMode: Binding.RestoreNone
     }
 
