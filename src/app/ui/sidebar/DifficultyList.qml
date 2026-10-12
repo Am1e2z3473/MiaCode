@@ -39,7 +39,7 @@ Column {
             id: addRow
             stateColors: root.rowStateColors
             emphasizedText: root.flatNavigation
-            textPixelSize: Theme.uiFontSize + (root.flatNavigation ? 1 : 0)
+            textPixelSize: Theme.uiFontSize
             anchors.left: parent.left
             anchors.right: flatRemove.left
             height: parent.height
@@ -177,7 +177,7 @@ Column {
                     id: difficultyButton
                     stateColors: root.rowStateColors
                     emphasizedText: root.flatNavigation
-                    textPixelSize: Theme.uiFontSize + (root.flatNavigation ? 1 : 0)
+                    textPixelSize: Theme.uiFontSize
                     anchors.left: parent.left
                     anchors.right: parent.right
                     height: parent.height
@@ -262,7 +262,7 @@ Column {
                                 text: String(bookmarkRow.modelData.line)
                                 color: Theme.colors.text.primary
                                 font.family: Theme.uiFont
-                                font.pixelSize: Math.max(9, Theme.uiFontSize - 2) + (root.flatNavigation ? 1 : 0)
+                                font.pixelSize: Math.max(9, Theme.uiFontSize - 2)
                             }
                         }
 
@@ -277,7 +277,7 @@ Column {
                                    : bookmarkRow.selected ? Theme.colors.text.active
                                    : root.flatNavigation ? Theme.colors.text.primary : Theme.colors.text.secondary
                             font.family: Theme.uiFont
-                            font.pixelSize: Math.max(1, Theme.uiFontSize - 1) + (root.flatNavigation ? 1 : 0)
+                            font.pixelSize: Math.max(1, Theme.uiFontSize - 1)
                             verticalAlignment: Text.AlignVCenter
                             elide: Text.ElideRight
                         }
