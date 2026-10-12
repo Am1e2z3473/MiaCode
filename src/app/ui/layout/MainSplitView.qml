@@ -83,19 +83,18 @@ Item {
         sidebar.showMediaToolsMenu()
     }
 
-    function persistBottomPanelHeightRatio() {
-        if (!root.bottomPanelEffectivelyVisible || centerSplit.height <= 0
-                || !bottomPanelResize.dragging || !bottomPanelResize.moved)
+    function persistBottomPanelHeightRatio(finalHeight) {
+        if (!root.bottomPanelEffectivelyVisible || centerSplit.height <= 0)
             return
-        const height = Math.max(bottomPanel.SplitView.minimumHeight,
-            Math.min(bottomPanel.SplitView.maximumHeight, bottomPanelResize.dragHeight))
-        if (height === bottomPanelResize.heightAtPress)
+        const height = Math.max(bottomPanelSnap.minimumHeight,
+            Math.min(bottomPanelSnap.maximumHeight, finalHeight))
+        if (height === bottomPanelSnap.heightAtPress)
             return
-        // 拖到边界表达比例的最小/最大值，临时的绝对高度约束留在布局层。
+        // 比例按基础约束保存，吸附期间的固定高度属于临时布局约束。
         root.preferences.bottomPanelHeightRatio =
-            height <= bottomPanel.SplitView.minimumHeight
+            height <= bottomPanelSnap.minimumHeight
                 ? root.preferences.bottomPanelMinimumHeightRatio
-                : height >= bottomPanel.SplitView.maximumHeight
+                : height >= bottomPanelSnap.maximumHeight
                     ? root.preferences.bottomPanelMaximumHeightRatio
                     : height / centerSplit.height
     }
@@ -444,17 +443,21 @@ Item {
             SplitView {
                 id: centerSplit
                 orientation: Qt.Vertical
+                onResizingChanged: {
+                    if (resizing)
+                        bottomPanelSnap.beginDrag(bottomPanelPointer.point.position.y)
+                    else
+                        bottomPanelSnap.finishDrag(false)
+                }
+
                 SplitView.fillWidth: true
                 SplitView.minimumWidth: root.previewDetached ? root.minimumEditorWidth
                     : Math.max(root.minimumEditorWidth,
                     Math.min(root.previewEditorAvailableWidth * (1.0 - root.preferences.previewMaximumWidthRatio),
                              root.previewEditorAvailableWidth - preview.minimumWidth))
 
-                // 工作区外层接收拖动事件，此项为纵向布局保留分隔线厚度。
-                handle: Item {
-                    implicitWidth: Theme.splitDividerThickness
-                    implicitHeight: Theme.splitDividerThickness
-                    enabled: false
+                handle: SplitHandle {
+                    onReleased: bottomPanelSnap.finishDrag(true)
                 }
 
                 Item {
@@ -501,16 +504,10 @@ Item {
                     preferences: root.preferences
                     timelineSession: root.timelineSession
                     previewSession: root.previewSession
-                    SplitView.minimumHeight: root.bottomPanelEffectivelyVisible
-                                             ? Math.max(bottomPanel.minimumHeight,
-                                                 centerSplit.height * root.preferences.bottomPanelMinimumHeightRatio)
-                                             : 0
-                    SplitView.maximumHeight: root.bottomPanelEffectivelyVisible
-                                             ? Math.max(bottomPanel.minimumHeight, Math.min(
-                                                 centerSplit.height * root.preferences.bottomPanelMaximumHeightRatio,
-                                                 centerSplit.height - editorHost.SplitView.minimumHeight
-                                                     - Theme.splitDividerThickness))
-                                             : 0
+                    SplitView.minimumHeight: bottomPanelSnap.constrained
+                        ? bottomPanelSnap.targetHeight : bottomPanelSnap.minimumHeight
+                    SplitView.maximumHeight: bottomPanelSnap.constrained
+                        ? bottomPanelSnap.targetHeight : bottomPanelSnap.maximumHeight
                     onAnalysisRowActivated: (difficultyId, revision, line, column, endColumn, second) =>
                         editorPane.revealAnalysisRow(
                             difficultyId, revision, line, column, endColumn, second, root.analysisSession)
@@ -529,159 +526,138 @@ Item {
             }
         }
 
+        // 被动观察项位于原生分割槽的事件过滤范围之外。
         Item {
-            id: bottomPanelResize
+            id: bottomPanelSnap
             x: workspaceSplit.x + workspaceSplit.contentItem.x + centerSplit.x
             y: workspaceSplit.y + workspaceSplit.contentItem.y + centerSplit.y
             width: centerSplit.width
             height: centerSplit.height
             z: 1
-            visible: root.bottomPanelEffectivelyVisible && centerSplit.visible
-            readonly property int orientation: Qt.Vertical
+            visible: dragAvailable
+
+            PointHandler {
+                id: bottomPanelPointer
+                target: null
+                acceptedButtons: Qt.LeftButton
+                onPointChanged: bottomPanelSnap.updateDrag(point.position.y)
+                onGrabChanged: transition => {
+                    if (transition === PointerHandler.CancelGrabPassive)
+                        bottomPanelSnap.finishDrag(false)
+                }
+            }
+
+            readonly property real minimumHeight: root.bottomPanelEffectivelyVisible
+                ? Math.max(bottomPanel.minimumHeight,
+                    centerSplit.height * root.preferences.bottomPanelMinimumHeightRatio) : 0
+            readonly property real maximumHeight: root.bottomPanelEffectivelyVisible
+                ? Math.max(bottomPanel.minimumHeight, Math.min(
+                    centerSplit.height * root.preferences.bottomPanelMaximumHeightRatio,
+                    centerSplit.height - editorHost.SplitView.minimumHeight
+                        - Theme.splitDividerThickness)) : 0
+            readonly property bool dragAvailable: root.bottomPanelEffectivelyVisible
+                && centerSplit.visible && centerSplit.height > 0
+            readonly property bool snapAvailable: dragAvailable
+                && !root.previewDetached && !root.previewSurfaceMoving
+                && previewHost.visible && preview.visible && root.transportItem.visible
+                && centerSplit.width > 0
+                && root.transportItem.width > 0 && root.transportItem.height > 0
             readonly property real snapEnterDistance: 4
             readonly property real snapLeaveDistance: 7
             readonly property real snapAlignmentTolerance: 0.5 / root.Screen.devicePixelRatio
-            // 复用 SplitHandle 的活动线绘制公式，换算到面板顶部坐标。
-            readonly property real dragLineCenterOffset: -Theme.splitDividerThickness
-                + Math.floor((Theme.splitDividerThickness - Theme.splitHandleActiveThickness)
-                             * root.Screen.devicePixelRatio / 2) / root.Screen.devicePixelRatio
-                + Theme.splitHandleActiveThickness / 2
-            readonly property bool snapAvailable: root.bottomPanelEffectivelyVisible
-                && !root.previewDetached && !root.previewSurfaceMoving
-                && previewHost.visible && preview.visible && root.transportItem.visible
-                && centerSplit.width > 0 && centerSplit.height > 0
-                && root.transportItem.width > 0 && root.transportItem.height > 0
-            property bool dragging: false
-            property bool moved: false
+            readonly property real activeLineCenterOffset:
+                lineCenterOffset(Theme.splitHandleActiveThickness)
+            readonly property real idleLineCenterOffset:
+                lineCenterOffset(1 / root.Screen.devicePixelRatio)
+            // 两个宿主属于同一 SplitView；显式坐标依赖随预览布局变化更新。
+            readonly property real targetCenter: snapAvailable
+                ? previewHost.y + preview.y + root.transportItem.y
+                    + root.transportItem.topEdgeCenterY - centerSplit.y : NaN
+            readonly property real targetHeight:
+                centerSplit.height - targetCenter + activeLineCenterOffset
+            readonly property real idleTargetHeight:
+                centerSplit.height - targetCenter + idleLineCenterOffset
+            readonly property bool targetReachable: snapAvailable && isFinite(targetHeight)
+                && targetHeight >= minimumHeight && targetHeight <= maximumHeight
+            readonly property bool idleTargetReachable: snapAvailable && isFinite(idleTargetHeight)
+                && idleTargetHeight >= minimumHeight && idleTargetHeight <= maximumHeight
+            readonly property bool constrained: tracking && centerSplit.resizing
+                && snapped && targetReachable
+            property bool tracking: false
             property bool snapped: false
             property real pressY: 0
             property real pressTop: 0
             property real rawTop: 0
             property real heightAtPress: 0
-            property real dragHeight: 0
 
-            onVisibleChanged: {
-                if (!visible)
-                    finishDrag()
+            onDragAvailableChanged: {
+                if (!dragAvailable)
+                    finishDrag(false)
             }
-            onSnapAvailableChanged: {
-                if (!snapAvailable && snapped) {
-                    snapped = false
-                    if (dragging)
-                        applyHeight(centerSplit.height - rawTop)
-                }
-            }
+            onSnapAvailableChanged: updateSnap()
+            onTargetHeightChanged: updateSnap()
+            onTargetReachableChanged: updateSnap()
 
-            function snapTarget() {
-                const targetCenter = snapAvailable
-                    ? root.transportItem.mapToItem(centerSplit, 0,
-                        root.transportItem.topEdgeCenterY).y : NaN
-                const targetTop = targetCenter - dragLineCenterOffset
-                const targetHeight = centerSplit.height - targetTop
-                return {
-                    center: targetCenter,
-                    height: targetHeight,
-                    reachable: isFinite(targetHeight)
-                        && targetHeight >= bottomPanel.SplitView.minimumHeight
-                        && targetHeight <= bottomPanel.SplitView.maximumHeight
-                }
-            }
-
-            function isAlignedToSnapTarget(rawTop) {
-                const target = snapTarget()
-                return target.reachable
-                    && Math.abs(rawTop + dragLineCenterOffset - target.center)
-                        <= snapAlignmentTolerance
+            function lineCenterOffset(thickness) {
+                return -Theme.splitDividerThickness
+                    + Math.floor((Theme.splitDividerThickness - thickness)
+                                 * root.Screen.devicePixelRatio / 2) / root.Screen.devicePixelRatio
+                    + thickness / 2
             }
 
             function beginDrag(pointerY) {
+                if (!dragAvailable || !isFinite(pointerY))
+                    return
                 pressY = pointerY
                 pressTop = bottomPanel.mapToItem(centerSplit, 0, 0).y
                 rawTop = pressTop
                 heightAtPress = bottomPanel.height
-                dragHeight = heightAtPress
-                moved = false
-                snapped = isAlignedToSnapTarget(rawTop)
-                dragging = true
+                tracking = true
+                snapped = targetReachable
+                    && Math.abs(rawTop + activeLineCenterOffset - targetCenter)
+                        <= snapAlignmentTolerance
             }
 
-            function applyHeight(requestedHeight) {
-                dragHeight = Math.max(bottomPanel.SplitView.minimumHeight,
-                    Math.min(bottomPanel.SplitView.maximumHeight, requestedHeight))
-                bottomPanel.SplitView.preferredHeight = dragHeight
+            function updateSnap() {
+                if (!tracking || !centerSplit.resizing)
+                    return
+                const distance = snapped ? snapLeaveDistance : snapEnterDistance
+                snapped = targetReachable
+                    && Math.abs(rawTop + activeLineCenterOffset - targetCenter) <= distance
             }
 
             function updateDrag(pointerY) {
-                if (!dragging || !isFinite(pointerY) || centerSplit.height <= 0)
+                if (!tracking || !centerSplit.resizing || !isFinite(pointerY))
                     return
-                moved = moved || pointerY !== pressY
-                if (!moved)
-                    return
-
-                // 原始边界按鼠标位移计算，吸附后的面板位置用于显示。
+                // 指针原始位移决定脱离吸附；Qt 按临时高度约束管理面板尺寸。
                 rawTop = pressTop + pointerY - pressY
-                let requestedHeight = centerSplit.height - rawTop
-                const target = snapTarget()
-                const distance = snapped ? snapLeaveDistance : snapEnterDistance
-                snapped = target.reachable
-                    && Math.abs(rawTop + dragLineCenterOffset - target.center) <= distance
-                if (snapped)
-                    requestedHeight = target.height
-                applyHeight(requestedHeight)
+                updateSnap()
             }
 
-            function finishDrag() {
-                if (!dragging)
+            function finishDrag(alignIdle) {
+                if (!tracking)
                     return
-                root.persistBottomPanelHeightRatio()
+                const finalHeight = alignIdle && constrained && idleTargetReachable
+                    ? idleTargetHeight : bottomPanel.height
+                root.persistBottomPanelHeightRatio(finalHeight)
                 snapped = false
-                moved = false
-                dragging = false
+                tracking = false
             }
+        }
 
-            SplitHandle {
-                x: centerSplit.contentItem.x + bottomPanel.x
-                y: centerSplit.contentItem.y + bottomPanel.y - height
-                width: bottomPanel.width
-                height: Theme.splitDividerThickness
-                handlePressed: bottomPanelDrag.pressed
-                handleHovered: bottomPanelDrag.containsMouse
-
-                // 吸附期间把横向高亮连接到预览侧，覆盖中间的竖向分隔槽。
-                Rectangle {
-                    x: previewHost.x < centerSplit.x ? -width : parent.width
-                    y: Math.floor((parent.height - height) * root.Screen.devicePixelRatio / 2)
-                        / root.Screen.devicePixelRatio
-                    width: Theme.splitDividerThickness
-                    height: parent.lineThickness
-                    visible: bottomPanelResize.dragging && bottomPanelResize.snapped
-                        && bottomPanelResize.snapAvailable
-                    color: Theme.colors.accent.focus
-                    enabled: false
-                }
-
-                MouseArea {
-                    id: bottomPanelDrag
-                    anchors.centerIn: parent
-                    width: parent.width
-                    height: Theme.splitHandleHitExtent
-                    acceptedButtons: Qt.LeftButton
-                    hoverEnabled: true
-                    cursorShape: Qt.SplitVCursor
-                    preventStealing: true
-                    onPressed: mouse => bottomPanelResize.beginDrag(
-                        mapToItem(centerSplit, mouse.x, mouse.y).y)
-                    onPositionChanged: mouse => {
-                        if (pressed)
-                            bottomPanelResize.updateDrag(mapToItem(centerSplit, mouse.x, mouse.y).y)
-                    }
-                    onReleased: mouse => {
-                        bottomPanelResize.updateDrag(mapToItem(centerSplit, mouse.x, mouse.y).y)
-                        bottomPanelResize.finishDrag()
-                    }
-                    onCanceled: bottomPanelResize.finishDrag()
-                }
-            }
+        // 覆盖层连接两侧高亮，横线主体由原生分割槽绘制。
+        Rectangle {
+            x: workspaceSplit.x + workspaceSplit.contentItem.x + centerSplit.x
+                + (previewHost.x < centerSplit.x ? -width : centerSplit.width)
+            y: workspaceSplit.y + workspaceSplit.contentItem.y + centerSplit.y
+                + centerSplit.contentItem.y + bottomPanel.y
+                + bottomPanelSnap.activeLineCenterOffset - height / 2
+            width: Theme.splitDividerThickness
+            height: Theme.splitHandleActiveThickness
+            z: 1
+            visible: bottomPanelSnap.constrained
+            color: Theme.colors.accent.focus
+            enabled: false
         }
 
         CornerMask {
@@ -805,8 +781,7 @@ Item {
     Binding {
         target: root.transportItem
         property: "topEdgeHighlighted"
-        value: bottomPanelResize.dragging && bottomPanelResize.snapped
-            && bottomPanelResize.snapAvailable
+        value: bottomPanelSnap.constrained
         restoreMode: Binding.RestoreNone
     }
 
@@ -819,14 +794,14 @@ Item {
         restoreMode: Binding.RestoreNone
     }
 
-    // 拖动期间由工作区写入首选高度；松开后接回持久比例绑定。
+    // 原生 SplitView 管理拖动高度；松开后接回持久比例绑定。
     // 缩小窗口触及高度下限后，放大仍按用户原有比例计算。
     Binding {
         target: bottomPanel.SplitView
         property: "preferredHeight"
         value: root.bottomPanelEffectivelyVisible
             ? centerSplit.height * root.preferences.bottomPanelHeightRatio : 0
-        when: !bottomPanelResize.dragging
+        when: !centerSplit.resizing
         restoreMode: Binding.RestoreNone
     }
 }
