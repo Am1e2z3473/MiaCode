@@ -2,6 +2,7 @@
 
 #include "common/DebugLog.h"
 #include "common/DebugOptions.h"
+#include "common/PixelGeometry.h"
 #include "preview/runtime/PreviewRuntime.h"
 #include "core/scene/PreviewFrameState.h"
 #include "core/scene/PreviewHudState.h"
@@ -606,7 +607,7 @@ PreviewQuickHudLayer::PreviewQuickHudLayer(QQuickItem* parent)
         graphicsInfo_ = {};
         graphicsInfoReady_ = false;
         if (runtime_ != nullptr) {
-            runtime_->setFrameSize(boundingRect().size().toSize());
+            runtime_->setFrameSize(miacode::pixel_geometry::coveringSize(boundingRect().size()));
         }
         update();
     });
@@ -659,7 +660,7 @@ void PreviewQuickHudLayer::setRuntime(PreviewRuntime* runtime)
         runtimeUpdateConnection_ = QObject::connect(runtime_, &PreviewRuntime::frameStateChanged, this, [this]() {
             requestThrottledUpdate();
         });
-        runtime_->setFrameSize(boundingRect().size().toSize());
+        runtime_->setFrameSize(miacode::pixel_geometry::coveringSize(boundingRect().size()));
     }
     emit runtimeChanged();
     update();
@@ -736,7 +737,7 @@ void PreviewQuickHudLayer::paint(QPainter* painter)
             });
         return;
     }
-    const QSize canvasSize = boundingRect().size().toSize();
+    const QSize canvasSize = miacode::pixel_geometry::coveringSize(boundingRect().size());
     appendHudPaintDiag(
         QStringLiteral("paint_enter"),
         [&] {

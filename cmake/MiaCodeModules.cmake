@@ -28,6 +28,7 @@ miacode_add_module(miacode_base
         src/common/OperationLog.h
         src/common/PreferenceProvider.cpp
         src/common/PreferenceProvider.h
+        src/common/PixelGeometry.h
         src/common/ProcessDiagnostics.cpp
         src/common/ProcessDiagnostics.h
         src/common/TaskCancellation.h
