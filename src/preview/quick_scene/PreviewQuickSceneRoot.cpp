@@ -1094,30 +1094,7 @@ QSGNode* PreviewQuickSceneRoot::updatePaintNode(QSGNode* oldNode, UpdatePaintNod
         cachedCenterDisplayBreakTotal_,
         cachedCenterDisplayRenderSize_,
         cachedCenterDisplayDpr_);
-    updateLayerSlotProfiled(
-        layerSlotAt(root, slotIndex++),
-        miacode::preview::scene::previewRenderLayerEnabled(layerFlags_, miacode::preview::scene::BackdropLayer),
-        "backdrop",
-        layerStatsForFrame,
-        [&](QSGNode* oldChild) {
-            return backdropLayer_.updateNode(oldChild, *state, renderSize, window(), textures);
-        });
-    updateLayerSlotProfiled(
-        layerSlotAt(root, slotIndex++),
-        miacode::preview::scene::previewRenderLayerEnabled(layerFlags_, miacode::preview::scene::MuriPadStateLayer),
-        "muri_pad",
-        layerStatsForFrame,
-        [&](QSGNode* oldChild) {
-            return muriPadLayer_.updateNode(oldChild, *state, renderSize, window(), textures);
-        });
-    updateLayerSlotProfiled(
-        layerSlotAt(root, slotIndex++),
-        miacode::preview::scene::previewRenderLayerEnabled(layerFlags_, miacode::preview::scene::MuriActionLayer),
-        "muri_action",
-        layerStatsForFrame,
-        [&](QSGNode* oldChild) {
-            return muriActionLayer_.updateNode(oldChild, *state, renderSize, window(), textures);
-        });
+    // The skin overlays the full-circle firework through its own alpha.
     bool judgeFireworkNodeProduced = false;
     updateLayerSlotProfiled(
         layerSlotAt(root, slotIndex++),
@@ -1148,6 +1125,30 @@ QSGNode* PreviewQuickSceneRoot::updatePaintNode(QSGNode* oldNode, UpdatePaintNod
         preparedCache_.judgeFireworkLayer().entries.size(),
         judgeFireworkCursor_.activePreparedIndices.size()
     );
+    updateLayerSlotProfiled(
+        layerSlotAt(root, slotIndex++),
+        miacode::preview::scene::previewRenderLayerEnabled(layerFlags_, miacode::preview::scene::BackdropLayer),
+        "backdrop",
+        layerStatsForFrame,
+        [&](QSGNode* oldChild) {
+            return backdropLayer_.updateNode(oldChild, *state, renderSize, window(), textures);
+        });
+    updateLayerSlotProfiled(
+        layerSlotAt(root, slotIndex++),
+        miacode::preview::scene::previewRenderLayerEnabled(layerFlags_, miacode::preview::scene::MuriPadStateLayer),
+        "muri_pad",
+        layerStatsForFrame,
+        [&](QSGNode* oldChild) {
+            return muriPadLayer_.updateNode(oldChild, *state, renderSize, window(), textures);
+        });
+    updateLayerSlotProfiled(
+        layerSlotAt(root, slotIndex++),
+        miacode::preview::scene::previewRenderLayerEnabled(layerFlags_, miacode::preview::scene::MuriActionLayer),
+        "muri_action",
+        layerStatsForFrame,
+        [&](QSGNode* oldChild) {
+            return muriActionLayer_.updateNode(oldChild, *state, renderSize, window(), textures);
+        });
     updateLayerSlotProfiled(
         layerSlotAt(root, slotIndex++),
         miacode::preview::scene::previewRenderLayerEnabled(layerFlags_, miacode::preview::scene::GuideLayer),
