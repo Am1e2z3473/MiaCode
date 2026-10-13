@@ -467,3 +467,13 @@ miacode_add_spec(video_export_output_spec
     LIBS miacode_export Qt6::Core
     INCLUDES src
 )
+
+miacode_add_spec(media_prepend_policy_spec
+    OWNER src/media_tools/media
+    CONTRACT media-tools.prepend-media
+    DOMAIN media KIND integration RISK high
+    EXECUTION ctest STATUS active PLATFORM all
+    SOURCES src/tools/media/MediaPrependPolicySpec.cpp
+    LIBS miacode_media_tools Qt6::Core
+    INCLUDES src
+)

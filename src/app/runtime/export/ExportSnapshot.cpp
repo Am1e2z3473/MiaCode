@@ -144,7 +144,6 @@ QString sanitizeExportFileStem(QString text, const QString& fallback = QStringLi
     return sanitized.isEmpty() ? fallback : sanitized;
 }
 
-
 int difficultyIdFromCliToken(const QString& rawToken)
 {
     const QString token = rawToken.trimmed().toUpper();
@@ -789,7 +788,7 @@ bool miacode::runtime::VideoExportHost::buildVideoExportSnapshotForChartDirector
     built.fullRangeExport = true;
     built.outputPath = resolveVideoExportOutputPath(
         QString(),
-       outputDirectory,
+        outputDirectory,
         defaultOutputName, built.outputMode
     );
     built.showTimestamp = requestedTask.showTimestamp;
@@ -923,7 +922,7 @@ bool miacode::runtime::VideoExportHost::exportPreviewVideoFromCli(
     QString outputPath = resolveVideoExportOutputPath(
         request.outputPath,
         chartInfo.absoluteDir().absolutePath(),
-         defaultOutputName
+        defaultOutputName
     );
 
     const QFileInfo outputInfo(outputPath);

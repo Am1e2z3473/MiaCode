@@ -602,6 +602,8 @@ miacode_add_module(miacode_media_tools
         src/media_tools/media/PvBatchCompressionScanner.h
         src/media_tools/media/PvBatchCompressionWorker.cpp
         src/media_tools/media/PvBatchCompressionWorker.h
+        src/media_tools/media/MediaPrependPolicy.cpp
+        src/media_tools/media/MediaPrependPolicy.h
         src/media_tools/media/PvCompressionPolicy.cpp
         src/media_tools/media/PvCompressionPolicy.h
         src/media_tools/net/NetBatchDownloadWorker.cpp
