@@ -52,7 +52,8 @@ public:
         if (request_.parameters.value("providerId") != QLatin1String("majdata")) { finish(error("capability.unavailable")); return; }
         if (preview_) {
             ids_.append(request_.parameters.value("chartId"));
-            cacheKey_ = request_.principal + QChar(0) + ids_.first().toString() + QChar(0) + request_.parameters.value("remoteVersion").toString();
+            cacheKey_ = request_.principal + QChar(0) + ids_.first().toString() + QChar(0) + request_.parameters.value("remoteVersion").toString()
+                + QChar(0) + (request_.parameters.value("includeVideo").toBool(true) ? QStringLiteral("video") : QStringLiteral("audio"));
             const auto cached = provider_.previews_.value(provider_.previewCache_.value(cacheKey_));
             if (!request_.parameters.value("forceRefresh").toBool() && cached.expiresAt > provider_.clock_.elapsed()
                 && cacheComplete(cached)) { finish({}, cached.handle); return; }
@@ -140,7 +141,7 @@ private:
     }
     void fetch() {
         if (!done_ || cancelled_->load()) return;
-        const int count = (preview_ || request_.parameters.value("includeVideo").toBool(true)) ? 4 : 3;
+        const int count = request_.parameters.value("includeVideo").toBool(true) ? 4 : 3;
         if (resourceIndex_ == count) { publish(); return; }
         const auto resource = resources[resourceIndex_];
         NetHttpRequest http;

@@ -294,13 +294,13 @@ void NetModel::downloadSelected(bool includeVideo, bool createZip) {
     emit changed();
 }
 
-void NetModel::preview(const QString& chartId) {
+void NetModel::preview(const QString& chartId, bool includeVideo) {
     if (!service_ || !document_ || working()) return;
     document_->requestLeaveCurrentField({});
     const auto identity = document_->documentIdentity();
     previewExpected_ = {{"expectedWorkspaceId", identity.value("workspaceId")},
         {"expectedDocumentOpenGeneration", identity.value("documentOpenGeneration")}, {"expectedRevision", identity.value("revision")}};
-    QJsonObject parameters{{"providerId", "majdata"}, {"chartId", chartId}};
+    QJsonObject parameters{{"providerId", "majdata"}, {"chartId", chartId}, {"includeVideo", includeVideo}};
     for (const auto& chart : charts_) if (chart.toObject().value("chartId") == chartId)
         if (chart.toObject().value("remoteVersion").isString()) parameters.insert("remoteVersion", chart.toObject().value("remoteVersion"));
     const auto accepted = call("net.previews.prepare", parameters);

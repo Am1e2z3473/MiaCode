@@ -138,7 +138,7 @@ Item {
                     {title: qsTrId("net.ui.uploaded_at"), role: "uploadedAt", width: 170}, {title: qsTrId("net.ui.state"), role: "itemState", weight: 12},
                     {title: qsTrId("net.online_preview"), width: 94, preview: true}]
                 onSelectionChanged: (chartId, selected) => root.net.setSelected(chartId, selected)
-                onPreviewRequested: chartId => root.net.preview(chartId)
+                onPreviewRequested: chartId => root.net.preview(chartId, pv.checked)
                 Caption { anchors.centerIn: parent; visible: root.net.resultCount === 0; text: qsTrId("net.ui.query_hint"); color: Theme.colors.text.secondary }
             }
             ScrollView {

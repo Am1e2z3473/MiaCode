@@ -175,7 +175,7 @@ ZIP downloaded_resources 包含三个必需资源和成功存在的 PV；video=a
 
 `PreviewPrepareRequest` 含 providerId、chartId、includeVideo（默认 true）。成功结果为 `{previewRef, manifest, expiresAt}`；只下载/缓存，不更换当前文档或开始播放。
 
-缓存归服务，key 使用 providerId、chartId 和完整 remoteVersion；缺少版本时采用 TTL/再验证策略，不把旧缓存永久视为有效。manifest 记录无 PV，避免每次重复补下载；只有缺失或验证失败的资源重新取得。目录引用在播放/文档占用期间不得回收，release 返回 resource.in_use 时保留资源。
+缓存归服务，key 使用 providerId、chartId、includeVideo 和完整 remoteVersion；缺少版本时采用 TTL/再验证策略，不把旧缓存永久视为有效。manifest 记录无 PV，避免每次重复补下载；只有缺失或验证失败的资源重新取得。目录引用在播放/文档占用期间不得回收，release 返回 resource.in_use 时保留资源。
 
 `PreviewOpenRequest` 含 expectedWorkspaceId、expectedDocumentOpenGeneration、expectedRevision。调用者先读取 document.snapshot。打开流程在服务边界核验身份，再通过 DocumentBridge 的离开文档流程等待用户决定；完成后重新核验当时的文档身份和用户实际批准的 revision，通过 ChartWorkspace/DocumentSessionHost 提交一次。等待或下载期间已切换到其他文档，返回 document.stale，不自动替换。
 
@@ -370,7 +370,7 @@ SDK 建议放在新的应用客户端包（例如 packages/miacode-client），�
 - 工具箱和工具菜单使用“谱面下载”，打开 `net-download` 标签页。共享应用模型保留查询和任务，重复打开复用标签。
 - `net.downloads.create` 使用目录授权或托管目录；资源流写入 QSaveFile，在同一输出根的暂存目录计算 SHA-256、写 manifest 并发布。`zipArtifacts[]` 表示各谱面目录中的 `download.zip`；ZIP 包含所选 PV，`legacy_triplet` 保留三资源模式。冲突默认 fail，可指定 replace。
 - 下载恢复由可信桌面宿主使用版本化任务控制，继承原任务引用，保留成功 manifest 和输出。公开 `jobs.resume/retry` 的后续适配器能力按目录管理。
-- `net.previews.prepare` 按主体、chartId、remoteVersion 和一小时有效期复用缓存，PV absent 属于完整缓存；prepare 返回句柄，open 独立使用文档身份和离开文档决策。release 撤销句柄，缓存目录由 provider 生命周期持有，已打开媒体保持文件可用。
+- `net.previews.prepare` 按主体、chartId、remoteVersion、includeVideo 和一小时有效期复用缓存，PV absent 属于完整缓存；prepare 返回句柄，open 独立使用文档身份和离开文档决策。release 撤销句柄，缓存目录由 provider 生命周期持有，已打开媒体保持文件可用。
 - `document.snapshot` 返回 workspaceId、documentOpenGeneration、revision、dirty、hasDocument、origin。net_preview 来源参与文档、运行时、会话和保存处理；保存通过另存为建立 local 文档。跨目录另存为迁移音轨、背景、PV、`&video=` 引用文件与 `.miacode` 项目设置；外部视频转为副本目录内的相对引用。资源和谱面写入成功后更新文档路径与保存点，资源失败恢复目标原有文件。
 
 运行时任务和幂等记录归当前进程，capability 报告 process_lifetime。下载固定样本通过本地 HTTP 服务，输出随测试目录清理。

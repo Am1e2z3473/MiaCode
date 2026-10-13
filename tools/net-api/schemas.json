@@ -425,6 +425,10 @@
         "forceRefresh": {
           "type": "boolean",
           "default": false
+        },
+        "includeVideo": {
+          "type": "boolean",
+          "default": true
         }
       },
       "required": [
