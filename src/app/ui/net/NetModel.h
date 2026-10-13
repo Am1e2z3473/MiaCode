@@ -66,7 +66,7 @@ public:
     Q_INVOKABLE void setSort(const QString& sort);
     Q_INVOKABLE void browseOutputDirectory();
     Q_INVOKABLE void downloadSelected(bool includeVideo, bool createZip);
-    Q_INVOKABLE void preview(const QString& chartId);
+    Q_INVOKABLE void preview(const QString& chartId, bool includeVideo);
     Q_INVOKABLE void cancelTask();
     Q_INVOKABLE void resumeDownload();
 

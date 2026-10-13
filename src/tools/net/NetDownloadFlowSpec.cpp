@@ -151,6 +151,21 @@ int main(int argc, char** argv) {
         && preview.result.toObject().value("manifest").toObject().value("remoteVersion") == "v1"
         && !provider.previewPath("desktop", previewRef).isEmpty() && provider.previewPath("other", previewRef).isEmpty(),
         "preview cache includes absent video and enforces principal ownership");
+    auto audioOnly = prepare;
+    audioOnly.insert("includeVideo", false);
+    const int videoRequestsBefore = server.paths.count("/maichart/absent/video");
+    const auto audioPreview = run(provider, "net.previews.prepare", audioOnly);
+    const auto audioRef = audioPreview.result.toObject().value("previewRef").toString();
+    const int audioRequests = server.paths.size();
+    const auto audioCached = run(provider, "net.previews.prepare", audioOnly);
+    ok &= check(audioPreview.error.isEmpty() && audioRef != previewRef
+        && audioPreview.result.toObject().value("manifest").toObject().value("resources").toArray().size() == 3
+        && server.paths.count("/maichart/absent/video") == videoRequestsBefore
+        && audioCached.result.toObject().value("previewRef") == audioRef && server.paths.size() == audioRequests,
+        "audio-only preview skips PV and reuses its own cache");
+    const auto videoCached = run(provider, "net.previews.prepare", prepare);
+    ok &= check(videoCached.result.toObject().value("previewRef") == previewRef,
+        "PV-enabled preview keeps its separate complete cache");
     auto version = prepare; version.insert("remoteVersion", "v2");
     cached = run(provider, "net.previews.prepare", version);
     ok &= check(cached.result.toObject().value("previewRef") != previewRef, "remote version invalidates preview cache identity");
