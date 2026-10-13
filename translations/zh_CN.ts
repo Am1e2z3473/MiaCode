@@ -4782,4 +4782,27 @@ Error: %1</source>
 
 
 
+<context>
+    <name>BatchCoverExport</name>
+    <message id="dialog.batch_export.cover_preset">
+        <source>Cover preset</source>
+        <translation>封面预设</translation>
+    </message>
+    <message id="dialog.batch_export.cover_none">
+        <source>Cover export off</source>
+        <translation>关闭封面导出</translation>
+    </message>
+    <message id="dialog.batch_export.cover_summary">
+        <source>Covers: %1 succeeded, %2 failed</source>
+        <translation>封面导出：成功 %1 项，失败 %2 项</translation>
+    </message>
+    <message id="dialog.batch_export.cover_preset_unavailable">
+        <source>The cover preset cannot be applied to this chart</source>
+        <translation>封面预设无法应用到此谱面</translation>
+    </message>
+    <message id="dialog.batch_export.cover_frame_adjusted">
+        <source>%1: frame time adjusted from %2 s to %3 s</source>
+        <translation>%1：截图时间从 %2 秒调整为 %3 秒</translation>
+    </message>
+</context>
 </TS>

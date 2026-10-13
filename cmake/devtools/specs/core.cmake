@@ -477,3 +477,13 @@ miacode_add_spec(media_prepend_policy_spec
     LIBS miacode_media_tools Qt6::Core
     INCLUDES src
 )
+
+miacode_add_spec(cover_batch_export_policy_spec
+    OWNER src/export/cover_export
+    CONTRACT cover-export.batch-policy
+    DOMAIN cover_export KIND behavior RISK normal
+    EXECUTION ctest STATUS active PLATFORM all
+    SOURCES src/tools/cover_export/CoverBatchExportPolicySpec.cpp
+    LIBS Qt6::Core
+    INCLUDES src
+)
