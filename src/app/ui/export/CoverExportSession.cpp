@@ -243,8 +243,7 @@ void CoverExportSession::enter(int preferredDifficultyId)
         pageSessionActive_ = true;
         emit pageSessionActiveChanged();
     }
-    rebuildDifficultyList();
-    selectDifficulty(defaultDifficultyId(preferredDifficultyId));
+    refreshDocument(preferredDifficultyId);
     refreshSavedLists();
     emit fontLibraryChanged();
 }
@@ -329,12 +328,15 @@ void CoverExportSession::seedFromDifficulty(int difficultyId)
     setBusy(true);
     const VideoExportTask nextTask = exportEngine_.buildSeedTask(difficultyId);
     const bool chartChanged = task_.chartPath != nextTask.chartPath;
+    const bool loadProjectSettings = chartChanged || !hasLoadedPreferences_;
     if (chartChanged) flushComposition();
+    ++sourceGeneration_;
     task_ = nextTask;
+    const QJsonObject projectCover = loadProjectSettings
+        ? miacode::project_preferences::load(task_.chartPath).value(QStringLiteral("coverExport")).toObject()
+        : QJsonObject{};
     if (chartChanged || outputFile_.isEmpty()) {
-        const QJsonObject project = miacode::project_preferences::load(task_.chartPath);
-        outputFile_ = project.value(QStringLiteral("coverExport")).toObject()
-            .value(QStringLiteral("outputFile")).toString(
+        outputFile_ = projectCover.value(QStringLiteral("outputFile")).toString(
                 QString::fromLatin1(miacode::cover_export::CoverCompositionState::kDefaultOutputFile));
         if (outputFile_.trimmed().isEmpty()) {
             outputFile_ = QString::fromLatin1(miacode::cover_export::CoverCompositionState::kDefaultOutputFile);
@@ -350,7 +352,12 @@ void CoverExportSession::seedFromDifficulty(int difficultyId)
             }
         }
     }
-    frameRenderer_ = std::make_unique<miacode::cover_export::SceneFrameRenderer>();
+    // The live QML scene outlives a chart switch. Reuse the renderer so its
+    // content revision keeps advancing and invalidates that scene's note cache.
+    if (frameRenderer_ == nullptr) {
+        frameRenderer_ = std::make_unique<miacode::cover_export::SceneFrameRenderer>();
+    }
+    pvFrames_->cancelAll();
     chartFrameAvailable_ = !task_.noteMarkers.isEmpty() && frameRenderer_->bootstrap(task_);
     pvMediaPath_ = miacode::chart_assets::isVideoBackgroundPath(task_.backgroundMediaPath)
                        && QFileInfo::exists(task_.backgroundMediaPath)
@@ -366,6 +373,15 @@ void CoverExportSession::seedFromDifficulty(int difficultyId)
             applyCompositionJson(saved, false);
         }
         hasLoadedPreferences_ = true;
+    }
+    if (loadProjectSettings) {
+        QJsonObject background = projectCover.value(QStringLiteral("background")).toObject();
+        if (background.isEmpty()) {
+            background = miacode::app_preferences::coverExportPreferences().loadPreferences()
+                .value(QStringLiteral("background")).toObject();
+        }
+        applyBackgroundJson(background, false);
+        backgroundDirty_ = false;
     }
     // The layout survives difficulty changes, but a still belongs to the
     // chart that produced it. Drop those secondary images before installing a
@@ -989,17 +1005,20 @@ void CoverExportSession::setBackgroundMode(int mode)
     const auto next = static_cast<miacode::cover_export::CoverBackgroundMode>(qBound(0, mode, 2));
     if (backgroundMode_ == next) return;
     backgroundMode_ = next; emit inputsChanged(); persistComposition();
+    backgroundDirty_ = true;
 }
 void CoverExportSession::setBlurBackground(bool enabled)
 {
     if (blurBackground_ == enabled) return;
     blurBackground_ = enabled; emit inputsChanged(); persistComposition();
+    backgroundDirty_ = true;
 }
 void CoverExportSession::setBackgroundBrightness(double value)
 {
     const double next = qBound(0.0, value, 1.0);
     if (qFuzzyCompare(backgroundBrightness_, next)) return;
     backgroundBrightness_ = next; emit inputsChanged(); persistComposition();
+    backgroundDirty_ = true;
 }
 void CoverExportSession::setCardShadow(bool enabled)
 {
@@ -1073,10 +1092,11 @@ void CoverExportSession::browseBackgroundImage()
     request.title = miacode::localizedText("cover.choose_background_image");
     request.startPath = QFileInfo(backgroundPath_).absolutePath();
     request.nameFilters = {miacode::localizedText("cover.images_png_jpg_jpeg_bmp")};
-    uiRequests_->requestFile(request, [this](const QString& path) {
-        if (path.isEmpty()) return;
+    uiRequests_->requestFile(request, [this, generation = sourceGeneration_](const QString& path) {
+        if (path.isEmpty() || sourceGeneration_ != generation) return;
         backgroundPath_ = path;
         backgroundMode_ = miacode::cover_export::CoverBackgroundMode::Custom;
+        backgroundDirty_ = true;
         emit inputsChanged();
         persistComposition();
     });
@@ -1196,6 +1216,25 @@ QJsonObject CoverExportSession::builtinPresetComposition(const QString& id) cons
     return root;
 }
 
+void CoverExportSession::applyBackgroundJson(const QJsonObject& background, bool reportErrors)
+{
+    const QString mode = background.value(QStringLiteral("mode")).toString(QStringLiteral("jacket"));
+    backgroundMode_ = mode == QStringLiteral("custom") ? miacode::cover_export::CoverBackgroundMode::Custom
+                    : mode == QStringLiteral("transparent") ? miacode::cover_export::CoverBackgroundMode::Transparent
+                                                              : miacode::cover_export::CoverBackgroundMode::Jacket;
+    backgroundPath_ = background.value(QStringLiteral("customPath")).toString();
+    if (backgroundMode_ == miacode::cover_export::CoverBackgroundMode::Custom
+        && !QFileInfo::exists(backgroundPath_)) {
+        backgroundMode_ = miacode::cover_export::CoverBackgroundMode::Jacket;
+        if (reportErrors) {
+            notifyError(miacode::localizedText("cover.background"),
+                        miacode::localizedText("cover.the_custom_background_image_was"));
+        }
+    }
+    blurBackground_ = background.value(QStringLiteral("blur")).toBool(true);
+    backgroundBrightness_ = qBound(0.0, background.value(QStringLiteral("brightness")).toDouble(0.45), 1.0);
+}
+
 bool CoverExportSession::applyCompositionJsonInternal(const QJsonObject& root,
                                                          bool reportErrors,
                                                          bool renderChartFrames)
@@ -1214,22 +1253,8 @@ bool CoverExportSession::applyCompositionJsonInternal(const QJsonObject& root,
             break;
         }
     }
-    const QJsonObject background = state.background;
-    const QString mode = background.value(QStringLiteral("mode")).toString(QStringLiteral("jacket"));
-    backgroundMode_ = mode == QStringLiteral("custom") ? miacode::cover_export::CoverBackgroundMode::Custom
-                    : mode == QStringLiteral("transparent") ? miacode::cover_export::CoverBackgroundMode::Transparent
-                                                              : miacode::cover_export::CoverBackgroundMode::Jacket;
-    backgroundPath_ = background.value(QStringLiteral("customPath")).toString();
-    if (backgroundMode_ == miacode::cover_export::CoverBackgroundMode::Custom
-        && !QFileInfo::exists(backgroundPath_)) {
-        backgroundMode_ = miacode::cover_export::CoverBackgroundMode::Jacket;
-        if (reportErrors) {
-            notifyError(miacode::localizedText("cover.background"),
-                        miacode::localizedText("cover.the_custom_background_image_was"));
-        }
-    }
-    blurBackground_ = background.value(QStringLiteral("blur")).toBool(true);
-    backgroundBrightness_ = qBound(0.0, background.value(QStringLiteral("brightness")).toDouble(0.45), 1.0);
+    applyBackgroundJson(state.background, reportErrors);
+    backgroundDirty_ = true;
     const QJsonObject card = state.card;
     cardMode_ = card.value(QStringLiteral("mode")).toString(QStringLiteral("auto"));
     cardShadow_ = card.value(QStringLiteral("shadow")).toBool(false);
@@ -1340,12 +1365,16 @@ void CoverExportSession::flushComposition()
         && miacode::app_preferences::coverExportPreferences().savePreferences(sharedCompositionJson())) {
         compositionDirty_ = false;
     }
-    if (outputDirty_ && !task_.chartPath.isEmpty()) {
+    if ((outputDirty_ || backgroundDirty_) && !task_.chartPath.isEmpty()) {
         QJsonObject project = miacode::project_preferences::load(task_.chartPath);
         QJsonObject cover = project.value(QStringLiteral("coverExport")).toObject();
         cover.insert(QStringLiteral("outputFile"), outputFile_);
+        cover.insert(QStringLiteral("background"), compositionJson().value(QStringLiteral("background")));
         project.insert(QStringLiteral("coverExport"), cover);
-        if (miacode::project_preferences::save(task_.chartPath, project)) outputDirty_ = false;
+        if (miacode::project_preferences::save(task_.chartPath, project)) {
+            outputDirty_ = false;
+            backgroundDirty_ = false;
+        }
     }
 }
 
@@ -1469,7 +1498,9 @@ void CoverExportSession::browseOutputFile()
     request.startPath = outputFilePath();
     request.nameFilters = {miacode::localizedText("cover.images_png_jpg_jpeg_bmp")};
     request.saveMode = true;
-    uiRequests_->requestFile(request, [this](const QString& path) { setOutputFile(path); });
+    uiRequests_->requestFile(request, [this, generation = sourceGeneration_](const QString& path) {
+        if (sourceGeneration_ == generation) setOutputFile(path);
+    });
 }
 
 miacode::cover_export::CoverComposerInputs CoverExportSession::buildInputs() const

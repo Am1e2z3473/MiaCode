@@ -250,6 +250,7 @@ private:
     QJsonObject sharedCompositionJson() const;
     QJsonObject presetCompositionJson() const;
     QJsonObject builtinPresetComposition(const QString& id) const;
+    void applyBackgroundJson(const QJsonObject& background, bool reportErrors);
     bool applyCompositionJsonInternal(const QJsonObject& root, bool reportErrors,
                                       bool renderChartFrames);
     bool applyCompositionJson(const QJsonObject& root, bool reportErrors);
@@ -277,6 +278,7 @@ private:
     QString pvMediaPath_;
     QPointer<QObject> lastLiveChartScene_;
     VideoExportTask task_;
+    quint64 sourceGeneration_ = 0;
     QVariantMap bannerTemplate_;
     QVariantList difficulties_;
     QVariantList presets_;
@@ -295,6 +297,7 @@ private:
     QTimer compositionSaveTimer_;
     bool compositionDirty_ = false;
     bool outputDirty_ = false;
+    bool backgroundDirty_ = false;
     bool blurBackground_ = true;
     bool cardShadow_ = false;
     bool levelTextRender_ = false;

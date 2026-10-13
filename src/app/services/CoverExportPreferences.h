@@ -33,6 +33,18 @@ public:
     void removeUserPreset(const QString& name);
     void renameUserPreset(const QString& oldName, const QString& newName);
 private:
+    static QJsonObject sharedPreferences(QJsonObject root)
+    {
+        root.remove(QStringLiteral("outputFile"));
+        root.remove(QStringLiteral("output"));
+        QJsonObject background = root.value(QStringLiteral("background")).toObject();
+        background.remove(QStringLiteral("customPath"));
+        if (background.value(QStringLiteral("mode")).toString() == QStringLiteral("custom")) {
+            background.insert(QStringLiteral("mode"), QStringLiteral("jacket"));
+        }
+        if (root.contains(QStringLiteral("background"))) root.insert(QStringLiteral("background"), background);
+        return root;
+    }
     static QString normalizedPresetName(QString name) { return name.trimmed(); }
     bool writable(const QJsonObject& section) const
     {
@@ -44,7 +56,9 @@ private:
 
 inline QJsonObject CoverExportPreferences::loadPreferences()
 {
-    return reader_();
+    // Legacy global paths have no project identity; do not reuse another chart's assets.
+    const QJsonObject saved = reader_();
+    return writable(saved) ? sharedPreferences(saved) : saved;
 }
 
 inline bool CoverExportPreferences::savePreferences(const QJsonObject& preferences)
@@ -56,7 +70,8 @@ inline bool CoverExportPreferences::savePreferences(const QJsonObject& preferenc
     for (const char* ownedKey : {"kind", "version", "size", "background", "card", "layout", "output", "outputFile", "chartFrame"}) {
         merged.remove(QString::fromLatin1(ownedKey));
     }
-    for (auto it = preferences.constBegin(); it != preferences.constEnd(); ++it) {
+    const QJsonObject shared = sharedPreferences(preferences);
+    for (auto it = shared.constBegin(); it != shared.constEnd(); ++it) {
         merged.insert(it.key(), it.value());
     }
     return writer_(merged);

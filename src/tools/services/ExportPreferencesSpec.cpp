@@ -99,6 +99,22 @@ int main(int argc, char** argv)
     miacode::app_preferences::CoverExportPreferences coverWriter([&] { return latestCover; },
         [&](const QJsonObject& value) { if (coverWriteFails) return false; latestCover = value; return true; });
     const QJsonObject pendingComposition = latestCover;
+    QJsonObject legacyCover = latestCover;
+    legacyCover.insert(QStringLiteral("outputFile"), QStringLiteral("other-chart/cover.png"));
+    legacyCover.insert(QStringLiteral("background"), QJsonObject{
+        {QStringLiteral("mode"), QStringLiteral("custom")},
+        {QStringLiteral("customPath"), QStringLiteral("other-chart/bg.png")},
+        {QStringLiteral("brightness"), 0.7}});
+    QJsonObject isolatedCover = legacyCover;
+    miacode::app_preferences::CoverExportPreferences isolatedWriter([&] { return isolatedCover; },
+        [&](const QJsonObject& value) { isolatedCover = value; return true; });
+    const QJsonObject sanitized = isolatedWriter.loadPreferences();
+    expect(!sanitized.contains(QStringLiteral("outputFile"))
+               && sanitized.value("background").toObject().value("mode") == QStringLiteral("jacket")
+               && !sanitized.value("background").toObject().contains("customPath"),
+           "legacy global paths cannot seed another chart's output or custom background");
+    expect(isolatedWriter.savePreferences(legacyCover) && isolatedCover == sanitized,
+           "global cover saves exclude project paths while preserving appearance");
     expect(!coverWriter.savePreferences(pendingComposition), "cover persistence failure is returned to dirty session");
     latestCover.insert(QStringLiteral("recentFiles"), QJsonArray{QStringLiteral("new-layout.miacover")});
     latestCover.insert(QStringLiteral("vendor"), 9);
