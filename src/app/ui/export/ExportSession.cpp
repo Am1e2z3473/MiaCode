@@ -1,6 +1,7 @@
 #include "common/LocalizedText.h"
 
 #include "app/ui/export/ExportSession.h"
+#include "app/ui/export/CoverExportSession.h"
 #include "app/ui/document/DifficultyOptions.h"
 
 #include "core/chart/document/SimaiDocument.h"
@@ -10,6 +11,7 @@
 #include "core/scene/PreviewSfxAssets.h"
 #include "core/video/PreviewRenderSettings.h"
 #include "app/services/VideoExportPreferences.h"
+#include "export/cover_export/CoverBatchExportPolicy.h"
 #include "export/video_export/VideoExportSettings.h"
 #include "export/video_export/FontLibrary.h"
 #include "app/services/UserFontLibrary.h"
@@ -71,6 +73,7 @@ ExportSession::ExportSession(miacode::ShellNotifications& notifications,
                 emit fontLibraryChanged();
                 emit introSoundOptionsChanged();
                 emit introChanged();
+                emit batchChanged();
             });
     connect(&notifications, &miacode::ShellNotifications::videoExportWorkerRunningChanged, this, [this](bool running) {
         if (batchExportRunning_ || exportRunning_ == running) {
@@ -500,6 +503,7 @@ void ExportSession::setActiveTab(const QString& tabId)
         setSettingsTab(QStringLiteral("output"));
     }
     emit activeTabChanged();
+    emit batchChanged();
     emit rangePlaybackStateChanged();
     if (pageSessionActive_) {
         syncAudition();
@@ -552,6 +556,7 @@ void ExportSession::applyPreferences()
     task_.intro.mode = QStringLiteral("auto");
     task_.intro.lvRenderMode = QStringLiteral("atlas");
     miacode::video_export::applyVideoExportPreferences(settings, &task_);
+    batchCoverPreset_ = settings.value(QStringLiteral("batch_cover_preset")).toString();
     const int savedWidth = task_.outputWidth;
     const int savedHeight = task_.outputHeight;
     resolutionIndex_ = 3;
@@ -569,6 +574,7 @@ void ExportSession::savePreferences() const
 {
     QJsonObject settings = miacode::app_preferences::loadDialogPreferences();
     miacode::video_export::appendVideoExportPreferences(&settings, task_);
+    settings.insert(QStringLiteral("batch_cover_preset"), batchCoverPreset_);
     miacode::app_preferences::saveDialogPreferences(settings);
 }
 
@@ -769,6 +775,18 @@ void ExportSession::startExport()
                 && jobProgress->cancelRequested();
             return batchCancellationRequested_ || shellCancelled;
         };
+        const QString coverPreset = batchCoverPreset_;
+        if (!coverPreset.isEmpty()) {
+            callbacks.exportCover = [this, coverPreset](const VideoExportTask& task,
+                const QString& exportPath, QString* error, QStringList* adjustments) {
+                const auto cover = CoverExportSession::exportBatchCover(
+                    *engine(), *uiRequests_, task, coverPreset,
+                    miacode::cover_export::batchCoverOutputPath(
+                        QFileInfo(exportPath).absolutePath(), exportPath), adjustments);
+                if (error != nullptr) *error = cover.errorMessage;
+                return cover.success ? cover.outputPath : QString();
+            };
+        }
         VideoExportTask batchTask = buildRequestedTask();
         // Batch is always full-range, so keep the user's intro preference even
         // if the single-export range currently starts after chart zero.
@@ -812,24 +830,22 @@ void ExportSession::startExport()
         const auto shortenDetails = [](QString details) {
             return details.size() > 3000 ? details.left(3000) + QStringLiteral("\n...") : details;
         };
-        const QString successDetails = shortenDetails(result.exportedFiles.join(QLatin1Char('\n')));
-        if (result.failedCharts.isEmpty()) {
-            uiRequests_->postNotice(
-                miacode::NoticeSeverity::Information,
-                batchTitle,
-                miacode::localizedText("dialog.batch_export.message.success").arg(result.successCount),
-                successDetails);
-            return;
-        }
+        QStringList details = result.exportedFiles;
+        details.append(result.failedCharts);
+        details.append(result.failedCovers);
+        details.append(result.coverAdjustments);
+        const miacode::LocalizedText summary = result.failedCharts.isEmpty()
+            ? miacode::localizedText("dialog.batch_export.message.success").arg(result.successCount)
+            : miacode::localizedText("dialog.batch_export.message.partial_failed")
+                .arg(result.successCount).arg(result.failedCharts.size());
+        const miacode::LocalizedText coverSummary = coverPreset.isEmpty() ? miacode::LocalizedText()
+            : miacode::LocalizedText(QStringLiteral("\n")) + miacode::localizedText("dialog.batch_export.cover_summary")
+                .arg(result.coverSuccessCount).arg(result.failedCovers.size());
         uiRequests_->postNotice(
-            miacode::NoticeSeverity::Warning,
-            batchTitle,
-            miacode::localizedText("dialog.batch_export.message.partial_failed")
-                .arg(result.successCount).arg(result.failedCharts.size()),
-            (successDetails.isEmpty() ? miacode::LocalizedText()
-                : miacode::localizedText("dialog.batch_export.message.output_files")
-                    + QStringLiteral("\n") + successDetails + QStringLiteral("\n\n"))
-                + shortenDetails(result.failedCharts.join(QLatin1Char('\n'))));
+            result.failedCharts.isEmpty() && result.failedCovers.isEmpty()
+                ? miacode::NoticeSeverity::Information : miacode::NoticeSeverity::Warning,
+            batchTitle, summary + coverSummary,
+            shortenDetails(details.join(QLatin1Char('\n'))));
         return;
     }
 
@@ -1501,6 +1517,19 @@ void ExportSession::setExportEndSeconds(double value)
     const double start = task_.exportStartSeconds;
     const double minimumEnd = start + minimumExportRangeSeconds();
     setExportRangeSeconds(start, qBound(minimumEnd, value, chartDurationSeconds_));
+}
+
+QVariantList ExportSession::batchCoverPresetOptions() const
+{
+    return CoverExportSession::batchPresetOptions();
+}
+
+void ExportSession::setBatchCoverPreset(const QString& preset)
+{
+    if (batchCoverPreset_ == preset) return;
+    batchCoverPreset_ = preset;
+    savePreferences();
+    emit batchChanged();
 }
 
 void ExportSession::setBatchOutputDirectory(const QString& path)

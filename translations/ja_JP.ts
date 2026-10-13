@@ -4782,4 +4782,27 @@ Error: %1</source>
 
 
 
+<context>
+    <name>BatchCoverExport</name>
+    <message id="dialog.batch_export.cover_preset">
+        <source>Cover preset</source>
+        <translation>カバープリセット</translation>
+    </message>
+    <message id="dialog.batch_export.cover_none">
+        <source>Cover export off</source>
+        <translation>カバー出力をオフ</translation>
+    </message>
+    <message id="dialog.batch_export.cover_summary">
+        <source>Covers: %1 succeeded, %2 failed</source>
+        <translation>カバー出力：成功 %1 件、失敗 %2 件</translation>
+    </message>
+    <message id="dialog.batch_export.cover_preset_unavailable">
+        <source>The cover preset cannot be applied to this chart</source>
+        <translation>この譜面にカバープリセットを適用できません</translation>
+    </message>
+    <message id="dialog.batch_export.cover_frame_adjusted">
+        <source>%1: frame time adjusted from %2 s to %3 s</source>
+        <translation>%1：フレーム時間を %2 秒から %3 秒に調整</translation>
+    </message>
+</context>
 </TS>

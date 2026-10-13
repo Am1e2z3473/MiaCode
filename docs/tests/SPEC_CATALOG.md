@@ -3,7 +3,7 @@
 Generated from `cmake/devtools/specs/` by `cmake -P cmake/devtools/SpecCatalog.cmake`.
 Check without writing: `cmake -DMIACODE_SPEC_CATALOG_CHECK=ON -P cmake/devtools/SpecCatalog.cmake`.
 
-144 independent specs; source lists and link dependencies are maintained only in CMake.
+145 independent specs; source lists and link dependencies are maintained only in CMake.
 
 `platform:all` means the target is registered on every platform, not that all platforms
 have been tested. Platform-specific source branches and link additions remain in their manifests.
@@ -17,6 +17,7 @@ Owners name production modules; kinds describe the checked boundary, not runtime
 | `src/tools/chart_document/SimaiDocumentSpec.cpp` | `simai_document_spec` | `src/core/chart/document` | `chart-document.simai-document` | chart_document | behavior | normal | all | ctest | active |
 | `src/tools/chart_selection/ChartSelectionBeatSummarySpec.cpp` | `chart_selection_beat_summary_spec` | `src/core/chart/selection` | `chart-selection.chart-selection-beat-summary` | chart_selection | behavior | normal | all | ctest | active |
 | `src/tools/chart_transform/ChartBatchTransformSpec.cpp` | `chart_batch_transform_spec` | `src/core/chart/transform` | `chart-transform.chart-batch-transform` | chart_transform | behavior | normal | all | ctest | active |
+| `src/tools/cover_export/CoverBatchExportPolicySpec.cpp` | `cover_batch_export_policy_spec` | `src/export/cover_export` | `cover-export.batch-policy` | cover_export | behavior | normal | all | ctest | active |
 | `src/tools/cover_export/CoverFramePlaybackControllerSpec.cpp` | `cover_frame_playback_controller_spec` | `src/export/cover_export` | `cover-export.cover-frame-playback-controller` | cover_export | behavior | normal | all | ctest | active |
 | `src/tools/cover_export/CoverFrameSceneBinderSpec.cpp` | `cover_frame_scene_binder_spec` | `src/export/cover_export` | `cover-export.cover-frame-scene-binder` | cover_export | behavior | normal | all | ctest | active |
 | `src/tools/cover_export/CoverLayoutModelSpec.cpp` | `cover_layout_model_spec` | `src/export/cover_export` | `cover-export.cover-layout-model` | cover_export | behavior | normal | all | ctest | active |
