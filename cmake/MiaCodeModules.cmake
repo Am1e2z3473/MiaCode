@@ -560,6 +560,8 @@ miacode_add_module(miacode_export
         src/export/video_export/VideoExportDiagnostics.cpp
         src/export/video_export/EncoderProbeCache.h
         src/export/video_export/EncoderProbeCache.cpp
+        src/export/video_export/VideoExportEstimateHistory.cpp
+        src/export/video_export/VideoExportEstimateHistory.h
         src/export/video_export/VideoExportEncoder.cpp
         src/export/video_export/VideoExportFrameRender.cpp
         src/export/video_export/VideoExportMediaTimeline.cpp
