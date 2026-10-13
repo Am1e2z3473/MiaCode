@@ -14,6 +14,7 @@ Rectangle {
     required property var previewSettings
     readonly property var session: pages && pages.exportSession ? pages.exportSession : null
     readonly property bool settingsAvailable: !!root.session && root.session.unavailableReason.length === 0
+    property bool exportRangePreviewActive: false
     readonly property alias cornerSourceItem: heading
     readonly property bool introSettingsEnabled: !!root.session
                                                   && root.session.introEnabled
@@ -504,6 +505,26 @@ Rectangle {
 
                             visible: root.session && root.session.activeTab === "export"
 
+                            AppButton {
+                                objectName: "playExportRangeButton"
+                                Layout.fillWidth: true
+                                text: root.exportRangePreviewActive
+                                    ? qsTrId("preview.stop") : qsTrId("dialog.video_export.range.play_clip")
+                                enabled: root.settingsAvailable && root.session.rangePreviewAvailable
+                                    && root.session.exportEndSeconds > root.session.exportStartSeconds
+                                onClicked: {
+                                    if (root.exportRangePreviewActive) {
+                                        root.previewSession.stop()
+                                        root.exportRangePreviewActive = false
+                                        return
+                                    }
+                                    root.session.rangePlaybackEnabled = true
+                                    root.previewSession.stop()
+                                    root.previewSession.positionSeconds = root.session.exportStartSeconds
+                                    root.previewSession.togglePlayback()
+                                    root.exportRangePreviewActive = true
+                                }
+                            }
                             ExportRangeSelector {
                                 id: exportRangeSelector
                                 objectName: "exportRangeSelector"
@@ -936,7 +957,18 @@ Rectangle {
     }
 
     Connections {
+        target: root.previewSession
+        function onPlayingChanged() {
+            if (!root.previewSession.playing)
+                root.exportRangePreviewActive = false
+        }
+    }
+    Connections {
         target: root.session
+        function onRangePlaybackStateChanged() {
+            if (!root.session.rangePlaybackEnabled || !root.session.rangePreviewAvailable)
+                root.exportRangePreviewActive = false
+        }
 
         function onIntroChanged() {
             if (!introPvStartField.activeFocus)

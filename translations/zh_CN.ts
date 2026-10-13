@@ -4699,6 +4699,10 @@ Error: %1</source>
         <source>This candidate already exists</source>
         <translation>候选值已存在</translation>
     </message>
+    <message id="dialog.video_export.range.play_clip">
+        <source>Play Export Range</source>
+        <translation>播放导出区间</translation>
+    </message>
 </context>
 
 
