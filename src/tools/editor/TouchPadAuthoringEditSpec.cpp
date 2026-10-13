@@ -52,7 +52,7 @@ int main(int argc, char** argv)
     expectTouchPlan(QStringLiteral("1,2  ,3"), 3, false, 2, 3, QStringLiteral("/A1"),
                     QStringLiteral("non-empty token appends slash before trailing whitespace"));
     expectTouchPlan(QStringLiteral("1,2,"), 3, true, 2, 3, QStringLiteral("`A1"),
-                    QStringLiteral("right-click authoring appends backtick"));
+                    QStringLiteral("Ctrl+Shift authoring appends backtick"));
     expectTouchPlan(QStringLiteral("1,2,"), 1, false, 0, 1, QStringLiteral("/A1"),
                     QStringLiteral("caret immediately before comma belongs to left token"));
     expectTouchPlan(QStringLiteral("1,2,"), 2, false, 2, 3, QStringLiteral("/A1"),
@@ -68,8 +68,8 @@ int main(int argc, char** argv)
         const auto plan = miacode::editor::planTouchPadAuthoringEdit(
             QStringLiteral("1,2,"), 3, QStringLiteral("A1"), QLatin1Char(','));
         expect(plan.valid && plan.insertionPosition == 3
-                   && plan.insertionText == QStringLiteral(",A1"),
-               QStringLiteral("comma separator appends even when the beat is empty"), out, &failed);
+                   && plan.insertionText == QStringLiteral("A1,"),
+               QStringLiteral("right click inserts the pad followed by a beat separator"), out, &failed);
     }
 
     const auto expectTouchPadEdit = [&out, &failed](const QString& text, int pos, bool backtick,
@@ -187,35 +187,33 @@ int main(int argc, char** argv)
             document.toPlainText(), cursor.position(), QStringLiteral("A1"), QLatin1Char(','));
         const bool applied = miacode::editor::applyTouchPadAuthoringEdit(&document, &cursor, plan);
         expect(applied && document.toPlainText() == expected
-                   && cursor.position() == expected.lastIndexOf(QStringLiteral("A1")) + 2,
+                   && cursor.position() == pos + 3,
                message, out, &failed);
     };
-    expectCommaEdit(QStringLiteral("{24}{16},,,"), 4, QStringLiteral("{24},{16}A1,,,"),
-                    QStringLiteral("right click between controls ends the beat at the caret"));
-    expectCommaEdit(QStringLiteral("{24}{16},,,"), 2, QStringLiteral("{24},{16}A1,,,"),
-                    QStringLiteral("a caret inside a control splits after that control"));
-    expectCommaEdit(QStringLiteral("{24}{16},,,"), 0, QStringLiteral("{24}{16},A1,,,"),
-                    QStringLiteral("right click at the beat start appends a new beat after it"));
-    expectCommaEdit(QStringLiteral("{24}{16},,,"), 8, QStringLiteral("{24}{16},A1,,,"),
-                    QStringLiteral("right click after every control appends a new beat after it"));
-    expectCommaEdit(QStringLiteral("{24} {16},,,"), 5, QStringLiteral("{24}, {16}A1,,,"),
-                    QStringLiteral("the split comma hugs the control, not the whitespace"));
-    // Inserting never moves an edit across a comment or a line break: the
-    // comma stays on the caret's side of both.
-    expectCommaEdit(QStringLiteral("{24}\n{16},,,"), 5, QStringLiteral("{24}\n,{16}A1,,,"),
-                    QStringLiteral("a split below a line break opens the caret's line"));
-    expectCommaEdit(QStringLiteral("{24}\n{16},,,"), 4, QStringLiteral("{24},\n{16}A1,,,"),
-                    QStringLiteral("a split above a line break stays on the caret's line"));
-    expectCommaEdit(QStringLiteral("{24} || x\n{16},"), 10, QStringLiteral("{24} || x\n,{16}A1,"),
-                    QStringLiteral("a split never moves a comment into the new beat"));
-    expectCommaEdit(QStringLiteral("1,2, ||c\n,5,"), 9, QStringLiteral("1,2, ||c\n,A1,5,"),
-                    QStringLiteral("right click in a multi-line empty beat opens the new beat on the caret's line"));
-    expectCommaEdit(QStringLiteral("{16}1/2,"), 4, QStringLiteral("{16}1/2,A1,"),
-                    QStringLiteral("right click never splits a beat that holds notes"));
-    expectCommaEdit(QStringLiteral("1/A1,"), 0, QStringLiteral("1/A1,A1,"),
-                    QStringLiteral("right click on a pad the beat already holds still opens a new beat"));
+    expectCommaEdit(QString(), 0, QStringLiteral("A1,"),
+                    QStringLiteral("right click in an empty document inserts a pad and its comma"));
+    expectCommaEdit(QStringLiteral("{24}{16},,,"), 4, QStringLiteral("{24}A1,{16},,,"),
+                    QStringLiteral("right click between controls uses the caret position"));
+    expectCommaEdit(QStringLiteral("{24}{16},,,"), 2, QStringLiteral("{2A1,4}{16},,,"),
+                    QStringLiteral("right click retains an explicit caret inside a control"));
+    expectCommaEdit(QStringLiteral("{24}{16},,,"), 0, QStringLiteral("A1,{24}{16},,,"),
+                    QStringLiteral("right click at document start inserts before controls"));
+    expectCommaEdit(QStringLiteral("{24}{16},,,"), 8, QStringLiteral("{24}{16}A1,,,,"),
+                    QStringLiteral("right click after controls puts the comma after the pad"));
+    expectCommaEdit(QStringLiteral("{24} {16},,,"), 5, QStringLiteral("{24} A1,{16},,,"),
+                    QStringLiteral("right click retains surrounding whitespace"));
+    expectCommaEdit(QStringLiteral("{24}\n{16},,,"), 5, QStringLiteral("{24}\nA1,{16},,,"),
+                    QStringLiteral("right click below a line break inserts on that line"));
+    expectCommaEdit(QStringLiteral("{24}\n{16},,,"), 4, QStringLiteral("{24}A1,\n{16},,,"),
+                    QStringLiteral("right click above a line break retains the next line"));
+    expectCommaEdit(QStringLiteral("{24} || x\n{16},"), 10, QStringLiteral("{24} || x\nA1,{16},"),
+                    QStringLiteral("right click after a comment retains the comment"));
+    expectCommaEdit(QStringLiteral("{16}1/2,"), 4, QStringLiteral("{16}A1,1/2,"),
+                    QStringLiteral("right click inserts before existing notes at the caret"));
+    expectCommaEdit(QStringLiteral("1/A1,"), 0, QStringLiteral("A1,1/A1,"),
+                    QStringLiteral("right click retains an existing pad elsewhere in the beat"));
     expectCommaEdit(QStringLiteral("A1,"), 0, QStringLiteral("A1,A1,"),
-                    QStringLiteral("right click never removes a sole pad"));
+                    QStringLiteral("right click adds its own beat rather than toggling a pad"));
 
     // Whitespace between two notes is not valid simai; only `/` and `` ` ``
     // separate items, so a click never removes half of `A1 B2`.
