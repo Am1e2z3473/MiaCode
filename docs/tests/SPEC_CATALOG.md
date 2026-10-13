@@ -3,7 +3,7 @@
 Generated from `cmake/devtools/specs/` by `cmake -P cmake/devtools/SpecCatalog.cmake`.
 Check without writing: `cmake -DMIACODE_SPEC_CATALOG_CHECK=ON -P cmake/devtools/SpecCatalog.cmake`.
 
-141 independent specs; source lists and link dependencies are maintained only in CMake.
+142 independent specs; source lists and link dependencies are maintained only in CMake.
 
 `platform:all` means the target is registered on every platform, not that all platforms
 have been tested. Platform-specific source branches and link additions remain in their manifests.
@@ -146,6 +146,7 @@ Owners name production modules; kinds describe the checked boundary, not runtime
 | `src/tools/video_export/FontLibraryIsolationSpec.cpp` | `font_library_isolation_spec` | `src/export/video_export` | `video-export.font-library-isolation` | video_export | integration | normal | all | ctest | active |
 | `src/tools/video_export/RawVideoPipeFrameConservationSpec.cpp` | `raw_video_pipe_frame_conservation_spec` | `src/export/video_export` | `video-export.raw-video-pipe-frame-conservation` | video_export | behavior | high | all | ctest | active |
 | `src/tools/video_export/VideoExportAudioRenderPlanSpec.cpp` | `video_export_audio_render_plan_spec` | `src/export/video_export` | `video-export.video-export-audio-render-plan` | video_export | behavior | high | all | ctest | active |
+| `src/tools/video_export/VideoExportEstimateHistorySpec.cpp` | `video_export_estimate_history_spec` | `src/export/video_export` | `video-export.estimate-history` | video_export | behavior | normal | all | ctest | active |
 | `src/tools/video_export/VideoExportHudFontSnapshotSpec.cpp` | `video_export_hud_font_snapshot_spec` | `src/export/video_export` | `video-export.hud-font-snapshot` | video_export | integration | high | all | ctest | active |
 | `src/tools/video_export/VideoExportIntroModeSpec.cpp` | `video_export_intro_mode_spec` | `src/export/video_export` | `video-export.video-export-intro-mode` | video_export | behavior | high | all | ctest | active |
 | `src/tools/video_export/VideoExportIntroSoundSpec.cpp` | `video_export_intro_sound_spec` | `src/export/video_export` | `video-export.video-export-intro-sound` | video_export | behavior | high | all | ctest | active |

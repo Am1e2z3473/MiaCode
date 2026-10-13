@@ -447,3 +447,13 @@ miacode_add_spec(ui_text_preferences_spec
     LIBS miacode_base Qt6::Core
     INCLUDES src
 )
+
+miacode_add_spec(video_export_estimate_history_spec
+    OWNER src/export/video_export
+    CONTRACT video-export.estimate-history
+    DOMAIN video_export KIND behavior RISK normal
+    EXECUTION ctest STATUS active PLATFORM all
+    SOURCES src/tools/video_export/VideoExportEstimateHistorySpec.cpp
+    LIBS miacode_export Qt6::Core
+    INCLUDES src
+)
