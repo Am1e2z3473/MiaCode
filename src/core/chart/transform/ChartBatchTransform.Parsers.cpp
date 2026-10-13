@@ -99,11 +99,7 @@ bool parseTouchTokenParts(const QString& token, TouchTokenParts* parts)
             return false;
         }
     }
-    if (!parts->bracketSuffix.isEmpty()) {
-        if (!parts->hasHold) {
-            return false;
-        }
-    } else if (parts->hasHold) {
+    if (!parts->bracketSuffix.isEmpty() && !parts->hasHold) {
         return false;
     }
     parts->valid = true;

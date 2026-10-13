@@ -853,6 +853,45 @@ void expectSubdivisionInContext(
 
 void runInlineSpecs(QTextStream& err, int* failed)
 {
+    {
+        int changed = 0;
+        const QString input = QStringLiteral("B8h");
+        const QString output = miacode::chart_transform::toggleBreakForSelection(input, &changed);
+        expectEqual(output, QStringLiteral("B8bh"),
+                    QStringLiteral("break accepts touch hold without explicit duration"), failed, err);
+        expectTrue(changed == 1, QStringLiteral("bare touch hold break counts one change"), failed, err);
+        expectEqual(miacode::chart_transform::toggleBreakForSelection(output, &changed), input,
+                    QStringLiteral("bare touch hold break toggles back off"), failed, err);
+        expectTrue(changed == 1, QStringLiteral("bare touch hold break removal counts one change"), failed, err);
+        expectEqual(miacode::chart_transform::toggleBreakForSelection(QStringLiteral("8bh/B8h")),
+                    QStringLiteral("8bh/B8bh"),
+                    QStringLiteral("bare touch hold participates in mixed break eligibility"), failed, err);
+        expectEqual(miacode::chart_transform::toggleFireworkForSelection(input), QStringLiteral("B8fh"),
+                    QStringLiteral("firework also recognizes bare touch hold"), failed, err);
+        expectEqual(miacode::chart_transform::randomRotateForSelection(input, []() { return 1; }),
+                    QStringLiteral("B1h"),
+                    QStringLiteral("random rotation recognizes bare touch hold"), failed, err);
+        expectEqual(miacode::chart_transform::toggleBreakForSelection(QStringLiteral("B8h[8:1")),
+                    QStringLiteral("B8bh[8:1"),
+                    QStringLiteral("selection ending inside duration preserves its partial suffix"), failed, err);
+        for (const QString& malformed : {QStringLiteral("B8[8:1]"), QStringLiteral("B8h8:1]")}) {
+            expectEqual(miacode::chart_transform::toggleBreakForSelection(malformed), malformed,
+                        QStringLiteral("touch duration syntax guards remain enforced"), failed, err);
+        }
+    }
+    {
+        int changed = 0;
+        const QString input = QStringLiteral("B6h[8:1]");
+        const QString output = miacode::chart_transform::toggleBreakForSelection(input, &changed);
+        expectEqual(output, QStringLiteral("B6bh[8:1]"),
+                    QStringLiteral("break includes a standalone touch hold"), failed, err);
+        expectTrue(changed == 1, QStringLiteral("touch hold break counts one change"), failed, err);
+        expectEqual(miacode::chart_transform::toggleBreakForSelection(output, &changed), input,
+                    QStringLiteral("touch hold break toggles back off"), failed, err);
+        expectEqual(miacode::chart_transform::toggleBreakForSelection(QStringLiteral("1b/B6h[8:1]")),
+                    QStringLiteral("1b/B6bh[8:1]"),
+                    QStringLiteral("unflagged touch hold makes mixed selection enable break"), failed, err);
+    }
     // 一键清空 (moved here with clearCompleteElementsInSelection when it left
     // the Widgets editor's header — it is a selection transform like the rest).
     const QString measure = QStringLiteral("{16}1,1,1,1-3[9:1],");
@@ -1009,17 +1048,17 @@ void runInlineSpecs(QTextStream& err, int* failed)
         const QString output = miacode::chart_transform::toggleBreakForSelection(input, &changed);
         expectEqual(
             output,
-            QStringLiteral("1b/2b 3bh[4:1] A1b C1h[4:1] 1b-5b[8:1]"),
-            QStringLiteral("toggle break enables break for notes, touch, and slide track but skips touch-hold"),
+            QStringLiteral("1b/2b 3bh[4:1] A1b C1bh[4:1] 1b-5b[8:1]"),
+            QStringLiteral("toggle break enables break for notes, touch hold, and slide track"),
             failed,
             err
         );
-        expectTrue(changed == 6, QStringLiteral("toggle break counts all changed objects"), failed, err);
+        expectTrue(changed == 7, QStringLiteral("toggle break counts all changed objects"), failed, err);
     }
 
     {
         int changed = 0;
-        const QString input = QStringLiteral("1b/2b 3bh[4:1] A1b C1h[4:1] 1b-5b[8:1]");
+        const QString input = QStringLiteral("1b/2b 3bh[4:1] A1b C1bh[4:1] 1b-5b[8:1]");
         const QString output = miacode::chart_transform::toggleBreakForSelection(input, &changed);
         expectEqual(
             output,
@@ -1028,7 +1067,7 @@ void runInlineSpecs(QTextStream& err, int* failed)
             failed,
             err
         );
-        expectTrue(changed == 6, QStringLiteral("toggle break clear counts all cleared objects"), failed, err);
+        expectTrue(changed == 7, QStringLiteral("toggle break clear counts all cleared objects"), failed, err);
     }
 
     {
