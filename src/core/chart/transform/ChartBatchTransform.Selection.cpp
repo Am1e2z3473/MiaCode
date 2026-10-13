@@ -146,11 +146,9 @@ ToggleStats collectBreakStats(const QString& input)
 
         TouchTokenParts touch;
         if (parseTouchTokenParts(token, &touch) && touch.valid) {
-            if (!touch.hasHold) {
-                ++stats.eligibleObjects;
-                if (touch.hasBreak) {
-                    ++stats.flaggedObjects;
-                }
+            ++stats.eligibleObjects;
+            if (touch.hasBreak) {
+                ++stats.flaggedObjects;
             }
             return;
         }
@@ -244,9 +242,6 @@ QString toggleBreakToken(const QString& token, bool enable, int* changedCount)
 
     TouchTokenParts touch;
     if (parseTouchTokenParts(token, &touch) && touch.valid) {
-        if (touch.hasHold) {
-            return token;
-        }
         const QString rebuilt = buildTouchToken(touch, enable, touch.hasEx, touch.hasFirework);
         if (rebuilt != token && changedCount != nullptr) {
             *changedCount += 1;
