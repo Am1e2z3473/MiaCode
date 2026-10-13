@@ -1,5 +1,25 @@
 # Explicit spec targets; contract IDs stay stable across source/target renames.
 
+miacode_add_spec(qml_scintilla_editor_spec
+    OWNER src/app/ui
+    CONTRACT qml-ui.scintilla-editor
+    DOMAIN ui KIND integration RISK high
+    EXECUTION ctest STATUS active PLATFORM all
+    SOURCES
+        src/tools/ui/QmlScintillaEditorSpec.cpp
+        src/app/ui/editor/ScintillaDocumentAdapter.cpp
+        src/app/ui/editor/ScintillaDslStyler.cpp
+    LIBS miacode_editor_core ScintillaQuick::ScintillaQuick Qt6::Quick
+    INCLUDES src
+        third_party/ScintillaQuick/tests/support
+        third_party/ScintillaQuick/src/core
+        third_party/ScintillaQuick/src/platform
+        third_party/ScintillaQuick/src/render
+)
+set_tests_properties(qml_scintilla_editor_spec PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+target_compile_definitions(qml_scintilla_editor_spec PRIVATE
+    "MIACODE_SOURCE_ROOT=\"${CMAKE_CURRENT_SOURCE_DIR}\"")
+
 miacode_add_spec(qml_app_background_model_spec
     OWNER src/app/ui
     CONTRACT qml-ui.qml-app-background-model

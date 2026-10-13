@@ -3,7 +3,7 @@
 Generated from `cmake/devtools/specs/` by `cmake -P cmake/devtools/SpecCatalog.cmake`.
 Check without writing: `cmake -DMIACODE_SPEC_CATALOG_CHECK=ON -P cmake/devtools/SpecCatalog.cmake`.
 
-140 independent specs; source lists and link dependencies are maintained only in CMake.
+141 independent specs; source lists and link dependencies are maintained only in CMake.
 
 `platform:all` means the target is registered on every platform, not that all platforms
 have been tested. Platform-specific source branches and link additions remain in their manifests.
@@ -129,6 +129,7 @@ Owners name production modules; kinds describe the checked boundary, not runtime
 | `src/tools/ui/QmlNetTabsSpec.cpp` | `qml_net_tabs_spec` | `src/app/ui` | `net.tab-lifecycle` | ui | behavior | high | all | ctest | active |
 | `src/tools/ui/QmlPreviewRateFeedbackSpec.cpp` | `qml_preview_rate_feedback_spec` | `src/app/ui` | `qml-ui.qml-preview-rate-feedback` | ui | behavior | high | all | ctest | active |
 | `src/tools/ui/QmlPreviewRateSpec.cpp` | `qml_preview_rate_spec` | `src/app/ui` | `qml-ui.qml-preview-rate` | ui | integration | normal | all | ctest | active |
+| `src/tools/ui/QmlScintillaEditorSpec.cpp` | `qml_scintilla_editor_spec` | `src/app/ui` | `qml-ui.scintilla-editor` | ui | integration | high | all | ctest | active |
 | `src/tools/ui/QmlSelectionRangeExportContractSpec.cpp` | `qml_selection_range_export_contract_spec` | `src/app/ui` | `qml-ui.qml-selection-range-export-contract` | ui | source-contract | normal | all | ctest | active |
 | `src/tools/ui/QmlShortcutBindingSpec.cpp` | `qml_shortcut_binding_spec` | `src/app/ui` | `qml-ui.qml-shortcut-binding` | ui | integration | normal | all | ctest | active |
 | `src/tools/ui/QmlUiBackendSurfaceSpec.cpp` | `qml_ui_backend_surface_spec` | `src/app/ui` | `qml-ui.qml-ui-backend-surface` | ui | source-contract | normal | all | ctest | active |

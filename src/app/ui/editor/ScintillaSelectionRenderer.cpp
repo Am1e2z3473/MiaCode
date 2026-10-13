@@ -124,14 +124,15 @@ public:
         painter.translate(-bounds.topLeft());
         painter.fillPath(outline, color);
         painter.end();
-        if (!image_) {
+        const bool createImageNode = !image_;
+        if (createImageNode) {
             image_ = window->createImageNode();
             image_->setOwnsTexture(true);
             image_->setFiltering(QSGTexture::Linear);
-            appendChildNode(image_);
         }
         image_->setTexture(window->createTextureFromImage(image));
         image_->setRect(bounds);
+        if (createImageNode) appendChildNode(image_);
     }
 private:
     QSGImageNode* image_ = nullptr;

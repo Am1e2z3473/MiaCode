@@ -129,6 +129,25 @@ qt_policy(SET QTP0001 NEW)
 find_package(Qt6 6.10 REQUIRED COMPONENTS MultimediaQuickPrivate)
 
 # Pinned ScintillaQuick sources are maintained as a Git submodule.
+set(MIACODE_SCINTILLAQUICK_REVISION "bfa6ae93315942b591878b0e709e1363bc07bfd6")
+if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/third_party/ScintillaQuick/.git")
+    if (NOT GIT_FOUND)
+        message(FATAL_ERROR "Git is required to verify the pinned ScintillaQuick revision")
+    endif()
+    execute_process(
+        COMMAND "${GIT_EXECUTABLE}" rev-parse HEAD
+        WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/third_party/ScintillaQuick"
+        RESULT_VARIABLE MIACODE_SCINTILLAQUICK_REVISION_RESULT
+        OUTPUT_VARIABLE MIACODE_SCINTILLAQUICK_REVISION_OUTPUT
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+    )
+    if (NOT MIACODE_SCINTILLAQUICK_REVISION_RESULT EQUAL 0
+        OR NOT "${MIACODE_SCINTILLAQUICK_REVISION_OUTPUT}" STREQUAL "${MIACODE_SCINTILLAQUICK_REVISION}")
+        message(FATAL_ERROR
+            "ScintillaQuick must use pinned revision ${MIACODE_SCINTILLAQUICK_REVISION}. "
+            "Run git submodule update --init --recursive to restore it.")
+    endif()
+endif()
 set(SCINTILLAQUICK_BUILD_TESTS OFF CACHE BOOL "Build ScintillaQuick tests" FORCE)
 set(SCINTILLAQUICK_BUILD_EXAMPLES OFF CACHE BOOL "Build ScintillaQuick examples" FORCE)
 set(SCINTILLAQUICK_BUILD_BENCHMARKS OFF CACHE BOOL "Build ScintillaQuick benchmarks" FORCE)
