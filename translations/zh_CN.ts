@@ -4715,6 +4715,18 @@ Error: %1</source>
         <source>Finalizing WAV audio…</source>
         <translation>完成 WAV 音频输出…</translation>
     </message>
+    <message id="media_tools.pv_geometry_probe_failed">
+        <source>Failed to read PV dimensions.</source>
+        <translation>读取 PV 分辨率失败。</translation>
+    </message>
+    <message id="media_tools.prepend_pv_geometry_mismatch">
+        <source>PV dimensions or duration failed validation after prepending black frames.</source>
+        <translation>插入黑屏后的 PV 分辨率或时长校验失败。</translation>
+    </message>
+    <message id="media_tools.prepend_pv_size_limit_failed">
+        <source>The prepended PV exceeds its size budget or the 20 MB limit.</source>
+        <translation>插入黑屏后的 PV 超出体积预算或 20 MB 上限。</translation>
+    </message>
 </context>
 
 

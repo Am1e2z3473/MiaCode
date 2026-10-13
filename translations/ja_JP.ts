@@ -4715,6 +4715,18 @@ Error: %1</source>
         <source>Finalizing WAV audio…</source>
         <translation>WAV 音声を仕上げ中…</translation>
     </message>
+    <message id="media_tools.pv_geometry_probe_failed">
+        <source>Failed to read PV dimensions.</source>
+        <translation>PV の解像度を読み取れません。</translation>
+    </message>
+    <message id="media_tools.prepend_pv_geometry_mismatch">
+        <source>PV dimensions or duration failed validation after prepending black frames.</source>
+        <translation>黒画面を追加した PV の解像度または長さの検証に失敗しました。</translation>
+    </message>
+    <message id="media_tools.prepend_pv_size_limit_failed">
+        <source>The prepended PV exceeds its size budget or the 20 MB limit.</source>
+        <translation>黒画面を追加した PV がサイズ予算または 20 MB の上限を超えています。</translation>
+    </message>
 </context>
 
 
