@@ -48,6 +48,7 @@ class DocumentModel final : public QObject
     Q_PROPERTY(bool metadataHasVideo READ metadataHasVideo NOTIFY metadataMediaChanged)
     Q_PROPERTY(QString metadataClockCount READ metadataClockCount WRITE setMetadataClockCount NOTIFY metadataChanged)
     Q_PROPERTY(QString metadataExtraText READ metadataExtraText WRITE setMetadataExtraText NOTIFY metadataChanged)
+    Q_PROPERTY(QString metadataExtraError READ metadataExtraError NOTIFY metadataChanged)
     Q_PROPERTY(bool unifiedDesignerEnabled READ unifiedDesignerEnabled NOTIFY unifiedDesignerEnabledChanged)
     Q_PROPERTY(QVariantList designerSlots READ designerSlots NOTIFY documentStateChanged)
     Q_PROPERTY(QString documentTitle READ documentTitle NOTIFY documentTitleChanged)
@@ -107,6 +108,7 @@ public:
     bool metadataHasVideo() const;
     QString metadataClockCount() const;
     QString metadataExtraText() const;
+    QString metadataExtraError() const;
     QString wholeBpm() const;
     bool unifiedDesignerEnabled() const;
     QVariantList designerSlots() const;
@@ -178,6 +180,8 @@ public:
     Q_INVOKABLE bool save();
     Q_INVOKABLE bool saveWholeDocument();
     Q_INVOKABLE bool saveAs(const QUrl& fileUrl);
+    // Flush current form input and refuse to hide or save a rejected draft.
+    Q_INVOKABLE bool finishPendingEdits();
     Q_INVOKABLE bool discardChanges();
     // Leaves the shell with no document: no difficulties, so no tabs and no
     // source. The guard that asks about unsaved work lives at the command
@@ -313,6 +317,11 @@ private:
     QString metadataCoverPath_;
     QUrl metadataCoverSource_;
     QString metadataResolvedVideoPath_;
+    // Rejected form input stays outside the valid workspace but still owns a
+    // dirty metadata tab and blocks saving until corrected or discarded.
+    QString metadataExtraDraft_;
+    QString metadataExtraError_;
+    qulonglong metadataExtraDraftOpenGeneration_ = 0;
     miacode::PreviewSurface** previewSlot_ = nullptr;
     miacode::PreviewSurface* preview() const
     {

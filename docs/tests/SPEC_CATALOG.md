@@ -3,7 +3,7 @@
 Generated from `cmake/devtools/specs/` by `cmake -P cmake/devtools/SpecCatalog.cmake`.
 Check without writing: `cmake -DMIACODE_SPEC_CATALOG_CHECK=ON -P cmake/devtools/SpecCatalog.cmake`.
 
-139 independent specs; source lists and link dependencies are maintained only in CMake.
+140 independent specs; source lists and link dependencies are maintained only in CMake.
 
 `platform:all` means the target is registered on every platform, not that all platforms
 have been tested. Platform-specific source branches and link additions remain in their manifests.
@@ -111,6 +111,7 @@ Owners name production modules; kinds describe the checked boundary, not runtime
 | `src/tools/timeline/TimelineQuickTextureCachePolicySpec.cpp` | `timeline_quick_texture_cache_policy_spec` | `src/timeline` | `timeline.timeline-quick-texture-cache-policy` | timeline | behavior | normal | all | ctest | active |
 | `src/tools/ui/AppBackgroundSettingsSpec.cpp` | `app_background_settings_spec` | `src/app/ui` | `ui.app-background-settings` | ui | behavior | normal | all | ctest | active |
 | `src/tools/ui/CoverExportSessionSpec.cpp` | `cover_export_session_spec` | `src/app/ui` | `qml-ui.cover-export-session` | ui | integration | normal | all | ctest | active |
+| `src/tools/ui/DocumentModelSaveSpec.cpp` | `document_model_save_spec` | `src/app/ui` | `qml-ui.document-model-save` | ui | behavior | high | all | ctest | active |
 | `src/tools/ui/NativeChromePolicySpec.cpp` | `native_chrome_policy_spec` | `src/app/ui` | `ui.native-chrome-policy` | ui | behavior | normal | all | ctest | active |
 | `src/tools/ui/PreviewTransportPushSpec.cpp` | `preview_transport_push_spec` | `src/app/ui` | `qml-ui.preview-transport-push` | ui | source-contract | normal | all | ctest | active |
 | `src/tools/ui/QmlAnalysisModelSpec.cpp` | `qml_analysis_model_spec` | `src/app/ui` | `qml-ui.qml-analysis-model` | ui | behavior | normal | all | ctest | active |

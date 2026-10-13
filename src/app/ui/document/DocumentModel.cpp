@@ -361,12 +361,17 @@ QString DocumentModel::metadataClockCount() const
 QString DocumentModel::metadataExtraText() const
 {
     if (workspace_ == nullptr) return {};
+    if (!metadataExtraDraft_.isNull()) return metadataExtraDraft_;
     QVector<SimaiRawField> fields;
     for (const SimaiRawField& field : workspace_->document().extraFields) {
         if (field.key.compare(QStringLiteral("clock_count"), Qt::CaseInsensitive) != 0)
             fields.append(field);
     }
     return SimaiDocument::serializeRawFields(fields);
+}
+QString DocumentModel::metadataExtraError() const
+{
+    return metadataExtraError_.isEmpty() ? QString() : qtTrId("metadata.extra_field_format");
 }
 bool DocumentModel::metadataNeedsAttention() const
 {
@@ -473,10 +478,20 @@ void DocumentModel::setMetadataClockCount(const QString& value)
 }
 void DocumentModel::setMetadataExtraText(const QString& value)
 {
-    if (workspace_ == nullptr) return;
+    if (workspace_ == nullptr || !hasDocument()) return;
+    miacode::ChartWorkspaceResult result;
     if (!runWorkspaceMutation([&] {
-            return workspace_->replaceExtraFields(value, metadataClockCount()).accepted;
-        })) return;
+            result = workspace_->replaceExtraFields(value, metadataClockCount());
+            return result.accepted;
+        })) {
+        metadataExtraDraft_ = value;
+        metadataExtraDraftOpenGeneration_ = documentOpenGeneration();
+        metadataExtraError_ = qtTrId("metadata.extra_field_format");
+        emitDocumentStateChanged(WorkspaceCommitKind::Incremental);
+        return;
+    }
+    metadataExtraDraft_ = QString();
+    metadataExtraError_.clear();
     publishWorkspaceCommit(WorkspaceCommitKind::Incremental);
 }
 
@@ -1263,6 +1278,7 @@ void DocumentModel::createEmptyDocumentAt(const QString& targetPath, const QStri
 void DocumentModel::closeDocument()
 {
     if (!hasDocument() || workspace_ == nullptr) return;
+    if (!finishPendingEdits()) return;
     if (!runWorkspaceMutation([&] { return workspace_->closeDocument().accepted; })) return;
     const bool wasUnified = unifiedDesignerEnabled_;
     unifiedDesignerEnabled_ = false;
@@ -1273,6 +1289,7 @@ void DocumentModel::closeDocument()
 bool DocumentModel::saveDifficultySection(int difficultyId)
 {
     if (!hasDocument() || fileService_ == nullptr) return false;
+    if (!finishPendingEdits()) return false;
     if (workspace_->isNetPreview()) { saveSectionOrAskForPath(0, {}); return true; }
     if (!runWorkspaceMutation([&] { return fileService_->save(difficultyId).accepted; })) {
         uiRequests_->postNotice(miacode::NoticeSeverity::Error,
@@ -1384,8 +1401,8 @@ void DocumentModel::requestLeaveDocument(std::function<void(bool)> onDecided)
 void DocumentModel::requestLeaveCurrentField(std::function<void(bool)> onDecided)
 {
     // 页面导航保留工作区中的修改，提交当前输入后切换视图。
-    if (!closeDecisionPending_) emit editingFinishedRequested();
-    if (onDecided) onDecided(workspace_ != nullptr && !closeDecisionPending_);
+    const bool accepted = workspace_ != nullptr && !closeDecisionPending_ && finishPendingEdits();
+    if (onDecided) onDecided(accepted);
 }
 
 void DocumentModel::saveSectionOrAskForPath(
@@ -1395,7 +1412,10 @@ void DocumentModel::saveSectionOrAskForPath(
         if (onSaved) onSaved(false);
         return;
     }
-    emit editingFinishedRequested();
+    if (!finishPendingEdits()) {
+        if (onSaved) onSaved(false);
+        return;
+    }
     const auto finish = [onSaved = std::move(onSaved)](bool saved) {
         if (onSaved) onSaved(saved);
     };
@@ -1436,6 +1456,7 @@ void DocumentModel::saveSectionOrAskForPath(
             return;
         }
         // 首次保存遵守请求范围，其他难度的修改保留在工作区。
+        if (!finishPendingEdits()) { finish(false); return; }
         const bool saved = runWorkspaceMutation(
             [&] { return fileService_->saveAs(path, difficultyId).accepted; });
         if (saved) {
@@ -1452,6 +1473,7 @@ void DocumentModel::saveSectionOrAskForPath(
 bool DocumentModel::saveMetadataImmediately()
 {
     metadataSaveTimer_.stop();
+    if (!metadataExtraDraft_.isNull()) return false;
     if (workspace_ && workspace_->isNetPreview()) return true;
     if (closeDecisionPending_) return true;
     if (workspace_ == nullptr || !workspace_->metadataDirty()
@@ -1466,6 +1488,18 @@ bool DocumentModel::saveMetadataImmediately()
     writeUnifiedDesignerPreference(currentFilePath(), workspace_->unifiedDesignerEnabled());
     publishWorkspaceCommit(WorkspaceCommitKind::SavePoint);
     return true;
+}
+
+bool DocumentModel::finishPendingEdits()
+{
+    emit editingFinishedRequested();
+    if (metadataExtraDraft_.isNull()) return true;
+    if (uiRequests_ != nullptr) {
+        uiRequests_->postNotice(miacode::NoticeSeverity::Error,
+            miacode::localizedText("qml.other_fields"),
+            miacode::localizedText("metadata.extra_field_format"));
+    }
+    return false;
 }
 
 void DocumentModel::requestCloseDifficulty(int difficultyId)
@@ -1486,12 +1520,13 @@ void DocumentModel::requestLeaveSection(int difficultyId, std::function<void(boo
     metadataSaveTimer_.stop();
     const auto finish = [this, onDecided = std::move(onDecided)](bool mayLeave) {
         closeDecisionPending_ = false;
-        if (workspace_ != nullptr && !workspace_->isNetPreview() && workspace_->metadataDirty() && !currentFilePath().isEmpty()) {
+        if (workspace_ != nullptr && metadataExtraDraft_.isNull() && !workspace_->isNetPreview()
+            && workspace_->metadataDirty() && !currentFilePath().isEmpty()) {
             metadataSaveTimer_.start();
         }
         if (onDecided) onDecided(mayLeave);
     };
-    emit editingFinishedRequested();
+    if (!finishPendingEdits()) { finish(false); return; }
     const auto snapshot = workspace_->snapshot();
     const bool wholeDocument = difficultyId == 0;
     if (!wholeDocument && workspace_->document().difficulty(difficultyId) == nullptr) {
@@ -1553,8 +1588,8 @@ int DocumentModel::saveSectionDifficultyId() const
 bool DocumentModel::save()
 {
     if (!hasDocument()) return false;
+    if (!finishPendingEdits()) return false;
     if (workspace_->isNetPreview()) { saveSectionOrAskForPath(0, {}); return true; }
-    emit editingFinishedRequested();
     if (fileService_ == nullptr) return false;
     const int sectionId = saveSectionDifficultyId();
     if (!runWorkspaceMutation([&] {
@@ -1572,8 +1607,8 @@ bool DocumentModel::save()
 bool DocumentModel::saveWholeDocument()
 {
     if (!hasDocument()) return false;
+    if (!finishPendingEdits()) return false;
     if (workspace_->isNetPreview()) { saveSectionOrAskForPath(0, {}); return true; }
-    emit editingFinishedRequested();
     if (fileService_ == nullptr) return false;
     if (!runWorkspaceMutation([&] { return fileService_->save(0).accepted; })) {
         uiRequests_->postNotice(miacode::NoticeSeverity::Error,
@@ -1587,7 +1622,6 @@ bool DocumentModel::saveWholeDocument()
 bool DocumentModel::saveAs(const QUrl& fileUrl)
 {
     if (!hasDocument()) return false;
-    emit editingFinishedRequested();
     const QString path = fileUrl.isLocalFile() ? fileUrl.toLocalFile() : fileUrl.toString();
     const bool saved = saveToPath(path);
     if (saved) {
@@ -1620,7 +1654,7 @@ void DocumentModel::selectDifficulty(int id)
 bool DocumentModel::addDifficulty(int id)
 {
     if (workspace_ == nullptr) return false;
-    emit editingFinishedRequested();
+    if (!finishPendingEdits()) return false;
     if (!runWorkspaceMutation([&] { return workspace_->addDifficulty(id); })) return false;
     publishWorkspaceCommit(WorkspaceCommitKind::Structure);
     saveSectionOrAskForPath(id, {});
@@ -1794,6 +1828,8 @@ void DocumentModel::publishWorkspaceCommit(
         metadataSaveTimer_.start();
     }
     if (replacement) {
+        metadataExtraDraft_ = QString();
+        metadataExtraError_.clear();
         ++documentGeneration_;
     }
     if (kind != WorkspaceCommitKind::ChartText) refreshUnifiedDesignerState();
@@ -1833,6 +1869,10 @@ void DocumentModel::refreshDocumentState()
     const miacode::ChartWorkspaceSnapshot workspaceSnapshot =
         workspace_ != nullptr ? workspace_->snapshot()
                               : miacode::ChartWorkspaceSnapshot();
+    if (metadataExtraDraftOpenGeneration_ != workspaceSnapshot.documentOpenGeneration) {
+        metadataExtraDraft_ = QString();
+        metadataExtraError_.clear();
+    }
     validationSnapshot_ = analysisService_ != nullptr
         ? miacode::ui::projectDocumentValidation(
               analysisService_->snapshot(), workspaceSnapshot.activeDifficultyId,
@@ -1841,8 +1881,9 @@ void DocumentModel::refreshDocumentState()
     documentRevision_ = workspaceSnapshot.revision;
     miacode::ui::DocumentPresentationInput input;
     input.activeDifficultyId = workspaceSnapshot.activeDifficultyId;
-    input.dirty = workspaceSnapshot.dirty;
-    input.metadataDirty = workspace_ != nullptr && workspace_->metadataDirty();
+    input.dirty = workspaceSnapshot.dirty || !metadataExtraDraft_.isNull();
+    input.metadataDirty = !metadataExtraDraft_.isNull()
+        || (workspace_ != nullptr && workspace_->metadataDirty());
     input.dirtyDifficultyIds = workspaceSnapshot.dirtyDifficultyIds;
     input.documentRevision = documentRevision_;
     input.validation = validationSnapshot_;
@@ -1852,6 +1893,7 @@ void DocumentModel::refreshDocumentState()
 bool DocumentModel::saveToPath(const QString& path)
 {
     if (!hasDocument() || fileService_ == nullptr || path.trimmed().isEmpty()) return false;
+    if (!finishPendingEdits()) return false;
     if (!runWorkspaceMutation([&] { return fileService_->saveAs(path, 0).accepted; })) {
         uiRequests_->postNotice(miacode::NoticeSeverity::Error,
             miacode::localizedText("document.save_failed"), miacode::localizedText("document.cannot_write_chart"));

@@ -229,7 +229,7 @@ ChartWorkspaceFileResult ChartWorkspaceFileService::writeToPath(
             return {false, before.revision, QStringLiteral("save_as_required"), {}};
     }
 
-    SimaiDocument savedDocument = SimaiDocument::fromText(workspace_->textForSectionSave(difficultyId));
+    SimaiDocument savedDocument = workspace_->documentForSectionSave(difficultyId);
     QString currentVideoPath = workspace_->document().videoPath;
     const QDir sourceDirectory = QFileInfo(before.filePath).absoluteDir();
     const QDir targetDirectory = QFileInfo(normalizedPath).absoluteDir();
@@ -259,7 +259,7 @@ ChartWorkspaceFileResult ChartWorkspaceFileService::writeToPath(
     if (!file.commit()) return {false, before.revision, QStringLiteral("commit_failed"), {}};
 
     if (transaction) transaction->commit();
-    workspace_->markSectionSaved(difficultyId, normalizedPath, currentVideoPath, savedDocument.videoPath);
+    workspace_->markSectionSaved(savedDocument, normalizedPath, currentVideoPath);
     return {true, workspace_->snapshot().revision, QString(), {}};
 }
 

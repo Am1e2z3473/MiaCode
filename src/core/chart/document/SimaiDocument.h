@@ -63,6 +63,7 @@ public:
 
     SimaiDifficultyData* difficulty(int id);
     const SimaiDifficultyData* difficulty(int id) const;
+    // Materializes the slot and adopts any standalone designer it owns.
     SimaiDifficultyData& ensureDifficulty(int id);
     void removeDifficulty(int id);
 
@@ -119,7 +120,7 @@ private:
     // `&des_N` names for slots that have no chart. Kept disjoint from
     // difficulties_ (a slot is in one map or the other, never both) so a
     // chart-less designer name round-trips without materializing an empty
-    // difficulty. fromText() moves designer-only difficulties here; toText()
+    // difficulty. fromText() routes designer-only fields here; toText()
     // emits a bare `&des_N=` line for each.
     QMap<int, QString> standaloneDesigners_;
 };

@@ -149,17 +149,16 @@ SimaiDocument SimaiDocument::fromText(const QString& text)
         QString prefix;
         int id = 0;
         if (parseDifficultySuffix(field.key, &prefix, &id)) {
-            SimaiDifficultyData& difficultyData = doc.ensureDifficulty(id);
             if (prefix == "lv") {
-                difficultyData.level = field.value;
+                doc.ensureDifficulty(id).level = field.value;
                 continue;
             }
             if (prefix == "des") {
-                difficultyData.designer = field.value;
+                doc.setDesignerForSlot(id, field.value);
                 continue;
             }
             if (prefix == "inote") {
-                difficultyData.chart = field.value;
+                doc.ensureDifficulty(id).chart = field.value;
                 continue;
             }
         }
@@ -167,24 +166,6 @@ SimaiDocument SimaiDocument::fromText(const QString& text)
         doc.extraFields.append(field);
     }
     ensureDefaultClockCount(&doc.extraFields);
-
-    // A `&des_N` with no accompanying `&lv_N` / `&inote_N` is a chart-less
-    // designer name, not a difficulty. Move those out of the difficulty map so
-    // they never surface as a phantom empty difficulty (sidebar entry / empty
-    // lv+inote on save). A genuinely all-empty difficulty (no name either) is
-    // left in place so a freshly-added blank difficulty still round-trips.
-    const QVector<int> parsedIds = doc.difficultyIds();
-    for (int id : parsedIds) {
-        const SimaiDifficultyData* difficultyData = doc.difficulty(id);
-        if (difficultyData == nullptr) {
-            continue;
-        }
-        if (difficultyData->level.isEmpty() && difficultyData->chart.isEmpty()
-            && !difficultyData->designer.isEmpty()) {
-            doc.standaloneDesigners_[id] = difficultyData->designer;
-            doc.difficulties_.remove(id);
-        }
-    }
 
     return doc;
 }
@@ -464,6 +445,11 @@ SimaiDifficultyData& SimaiDocument::ensureDifficulty(int id)
 {
     SimaiDifficultyData& difficultyData = difficulties_[id];
     difficultyData.id = id;
+    // Materializing a slot transfers its designer, including when &des_N
+    // precedes an explicitly empty &lv_N / &inote_N during parsing.
+    if (standaloneDesigners_.contains(id)) {
+        difficultyData.designer = standaloneDesigners_.take(id);
+    }
     return difficultyData;
 }
 

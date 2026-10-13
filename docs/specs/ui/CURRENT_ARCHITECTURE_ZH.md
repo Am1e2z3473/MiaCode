@@ -32,6 +32,11 @@ QML engine 创建根窗口，`runtime::Session` 是 QObject 装配对象，拥�
 | VideoExportHost / MediaJobsHost | 视频导出与媒体处理引擎 |
 | SettingsHost / EditorHost / ValidationHost / StageMediaHost / ShellHost | 偏好、编辑器持久状态、校验展示、舞台媒体、窗口生命周期 |
 
+扩展字段表单提交失败时，`DocumentModel` 保留带文档打开代次的输入草稿及格式错误。
+草稿不进入 `ChartWorkspace`、不推进文档 revision；界面的未保存状态包含该草稿，
+保存、页面切换和标签/文档关闭均先提交输入，失败时保留当前视图。纠正后原子提交全部扩展字段；
+显式放弃或替换文档清除旧草稿。文件服务直接写入分层合并后的文档对象，并以同一对象更新保存点。
+
 具体安装关系以 `src/app/runtime/SessionBootstrap.cpp` 和 `ApplicationServices` 为准。
 
 app 内部的方向：`app/services` 和 `app/runtime` 不包含 `app/ui`；只有进程入口（`main.cpp`、`cli_*.cpp`、

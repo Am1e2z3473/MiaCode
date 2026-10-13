@@ -34,6 +34,36 @@ miacode_add_spec(qml_chart_drop_bridge_spec
     INCLUDES src
 )
 
+miacode_add_spec(document_model_save_spec
+    OWNER src/app/ui
+    CONTRACT qml-ui.document-model-save
+    DOMAIN ui KIND behavior RISK high
+    EXECUTION ctest STATUS active PLATFORM all
+    SOURCES
+        src/tools/ui/DocumentModelSaveSpec.cpp
+        src/app/ui/document/DocumentModel.cpp
+        src/app/ui/document/DocumentModel.h
+        src/app/ui/preferences/LocaleService.cpp
+        src/app/ui/preferences/LocaleService.h
+        src/app/services/PreferenceDocument.cpp
+        src/app/services/ChartWorkspace.cpp
+        src/app/services/ChartWorkspace.h
+        src/app/services/ChartWorkspaceFileService.cpp
+        src/app/services/DocumentProjection.cpp
+        src/app/services/AnalysisService.cpp
+        src/app/services/AnalysisService.h
+        src/app/services/ShellNotifications.cpp
+        src/app/services/ShellNotifications.h
+        src/app/services/UiRequestService.cpp
+        src/app/services/UiRequestService.h
+        src/app/services/ChartMediaService.cpp
+        src/app/services/ChartMediaImport.cpp
+        src/app/services/Id3TagReader.cpp
+        src/app/services/ProjectPreferences.cpp
+    LIBS miacode_analysis miacode_audio miacode_editor_core Qt6::Core Qt6::Gui Qt6::Qml
+    INCLUDES src
+)
+
 miacode_add_spec(qml_document_projection_spec
     OWNER src/app/ui
     CONTRACT qml-ui.qml-document-projection

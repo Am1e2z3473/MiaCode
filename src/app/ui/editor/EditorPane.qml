@@ -656,9 +656,19 @@ Item {
                     onActiveFocusChanged: {
                         if (!activeFocus && extraFieldsEdit.userEdited) {
                             root.documentSession.metadataExtraText = text
+                            // The model retains rejected input and owns its dirty state.
                             extraFieldsEdit.userEdited = false
                         }
                     }
+                }
+                Label {
+                    Layout.fillWidth: true
+                    visible: root.documentSession.metadataExtraError.length > 0
+                    text: root.documentSession.metadataExtraError
+                    color: Theme.colors.syntax.error
+                    font.family: Theme.uiFont
+                    font.pixelSize: Theme.secondaryFontSize
+                    wrapMode: Text.WordWrap
                 }
             }
         }

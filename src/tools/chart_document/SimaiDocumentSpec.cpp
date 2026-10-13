@@ -163,6 +163,39 @@ void runSpecs(QTextStream& out, int* failed)
         expectTrue(doc.standaloneDesignerIds().isEmpty(), "blank difficulty is not a standalone", failed, out);
     }
 
+    // Explicit lv/inote headers define a difficulty even when both values are
+    // empty and its designer is named. Header order must not change ownership.
+    for (const QString& source : {
+             QStringLiteral("&lv_7=\n&des_7=Alice\n&inote_7=\n"),
+             QStringLiteral("&des_7=Alice\n&lv_7=\n&inote_7=\n"),
+             QStringLiteral("&inote_7=\n&des_7=Alice\n"),
+             QStringLiteral("&des_7=Alice\n&lv_7=\n")}) {
+        const SimaiDocument doc = SimaiDocument::fromText(source);
+        const SimaiDocument round = SimaiDocument::fromText(doc.toText());
+        expectTrue(doc.difficulty(7) != nullptr && round.difficulty(7) != nullptr,
+                   "named empty difficulty survives every header order", failed, out);
+        expectTrue(doc.standaloneDesignerIds().isEmpty(),
+                   "named empty difficulty exclusively owns its designer", failed, out);
+        expectEqual(round.designerForSlot(7), "Alice", "named empty designer round-trips", failed, out);
+    }
+    {
+        const SimaiDocument doc = SimaiDocument::fromText(
+            "&custom_3=kept\n&other_7=also kept\n&des_2=Bob\n&lv_5=12\n&inote_5=E\n");
+        expectTrue(doc.difficultyIds() == QVector<int>{5},
+                   "unknown suffixed fields never materialize difficulties", failed, out);
+        expectTrue(hasLine(doc.toText(), "&custom_3=kept") && hasLine(doc.toText(), "&other_7=also kept"),
+                   "unknown suffixed fields remain extra fields", failed, out);
+    }
+    {
+        SimaiDocument doc = SimaiDocument::fromText("&des_3=old name\n");
+        expectEqual(doc.ensureDifficulty(3).designer, "old name", "materializing adopts designer", failed, out);
+        expectTrue(doc.standaloneDesignerIds().isEmpty(), "materializing transfers designer ownership", failed, out);
+        doc.setDesignerForSlot(3, "new name");
+        doc.removeDifficulty(3);
+        expectTrue(doc.designerForSlot(3).isEmpty() && !hasKeyLine(doc.toText(), "des_3"),
+                   "removing an adopted difficulty never resurrects an old designer", failed, out);
+    }
+
     // --- &clock_count default is materialized exactly once and never stacks. ---
     {
         // Regression: fromText() used to start from createEmpty() (which seeds a
