@@ -535,6 +535,20 @@ Rectangle {
                                         objectName: "coverOutputFileField"
                                         Layout.fillWidth: true
                                         text: root.session ? root.session.outputFile : ""
+                                        property string committedOutputPath: ""
+                                        Component.onCompleted: committedOutputPath = root.session ? root.session.outputFilePath : ""
+                                        Connections {
+                                            target: root.session
+                                            function onOutputChanged() {
+                                                const path = root.session ? root.session.outputFilePath : ""
+                                                if (path === outputFileField.committedOutputPath)
+                                                    return
+                                                outputFileField.committedOutputPath = path
+                                                outputFileField.text = Qt.binding(function() {
+                                                    return root.session ? root.session.outputFile : ""
+                                                })
+                                            }
+                                        }
                                         onEditingFinished: {
                                             if (root.session)
                                                 root.session.outputFile = text

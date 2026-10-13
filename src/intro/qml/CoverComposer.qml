@@ -178,6 +178,9 @@ Item {
     readonly property url backdropSourceUrl:
         backgroundMode === 1 ? backgroundImage
                              : (backgroundMode === 0 ? jacketImage : "")
+    // Canvas transparency does not remove an image background selected for a frame.
+    readonly property url chartFrameBackgroundSourceUrl:
+        backgroundMode === 1 ? backgroundImage : jacketImage
 
     // ---- per-layer pixel geometry helpers (used by selection chrome) ----
     function layerContentH(l) { return (l ? l.sizeFraction : 0.85) * canvas.height }
@@ -472,7 +475,7 @@ Item {
             readonly property bool showsImageDiskBg:
                 isChartFrame && layerItem.frameBgMode === "image"
                 && canvas.chartFrameDiskDiameter > 0
-                && canvas.backdropSourceUrl.toString().length > 0
+                && canvas.chartFrameBackgroundSourceUrl.toString().length > 0
             readonly property bool showsTransparentDiskBg:
                 isChartFrame && layerItem.frameBgMode === "transparent"
                 && canvas.chartFrameDiskDiameter > 0
@@ -575,7 +578,7 @@ Item {
                             source: !layerItem.isChartFrame ? ""
                                     : layerItem.showsPvDiskBg
                                       ? ("image://coverchart/pv/" + layerItem.ld.key + "?r=" + layerItem.ld.pvFrameRevision)
-                                      : canvas.backdropSourceUrl
+                                      : canvas.chartFrameBackgroundSourceUrl
                             fillMode: Image.Stretch
                             asynchronous: false
                             cache: false

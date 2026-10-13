@@ -93,6 +93,7 @@ int main(int argc, char** argv)
     int failed = 0;
 
     const QString page = readSource(QStringLiteral("src/app/ui/export/CoverExportPage.qml"));
+    const QString layerList = readSource(QStringLiteral("src/app/ui/export/CoverLayerList.qml"));
     const QString sessionHeader = readSource(
         QStringLiteral("src/app/ui/export/CoverExportSession.h"));
     const QString session = readSource(
@@ -251,6 +252,16 @@ int main(int argc, char** argv)
     expect(seedPlaybackSync >= 0 && seedSecondsSignal > seedPlaybackSync,
            QStringLiteral("cover entry republishes the restored frame time after playback sync"),
            out, &failed);
+    expect(seedBody.contains(QStringLiteral("if (frameRenderer_ == nullptr)"))
+               && seedBody.contains(QStringLiteral("pvFrames_->cancelAll()")),
+           QStringLiteral("chart switches advance the existing renderer revision and cancel old PV decodes"),
+           out, &failed);
+    expect(composer.contains(QStringLiteral("backgroundMode === 1 ? backgroundImage : jacketImage"))
+               && composer.contains(QStringLiteral("canvas.chartFrameBackgroundSourceUrl.toString().length > 0"))
+               && page.contains(QStringLiteral("function onOutputChanged()"))
+               && page.contains(QStringLiteral("outputFileField.committedOutputPath = path")),
+           QStringLiteral("frame image backgrounds survive transparent canvases and output edits follow project changes"),
+           out, &failed);
     expect(sceneRendererHeader.contains(QStringLiteral("prepareCaptureWindow"))
                && sceneRendererHeader.contains(QStringLiteral("captureReady"))
                && sceneRenderer.contains(QStringLiteral("sceneGraphInitialized"))
@@ -309,7 +320,8 @@ int main(int argc, char** argv)
     // effect of the model. This catches regressions where a canvas tap changes
     // the active layer but leaves the inspector on the canvas tab.
     expect(page.contains(QStringLiteral("function selectLayerFromUi(key)"))
-               && page.contains(QStringLiteral("root.selectLayerFromUi(layerRow.modelData.key)"))
+               && page.contains(QStringLiteral("onLayerSelected: key => root.selectLayerFromUi(key)"))
+               && layerList.contains(QStringLiteral("root.layerSelected(key)"))
                && composer.contains(QStringLiteral("canvas.layerSelectionCallback.call(canvas, key)")),
            QStringLiteral("all interactive layer selections route to the layer inspector"),
            out, &failed);
@@ -401,16 +413,17 @@ int main(int argc, char** argv)
            &failed);
 
     const int layerSection = layerPageMarker;
-    const int inspectorOpen = page.indexOf(QStringLiteral("AppTabPages {\n                            id: inspector"));
+    const int inspectorOpen = page.indexOf(QStringLiteral("AppTabPages {"));
     const int inspectorClose = matchingBrace(page, page.indexOf(QLatin1Char('{'), inspectorOpen));
     const int cardSection = page.indexOf(QStringLiteral("id: cardSettings"));
     const int presetSection = page.indexOf(QStringLiteral("id: presetDialog"));
     const int layerRowSelection = page.indexOf(
-        QStringLiteral("root.selectLayerFromUi(layerRow.modelData.key)"));
+        QStringLiteral("onLayerSelected: key => root.selectLayerFromUi(key)"));
     const int layerRowTabRoute = page.lastIndexOf(
         QStringLiteral("root.showLayerInspector(key)"), layerRowSelection);
     const QString tabPages = readSource(QStringLiteral("src/app/ui/components/AppTabPages.qml"));
-    expect(page.count(QStringLiteral("Flickable {")) == 1
+    const int inspectorPane = page.indexOf(QStringLiteral("id: inspectorPane"));
+    expect(inspectorPane >= 0 && page.mid(inspectorPane).count(QStringLiteral("Flickable {")) == 1
                && page.contains(QStringLiteral("currentIndex: inspectorTabs.currentIndex"))
                && tabPages.contains(QStringLiteral("StackLayout {"))
                && tabPages.contains(QStringLiteral("children[currentIndex].implicitHeight"))
@@ -489,10 +502,11 @@ int main(int argc, char** argv)
            QStringLiteral("continuous cover edits use a 500 ms session-owned trailing save"), out, &failed);
     const int flushStart = session.indexOf(QStringLiteral("void CoverExportSession::flushComposition()"));
     const QString flushBody = session.mid(flushStart, matchingBrace(session, session.indexOf(QLatin1Char('{'), flushStart)) - flushStart + 1);
-    expect(flushBody.contains(QStringLiteral("savePreferences(compositionJson())"))
-               && flushBody.contains(QStringLiteral("if (!compositionDirty_) return"))
+    expect(flushBody.contains(QStringLiteral("savePreferences(sharedCompositionJson())"))
+               && flushBody.contains(QStringLiteral("project_preferences::save(task_.chartPath, project)"))
+               && flushBody.contains(QStringLiteral("backgroundDirty_ = false"))
                && flushBody.contains(QStringLiteral("compositionDirty_ = false")),
-           QStringLiteral("flush serializes current composition and clears dirty only after success"), out, &failed);
+           QStringLiteral("flush saves shared appearance and project destinations/backgrounds, clearing dirty after success"), out, &failed);
     expect(session.contains(QStringLiteral("CoverExportSession::~CoverExportSession()\n{\n    flushComposition();"))
                && session.contains(QStringLiteral("persistComposition();\n    flushComposition();\n    pageSessionActive_ = false;")),
            QStringLiteral("leaving and destruction flush pending cover edits"), out, &failed);

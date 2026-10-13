@@ -201,6 +201,27 @@ miacode_add_spec(qml_selection_range_export_contract_spec
 target_compile_definitions(qml_selection_range_export_contract_spec PRIVATE
     "MIACODE_SOURCE_ROOT=\"${CMAKE_CURRENT_SOURCE_DIR}\"")
 
+miacode_add_spec(cover_export_session_spec
+    OWNER src/app/ui
+    CONTRACT qml-ui.cover-export-session
+    DOMAIN ui KIND integration RISK normal
+    EXECUTION ctest STATUS active PLATFORM all
+    SOURCES
+        src/tools/ui/CoverExportSessionSpec.cpp
+        src/app/ui/export/CoverExportSession.cpp
+        src/app/ui/export/CoverExportSession.h
+        src/app/ui/preferences/LocaleService.cpp
+        src/app/ui/preferences/LocaleService.h
+        src/app/services/PreferenceDocument.cpp
+        src/app/services/ProjectPreferences.cpp
+        src/app/services/UiRequestService.cpp
+        src/app/services/UiRequestService.h
+    LIBS miacode_export Qt6::Quick
+    INCLUDES src
+)
+target_compile_definitions(cover_export_session_spec PRIVATE
+    "MIACODE_SOURCE_ROOT=\"${CMAKE_CURRENT_SOURCE_DIR}\"")
+
 miacode_add_spec(qml_cover_export_contract_spec
     OWNER src/app/ui
     CONTRACT qml-ui.qml-cover-export-contract

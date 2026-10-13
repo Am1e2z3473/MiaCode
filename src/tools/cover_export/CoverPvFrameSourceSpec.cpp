@@ -4,6 +4,7 @@
 #include <QCoreApplication>
 #include <QColor>
 #include <QElapsedTimer>
+#include <QFile>
 #include <QProcess>
 #include <QTemporaryDir>
 #include <QTextStream>
@@ -123,6 +124,18 @@ int main(int argc, char* argv[])
     source.cancel(QStringLiteral("other"));
     waitFor([] { return false; }, 1500);
     ok &= require(ready.size() == 2, QStringLiteral("a cancelled request is dropped"), err);
+
+    // Reuse a layer key after switching charts while its old decode is pending.
+    const QString nextPvPath = tempDir.filePath(QStringLiteral("next-chart.mp4"));
+    ok &= require(QFile::copy(pvPath, nextPvPath), QStringLiteral("second chart PV fixture exists"), err);
+    source.request(QStringLiteral("frame"), pvPath, 0.2, 80);
+    source.cancelAll();
+    source.request(QStringLiteral("frame"), nextPvPath, 1.5, 80);
+    ok &= require(waitFor([&] { return ready.size() > 2; }, 30000),
+                  QStringLiteral("new chart delivers its PV"), err);
+    waitFor([] { return false; }, 300);
+    ok &= require(ready.size() == 3 && isBlue(lastImage),
+                  QStringLiteral("chart switch drops the old PV even when its layer key is reused"), err);
 
     if (ok) {
         out << "cover_pv_frame_source_spec ok" << Qt::endl;
