@@ -20,6 +20,7 @@
 #include "core/video/PreviewVideoGeometryConfig.h"
 #include "core/video/PreviewGameplayConfig.h"
 #include "export/video_export/VideoExportRuntimePolicy.h"
+#include "export/video_export/VideoExportOutput.h"
 enum class VideoExportPreset {
     Fast,
     HighQuality,
@@ -205,6 +206,7 @@ inline QVariantMap introBannerStyleMap(const IntroBannerSpec& intro, bool pvVide
 struct VideoExportTask {
     miacode::preview::scene::PreviewHudFontSettings hudFontSettings;
     QString outputPath;
+    VideoExportOutputMode outputMode = VideoExportOutputMode::Mp4;
     QString chartPath;
     QString backgroundMediaPath;
     QString trackPath;

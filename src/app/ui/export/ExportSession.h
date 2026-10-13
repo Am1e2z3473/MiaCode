@@ -48,6 +48,8 @@ class ExportSession final : public QObject, public miacode::ExportPagePort
     Q_PROPERTY(QVariantList fpsOptions READ fpsOptions CONSTANT)
     Q_PROPERTY(int audioBitrateKbps READ audioBitrateKbps WRITE setAudioBitrateKbps NOTIFY outputChanged)
     Q_PROPERTY(QVariantList audioBitrateOptions READ audioBitrateOptions CONSTANT)
+    Q_PROPERTY(int outputModeIndex READ outputModeIndex WRITE setOutputModeIndex NOTIFY outputChanged)
+    Q_PROPERTY(QVariantList outputModeOptions READ outputModeOptions NOTIFY localeLabelsChanged)
     Q_PROPERTY(int presetIndex READ presetIndex WRITE setPresetIndex NOTIFY outputChanged)
     Q_PROPERTY(QVariantList presetOptions READ presetOptions NOTIFY localeLabelsChanged)
     Q_PROPERTY(int sizePresetIndex READ sizePresetIndex WRITE setSizePresetIndex NOTIFY outputChanged)
@@ -137,6 +139,8 @@ public:
     QVariantList fpsOptions() const;
     int audioBitrateKbps() const { return task_.audioBitrateKbps; }
     QVariantList audioBitrateOptions() const;
+    int outputModeIndex() const { return static_cast<int>(task_.outputMode); }
+    QVariantList outputModeOptions() const;
     int presetIndex() const;
     QVariantList presetOptions() const;
     int sizePresetIndex() const;
@@ -229,6 +233,7 @@ public:
     void setResolutionIndex(int index);
     void setFps(int fps);
     void setAudioBitrateKbps(int kbps);
+    void setOutputModeIndex(int index);
     void setPresetIndex(int index);
     void setSizePresetIndex(int index);
     void setShowObjectStatsHud(bool value);

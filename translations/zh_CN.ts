@@ -4703,6 +4703,18 @@ Error: %1</source>
         <source>Play Export Range</source>
         <translation>播放导出区间</translation>
     </message>
+    <message id="dialog.video_export.output_mode">
+        <source>Output Format</source>
+        <translation>输出格式</translation>
+    </message>
+    <message id="file_filter.wav">
+        <source>WAV Audio (*.wav)</source>
+        <translation>WAV 音频 (*.wav)</translation>
+    </message>
+    <message id="dialog.video_export.progress.finalizing_wav">
+        <source>Finalizing WAV audio…</source>
+        <translation>完成 WAV 音频输出…</translation>
+    </message>
 </context>
 
 

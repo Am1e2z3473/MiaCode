@@ -146,6 +146,26 @@ QVariantList ExportSession::audioBitrateOptions() const
     return list;
 }
 
+QVariantList ExportSession::outputModeOptions() const
+{
+    return {QVariantMap{{"value", 0}, {"label", QStringLiteral("MP4")}},
+            QVariantMap{{"value", 1}, {"label", QStringLiteral("WAV")}},
+            QVariantMap{{"value", 2}, {"label", QStringLiteral("MP4 + WAV")}}};
+}
+
+void ExportSession::setOutputModeIndex(int index)
+{
+    if (index < 0 || index > 2 || outputModeIndex() == index) {
+        return;
+    }
+    task_.outputMode = static_cast<VideoExportOutputMode>(index);
+    if (!task_.outputPath.isEmpty()) {
+        task_.outputPath = videoExportPrimaryOutputPath(task_.outputPath, task_.outputMode);
+    }
+    emit outputChanged();
+    savePreferences();
+}
+
 QVariantList ExportSession::presetOptions() const
 {
     return QVariantList{
@@ -855,7 +875,8 @@ void ExportSession::browseOutputPath()
     miacode::FileRequest request;
     request.title = miacode::localizedText("dialog.video_export.title");
     request.startPath = task_.outputPath;
-    request.nameFilters = {miacode::localizedText("file_filter.mp4")};
+    request.nameFilters = {miacode::localizedText(
+        task_.outputMode == VideoExportOutputMode::Wav ? "file_filter.wav" : "file_filter.mp4")};
     request.saveMode = true;
     uiRequests_->requestFile(request, [this](const QString& path) {
         if (!path.isEmpty()) {
@@ -1125,7 +1146,7 @@ void ExportSession::setOutputPath(const QString& path)
     if (task_.outputPath == path) {
         return;
     }
-    task_.outputPath = path;
+    task_.outputPath = path.trimmed().isEmpty() ? QString() : videoExportPrimaryOutputPath(path, task_.outputMode);
     emit outputChanged();
 }
 

@@ -15,6 +15,7 @@ struct ExportEstimateProfile {
     double durationSeconds = 0.0;
     VideoExportPreset preset = VideoExportPreset::HighQuality;
     VideoExportSizePreset sizePreset = VideoExportSizePreset::Standard;
+    VideoExportOutputMode outputMode = VideoExportOutputMode::Mp4;
 };
 
 ExportEstimateProfile exportEstimateProfileForSnapshot(const ::VideoExportSnapshot& snapshot);

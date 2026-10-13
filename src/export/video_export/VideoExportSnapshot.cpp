@@ -232,6 +232,7 @@ QJsonObject VideoExportSnapshot::toJson() const
         miacode::video_export::videoExportSizePresetToken(sizePreset));
     exportObject.insert(QStringLiteral("full_range_export"), fullRangeExport);
     exportObject.insert(QStringLiteral("output_path"), outputPath);
+    exportObject.insert(QStringLiteral("output_mode"), videoExportOutputModeToken(outputMode));
     root.insert(QStringLiteral("export"), exportObject);
 
     QJsonObject introObject;
@@ -394,6 +395,7 @@ bool VideoExportSnapshot::fromJson(
         exportObject.value(QStringLiteral("size_preset")).toString());
     parsed.fullRangeExport = exportObject.value(QStringLiteral("full_range_export")).toBool(parsed.fullRangeExport);
     parsed.outputPath = exportObject.value(QStringLiteral("output_path")).toString();
+    parsed.outputMode = videoExportOutputModeFromToken(exportObject.value(QStringLiteral("output_mode")).toString());
 
     const QJsonObject introObject = object.value(QStringLiteral("intro")).toObject();
     parsed.intro.enabled = introObject.value(QStringLiteral("enabled")).toBool(parsed.intro.enabled);
@@ -485,6 +487,7 @@ bool buildVideoExportTaskFromSnapshot(
     VideoExportTask built;
     built.hudFontSettings = snapshot.hudFontSettings;
     built.outputPath = snapshot.outputPath;
+    built.outputMode = snapshot.outputMode;
     built.chartPath = snapshot.originalChartPath;
     built.backgroundMediaPath = miacode::chart_assets::resolvePreferredBackgroundMediaPath(
         snapshot.originalChartPath,

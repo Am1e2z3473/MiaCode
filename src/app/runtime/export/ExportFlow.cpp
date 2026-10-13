@@ -48,90 +48,6 @@ QString sanitizeExportFileStem(QString text, const QString& fallback = QStringLi
     return sanitized.isEmpty() ? fallback : sanitized;
 }
 
-QString appendMp4SuffixIfMissing(QString outputPath)
-{
-    outputPath = QDir::cleanPath(QDir::fromNativeSeparators(outputPath.trimmed()));
-    if (outputPath.isEmpty()) {
-        return QString();
-    }
-    if (!outputPath.endsWith(QStringLiteral(".mp4"), Qt::CaseInsensitive)) {
-        outputPath += QStringLiteral(".mp4");
-    }
-    return outputPath;
-}
-
-QString makeUniqueVideoExportOutputPath(const QString& outputPath)
-{
-    const QString normalizedPath = appendMp4SuffixIfMissing(outputPath);
-    if (normalizedPath.isEmpty()) {
-        return QString();
-    }
-
-    const QFileInfo outputInfo(normalizedPath);
-    const QDir outputDir = outputInfo.absoluteDir();
-    QString fileStem = outputInfo.fileName().trimmed();
-    if (fileStem.endsWith(QStringLiteral(".mp4"), Qt::CaseInsensitive)) {
-        fileStem.chop(4);
-    }
-    if (fileStem.isEmpty()) {
-        fileStem = QStringLiteral("out");
-    }
-
-    const auto buildCandidatePath = [&outputDir, &fileStem](int duplicateIndex) {
-        const QString fileName = duplicateIndex <= 0
-            ? QStringLiteral("%1.mp4").arg(fileStem)
-            : QStringLiteral("%1(%2).mp4").arg(fileStem).arg(duplicateIndex);
-        return QDir::cleanPath(outputDir.filePath(fileName));
-    };
-
-    QString candidatePath = buildCandidatePath(0);
-    if (!QFileInfo::exists(candidatePath)) {
-        return candidatePath;
-    }
-
-    for (int duplicateIndex = 1;; ++duplicateIndex) {
-        candidatePath = buildCandidatePath(duplicateIndex);
-        if (!QFileInfo::exists(candidatePath)) {
-            return candidatePath;
-        }
-    }
-}
-
-QString resolveVideoExportOutputPath(
-    const QString& requestedOutputPath,
-    const QString& defaultDirectory,
-    const QString& defaultOutputName
-)
-{
-    const QString baseDirectory = defaultDirectory.trimmed().isEmpty()
-        ? QDir::currentPath()
-        : QDir::cleanPath(QDir::fromNativeSeparators(defaultDirectory.trimmed()));
-    const QString normalizedDefaultName = appendMp4SuffixIfMissing(
-        defaultOutputName.trimmed().isEmpty() ? QStringLiteral("out.mp4") : defaultOutputName
-    );
-
-    const QString trimmedRequestedOutput = requestedOutputPath.trimmed();
-    QString resolvedOutputPath = QDir::fromNativeSeparators(trimmedRequestedOutput);
-    if (resolvedOutputPath.isEmpty()) {
-        resolvedOutputPath = QDir(baseDirectory).filePath(normalizedDefaultName);
-    } else {
-        const bool trailingSeparator = trimmedRequestedOutput.endsWith('/') || trimmedRequestedOutput.endsWith('\\');
-        const QFileInfo requestedInfo(resolvedOutputPath);
-        if (requestedInfo.isRelative()) {
-            resolvedOutputPath = QDir(baseDirectory).absoluteFilePath(resolvedOutputPath);
-        }
-
-        const QFileInfo absoluteInfo(resolvedOutputPath);
-        if ((absoluteInfo.exists() && absoluteInfo.isDir()) || trailingSeparator) {
-            const QString outputDirPath = absoluteInfo.exists() && absoluteInfo.isDir()
-                ? absoluteInfo.absoluteFilePath()
-                : resolvedOutputPath;
-            resolvedOutputPath = QDir(outputDirPath).filePath(normalizedDefaultName);
-        }
-    }
-
-    return makeUniqueVideoExportOutputPath(resolvedOutputPath);
-}
 
 int difficultyIdFromCliToken(const QString& rawToken)
 {
@@ -729,7 +645,9 @@ bool miacode::runtime::VideoExportHost::runBatchExport(
             continue;
         }
         ++result->successCount;
-        result->exportedFiles.append(QFileInfo(snapshot.outputPath).fileName());
+        for (const auto& outputPath : videoExportOutputPaths(snapshot.outputPath, snapshot.outputMode)) {
+            result->exportedFiles.append(QFileInfo(outputPath).fileName());
+        }
     }
     if (callbacks.progressChanged) {
         callbacks.progressChanged(100, QString());

@@ -4703,6 +4703,18 @@ Error: %1</source>
         <source>Play Export Range</source>
         <translation>出力範囲を再生</translation>
     </message>
+    <message id="dialog.video_export.output_mode">
+        <source>Output Format</source>
+        <translation>出力形式</translation>
+    </message>
+    <message id="file_filter.wav">
+        <source>WAV Audio (*.wav)</source>
+        <translation>WAV 音声 (*.wav)</translation>
+    </message>
+    <message id="dialog.video_export.progress.finalizing_wav">
+        <source>Finalizing WAV audio…</source>
+        <translation>WAV 音声を仕上げ中…</translation>
+    </message>
 </context>
 
 

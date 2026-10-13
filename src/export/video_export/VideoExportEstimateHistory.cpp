@@ -115,6 +115,7 @@ QVector<Sample> loadSamples(const QString& path)
             : VideoExportPreset::HighQuality;
         sample.profile.sizePreset = sizePresetFromToken(
             object.value(QStringLiteral("size_preset")).toString());
+        sample.profile.outputMode = videoExportOutputModeFromToken(object.value(QStringLiteral("output_mode")).toString());
         sample.elapsedMs = object.value(QStringLiteral("elapsed_ms")).toVariant().toLongLong();
         sample.createdAtUtc = object.value(QStringLiteral("created_at_utc")).toString();
         if (validProfile(sample.profile) && sample.elapsedMs >= 100 && sample.elapsedMs <= 7LL * 24LL * 60LL * 60LL * 1000LL) {
@@ -137,6 +138,7 @@ QJsonObject sampleToJson(const Sample& sample)
     object.insert(QStringLiteral("duration_seconds"), sample.profile.durationSeconds);
     object.insert(QStringLiteral("preset"), presetToken(sample.profile.preset));
     object.insert(QStringLiteral("size_preset"), sizePresetToken(sample.profile.sizePreset));
+    object.insert(QStringLiteral("output_mode"), videoExportOutputModeToken(sample.profile.outputMode));
     object.insert(QStringLiteral("elapsed_ms"), sample.elapsedMs);
     return object;
 }
@@ -152,6 +154,7 @@ ExportEstimateProfile exportEstimateProfileForSnapshot(const ::VideoExportSnapsh
     profile.durationSeconds = snapshot.contentDurationSeconds;
     profile.preset = snapshot.preset;
     profile.sizePreset = snapshot.sizePreset;
+    profile.outputMode = snapshot.outputMode;
     return profile;
 }
 
@@ -176,7 +179,8 @@ qint64 predictedExportTotalMs(
     QVector<Candidate> candidates;
     const double requestedWork = workUnits(profile);
     for (const Sample& sample : loadSamples(resolvedHistoryPath(historyPathOverride))) {
-        if (sample.profile.preset != profile.preset
+        if (sample.profile.outputMode != profile.outputMode
+            || sample.profile.preset != profile.preset
             || sample.profile.sizePreset != profile.sizePreset) {
             continue;
         }
