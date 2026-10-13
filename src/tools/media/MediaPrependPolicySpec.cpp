@@ -2,9 +2,11 @@
 
 #include <QCoreApplication>
 #include <QDir>
+#include <QFileInfo>
 #include <QProcess>
 #include <QTemporaryDir>
 #include <QTextStream>
+#include <algorithm>
 #include <cmath>
 #include <cstring>
 
@@ -55,6 +57,50 @@ bool checkAudio(const QString& ffmpeg, const QString& directory, const QString& 
     return true;
 }
 
+bool checkVideo(const QString& ffmpeg, const QString& directory)
+{
+    using namespace miacode::media;
+    const QString source = QDir(directory).filePath(QStringLiteral("source.mp4"));
+    const QString output = QDir(directory).filePath(QStringLiteral("padded.mp4"));
+    const QString passLog = QDir(directory).filePath(QStringLiteral("video-pass"));
+    if (!run(ffmpeg, {"-hide_banner", "-loglevel", "error", "-y", "-f", "lavfi", "-i",
+                     "testsrc2=size=320x180:rate=24:duration=2", "-c:v", "libx264",
+                     "-preset", "veryfast", "-b:v", "1000k", "-pix_fmt", "yuv420p", source})) {
+        return false;
+    }
+    auto plan = makePvPrependCompressionPlan(QFileInfo(source).size(), 2.0, 0.5);
+    if (!run(ffmpeg, makePvPrependPassArguments(source, output, passLog, plan, 0.5, 1))
+        || !run(ffmpeg, makePvPrependPassArguments(source, output, passLog, plan, 0.5, 2))
+        || !isAcceptablePvPrependOutput(plan, QFileInfo(output).size())) {
+        return false;
+    }
+    QByteArray firstFrame;
+    if (!run(ffmpeg, {"-hide_banner", "-loglevel", "error", "-i", output,
+                     "-frames:v", "1", "-pix_fmt", "gray", "-f", "rawvideo", "-"}, &firstFrame)
+        || firstFrame.size() != 320 * 180
+        || !std::all_of(firstFrame.begin(), firstFrame.end(), [](char value) {
+            return static_cast<unsigned char>(value) <= 4;
+        })) {
+        QTextStream(stderr) << "prepended PV retains source dimensions and starts with black" << Qt::endl;
+        return false;
+    }
+    QByteArray progress;
+    if (!run(ffmpeg, {"-hide_banner", "-loglevel", "error", "-i", output,
+                     "-progress", "pipe:1", "-nostats", "-f", "null", "-"}, &progress)) {
+        return false;
+    }
+    int frames = 0;
+    qint64 durationUs = 0;
+    for (const auto& line : QString::fromUtf8(progress).split('\n')) {
+        if (line.startsWith(QStringLiteral("frame="))) frames = line.mid(6).toInt();
+        if (line.startsWith(QStringLiteral("out_time_us="))) durationUs = line.mid(12).toLongLong();
+    }
+    const auto capped = makePvPrependCompressionPlan(19'000'000, 2.0, 10.0);
+    return frames == 60 && std::abs(durationUs - 2'500'000) <= 50'000
+        && capped.targetBytes == kPvCompressionWorkingTargetBytes
+        && !isAcceptablePvPrependOutput(capped, kPvCompressionHardLimitBytes);
+}
+
 } // namespace
 
 int main(int argc, char** argv)
@@ -72,5 +118,5 @@ int main(int argc, char** argv)
             return 1;
         }
     }
-    return 0;
+    return checkVideo(ffmpeg, directory.path()) ? 0 : 1;
 }

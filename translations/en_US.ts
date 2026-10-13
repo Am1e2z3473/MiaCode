@@ -4715,6 +4715,18 @@ Error: %1</translation>
         <source>Finalizing WAV audio…</source>
         <translation>Finalizing WAV audio…</translation>
     </message>
+    <message id="media_tools.pv_geometry_probe_failed">
+        <source>Failed to read PV dimensions.</source>
+        <translation>Failed to read PV dimensions.</translation>
+    </message>
+    <message id="media_tools.prepend_pv_geometry_mismatch">
+        <source>PV dimensions or duration failed validation after prepending black frames.</source>
+        <translation>PV dimensions or duration failed validation after prepending black frames.</translation>
+    </message>
+    <message id="media_tools.prepend_pv_size_limit_failed">
+        <source>The prepended PV exceeds its size budget or the 20 MB limit.</source>
+        <translation>The prepended PV exceeds its size budget or the 20 MB limit.</translation>
+    </message>
 </context>
 
 
