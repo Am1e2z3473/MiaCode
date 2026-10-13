@@ -120,12 +120,16 @@ Spec 按领域登记于 `cmake/devtools/specs/`，清单见
 ## ScintillaQuick 编辑器依赖
 
 `third_party/ScintillaQuick` 使用 Git submodule，固定提交
-`4065eb4830dffe84dde39206ab5071b5ec60e1dd`，来源为
+`bfa6ae93315942b591878b0e709e1363bc07bfd6`，来源为
 [imakris/ScintillaQuick](https://github.com/imakris/ScintillaQuick)。检出仓库时执行：
 
 ```sh
 git submodule update --init --recursive
 ```
+
+子模块采用 `checkout` 策略，按主仓库记录的提交检出。此版本为编辑器接入版本；
+版本升级需同步修改子模块提交和 `MIACODE_SCINTILLAQUICK_REVISION`。
+Git 工作区的 CMake 配置会校验固定提交，提交号偏离时终止配置。
 
 顶层 CMake 通过 `add_subdirectory` 和 `ScintillaQuick::ScintillaQuick` 集成。
 依赖的示例、基准和测试构建开关关闭；应用使用 `MiaCode.UI` 中的

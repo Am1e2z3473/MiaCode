@@ -1,5 +1,7 @@
 #include "app/ui/editor/ScintillaEditorBridge.h"
 #include "editor/SimaiCompletionCatalog.h"
+#include "common/DebugLog.h"
+#include "common/DebugOptions.h"
 #include <QClipboard>
 #include <QGuiApplication>
 #include <QInputMethod>
@@ -7,6 +9,7 @@
 #include <QKeyEvent>
 #include <QMouseEvent>
 #include <QWheelEvent>
+#include <QQuickWindow>
 #include <QScopedValueRollback>
 #include <QStyleHints>
 #include <algorithm>
@@ -189,6 +192,19 @@ void ScintillaEditorBridge::publishLayout()
     effectiveFont_ = font;
     lineHeight_ = height;
     layoutSize_ = size;
+    if (metricsChanged && miacode::debug_options::runtimeDebugOutputEnabled()) {
+        const auto* rail = parentItem() ? parentItem()->findChild<QQuickItem*>(QStringLiteral("sourceVerticalScrollBar")) : nullptr;
+        miacode::debug_log::appendLine(miacode::debug_log::Channel::Runtime,
+            QStringLiteral("editor/layout"),
+            QStringLiteral("scope=%1 width=%2 height=%3 line_height=%4 native_bytes=%5 visible=%6 enabled=%7 font=%8 point_size=%9 parent_width=%10 parent_height=%11 rail_x=%12 rail_width=%13 rail_parent_width=%14 graphics_api=%15")
+                .arg(document_.scope()).arg(width()).arg(this->height()).arg(height)
+                .arg(send(SCI_GETLENGTH)).arg(isVisible()).arg(isEnabled())
+                .arg(font.family()).arg(font.pointSizeF())
+                .arg(parentItem() ? parentItem()->width() : 0).arg(parentItem() ? parentItem()->height() : 0)
+                .arg(rail ? rail->x() : -1).arg(rail ? rail->width() : -1)
+                .arg(rail && rail->parentItem() ? rail->parentItem()->width() : -1)
+                .arg(window() ? int(window()->rendererInterface()->graphicsApi()) : -1));
+    }
 
     const QRectF cursor = positionToRectangle(cursorPosition());
     const int currentLine = send(SCI_LINEFROMPOSITION, send(SCI_GETCURRENTPOS));
@@ -390,6 +406,13 @@ void ScintillaEditorBridge::synchronizeDocument()
         wheelRemainder_ = 0;
     }
     document_.activate(scope, documentSession_->chartText());
+    if (identityChanged && miacode::debug_options::runtimeDebugOutputEnabled()) {
+        miacode::debug_log::appendLine(miacode::debug_log::Channel::Runtime,
+            QStringLiteral("editor/document_bound"),
+            QStringLiteral("scope=%1 model_chars=%2 adapter_chars=%3 native_bytes=%4 readonly=%5 width=%6 height=%7")
+                .arg(scope).arg(documentSession_->chartText().size()).arg(document_.text().size())
+                .arg(send(SCI_GETLENGTH)).arg(send(SCI_GETREADONLY)).arg(width()).arg(height()));
+    }
     synchronizedRevision_ = documentSession_->documentRevision();
     if (identityChanged) styler_.reset();
     if (controller_) controller_->setDifficulty(documentSession_->currentDifficultyId());

@@ -22,8 +22,7 @@ Rectangle {
     }
     property int pendingBookmarkLine: -1
     readonly property int editorRailBaseWidth: 12
-    readonly property real editorRailDevicePixelRatio: Math.max(0.01,
-        root.Window.window ? root.Window.window.devicePixelRatio : 1)
+    readonly property real editorRailDevicePixelRatio: root.Screen.devicePixelRatio
     readonly property int editorRailPhysicalWidth: 3 * Math.ceil(
         editorRailBaseWidth * editorRailDevicePixelRatio / 3)
     readonly property real editorRailWidth: editorRailPhysicalWidth / editorRailDevicePixelRatio
@@ -493,6 +492,7 @@ Rectangle {
 
     AppScrollBar {
         id: verticalBar
+        objectName: "sourceVerticalScrollBar"
         anchors.top: sourceArea.top
         anchors.bottom: sourceArea.bottom
         anchors.right: parent.right
