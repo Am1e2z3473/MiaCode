@@ -123,12 +123,13 @@ public:
     //
     // 0 表示全文档；MetadataSection 表示全局字段、等级、谱师与难度删除；正数表示难度正文。
     QString textForSectionSave(int difficultyId) const;
+    SimaiDocument documentForSectionSave(int difficultyId) const;
     // Advance the save point for that section only. Callers write
     // textForSectionSave() first; this records that it landed.
     bool markSectionSaved(int difficultyId, const QString& filePath = QString());
-    // Commit relocated media references together with the section's save point.
-    bool markSectionSaved(int difficultyId, const QString& filePath,
-                          const QString& currentVideoPath, const QString& savedVideoPath);
+    // Record the exact document written by the file service, including relocated media.
+    bool markSectionSaved(const SimaiDocument& savedDocument, const QString& filePath,
+                          const QString& currentVideoPath);
     // 关闭文档: no document at all, rather than an empty one. A chart with no
     // difficulties is still a chart; this is the state before any chart.
     ChartWorkspaceResult closeDocument();
@@ -150,7 +151,6 @@ private:
     ChartWorkspaceResult commit();
     ChartWorkspaceResult acceptWithoutChange() const;
     void refreshSourceAndDirty();
-    SimaiDocument documentForSectionSave(int difficultyId) const;
 
     SimaiDocument document_;
     QVector<int> computeDirtyDifficultyIds() const;

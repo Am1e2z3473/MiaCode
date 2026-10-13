@@ -69,6 +69,8 @@ Item {
     // Closing a dirty editor asks about that editor's staged content.
     function requestCloseTab(key) {
         const difficultyId = root.difficultyIdForKey(key)
+        if (key === root.viewState.metadataEditorKey && !root.documentSession.finishPendingEdits())
+            return
         if (key === root.viewState.metadataEditorKey || key === root.viewState.latencyEditorKey
                 || root.viewState.isNetEditor(key)) {
             root.viewState.closeEditor(key)

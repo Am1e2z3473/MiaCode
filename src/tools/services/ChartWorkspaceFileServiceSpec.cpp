@@ -242,12 +242,68 @@ bool verifyFailedProjectSaveAs(QTextStream& out)
         QStringLiteral("resource failure restores the target and preserves the source workspace"), out);
 }
 
+bool verifySavedFieldsAndDifficultyStructure(QTextStream& out)
+{
+    QTemporaryDir directory;
+    const QString path = directory.filePath(QStringLiteral("maidata.txt"));
+    if (!directory.isValid() || !writeBytes(path,
+        "&title=old\n&artist=old\n&first=0\n&des_3=old name\n"
+        "&lv_5=12\n&inote_5=(120){4}1,E\n&lv_6=13\n&inote_6=(120){4}2,E\n"
+        "&lv_7=\n&des_7=\n&inote_7=\n")) return false;
+    miacode::ChartWorkspace workspace;
+    miacode::ChartWorkspaceFileService files(workspace);
+    if (!files.open(path).accepted) return false;
+    workspace.updateDocumentField(miacode::ChartWorkspaceDocumentField::Title, "new");
+    workspace.updateDocumentField(miacode::ChartWorkspaceDocumentField::Artist, "new artist");
+    workspace.updateDocumentField(miacode::ChartWorkspaceDocumentField::First, "0.125");
+    workspace.updateDifficultyField(5, miacode::ChartWorkspaceDifficultyField::Level, "14");
+    workspace.setDesignerForSlot(5, "new slot");
+    workspace.setDesignerForSlot(7, "Alice");
+    workspace.replaceExtraFields("&wholebpm=180\n&custom_3=kept\n&another=new", "6");
+    workspace.replaceDifficultyChart(5, "(120){4}3,E\n");
+    workspace.replaceDifficultyChart(6, "(120){4}4,E");
+    bool ok = expect(files.save(miacode::ChartWorkspace::MetadataSection).accepted,
+                     QStringLiteral("metadata save succeeds with multiple field groups"), out);
+    const auto metadata = SimaiDocument::fromText(QString::fromUtf8(readBytes(path)));
+    ok &= expect(metadata.title == "new" && metadata.artist == "new artist" && metadata.first == "0.125"
+        && metadata.difficulty(5)->level == "14" && metadata.designerForSlot(5) == "new slot"
+        && metadata.difficulty(7) != nullptr && metadata.designerForSlot(7) == "Alice"
+        && metadata.difficulty(3) == nullptr && readBytes(path).contains("&custom_3=kept")
+        && readBytes(path).contains("&another=new") && readBytes(path).contains("&clock_count=6")
+        && readBytes(path).contains("&wholebpm=180") && !workspace.metadataDirty()
+        && metadata.difficulty(5)->chart == "(120){4}1,E"
+        && metadata.difficulty(6)->chart == "(120){4}2,E",
+        QStringLiteral("metadata preserves named empty slots and unknown fields without saving chart drafts"), out);
+    ok &= expect(files.save(5).accepted && workspace.snapshot().dirtyDifficultyIds == QVector<int>{6}
+        && QString::fromUtf8(readBytes(path)).replace("\r\n", "\n").contains("&inote_5=(120){4}3,E\n\n")
+        && files.save(0).accepted && !workspace.snapshot().dirty
+        && QString::fromUtf8(readBytes(path)).replace("\r\n", "\n") == workspace.snapshot().sourceText,
+        QStringLiteral("section and whole saves establish the exact written save point"), out);
+    ok &= expect(files.open(path).accepted && workspace.document().difficulty(7) != nullptr
+        && workspace.document().difficulty(3) == nullptr,
+        QStringLiteral("reopening preserves saved difficulty structure"), out);
+    workspace.addDifficulty(3);
+    workspace.setDesignerForSlot(3, "new name");
+    workspace.updateDifficultyField(3, miacode::ChartWorkspaceDifficultyField::Level, "10");
+    ok &= expect(files.save(miacode::ChartWorkspace::MetadataSection).accepted
+        && workspace.document().standaloneDesignerIds().isEmpty()
+        && readBytes(path).contains("&des_3=new name"),
+        QStringLiteral("an added difficulty exclusively owns its adopted designer"), out);
+    workspace.removeDifficulty(3);
+    ok &= expect(files.save(miacode::ChartWorkspace::MetadataSection).accepted
+        && !readBytes(path).contains("&des_3=") && !readBytes(path).contains("&inote_3=")
+        && workspace.document().designerForSlot(3).isEmpty(),
+        QStringLiteral("deleting an adopted difficulty never writes its old designer"), out);
+    return ok;
+}
+
 }  // namespace
 
 int main()
 {
     QTextStream out(stderr);
     if (!verifyOpenSaveAndSaveAs(out)
+        || !verifySavedFieldsAndDifficultyStructure(out)
         || !verifyOpenAcceptsEmptyInoteFile(out)
         || !verifyProjectSaveAs(out, miacode::ChartDocumentOrigin::Local)
         || !verifyProjectSaveAs(out, miacode::ChartDocumentOrigin::NetPreview)

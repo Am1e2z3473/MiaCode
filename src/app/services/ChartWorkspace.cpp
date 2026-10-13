@@ -285,15 +285,11 @@ bool ChartWorkspace::addDifficulty(int difficultyId)
         || document_.difficulty(difficultyId) != nullptr) {
         return false;
     }
-    // Read the slot's chart-less &des_N before materializing the difficulty:
-    // once difficulties_ owns the id, toText() stops emitting the standalone
-    // record, so an unadopted name would silently vanish from the file.
-    const QString recordedDesigner = document_.designerForSlot(difficultyId);
     SimaiDifficultyData& created = document_.ensureDifficulty(difficultyId);
     // Under the unified mode a new difficulty joins the shared name at birth.
     // The broadcast only fires on an edit, so without this seed the difficulty
     // would sit blank until the next designer edit — the v1 gap this replaces.
-    created.designer = unifiedDesignerEnabled_ ? document_.designer : recordedDesigner;
+    if (unifiedDesignerEnabled_) created.designer = document_.designer;
     activeDifficultyId_ = difficultyId;
     refreshSourceAndDirty();
     commit();
@@ -519,26 +515,21 @@ bool ChartWorkspace::markSectionSaved(int difficultyId, const QString& filePath)
 {
     if (!hasDocument_ || (difficultyId != 0 && difficultyId != MetadataSection
         && document_.difficulty(difficultyId) == nullptr)) return false;
-    return markSectionSaved(difficultyId, filePath, document_.videoPath,
-                            documentForSectionSave(difficultyId).videoPath);
+    return markSectionSaved(documentForSectionSave(difficultyId), filePath, document_.videoPath);
 }
 
-bool ChartWorkspace::markSectionSaved(int difficultyId, const QString& filePath,
-                                     const QString& currentVideoPath, const QString& savedVideoPath)
+bool ChartWorkspace::markSectionSaved(const SimaiDocument& savedDocument, const QString& filePath,
+                                     const QString& currentVideoPath)
 {
     if (!hasDocument_) return false;
-    if (difficultyId != 0 && difficultyId != MetadataSection
-        && document_.difficulty(difficultyId) == nullptr) return false;
     const QString nextFilePath = filePath.isEmpty() ? filePath_ : filePath;
-    if (difficultyId == 0 && document_.videoPath == currentVideoPath
-        && currentVideoPath == savedVideoPath) return markSaved(nextFilePath);
-    savedDocument_ = documentForSectionSave(difficultyId);
+    const QString savedText = savedDocument.toText();
+    savedDocument_ = savedDocument;
     if (document_.videoPath != currentVideoPath) {
         document_.videoPath = currentVideoPath;
         sourceText_ = document_.toText();
     }
-    savedDocument_.videoPath = savedVideoPath;
-    savedSourceText_ = savedDocument_.toText();
+    savedSourceText_ = savedText;
     if (filePath_ != nextFilePath) origin_ = ChartDocumentOrigin::Local;
     filePath_ = nextFilePath;
     dirty_ = sourceText_ != savedSourceText_;
