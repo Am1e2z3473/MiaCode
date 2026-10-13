@@ -144,91 +144,6 @@ QString sanitizeExportFileStem(QString text, const QString& fallback = QStringLi
     return sanitized.isEmpty() ? fallback : sanitized;
 }
 
-QString appendMp4SuffixIfMissing(QString outputPath)
-{
-    outputPath = QDir::cleanPath(QDir::fromNativeSeparators(outputPath.trimmed()));
-    if (outputPath.isEmpty()) {
-        return QString();
-    }
-    if (!outputPath.endsWith(QStringLiteral(".mp4"), Qt::CaseInsensitive)) {
-        outputPath += QStringLiteral(".mp4");
-    }
-    return outputPath;
-}
-
-QString makeUniqueVideoExportOutputPath(const QString& outputPath)
-{
-    const QString normalizedPath = appendMp4SuffixIfMissing(outputPath);
-    if (normalizedPath.isEmpty()) {
-        return QString();
-    }
-
-    const QFileInfo outputInfo(normalizedPath);
-    const QDir outputDir = outputInfo.absoluteDir();
-    QString fileStem = outputInfo.fileName().trimmed();
-    if (fileStem.endsWith(QStringLiteral(".mp4"), Qt::CaseInsensitive)) {
-        fileStem.chop(4);
-    }
-    if (fileStem.isEmpty()) {
-        fileStem = QStringLiteral("out");
-    }
-
-    const auto buildCandidatePath = [&outputDir, &fileStem](int duplicateIndex) {
-        const QString fileName = duplicateIndex <= 0
-            ? QStringLiteral("%1.mp4").arg(fileStem)
-            : QStringLiteral("%1(%2).mp4").arg(fileStem).arg(duplicateIndex);
-        return QDir::cleanPath(outputDir.filePath(fileName));
-    };
-
-    QString candidatePath = buildCandidatePath(0);
-    if (!QFileInfo::exists(candidatePath)) {
-        return candidatePath;
-    }
-
-    for (int duplicateIndex = 1;; ++duplicateIndex) {
-        candidatePath = buildCandidatePath(duplicateIndex);
-        if (!QFileInfo::exists(candidatePath)) {
-            return candidatePath;
-        }
-    }
-}
-
-QString resolveVideoExportOutputPath(
-    const QString& requestedOutputPath,
-    const QString& defaultDirectory,
-    const QString& defaultOutputName
-)
-{
-    const QString baseDirectory = defaultDirectory.trimmed().isEmpty()
-        ? QDir::currentPath()
-        : QDir::cleanPath(QDir::fromNativeSeparators(defaultDirectory.trimmed()));
-    const QString normalizedDefaultName = appendMp4SuffixIfMissing(
-        defaultOutputName.trimmed().isEmpty() ? QStringLiteral("out.mp4") : defaultOutputName
-    );
-
-    const QString trimmedRequestedOutput = requestedOutputPath.trimmed();
-    QString resolvedOutputPath = QDir::fromNativeSeparators(trimmedRequestedOutput);
-    if (resolvedOutputPath.isEmpty()) {
-        resolvedOutputPath = QDir(baseDirectory).filePath(normalizedDefaultName);
-    } else {
-        const bool trailingSeparator = trimmedRequestedOutput.endsWith('/') || trimmedRequestedOutput.endsWith('\\');
-        const QFileInfo requestedInfo(resolvedOutputPath);
-        if (requestedInfo.isRelative()) {
-            resolvedOutputPath = QDir(baseDirectory).absoluteFilePath(resolvedOutputPath);
-        }
-
-        const QFileInfo absoluteInfo(resolvedOutputPath);
-        if ((absoluteInfo.exists() && absoluteInfo.isDir()) || trailingSeparator) {
-            const QString outputDirPath = absoluteInfo.exists() && absoluteInfo.isDir()
-                ? absoluteInfo.absoluteFilePath()
-                : resolvedOutputPath;
-            resolvedOutputPath = QDir(outputDirPath).filePath(normalizedDefaultName);
-        }
-    }
-
-    return makeUniqueVideoExportOutputPath(resolvedOutputPath);
-}
-
 int difficultyIdFromCliToken(const QString& rawToken)
 {
     const QString token = rawToken.trimmed().toUpper();
@@ -658,6 +573,7 @@ bool miacode::runtime::VideoExportHost::buildVideoExportSnapshot(
     built.outputHeight = requestedTask.outputHeight;
     built.fps = requestedTask.fps;
     built.audioBitrateKbps = requestedTask.audioBitrateKbps;
+    built.outputMode = requestedTask.outputMode;
     built.preset = requestedTask.preset;
     built.sizePreset = requestedTask.sizePreset;
     built.fullRangeExport = requestedTask.fullRangeExport;
@@ -667,7 +583,7 @@ bool miacode::runtime::VideoExportHost::buildVideoExportSnapshot(
     built.outputPath = resolveVideoExportOutputPath(
         requestedTask.outputPath,
         built.projectDir,
-        defaultOutputName
+        defaultOutputName, built.outputMode
     );
     built.showTimestamp = requestedTask.showTimestamp;
     built.showObjectStatsHud = requestedTask.showObjectStatsHud;
@@ -866,13 +782,14 @@ bool miacode::runtime::VideoExportHost::buildVideoExportSnapshotForChartDirector
     built.outputHeight = requestedTask.outputHeight;
     built.fps = requestedTask.fps;
     built.audioBitrateKbps = requestedTask.audioBitrateKbps;
+    built.outputMode = requestedTask.outputMode;
     built.preset = requestedTask.preset;
     built.sizePreset = requestedTask.sizePreset;
     built.fullRangeExport = true;
     built.outputPath = resolveVideoExportOutputPath(
         QString(),
-       outputDirectory,
-       defaultOutputName
+        outputDirectory,
+        defaultOutputName, built.outputMode
     );
     built.showTimestamp = requestedTask.showTimestamp;
     built.showObjectStatsHud = requestedTask.showObjectStatsHud;

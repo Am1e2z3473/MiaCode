@@ -3,7 +3,7 @@
 Generated from `cmake/devtools/specs/` by `cmake -P cmake/devtools/SpecCatalog.cmake`.
 Check without writing: `cmake -DMIACODE_SPEC_CATALOG_CHECK=ON -P cmake/devtools/SpecCatalog.cmake`.
 
-142 independent specs; source lists and link dependencies are maintained only in CMake.
+143 independent specs; source lists and link dependencies are maintained only in CMake.
 
 `platform:all` means the target is registered on every platform, not that all platforms
 have been tested. Platform-specific source branches and link additions remain in their manifests.
@@ -151,6 +151,7 @@ Owners name production modules; kinds describe the checked boundary, not runtime
 | `src/tools/video_export/VideoExportIntroModeSpec.cpp` | `video_export_intro_mode_spec` | `src/export/video_export` | `video-export.video-export-intro-mode` | video_export | behavior | high | all | ctest | active |
 | `src/tools/video_export/VideoExportIntroSoundSpec.cpp` | `video_export_intro_sound_spec` | `src/export/video_export` | `video-export.video-export-intro-sound` | video_export | behavior | high | all | ctest | active |
 | `src/tools/video_export/VideoExportMediaTimelineSpec.cpp` | `video_export_media_timeline_spec` | `src/export/video_export` | `video-export.video-export-media-timeline` | video_export | behavior | high | all | ctest | active |
+| `src/tools/video_export/VideoExportOutputSpec.cpp` | `video_export_output_spec` | `src/export/video_export` | `video-export.output-modes` | video_export | integration | high | all | ctest | active |
 | `src/tools/video_export/VideoExportPendingFrameRedrawSpec.cpp` | `video_export_pending_frame_redraw_spec` | `src/export/video_export` | `video-export.video-export-pending-frame-redraw` | video_export | behavior | high | all | ctest | active |
 | `src/tools/video_export/VideoExportRuntimePolicySpec.cpp` | `video_export_runtime_policy_spec` | `src/export/video_export` | `video-export.video-export-runtime-policy` | video_export | behavior | high | all | ctest | active |
 | `src/tools/zip_export/ChartZipPackagerSpec.cpp` | `chart_zip_packager_spec` | `src/media_tools/zip_export` | `zip-export.chart-zip-packager` | zip_export | integration | normal | all | ctest | active |

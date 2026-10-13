@@ -395,6 +395,9 @@ QString localizeExportWorkerMessageForSystemLanguage(const QString& rawMessage)
     if (trimmed == QLatin1String("Repacking MP4 for fast start...")) {
         return QStringLiteral("Finalizing video...");
     }
+    if (trimmed == QLatin1String("Finalizing WAV audio...")) {
+        return miacode::localizedText("dialog.video_export.progress.finalizing_wav");
+    }
     if (trimmed == QLatin1String("Collecting export summary...")) {
         return QStringLiteral("Finishing up...");
     }
@@ -410,6 +413,7 @@ bool exportWorkerProgressUsesBusyIndicator(const QString& rawMessage)
     const QString trimmed = rawMessage.trimmed();
     return trimmed == QLatin1String("Finalizing encoded video stream...")
         || trimmed == QLatin1String("Repacking MP4 for fast start...")
+        || trimmed == QLatin1String("Finalizing WAV audio...")
         || trimmed == QLatin1String("Collecting export summary...")
         || trimmed == QLatin1String("Export completed.");
 }
@@ -444,6 +448,9 @@ miacode::LocalizedText localizeExportWorkerMessageForUiLanguage(const QString& r
     }
     if (trimmed == QLatin1String("Repacking MP4 for fast start...")) {
         return miacode::localizedText("dialog.video_export.progress.repacking");
+    }
+    if (trimmed == QLatin1String("Finalizing WAV audio...")) {
+        return miacode::localizedText("dialog.video_export.progress.finalizing_wav");
     }
     if (trimmed == QLatin1String("Collecting export summary...")) {
         return miacode::localizedText("dialog.video_export.progress.finishing");
@@ -1108,10 +1115,12 @@ void miacode::runtime::VideoExportHost::handleVideoExportWorkerProcessFinished(i
             session_.videoExportWorkerElapsed_.elapsed());
     }
     if (session_.videoExportWorkerSuccess_) {
-        const QFileInfo resolvedOutputInfo(session_.videoExportWorkerOutputPath_);
-        const QString resolvedOutputName = resolvedOutputInfo.fileName().trimmed().isEmpty()
-            ? QDir::toNativeSeparators(session_.videoExportWorkerOutputPath_)
-            : resolvedOutputInfo.fileName();
+        QStringList outputNames;
+        for (const auto& path : videoExportOutputPaths(
+                 session_.videoExportWorkerOutputPath_, session_.videoExportWorkerSnapshot_.outputMode)) {
+            outputNames.append(QFileInfo(path).fileName());
+        }
+        const QString resolvedOutputName = outputNames.join(QLatin1Char('\n'));
         // 打开 opens the containing folder, which is what the Widgets button
         // did — the label says 打开 but it has always been the folder.
         const QString outputPath = session_.videoExportWorkerOutputPath_;

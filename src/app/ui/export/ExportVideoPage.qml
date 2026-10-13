@@ -363,6 +363,13 @@ Rectangle {
                         spacing: Theme.settingsRowSpacing
                         Layout.fillWidth: true
 
+                        LabeledCombo {
+                            Layout.fillWidth: true
+                            label: qsTrId("dialog.video_export.output_mode")
+                            options: root.session ? root.session.outputModeOptions : []
+                            currentValue: root.session ? root.session.outputModeIndex : 0
+                            onPicked: function(value) { if (root.session) root.session.outputModeIndex = value }
+                        }
                         ColumnLayout {
                             visible: root.session && root.session.activeTab === "export"
                             spacing: Theme.settingsLabelSpacing
@@ -404,6 +411,7 @@ Rectangle {
                                 }
                                 AppComboBox {
                                     Layout.fillWidth: true
+                                    enabled: root.session && root.session.outputModeIndex !== 1
                                     model: root.session ? root.session.resolutionOptions : []
                                     textRole: "label"
                                     currentIndex: root.session ? root.session.resolutionIndex : 0
@@ -422,6 +430,7 @@ Rectangle {
                                 }
                                 AppComboBox {
                                     Layout.fillWidth: true
+                                    enabled: root.session && root.session.outputModeIndex !== 1
                                     model: root.session ? root.session.fpsOptions : []
                                     currentIndex: {
                                         if (!root.session) return 1
@@ -446,6 +455,7 @@ Rectangle {
                                 }
                                 AppComboBox {
                                     Layout.fillWidth: true
+                                    enabled: root.session && root.session.outputModeIndex !== 1
                                     model: root.session ? root.session.audioBitrateOptions : []
                                     currentIndex: {
                                         if (!root.session) return 2
@@ -476,6 +486,7 @@ Rectangle {
                                 }
                                 AppComboBox {
                                     Layout.fillWidth: true
+                                    enabled: root.session && root.session.outputModeIndex !== 1
                                     model: root.session ? root.session.presetOptions : []
                                     currentIndex: root.session ? root.session.presetIndex : 1
                                     onActivated: if (root.session) root.session.presetIndex = currentIndex
@@ -493,6 +504,7 @@ Rectangle {
                                 }
                                 AppComboBox {
                                     Layout.fillWidth: true
+                                    enabled: root.session && root.session.outputModeIndex !== 1
                                     model: root.session ? root.session.sizePresetOptions : []
                                     currentIndex: root.session ? root.session.sizePresetIndex : 0
                                     onActivated: if (root.session) root.session.sizePresetIndex = currentIndex

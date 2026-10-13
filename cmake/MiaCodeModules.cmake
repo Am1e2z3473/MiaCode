@@ -556,6 +556,7 @@ miacode_add_module(miacode_export
         src/export/video_export/VideoExportConfig.h
         src/export/video_export/VideoExportController.cpp
         src/export/video_export/VideoExportController.h
+        src/export/video_export/VideoExportOutput.h
         src/export/video_export/VideoExportControllerInternal.h
         src/export/video_export/VideoExportDiagnostics.cpp
         src/export/video_export/EncoderProbeCache.h

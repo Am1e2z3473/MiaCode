@@ -94,6 +94,7 @@ void applyVideoExportPreferences(const QJsonObject& settings, VideoExportTask* t
     task->fps = normalizedVideoExportFps(settings.value(QStringLiteral("fps")).toInt(task->fps));
     task->audioBitrateKbps = normalizedVideoExportAudioBitrateKbps(
         settings.value(QStringLiteral("audio_bitrate_kbps")).toInt(task->audioBitrateKbps));
+    task->outputMode = videoExportOutputModeFromToken(settings.value(QStringLiteral("output_mode")).toString());
     task->preset = videoExportPresetFromPreference(settings.value(QStringLiteral("preset")), task->preset);
     task->sizePreset = videoExportSizePresetFromPreference(
         settings.value(QStringLiteral("size_preset")), task->sizePreset);
@@ -133,6 +134,7 @@ void appendVideoExportPreferences(QJsonObject* settings, const VideoExportTask& 
     settings->insert(QStringLiteral("resolution_height"), task.outputHeight);
     settings->insert(QStringLiteral("fps"), task.fps);
     settings->insert(QStringLiteral("audio_bitrate_kbps"), task.audioBitrateKbps);
+    settings->insert(QStringLiteral("output_mode"), videoExportOutputModeToken(task.outputMode));
     settings->insert(QStringLiteral("preset"), videoExportPreferencePresetToken(task.preset));
     settings->insert(QStringLiteral("size_preset"), videoExportSizePresetToken(task.sizePreset));
     settings->insert(QStringLiteral("clock_count_enabled"), task.clockCountEnabled);
@@ -220,6 +222,7 @@ void copyVideoExportUserSettings(const VideoExportTask& source, VideoExportTask*
     target->outputHeight = source.outputHeight;
     target->fps = source.fps;
     target->audioBitrateKbps = source.audioBitrateKbps;
+    target->outputMode = source.outputMode;
     target->preset = source.preset;
     target->sizePreset = source.sizePreset;
     target->backgroundBrightnessOuter = source.backgroundBrightnessOuter;

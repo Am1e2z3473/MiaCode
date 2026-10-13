@@ -457,3 +457,13 @@ miacode_add_spec(video_export_estimate_history_spec
     LIBS miacode_export Qt6::Core
     INCLUDES src
 )
+
+miacode_add_spec(video_export_output_spec
+    OWNER src/export/video_export
+    CONTRACT video-export.output-modes
+    DOMAIN video_export KIND integration RISK high
+    EXECUTION ctest STATUS active PLATFORM all
+    SOURCES src/tools/video_export/VideoExportOutputSpec.cpp
+    LIBS miacode_export Qt6::Core
+    INCLUDES src
+)
