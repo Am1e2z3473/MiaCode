@@ -3,7 +3,7 @@
 Generated from `cmake/devtools/specs/` by `cmake -P cmake/devtools/SpecCatalog.cmake`.
 Check without writing: `cmake -DMIACODE_SPEC_CATALOG_CHECK=ON -P cmake/devtools/SpecCatalog.cmake`.
 
-143 independent specs; source lists and link dependencies are maintained only in CMake.
+144 independent specs; source lists and link dependencies are maintained only in CMake.
 
 `platform:all` means the target is registered on every platform, not that all platforms
 have been tested. Platform-specific source branches and link additions remain in their manifests.
@@ -36,6 +36,7 @@ Owners name production modules; kinds describe the checked boundary, not runtime
 | `src/tools/editor/TouchPadAuthoringEditSpec.cpp` | `touch_pad_authoring_edit_spec` | `src/editor` | `editor.touch-pad-authoring-edit` | editor | behavior | normal | all | ctest | active |
 | `src/tools/extensions/ExtensionManifestSpec.cpp` | `extension_manifest_spec` | `src/extensions` | `extensions.extension-manifest` | extensions | behavior | normal | all | ctest | active |
 | `src/tools/extensions/ExtensionProductBoundarySpec.cpp` | `extension_product_boundary_spec` | `src/extensions` | `extensions.extension-product-boundary` | extensions | boundary | normal | all | ctest | active |
+| `src/tools/media/MediaPrependPolicySpec.cpp` | `media_prepend_policy_spec` | `src/media_tools/media` | `media-tools.prepend-media` | media | integration | high | all | ctest | active |
 | `src/tools/media/PvCompressionPolicySpec.cpp` | `pv_compression_policy_spec` | `src/media_tools/media` | `media.pv-compression-policy` | media | behavior | normal | all | ctest | active |
 | `src/tools/muri/MuriSpec.cpp` | `muri_spec` | `src/core/analysis` | `muri.muri` | muri | behavior | normal | all | ctest | active |
 | `src/tools/net/NetClientSpec.cpp` | `net_client_spec` | `src/media_tools/net` | `net.net-client` | net | behavior | normal | all | ctest | active |

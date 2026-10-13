@@ -1,6 +1,7 @@
 #include "common/LocalizedText.h"
 
 #include "media_tools/media/PvCompressionPolicy.h"
+#include "media_tools/media/MediaPrependPolicy.h"
 #include "app/services/UiRequestService.h"
 #include "app/services/JobProgressService.h"
 #include "app/runtime/media/MediaJobsHost.h"
@@ -661,8 +662,8 @@ bool prependTrackSilence(
     bool* cancelled = nullptr)
 {
     const QFileInfo trackInfo(trackPath);
-    const QString backupPath = trackInfo.dir().filePath(QStringLiteral("track_bak.mp3"));
-    const QString tempPath = trackInfo.dir().filePath(QStringLiteral(".miacode_track_prepend_tmp.mp3"));
+    const QString backupPath = trackInfo.dir().filePath(QStringLiteral("%1_bak.%2").arg(trackInfo.completeBaseName(), trackInfo.suffix()));
+    const QString tempPath = trackInfo.dir().filePath(QStringLiteral(".miacode_track_prepend_tmp.%1").arg(trackInfo.suffix()));
     QFile::remove(tempPath);
     if (!copyFileReplacing(trackPath, backupPath, error)) {
         return false;
@@ -675,25 +676,14 @@ bool prependTrackSilence(
     const double totalDurationSeconds =
         inputDurationSeconds > 0.0 ? inputDurationSeconds + silenceSeconds : 0.0;
 
-    const QString silenceDuration = QString::number(silenceSeconds, 'f', 6);
-    QStringList args;
-    args << QStringLiteral("-hide_banner")
-         << QStringLiteral("-y")
-         << QStringLiteral("-f") << QStringLiteral("lavfi")
-         << QStringLiteral("-i") << QStringLiteral("anullsrc=channel_layout=stereo:sample_rate=44100:d=%1").arg(silenceDuration)
-         << QStringLiteral("-i") << backupPath
-         << QStringLiteral("-filter_complex")
-         << QStringLiteral("[0:a]atrim=duration=%1,asetpts=PTS-STARTPTS[s];[1:a]aresample=44100,aformat=channel_layouts=stereo,asetpts=PTS-STARTPTS[a];[s][a]concat=n=2:v=0:a=1[out]").arg(silenceDuration)
-         << QStringLiteral("-map") << QStringLiteral("[out]")
-         << QStringLiteral("-c:a") << QStringLiteral("libmp3lame")
-         << QStringLiteral("-q:a") << QStringLiteral("2")
-         << tempPath;
+    const QStringList args = miacode::media::makeAudioPrependArguments(
+        backupPath, tempPath, trackInfo.suffix(), silenceSeconds);
     if (!runFfmpegBlocking(
             ffmpegPath,
             args,
             jobProgress,
-            miacode::localizedText("media_tools.processing_track_mp3"),
-            miacode::localizedText("media_tools.processing_track_mp3"),
+            miacode::localizedText("media_tools.processing_audio"),
+            miacode::localizedText("media_tools.processing_audio"),
             totalDurationSeconds,
             error,
             cancelled)) {
@@ -1323,14 +1313,12 @@ miacode::runtime::MediaJobsHost::MediaBlankPaths miacode::runtime::MediaJobsHost
         return paths;
     }
     paths.inputPath = paths.isTrack
-        ? QDir(chartDirPath).filePath(QStringLiteral("track.mp3"))
+        ? miacode::chart_assets::resolveTrackPathForDirectory(chartDirPath)
         : miacode::chart_assets::resolveChartVideoPath(
               session_.currentFilePath_, session_.applicationServices_.workspace().document().videoPath);
     const QFileInfo inputInfo(paths.inputPath);
-    paths.inputName = paths.isTrack ? QStringLiteral("track.mp3") : inputInfo.fileName();
-    paths.backupName = paths.isTrack
-        ? QStringLiteral("track_bak.mp3")
-        : QStringLiteral("%1_bak.%2").arg(inputInfo.completeBaseName(), inputInfo.suffix());
+    paths.inputName = inputInfo.fileName();
+    paths.backupName = QStringLiteral("%1_bak.%2").arg(inputInfo.completeBaseName(), inputInfo.suffix());
     paths.backupPath = paths.inputPath.isEmpty()
         ? QString()
         : inputInfo.dir().filePath(paths.backupName);
