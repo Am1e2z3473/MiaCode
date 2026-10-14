@@ -356,6 +356,7 @@ def build_windows():
         f"-DCMAKE_PREFIX_PATH={qt}",
         "-DCMAKE_TRY_COMPILE_CONFIGURATION=Release",
         "-DMIACODE_BUILD_DEV_TOOLS=OFF",
+        f"-DMIACODE_RELEASE_CHANNEL={env.get('MIACODE_RELEASE_CHANNEL', 'nightly')}",
     ], env=env)
     jobs = cpu_jobs()
     run(["cmake", "--build", BUILD_DIR, "--config", "Release", "--target", "MiaCode", "MiaCodeLauncher", "--parallel", jobs], env=env)

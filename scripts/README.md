@@ -41,7 +41,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\build\package-win.ps1 -QtRoot
 dev SDK（x64 走裁剪构建，`-SkipTrim` 关闭）、Qt 定位、CMake 配置与构建、调用 `package-win.ps1` 打包。两条 FFmpeg 链与打包
 链都按 `-Toolchain` 推导出的目标架构选择各自的目录：`third_party\ffmpeg\windows\<win64|winarm64>\`
 与 `third_party\bass\bin\<win64|winarm64>\`，包名分别为 `MiaCode_<version>_win_x64` 与
-`MiaCode_<version>_win_arm64`（设 `MIACODE_PACKAGE_CHANNEL` 时在版本后插入渠道段）。arm64 不随包分发 `bass_aac.dll`（上游只提供 x86/x64 版本），
+`MiaCode_<version>_win_arm64`（Nightly 渠道在版本后插入 `_nightly`，`MIACODE_PACKAGE_CHANNEL` 可指定包名渠道段）。arm64 不随包分发 `bass_aac.dll`（上游只提供 x86/x64 版本），
 音频后端对缺失插件已有存在性检查。
 
 Qt 定位顺序：`-QtRoot` → `C:\Qt\<版本>\<架构目录>` → `.qt\<版本>\<架构目录>` →
@@ -77,7 +77,11 @@ bash scripts/build/build-macos-ci.sh
 调用它，例如 `QT_ROOT="$HOME/Qt/6.11.1/macos" bash scripts/build/package-mac.sh`。
 CI 入口读 `QT_VERSION`、`QT_MODULES`、`MIACODE_PYTHON_VENV_DIR`；本地入口读
 `QT_ROOT`（按 `QT_VERSION` 依次探测 `.qt/` 与 `$HOME/Qt/`）、`BUILD_DIR` 与
-`MIACODE_FFMPEG_DEV_DIR`。设置 `MIACODE_PACKAGE_CHANNEL` 会在包名里插入渠道段。
+`MIACODE_FFMPEG_DEV_DIR`。本地构建默认使用 Nightly 渠道，设置
+`MIACODE_RELEASE_CHANNEL=release` 生成 Release 渠道发行包。CMake 手动配置使用
+`-DMIACODE_RELEASE_CHANNEL=release`；发行渠道与 Release／Debug 编译模式独立。
+Windows 独立打包读取构建目录中 `generated/AppVersion.h` 的渠道，
+`MIACODE_PACKAGE_CHANNEL` 可指定包名渠道段。
 
 输出位于 `dist/`。指定单一 `arm64` 或 `x86_64` 架构时，打包流程会在
 `macdeployqt` 后裁掉 Qt Framework/插件中的另一架构切片，并在重新签名前验证

@@ -45,6 +45,36 @@ constexpr auto kLegacyPreviewWidthRatio = "ui/previewWidthRatio";
 constexpr auto kLegacyPreviewCanvasFreeAspect = "ui/previewCanvasFreeAspect";
 constexpr auto kLegacyFontSize = "appearance/fontSize";
 
+QString releasePlatformDisplay()
+{
+    QString architecture = QSysInfo::buildCpuArchitecture();
+    if (architecture == QLatin1String("x86_64")) {
+        architecture = QStringLiteral("x64");
+    }
+#if defined(Q_OS_WIN)
+    if (architecture == QLatin1String("arm64")) {
+        architecture = QStringLiteral("ARM64");
+    }
+    const QString platform = QStringLiteral("Windows");
+#elif defined(Q_OS_MACOS)
+    if (architecture == QLatin1String("arm64")) {
+        architecture = QStringLiteral("Apple Silicon");
+    }
+    const QString platform = QStringLiteral("macOS");
+#elif defined(Q_OS_LINUX)
+    if (architecture == QLatin1String("arm64")) {
+        architecture = QStringLiteral("aarch64");
+    }
+    const QString distribution = QSysInfo::productType();
+    const QString platform = distribution == QLatin1String("unknown")
+        ? QStringLiteral("Linux")
+        : QStringLiteral("Linux (%1)").arg(distribution);
+#else
+    const QString platform = QSysInfo::prettyProductName();
+#endif
+    return QStringLiteral("%1 / %2").arg(platform, architecture);
+}
+
 QJsonObject loadUiObject()
 {
     return PreferenceDocument::loadPreferencesObject().value(QLatin1String(kUiSection)).toObject();
@@ -176,17 +206,8 @@ QVariantMap WorkbenchSettings::aboutInfo() const
     }
     return QVariantMap{
         {QStringLiteral("version"), version},
-        {QStringLiteral("platform"), QStringLiteral("%1 / %2 / %3")
-                                         .arg(QSysInfo::productType())
-                                         .arg(QSysInfo::currentCpuArchitecture())
-                                         .arg(QSysInfo::buildAbi())},
-        {QStringLiteral("buildType"),
-#ifdef NDEBUG
-         QStringLiteral("Release")
-#else
-         QStringLiteral("Debug")
-#endif
-        },
+        {QStringLiteral("platform"), releasePlatformDisplay()},
+        {QStringLiteral("buildType"), QStringLiteral(MIACODE_RELEASE_CHANNEL_DISPLAY)},
         {QStringLiteral("platformLabel"), qtTrId("about.platform")},
         {QStringLiteral("buildTypeLabel"), qtTrId("about.build_type")},
         {QStringLiteral("title"), qtTrId("action.about")},
