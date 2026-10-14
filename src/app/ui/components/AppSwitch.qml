@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Layouts
 import MiaCode.UI
 
 // Themed switch — geometry/colors aligned with v2 Theme (not stock Fusion).
@@ -12,6 +13,8 @@ Switch {
     // group's section caption rather than as one row inside it.
     property bool sectionTitle: false
     property bool indicatorOnRight: true
+
+    Layout.fillWidth: true
 
     font.family: Theme.uiFont
     font.pixelSize: root.sectionTitle ? Theme.sectionTitleFontSize : Theme.uiFontSize

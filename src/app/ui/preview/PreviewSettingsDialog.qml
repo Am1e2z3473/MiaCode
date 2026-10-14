@@ -29,6 +29,8 @@ AppDialog {
         id: navigationButton
         required property int pageIndex
         Layout.fillWidth: true
+        Layout.minimumHeight: root.settingsRowHeight
+        Layout.maximumHeight: root.settingsRowHeight
         implicitHeight: root.settingsRowHeight
         selected: root.currentPageIndex === navigationButton.pageIndex
         text: root.pageTitles[navigationButton.pageIndex] || ""
@@ -114,6 +116,7 @@ AppDialog {
                         pageIndex: index
                     }
                 }
+                Item { Layout.fillHeight: true }
             }
         }
 
