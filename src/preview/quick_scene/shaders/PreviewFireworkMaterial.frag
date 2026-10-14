@@ -327,7 +327,7 @@ void main()
             float launchAlpha = smoothstep(arrivalSecond, arrivalSecond + 0.05, timing.w);
             // The travelling head sharpens before settling into the outer edge feather.
             float headProgress = smoothstep(0.36, 1.0, outerRadius / clipRadius);
-            float headFeather = mix(0.24, 0.035, headProgress);
+            float headFeather = mix(0.24, 0.20, headProgress);
             float edgeArrival = smoothstep(1.0, 1.06, outerRadius / clipRadius);
             float headFade = smoothstep(1.0 - headFeather, 1.01, radius / outerRadius);
             float frontAlpha = 1.0 - headFade * (1.0 - edgeArrival);
@@ -382,7 +382,7 @@ void main()
 
     float clipTime = timing.x;
     // Keep the spokes connected during the burst, then open their centre as they fade.
-    float burstEdge = 1.0 - smoothstep(clipRadius * 0.94, clipRadius * 1.06, radius);
+    float burstEdge = 1.0 - smoothstep(clipRadius * 0.80, clipRadius, radius);
     vec4 layerColor = rayLayer * holeMask * burstEdge;
     vec3 washEmission = vec3(0.0);
 
