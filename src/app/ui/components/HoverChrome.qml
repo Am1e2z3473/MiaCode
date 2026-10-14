@@ -28,6 +28,9 @@ Item {
     Rectangle {
         id: fill
         anchors.centerIn: parent
+        // Keep odd-sized fills centered in baseline units. Rounding here
+        // becomes a visible offset after the whole interface is scaled.
+        anchors.alignWhenCentered: false
         width: Math.min(root.width - 2 * Theme.chromeInsetX,
                         Math.max(Theme.chromeMinSize, root.contentWidth + 2 * Theme.chromePadding))
                + 2 * root.highlightOutset

@@ -44,7 +44,7 @@ AppStickyPopup {
                     width: 14
                     height: 14
                     source: Qt.resolvedUrl("icons/check.svg")
-                    sourceSize: Qt.size(14, 14)
+                    sourceSize: Theme.iconSourceSize(14, 14)
                     visible: modeRow.active
                     color: Theme.colors.text.active
                 }

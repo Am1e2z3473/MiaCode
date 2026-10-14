@@ -31,6 +31,7 @@ constexpr auto kPreviewDetached = "preview_detached";
 constexpr auto kPreviewCanvasFreeAspect = "preview_canvas_free_aspect";
 constexpr auto kPreviewHidePv = "preview_hide_pv";
 constexpr auto kFontSize = "ui_font_size";
+constexpr auto kUiScalePercent = "ui_scale_percent";
 constexpr auto kEditorAutoWrap = "editor_auto_wrap";
 constexpr auto kEditorScrollPastEnd = "editor_scroll_past_end";
 constexpr auto kEditorSelectionBeatDisplay = "editor_selection_beat_display";
@@ -93,6 +94,9 @@ WorkbenchSettings::WorkbenchSettings(QObject* parent)
     efficientSidebarEnabled_ = ui.value(QLatin1String(kEfficientSidebarEnabled)).toBool(false);
     previewDetached_ = ui.value(QLatin1String(kPreviewDetached)).toBool(false);
     blurMaterialsEnabled_ = ui.value(QLatin1String(kBlurMaterialsEnabled)).toBool(true);
+    uiScalePercent_ = qBound(kUiScaleMinimumPercent,
+                            ui.value(QLatin1String(kUiScalePercent)).toInt(kUiScaleDefaultPercent),
+                            kUiScaleMaximumPercent);
     QSettings legacySettings;
     sidebarVisible_ = jsonBool(ui, kSidebarVisible, legacySettings, kLegacySidebarVisible, true);
     sidebarWidth_ = qBound(kSidebarMinimumContentWidth,
@@ -208,6 +212,19 @@ double WorkbenchSettings::previewMaximumWidthRatio() const { return kPreviewMaxi
 bool WorkbenchSettings::previewCanvasFreeAspect() const { return previewCanvasFreeAspect_; }
 bool WorkbenchSettings::previewHidePv() const { return previewHidePv_; }
 QString WorkbenchSettings::uiFontFamily() const { return uiFontFamily_; }
+int WorkbenchSettings::uiScalePercent() const { return uiScalePercent_; }
+
+void WorkbenchSettings::setUiScalePercent(int percent)
+{
+    percent = qBound(kUiScaleMinimumPercent, percent, kUiScaleMaximumPercent);
+    if (uiScalePercent_ == percent) {
+        return;
+    }
+    uiScalePercent_ = percent;
+    storeUiValue(kUiScalePercent, percent);
+    emit uiScalePercentChanged();
+}
+
 QString WorkbenchSettings::themeModeToken() const
 {
     return PreferenceDocument::themePreferenceToken(PreferenceDocument::preferredTheme());

@@ -1291,6 +1291,18 @@ Failed: %2</source>
         <source>Preferences</source>
         <translation>設定</translation>
     </message>
+    <message id="dialog.preferences.ui_scale">
+        <source>Interface zoom</source>
+        <translation>画面の拡大率</translation>
+    </message>
+    <message id="dialog.preferences.ui_scale.hint">
+        <source>Scale text, icons, and controls together. Changes apply immediately.</source>
+        <translation>文字、アイコン、コントロールをまとめて拡大・縮小します。変更はすぐに適用されます。</translation>
+    </message>
+    <message id="dialog.preferences.ui_scale.reset">
+        <source>Reset to 100%</source>
+        <translation>100% に戻す</translation>
+    </message>
     <message id="dialog.preferences.update.auto_check">
         <source>Check for updates at startup</source>
         <translation>起動時にアップデートを確認</translation>
@@ -3753,13 +3765,17 @@ The file may be open in preview, a media player, File Explorer preview pane, or 
         <source>Waveform Brightness</source>
         <translation>波形の明るさ</translation>
     </message>
-    <message id="shortcut.editor.font_decrease">
-        <source>Decrease Editor Font</source>
-        <translation>エディタの文字を小さく</translation>
+    <message id="shortcut.ui.zoom_out">
+        <source>Zoom Out Interface</source>
+        <translation>UI を縮小</translation>
     </message>
-    <message id="shortcut.editor.font_increase">
-        <source>Increase Editor Font</source>
-        <translation>エディタの文字を大きく</translation>
+    <message id="shortcut.ui.zoom_in">
+        <source>Zoom In Interface</source>
+        <translation>UI を拡大</translation>
+    </message>
+    <message id="shortcut.ui.zoom_reset">
+        <source>Reset Interface Zoom</source>
+        <translation>UI の拡大率をリセット</translation>
     </message>
     <message id="shortcut.editor.overwrite_mode">
         <source>Overwrite Mode</source>

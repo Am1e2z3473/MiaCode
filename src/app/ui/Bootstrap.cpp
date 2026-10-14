@@ -13,6 +13,7 @@
 #include "app/ui/export/CoverExportWindow.h"
 #include "app/ui/export/ExportSession.h"
 #include "app/ui/chrome/WindowChrome.h"
+#include "app/ui/chrome/ShortcutModel.h"
 #include "app/platform/PlatformDiagnostics.h"
 #include "app/runtime/Session.h"
 #include "app/services/ApplicationServices.h"
@@ -87,7 +88,8 @@ bool Bootstrap::start(const QString& startupOpenTarget)
 {
     miacode::oplog::appendStartupBeaconLine("ui/start_enter");
     appendUiRuntimeLog(QStringLiteral("start_enter"));
-    QQuickWindow::setTextRenderType(QQuickWindow::NativeTextRendering);
+    // Distance-field glyphs stay sharp when the whole interface is scaled.
+    QQuickWindow::setTextRenderType(QQuickWindow::QtTextRendering);
 #if defined(Q_OS_WIN) || defined(Q_OS_MACOS)
     QQuickWindow::setDefaultAlphaBuffer(true);
 #endif
@@ -368,7 +370,7 @@ void Bootstrap::openCoverExportWindow(int difficultyId)
     auto* preferences = static_cast<WorkbenchSettings*>(applicationContext_->preferences());
     auto* window = new CoverExportWindow(*applicationServices_->exportEngine(),
         applicationServices_->playbackControlSlot(),
-        *preferences, appIcon_, this);
+        *preferences, *static_cast<ShortcutModel*>(applicationContext_->shortcuts()), appIcon_, this);
     coverWindow_ = window;
     if (!window->show(rootWindow_, difficultyId)) {
         delete window;

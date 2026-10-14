@@ -73,7 +73,7 @@ Item {
                              && root.iconSource.toString().length > 0
                     source: root.active && root.filledIconSource.toString().length > 0
                         ? root.filledIconSource : root.iconSource
-                    sourceSize: Qt.size(15, 15)
+                    sourceSize: Theme.iconSourceSize(15, 15)
                     color: root.active ? Theme.colors.text.active : Theme.colors.text.secondary
                 }
 
@@ -102,6 +102,7 @@ Item {
 
                 AbstractButton {
                     id: closeButton
+                    objectName: "tabCloseButton"
 
                     Layout.preferredWidth: root.closable ? 24 : 0
                     Layout.preferredHeight: 24
@@ -113,13 +114,18 @@ Item {
                     Accessible.name: qsTrId("qml.close_1").arg(root.text)
                     onClicked: root.closeRequested()
 
-                    contentItem: ControlsImpl.IconImage {
-                        anchors.centerIn: parent
-                        width: 14
-                        height: 14
-                        source: Qt.resolvedUrl("icons/close.svg")
-                        sourceSize: Qt.size(14, 14)
-                        color: Theme.colors.text.secondary
+                    // Preserve the 14px glyph within the 24px hit/hover area,
+                    // even when sourceSize requests more texture pixels.
+                    contentItem: Item {
+                        ControlsImpl.IconImage {
+                            objectName: "tabCloseIcon"
+                            anchors.centerIn: parent
+                            width: 14
+                            height: 14
+                            source: Qt.resolvedUrl("icons/close.svg")
+                            sourceSize: Theme.iconSourceSize(14, 14)
+                            color: Theme.colors.text.secondary
+                        }
                     }
                     background: Rectangle {
                         radius: Theme.smallControlRadius

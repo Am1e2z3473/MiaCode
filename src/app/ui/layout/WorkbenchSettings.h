@@ -37,6 +37,7 @@ class WorkbenchSettings final : public QObject
     Q_PROPERTY(bool previewCanvasFreeAspect READ previewCanvasFreeAspect WRITE setPreviewCanvasFreeAspect NOTIFY previewCanvasFreeAspectChanged)
     Q_PROPERTY(bool previewHidePv READ previewHidePv WRITE setPreviewHidePv NOTIFY previewHidePvChanged)
     Q_PROPERTY(QString uiFontFamily READ uiFontFamily CONSTANT)
+    Q_PROPERTY(int uiScalePercent READ uiScalePercent WRITE setUiScalePercent NOTIFY uiScalePercentChanged)
     Q_PROPERTY(QString themeModeToken READ themeModeToken NOTIFY themeChanged)
     Q_PROPERTY(QString lightThemeToken READ lightThemeToken NOTIFY themeChanged)
     Q_PROPERTY(QString darkThemeToken READ darkThemeToken NOTIFY themeChanged)
@@ -80,6 +81,8 @@ public:
     bool previewCanvasFreeAspect() const;
     bool previewHidePv() const;
     QString uiFontFamily() const;
+    int uiScalePercent() const;
+    void setUiScalePercent(int percent);
     QString themeModeToken() const;
     QString lightThemeToken() const;
     QString darkThemeToken() const;
@@ -135,9 +138,13 @@ signals:
     void editorSettingsChanged();
     void themeChanged();
     void blurMaterialsEnabledChanged();
+    void uiScalePercentChanged();
 
 private:
     static constexpr int kSidebarDefaultWidth = 190;
+    static constexpr int kUiScaleDefaultPercent = 100;
+    static constexpr int kUiScaleMinimumPercent = 75;
+    static constexpr int kUiScaleMaximumPercent = 200;
     static constexpr double kBottomPanelDefaultHeightRatio = 0.35;
     static constexpr double kPreviewDefaultWidthRatio = 0.5;
     static constexpr int kSidebarMinimumContentWidth = 120;
@@ -158,6 +165,7 @@ private:
     bool previewCanvasFreeAspect_ = false;
     bool previewHidePv_ = false;
     QString uiFontFamily_;
+    int uiScalePercent_ = kUiScaleDefaultPercent;
     QFont codeFont_;
     int editorBlockSpacing_ = 0;
     int fontSize_ = 13;

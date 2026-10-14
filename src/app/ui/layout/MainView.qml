@@ -63,13 +63,14 @@ Item {
         property: "materialRegions"
         when: (Qt.platform.os === "osx" || Qt.platform.os === "windows") && target !== null
         value: {
+            const scale = Theme.uiScale
             if (!Theme.blurMaterialsEnabled || Theme.backgroundActive || !root.visible)
                 return []
             if (Qt.platform.os === "windows")
-                return [{ rect: Qt.rect(0, 0, root.width, root.height) }]
+                return [{ rect: Qt.rect(0, 0, root.width * scale, root.height * scale) }]
             const top = root.mapToItem(null, 0, 0)
             const regions = [{
-                rect: Qt.rect(top.x, top.y, root.width, chromeHost.height)
+                rect: Qt.rect(top.x, top.y, root.width * scale, chromeHost.height * scale)
             }]
             const strip = splitView.activityBarMaterialRect
             if (strip.width > 0 && strip.height > 0) {
@@ -81,12 +82,12 @@ Item {
                     mainViewHost.y + splitView.y + strip.y)
                 regions.push({
                     rect: Qt.rect(origin.x, origin.y,
-                        strip.width, strip.height)
+                        strip.width * scale, strip.height * scale)
                 })
                 if (!root.preferences.efficientSidebarEnabled) {
                     regions.push({
-                        rect: Qt.rect(origin.x + strip.width, origin.y,
-                            Theme.workspaceRadius, Theme.workspaceRadius)
+                        rect: Qt.rect(origin.x + strip.width * scale, origin.y,
+                            Theme.workspaceRadius * scale, Theme.workspaceRadius * scale)
                     })
                 }
             }
@@ -312,7 +313,7 @@ Item {
                 platform: root.platform
                 nativeHeight: root.platform.nativeMenuBar
                     && root.applicationContext.windowChrome
-                    ? root.applicationContext.windowChrome.titleBarHeight
+                    ? root.applicationContext.windowChrome.titleBarHeight / Theme.uiScale
                     : 0
                 menuCommands: menuCommands
                 shortcuts: root.applicationContext.shortcuts
@@ -325,7 +326,7 @@ Item {
                 chartCommandsEnabled: root.chartEditorActive
                 toolCommandsEnabled: root.documentSession.hasDocument
                 leadingInset: root.applicationContext.windowChrome
-                    ? root.applicationContext.windowChrome.titleBarLeadingInset
+                    ? root.applicationContext.windowChrome.titleBarLeadingInset / Theme.uiScale
                     : 0
                 leadingToolAreaWidth: root.platform.nativeMenuBar
                     ? mainToolBar.leadingActionsRight : 0

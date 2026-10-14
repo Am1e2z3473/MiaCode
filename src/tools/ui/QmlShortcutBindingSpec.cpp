@@ -195,6 +195,18 @@ int main(int argc, char** argv)
     // layouts) and by the keypad +, so it is the half-step default and
     // Ctrl+Shift+= must not come back as anyone's.
     const auto& registry = miacode::ui::ShortcutRegistry::instance();
+    expect(editableIds.contains(QStringLiteral("ui.zoom_in"))
+               && editableIds.contains(QStringLiteral("ui.zoom_out"))
+               && editableIds.contains(QStringLiteral("ui.zoom_reset"))
+               && registry.defaultShortcutText(QStringLiteral("ui.zoom_in")) == QStringLiteral("Ctrl+Alt+=")
+               && registry.defaultShortcutText(QStringLiteral("ui.zoom_out")) == QStringLiteral("Ctrl+Alt+-")
+               && registry.defaultShortcutText(QStringLiteral("ui.zoom_reset")) == QStringLiteral("Ctrl+Alt+0")
+               && !editableIds.contains(QStringLiteral("editor.font_increase"))
+               && !editableIds.contains(QStringLiteral("editor.font_decrease"))
+               && model.sequence(QStringLiteral("editor.font_increase")).isEmpty()
+               && model.sequence(QStringLiteral("editor.font_decrease")).isEmpty(),
+           QStringLiteral("UI scale commands replace editor font shortcuts without leaving duplicate legacy bindings"),
+           out, &failed);
     QStringList shiftedEqualsDefaults;
     for (const auto& definition : registry.editableShortcuts()) {
         if (registry.defaultShortcutText(definition.id) == QStringLiteral("Ctrl+Shift+=")) {

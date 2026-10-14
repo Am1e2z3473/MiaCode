@@ -41,7 +41,7 @@ CheckBox {
             height: root.compact ? 9 : 11
             visible: root.checked
             source: "qrc:/icons/checkmark.svg"
-            sourceSize: Qt.size(width, height)
+            sourceSize: Theme.iconSourceSize(width, height)
             color: Theme.colors.toggle.checkedKnob
         }
 

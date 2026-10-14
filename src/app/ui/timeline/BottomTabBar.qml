@@ -36,9 +36,8 @@ Item {
         id: tab
 
         property int count: -1
-        font.pixelSize: Theme.timelineFontSize
         property color countColor: Theme.colors.accent.badge
-        readonly property int badgeFontSize: Theme.timelineFontSize - 2
+        readonly property int badgeFontSize: Theme.uiFontSize - 2
         readonly property int badgeHeight: badgeFontSize + 5
 
         Layout.alignment: Qt.AlignVCenter

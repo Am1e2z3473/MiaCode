@@ -8,6 +8,7 @@ ApplicationWindow {
     required property var controller
     required property var coverSession
     required property var preferences
+    required property var shortcuts
     required property var platform
     required property var windowChrome
     readonly property Item backdropSource: sceneContent
@@ -30,8 +31,8 @@ ApplicationWindow {
     transientParent: null
     width: 1280
     height: 800
-    minimumWidth: page.implicitWidth
-    minimumHeight: 480 + titleBar.height
+    minimumWidth: Math.min(Screen.desktopAvailableWidth, Math.ceil(page.implicitWidth * Theme.uiScale))
+    minimumHeight: Math.min(Screen.desktopAvailableHeight, Math.ceil((480 + titleBar.height) * Theme.uiScale))
     visible: false
     color: Qt.platform.os === "osx" || Qt.platform.os === "windows"
         ? "transparent" : Theme.colors.background.surface
@@ -61,6 +62,11 @@ ApplicationWindow {
         value: window.preferences
     }
 
+    UiScaleShortcuts {
+        shortcuts: window.shortcuts
+        preferencesModel: window.preferences
+    }
+
     onClosing: function(event) {
         event.accepted = !window.coverSession.busy
         if (event.accepted)
@@ -73,13 +79,12 @@ ApplicationWindow {
         when: Qt.platform.os === "osx" || Qt.platform.os === "windows"
         value: window.visible && titleBar.visible
             && Theme.blurMaterialsEnabled && !Theme.backgroundActive
-            ? [{ rect: Qt.rect(0, 0, window.width, titleBar.height) }] : []
+            ? [{ rect: Qt.rect(0, 0, window.width, titleBar.height * Theme.uiScale) }] : []
         restoreMode: Binding.RestoreNone
     }
 
-    Item {
+    UiScaleSurface {
         id: sceneContent
-        anchors.fill: parent
 
         WindowBackground {
             anchors.fill: parent
@@ -98,8 +103,8 @@ ApplicationWindow {
             platform: window.platform
             applicationMenusVisible: false
             titleText: window.title
-            nativeHeight: window.windowChrome.titleBarHeight
-            leadingInset: window.windowChrome.titleBarLeadingInset
+            nativeHeight: window.windowChrome.titleBarHeight / Theme.uiScale
+            leadingInset: window.windowChrome.titleBarLeadingInset / Theme.uiScale
             leadingToolAreaWidth: leadingInset
             color: Theme.chromeSurfaceColor(Theme.colors.background.titleBar,
                 window.nativeMaterialActive)

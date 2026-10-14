@@ -89,7 +89,7 @@ AbstractButton {
             width: root.chevronSize
             height: root.chevronSize
             source: Qt.resolvedUrl("icons/chevron-down.svg")
-            sourceSize: Qt.size(width, height)
+            sourceSize: Theme.iconSourceSize(width, height)
             color: !root.enabled ? Theme.colors.text.disabled
                 : root.expanded || root.hovered || root.visualFocus
                 ? Theme.colors.text.active

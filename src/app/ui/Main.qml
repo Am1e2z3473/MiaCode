@@ -12,7 +12,7 @@ ApplicationWindow {
     readonly property bool nativeMaterialActive: Theme.nativeMaterialActive
     readonly property real tooltipTopMargin: 6 + (
         Qt.platform.os === "osx" && window.visibility !== Window.FullScreen
-        ? window.applicationContext.windowChrome.titleBarHeight : 0)
+        ? window.applicationContext.windowChrome.titleBarHeight / Theme.uiScale : 0)
 
     required property var applicationContext
     readonly property var shellLifecycle: applicationContext.shell
@@ -39,8 +39,9 @@ ApplicationWindow {
 
     width: 1280
     height: 800
-    minimumWidth: Math.ceil(mainView.minimumWidth)
-    minimumHeight: Math.max(480, Math.ceil(mainView.minimumHeight))
+    minimumWidth: Math.min(Screen.desktopAvailableWidth, Math.ceil(mainView.minimumWidth * Theme.uiScale))
+    minimumHeight: Math.min(Screen.desktopAvailableHeight,
+        Math.ceil(Math.max(480, mainView.minimumHeight) * Theme.uiScale))
     // C++ explicitly shows this only after MainWindow has registered the root
     // and installed the shared chart-audio drop route.
     visible: false
@@ -149,9 +150,8 @@ ApplicationWindow {
     }
 
     // Popups live in ApplicationWindow's overlay, outside the sampled scene.
-    Item {
+    UiScaleSurface {
         id: sceneContent
-        anchors.fill: parent
 
         WindowBackground {
             id: backgroundLayer
@@ -197,7 +197,7 @@ ApplicationWindow {
                           ? qsTrId("drop_chart.preview.open_title")
                           : qsTrId("drop_chart.preview.title")
                     font.family: Theme.uiFont
-                    font.pixelSize: Theme.uiFontSize + 3
+                    font.pixelSize: 16
                 }
             }
         }
@@ -209,7 +209,6 @@ ApplicationWindow {
         shortcuts: window.applicationContext.shortcuts
         commands: window.applicationContext.commands
         previewSession: window.applicationContext.preview
-        preferencesModel: window.applicationContext.preferencesModel
         sourceEditorFocused: window.sourceEditorFocused
         commandsEnabled: !mainView.beginnerGuideActive
         chartCommandsEnabled: mainView.chartEditorActive
@@ -217,6 +216,12 @@ ApplicationWindow {
         menuOwnsChartTransformShortcuts: window.platform.nativeMenuBar
         menuOwnsPreviewRateShortcuts: window.platform.nativeMenuBar
         onChartTransformRequested: opId => mainView.applyChartTransform(opId)
+    }
+
+    UiScaleShortcuts {
+        shortcuts: window.applicationContext.shortcuts
+        preferencesModel: window.applicationContext.preferencesModel
+        commandsEnabled: !mainView.beginnerGuideActive
     }
 
     Loader {

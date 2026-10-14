@@ -267,8 +267,9 @@ Item {
         visible: false
         width: 560
         height: 680
-        minimumWidth: preview.minimumWidth
-        minimumHeight: preview.minimumHeight + detachedTitleBar.height + detachedToolBar.height
+        minimumWidth: Math.min(Screen.desktopAvailableWidth, Math.ceil(preview.minimumWidth * Theme.uiScale))
+        minimumHeight: Math.min(Screen.desktopAvailableHeight,
+            Math.ceil((preview.minimumHeight + detachedTitleBar.height + detachedToolBar.height) * Theme.uiScale))
         flags: {
             let value = Qt.Window
             if (root.Window.window.platform.captionButtons) {
@@ -314,14 +315,13 @@ Item {
             value: detachedPreviewWindow.visible && detachedTitleBar.visible
                 && Theme.blurMaterialsEnabled && !Theme.backgroundActive
                 ? [{ rect: Qt.rect(0, 0, detachedPreviewWindow.width,
-                    detachedTitleBar.height + detachedToolBar.height) }]
+                    (detachedTitleBar.height + detachedToolBar.height) * Theme.uiScale) }]
                 : []
             restoreMode: Binding.RestoreNone
         }
 
-        Item {
+        UiScaleSurface {
             id: detachedSceneContent
-            anchors.fill: parent
 
             WindowBackground {
                 anchors.fill: parent
@@ -343,9 +343,9 @@ Item {
                 applicationMenusVisible: false
                 titleText: detachedPreviewWindow.captionTitle
                 nativeHeight: detachedPreviewWindow.windowChrome
-                    ? detachedPreviewWindow.windowChrome.titleBarHeight : 0
+                    ? detachedPreviewWindow.windowChrome.titleBarHeight / Theme.uiScale : 0
                 leadingInset: detachedPreviewWindow.windowChrome
-                    ? detachedPreviewWindow.windowChrome.titleBarLeadingInset : 0
+                    ? detachedPreviewWindow.windowChrome.titleBarLeadingInset / Theme.uiScale : 0
                 leadingToolAreaWidth: leadingInset
                 trailingToolAreaWidth: detachedPreviewWindow.settingsInTitleBar
                     ? detachedSettingsActions.width + 8 : 0
@@ -414,6 +414,11 @@ Item {
         Shortcut {
             sequences: [StandardKey.Close]
             onActivated: detachedPreviewWindow.close()
+        }
+
+        UiScaleShortcuts {
+            shortcuts: root.Window.window.applicationContext.shortcuts
+            preferencesModel: root.preferencesModel
         }
 
         Shortcut {

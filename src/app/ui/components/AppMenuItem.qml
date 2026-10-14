@@ -113,7 +113,7 @@ MenuItem {
         height: 14
         visible: root.checkable && root.checked
         source: Qt.resolvedUrl("icons/check.svg")
-        sourceSize: Qt.size(14, 14)
+        sourceSize: Theme.iconSourceSize(14, 14)
         color: root.enabled ? Theme.colors.text.active : Theme.colors.text.disabled
     }
 
@@ -126,7 +126,7 @@ MenuItem {
         visible: root.subMenu
         mirror: root.mirrored
         source: Qt.resolvedUrl("icons/chevron-right.svg")
-        sourceSize: Qt.size(14, 14)
+        sourceSize: Theme.iconSourceSize(14, 14)
         color: root.enabled ? Theme.colors.text.active : Theme.colors.text.disabled
     }
 }

@@ -1291,6 +1291,18 @@ Failed: %2</source>
         <source>Preferences</source>
         <translation>首选项</translation>
     </message>
+    <message id="dialog.preferences.ui_scale">
+        <source>Interface zoom</source>
+        <translation>界面缩放</translation>
+    </message>
+    <message id="dialog.preferences.ui_scale.hint">
+        <source>Scale text, icons, and controls together. Changes apply immediately.</source>
+        <translation>同时缩放文字、图标和控件，修改后立即生效。</translation>
+    </message>
+    <message id="dialog.preferences.ui_scale.reset">
+        <source>Reset to 100%</source>
+        <translation>重置为 100%</translation>
+    </message>
     <message id="dialog.preferences.update.auto_check">
         <source>Check for updates at startup</source>
         <translation>启动时检查更新</translation>
@@ -3753,13 +3765,17 @@ The file may be open in preview, a media player, File Explorer preview pane, or 
         <source>Waveform Brightness</source>
         <translation>波形图亮度</translation>
     </message>
-    <message id="shortcut.editor.font_decrease">
-        <source>Decrease Editor Font</source>
-        <translation>编辑器字号减小</translation>
+    <message id="shortcut.ui.zoom_out">
+        <source>Zoom Out Interface</source>
+        <translation>缩小界面</translation>
     </message>
-    <message id="shortcut.editor.font_increase">
-        <source>Increase Editor Font</source>
-        <translation>编辑器字号增大</translation>
+    <message id="shortcut.ui.zoom_in">
+        <source>Zoom In Interface</source>
+        <translation>放大界面</translation>
+    </message>
+    <message id="shortcut.ui.zoom_reset">
+        <source>Reset Interface Zoom</source>
+        <translation>重置界面缩放</translation>
     </message>
     <message id="shortcut.editor.overwrite_mode">
         <source>Overwrite Mode</source>

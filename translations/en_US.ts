@@ -1291,6 +1291,18 @@ Failed: %2</translation>
         <source>Preferences</source>
         <translation>Preferences</translation>
     </message>
+    <message id="dialog.preferences.ui_scale">
+        <source>Interface zoom</source>
+        <translation>Interface zoom</translation>
+    </message>
+    <message id="dialog.preferences.ui_scale.hint">
+        <source>Scale text, icons, and controls together. Changes apply immediately.</source>
+        <translation>Scale text, icons, and controls together. Changes apply immediately.</translation>
+    </message>
+    <message id="dialog.preferences.ui_scale.reset">
+        <source>Reset to 100%</source>
+        <translation>Reset to 100%</translation>
+    </message>
     <message id="dialog.preferences.update.auto_check">
         <source>Check for updates at startup</source>
         <translation>Check for updates at startup</translation>
@@ -3753,13 +3765,17 @@ The file may be open in preview, a media player, File Explorer preview pane, or 
         <source>Waveform Brightness</source>
         <translation>Waveform Brightness</translation>
     </message>
-    <message id="shortcut.editor.font_decrease">
-        <source>Decrease Editor Font</source>
-        <translation>Decrease Editor Font</translation>
+    <message id="shortcut.ui.zoom_out">
+        <source>Zoom Out Interface</source>
+        <translation>Zoom Out Interface</translation>
     </message>
-    <message id="shortcut.editor.font_increase">
-        <source>Increase Editor Font</source>
-        <translation>Increase Editor Font</translation>
+    <message id="shortcut.ui.zoom_in">
+        <source>Zoom In Interface</source>
+        <translation>Zoom In Interface</translation>
+    </message>
+    <message id="shortcut.ui.zoom_reset">
+        <source>Reset Interface Zoom</source>
+        <translation>Reset Interface Zoom</translation>
     </message>
     <message id="shortcut.editor.overwrite_mode">
         <source>Overwrite Mode</source>

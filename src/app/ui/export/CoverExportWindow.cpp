@@ -2,6 +2,7 @@
 
 #include "app/platform/PlatformDiagnostics.h"
 #include "app/ui/layout/WorkbenchSettings.h"
+#include "app/ui/chrome/ShortcutModel.h"
 #include "app/ui/preferences/LocaleService.h"
 #include "common/DebugLog.h"
 #include "export/cover_export/CoverCompositeRenderer.h"
@@ -16,10 +17,12 @@ namespace miacode::ui {
 CoverExportWindow::CoverExportWindow(miacode::ExportEngine& exportEngine,
                                            miacode::PlaybackControl*& playbackControlSlot,
                                            WorkbenchSettings& preferences,
+                                           ShortcutModel& shortcuts,
                                            const QIcon& icon,
                                            QObject* parent)
     : QObject(parent)
     , preferences_(preferences)
+    , shortcuts_(shortcuts)
     , icon_(icon)
     , platform_(this)
     , windowChrome_(this)
@@ -73,6 +76,7 @@ bool CoverExportWindow::show(QQuickWindow* referenceWindow, int difficultyId)
         {QStringLiteral("controller"), QVariant::fromValue(static_cast<QObject*>(this))},
         {QStringLiteral("coverSession"), QVariant::fromValue(static_cast<QObject*>(&session_))},
         {QStringLiteral("preferences"), QVariant::fromValue(static_cast<QObject*>(&preferences_))},
+        {QStringLiteral("shortcuts"), QVariant::fromValue(static_cast<QObject*>(&shortcuts_))},
         {QStringLiteral("platform"), QVariant::fromValue(static_cast<QObject*>(&platform_))},
         {QStringLiteral("windowChrome"), QVariant::fromValue(static_cast<QObject*>(&windowChrome_))},
     });

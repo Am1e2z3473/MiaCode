@@ -22,7 +22,7 @@ Rectangle {
     }
     property int pendingBookmarkLine: -1
     readonly property int editorRailBaseWidth: 12
-    readonly property real editorRailDevicePixelRatio: root.Screen.devicePixelRatio
+    readonly property real editorRailDevicePixelRatio: root.Screen.devicePixelRatio * Theme.uiScale
     readonly property int editorRailPhysicalWidth: 3 * Math.ceil(
         editorRailBaseWidth * editorRailDevicePixelRatio / 3)
     readonly property real editorRailWidth: editorRailPhysicalWidth / editorRailDevicePixelRatio
@@ -37,7 +37,7 @@ Rectangle {
     readonly property real editorRailSceneX: {
         // mapToItem() needs an explicit dependency when an ancestor moves.
         const revision = editorRailSceneRevision
-        return root.mapToItem(null, 0, 0).x
+        return root.mapToItem(null, 0, 0).x / Theme.uiScale
     }
     readonly property real editorRailRightMargin:
         width - alignRailCoordinate(width, editorRailSceneX)
@@ -535,11 +535,11 @@ Rectangle {
             readonly property int alignmentRevision: root.editorRailSceneRevision
             readonly property real sceneLeft: {
                 const revision = alignmentRevision
-                return parent.mapToItem(null, 0, 0).x
+                return parent.mapToItem(null, 0, 0).x / Theme.uiScale
             }
             readonly property real sceneTop: {
                 const revision = alignmentRevision
-                return parent.mapToItem(null, 0, 0).y
+                return parent.mapToItem(null, 0, 0).y / Theme.uiScale
             }
             x: root.alignRailCoordinate(0, sceneLeft)
             y: root.alignRailCoordinate(0, sceneTop)

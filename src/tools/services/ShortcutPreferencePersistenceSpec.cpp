@@ -4,6 +4,7 @@
 
 #include <QCoreApplication>
 #include <QJsonArray>
+#include <QSet>
 #include <QTemporaryDir>
 #include <QTextStream>
 
@@ -107,6 +108,68 @@ int main(int argc, char** argv)
     const int beforeInvalid = notifications;
     expect(!model.setShortcutText(id, QString()) && notifications == beforeInvalid
                && registry.shortcutText(id) == "Ctrl+8", "invalid input is rejected without changing runtime state");
+
+    const QString zoomIn = QStringLiteral("ui.zoom_in");
+    const QString zoomOut = QStringLiteral("ui.zoom_out");
+    const QString legacyIn = QStringLiteral("editor.font_increase");
+    const QString legacyOut = QStringLiteral("editor.font_decrease");
+    const QString legacyPath = temporary.filePath(QStringLiteral("legacy-font-shortcuts.json"));
+    const QJsonObject legacyFixture{
+        {QStringLiteral("schema"), 1},
+        {QStringLiteral("editable"), QJsonArray{legacyIn, legacyOut, zoomIn}},
+        {QStringLiteral("actions"), QJsonObject{
+            {legacyIn, QJsonObject{{QStringLiteral("shortcut"), QStringLiteral("Ctrl+Alt+8")},
+                                  {QStringLiteral("metadata"), 42}}},
+            {legacyOut, QJsonObject{{QStringLiteral("default"), QStringLiteral("Ctrl+Alt+9")}}}}},
+        {QStringLiteral("contextual"), QJsonObject{
+            {legacyIn, QJsonObject{{QStringLiteral("shortcut"), QStringLiteral("Ctrl+Alt+7")},
+                                  {QStringLiteral("default"), QStringLiteral("Ctrl+Alt+3")},
+                                  {QStringLiteral("context"), QStringLiteral("keep")}}}}},
+    };
+    expect(put(legacyPath, QJsonDocument(legacyFixture).toJson()), "legacy font shortcut fixture");
+    const QByteArray originalLegacy = bytes(legacyPath);
+    ShortcutRegistry upgraded(legacyPath);
+    ShortcutModel upgradedModel(upgraded);
+    QSet<QString> upgradedIds;
+    for (const auto& definition : upgraded.editableShortcuts()) upgradedIds.insert(definition.id);
+    expect(upgraded.shortcutText(zoomIn) == "Ctrl+Alt+7"
+               && upgraded.shortcutText(zoomOut) == "Ctrl+Alt+9"
+               && upgraded.shortcutText(legacyIn).isEmpty() && upgraded.shortcutText(legacyOut).isEmpty()
+               && upgradedIds == QSet<QString>{zoomIn, zoomOut, QStringLiteral("ui.zoom_reset")}
+               && bytes(legacyPath) == originalLegacy,
+           "legacy custom keys and editable ids upgrade once without modifying the source");
+    expect(upgradedModel.setShortcutText(zoomIn, QStringLiteral("Ctrl+Alt+6")), "edit upgraded UI scale shortcut");
+    ShortcutRegistry upgradedRestart(legacyPath);
+    const QJsonObject upgradedSaved = read(legacyPath).object;
+    expect(upgradedRestart.shortcutText(zoomIn) == "Ctrl+Alt+6"
+               && upgradedSaved.value("actions").toObject().value(legacyIn).toObject().value("metadata") == 42
+               && !upgradedSaved.value("actions").toObject().value(legacyIn).toObject().contains("shortcut")
+               && !upgradedSaved.value("contextual").toObject().value(legacyIn).toObject().contains("shortcut")
+               && upgradedSaved.value("contextual").toObject().value(legacyIn).toObject().value("context") == "keep",
+           "editing writes the new identity, retires legacy owned fields, and preserves metadata");
+    upgradedModel.resetShortcut(zoomIn);
+    upgradedModel.resetShortcut(zoomOut);
+    ShortcutRegistry upgradedReset(legacyPath);
+    expect(upgradedReset.shortcutText(zoomIn) == upgraded.defaultShortcutText(zoomIn)
+               && upgradedReset.shortcutText(zoomOut) == upgraded.defaultShortcutText(zoomOut),
+           "reset cannot resurrect a legacy custom key or copied default");
+
+    QJsonObject mixed = legacyFixture;
+    QJsonObject mixedActions = mixed.value("actions").toObject();
+    mixedActions.insert(zoomOut, QJsonObject{{QStringLiteral("shortcut"), QStringLiteral("Ctrl+Alt+5")}});
+    mixed.insert(QStringLiteral("actions"), mixedActions);
+    expect(put(legacyPath, QJsonDocument(mixed).toJson()), "mixed legacy and new shortcut fixture");
+    ShortcutRegistry mixedRegistry(legacyPath);
+    expect(mixedRegistry.shortcutText(zoomOut) == "Ctrl+Alt+5", "new identity wins over its legacy alias in the same section");
+
+    const QString legacyCwd = temporary.filePath(QStringLiteral("legacy-cwd-shortcuts.json"));
+    expect(put(legacyCwd, "{\"contextual\":{\"editor.font_decrease\":{\"shortcut\":\"Ctrl+Alt+4\"}}}"),
+           "legacy external shortcut fixture");
+    const QByteArray originalLegacyCwd = bytes(legacyCwd);
+    ShortcutRegistry upgradedLayered(legacyPath, legacyCwd);
+    expect(upgradedLayered.shortcutText(zoomOut) == "Ctrl+Alt+4"
+               && bytes(legacyCwd) == originalLegacyCwd,
+           "legacy aliases preserve external source priority without rewriting external input");
 
     const QString cwd = temporary.filePath(QStringLiteral("cwd-shortcuts.json"));
     expect(put(cwd, "{\"actions\":{\"transform.mirror_lr\":{\"shortcut\":\"Ctrl+4\"}}}"), "CWD override fixture");

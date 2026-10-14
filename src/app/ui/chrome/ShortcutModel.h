@@ -23,12 +23,15 @@ class ShortcutModel final : public QObject
     // Bumped when the registry reloads, so every QML binding that resolved a
     // sequence re-evaluates after the user edits their shortcuts.
     Q_PROPERTY(qulonglong revision READ revision NOTIFY revisionChanged)
+    Q_PROPERTY(bool captureActive READ captureActive WRITE setCaptureActive NOTIFY captureActiveChanged)
 
 public:
     explicit ShortcutModel(QObject* parent = nullptr);
     explicit ShortcutModel(ShortcutRegistry& registry, QObject* parent = nullptr);
 
     qulonglong revision() const;
+    bool captureActive() const;
+    void setCaptureActive(bool active);
 
     // Portable text for `Shortcut { sequence: ... }`. Empty when the id is
     // unknown and no fallback is given, which leaves the Shortcut inert rather
@@ -51,11 +54,13 @@ public:
 
 signals:
     void revisionChanged();
+    void captureActiveChanged();
 
 private:
     void publishRevision();
     ShortcutRegistry& registry_;
     qulonglong revision_ = 1;
+    bool captureActive_ = false;
 };
 
 } // namespace miacode::ui

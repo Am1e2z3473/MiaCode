@@ -331,7 +331,7 @@ Popup {
                                                 anchors.centerIn: parent
                                                 width: root.iconSize
                                                 height: width
-                                                sourceSize: Qt.size(width, height)
+                                                sourceSize: Theme.iconSourceSize(width, height)
                                                 source: feature.modelData.icon || ""
                                                 color: Theme.colors.text.active
                                                 visible: feature.modelData.icon !== undefined

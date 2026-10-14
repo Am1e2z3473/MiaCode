@@ -60,7 +60,7 @@ AbstractButton {
                 height: root.iconHeight
                 source: (root.active || root.checked) && root.filledIconSource.toString().length > 0
                     ? root.filledIconSource : root.iconSource
-                sourceSize: Qt.size(root.iconWidth, root.iconHeight)
+                sourceSize: Theme.iconSourceSize(root.iconWidth, root.iconHeight)
                 color: root.glyphColor
             }
 
