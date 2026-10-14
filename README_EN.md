@@ -16,24 +16,24 @@
 
 MiaCode is a maimai chart authoring tool built with Qt 6 / C++ / QML, with editing, live preview, syntax and Muri checks, video export, and cover creation.
 
-<table align="center" width="100%">
-  <tr>
-    <td align="center" width="50%"><p>Screenshot placeholder: MiaCode dark theme</p></td>
-    <td align="center" width="50%"><p>Screenshot placeholder: MiaCode light theme</p></td>
-  </tr>
-  <tr>
-    <td align="center">Dark theme</td>
-    <td align="center">Light theme</td>
-  </tr>
-</table>
+<p align="center">
+  <img src="resources/screenshots/main-dark.png" alt="MiaCode dark theme with the 狐雨 chart, waveform timeline, and live preview" width="1280">
+</p>
 
-This branch contains the QML workspace version, `2.0.0-alpha`.
+<details>
+  <summary>Light theme</summary>
+  <p align="center">
+    <img src="resources/screenshots/main-light.png" alt="The same chart in MiaCode's light theme" width="1280">
+  </p>
+</details>
+
+Screenshots show the macOS interface with 狐雨 by 棗いつき, charted by 天気雨.
 
 ## Quick Start
 
 Release packages are available on [GitHub Releases](https://github.com/Team-MiaCode/MiaCode/releases).
 
-Nightly packages are available on [GitHub Actions](https://github.com/Team-MiaCode/MiaCode/actions/workflows/package.yml). Select a `feature/qml-ui` build.
+Nightly packages are available on [GitHub Actions](https://github.com/Team-MiaCode/MiaCode/actions/workflows/package.yml). Select a `dev` build.
 
 Windows (x64 / ARM64) and macOS (Apple Silicon) are supported. Download and extract the archive for your system and architecture.
 
@@ -42,24 +42,28 @@ Windows (x64 / ARM64) and macOS (Apple Silicon) are supported. Download and extr
 
 Linux users can build from source using the instructions below.
 
+### Open Your First Chart
+
+1. Open a simai `maidata.txt`, or drag an audio file into the workspace to create a chart.
+2. Edit the song information and select a difficulty in the sidebar. Type in the editor, then scrub the waveform timeline or preview progress bar to inspect a passage.
+3. Use **Save** for the active editing page, or **Save entire document** to save all difficulties and song information. Open video export or the cover editor from the sidebar when publishing.
+
 ## Features
 
-### Highlights
+### Editing and Preview
 
-- Supports Windows, macOS on Apple Silicon, and Linux.
-
-- Adjustable panel widths, with interchangeable editor and preview positions.
-
-- Dark and light themes, with Chinese, English, and Japanese interfaces and automatic system matching.
-
-- Preview updates as you type. Scrub through the chart at any time, including while paused.
+- Edit simai charts with syntax highlighting, duration completion, and separate tabs for song information and difficulties.
+- Navigate with section bookmarks and a waveform timeline that displays note positions, holds, and slide paths.
+- Preview updates as you type. Scrub through the chart while paused, adjust playback speed, or detach the preview into its own window.
+- Resize panels and swap the editor and preview positions. Choose dark or light themes, Chinese, English, or Japanese, with system matching available for theme and language.
+- Customize skins, judge lines, preview fonts, and the workspace background.
 
 ### Syntax and Muri Checks
 
 <table align="center" width="100%">
   <tr>
-    <td align="center" width="50%"><p>Screenshot placeholder: Syntax check results</p></td>
-    <td align="center" width="50%"><p>Screenshot placeholder: Muri detection results</p></td>
+    <td align="center" width="50%"><img src="resources/screenshots/syntax.png" alt="Syntax diagnostics and line navigation" width="640"></td>
+    <td align="center" width="50%"><img src="resources/screenshots/muri.png" alt="Muri diagnostics and source navigation" width="640"></td>
   </tr>
   <tr>
     <td align="center">Syntax check</td>
@@ -67,47 +71,44 @@ Linux users can build from source using the instructions below.
   </tr>
 </table>
 
-Check chart syntax and detect Muri (physically unplayable patterns), with navigation to the relevant lines.
+Syntax diagnostics list errors and warnings with line positions. Muri checks identify patterns such as overlapping notes and tap-on-slide conflicts. Select a result to navigate to its source and preview position.
 
 ### Video and Cover Export
 
-<table align="center" width="100%">
-  <tr>
-    <td align="center" width="50%"><p>Screenshot placeholder: Video export interface</p></td>
-    <td align="center" width="50%"><p>Screenshot placeholder: Cover editor interface</p></td>
-  </tr>
-  <tr>
-    <td align="center">Export</td>
-    <td align="center">Cover tools</td>
-  </tr>
-</table>
-
 #### Export
 
-Export chart preview videos with an intro and full-background PV.
+<p align="center">
+  <img src="resources/screenshots/video-export.png" alt="Video export settings and range selection" width="1280">
+</p>
 
-Set a custom export range, or select a section in the editor and use it as the export range.
+Export chart preview videos with an intro, background video, and optional chart information and note statistics. Configure the resolution, frame rate, audio bitrate, and encoder in the export workspace.
+
+Set a custom export range, use the current playback position for either boundary, or select a passage in the editor and send it to export. Preview the selected range before exporting.
 
 #### Covers
 
+<p align="center">
+  <img src="resources/screenshots/cover-editor.png" alt="Chart frame and difficulty card in the cover editor" width="1280">
+</p>
+
 Create covers for publishing chart videos.
 
-Customize fonts, backgrounds, and other visual elements, and overlay chart frame screenshots to showcase patterns.
+Combine difficulty cards, chart frames, images, and text as editable layers. Adjust their position, size, stacking order, and opacity; customize fonts and backgrounds, then save the composition as a reusable preset.
 
 ### More Tools
 
 <table align="center" width="100%">
   <tr>
-    <td align="center" width="50%"><p>Screenshot placeholder: Note duration completion</p></td>
-    <td align="center" width="50%"><p>Screenshot placeholder: One-click chart formatting</p></td>
+    <td align="center" width="50%"><img src="resources/screenshots/completion.png" alt="Note duration completion candidates" width="640"></td>
+    <td align="center" width="50%"><img src="resources/screenshots/normalize.png" alt="Chart formatting options" width="640"></td>
   </tr>
   <tr>
     <td align="center">Note duration completion</td>
     <td align="center">Chart formatting</td>
   </tr>
   <tr>
-    <td align="center"><p>Screenshot placeholder: Audio and video tools</p></td>
-    <td align="center"><p>Screenshot placeholder: BPM and latency detection</p></td>
+    <td align="center"><img src="resources/screenshots/media-tools.png" alt="Audio and video processing tools" width="640"></td>
+    <td align="center"><img src="resources/screenshots/latency.png" alt="BPM and latency calibration" width="640"></td>
   </tr>
   <tr>
     <td align="center">Audio and video tools</td>
@@ -115,19 +116,10 @@ Customize fonts, backgrounds, and other visual elements, and overlay chart frame
   </tr>
 </table>
 
-- Custom backgrounds
-
-- Disable IME input or convert full-width characters
-- Bookmark navigation
-- Quick Touch note authoring
-- Drag in audio to create a chart
-- Display the beat count of a selection
-- Reset tap note positions to lane 1
-- Note duration completion
-- One-click chart formatting
-
-- Audio and video tools
-- BPM and latency detection
+- Disable IME input, convert full-width characters, and inspect the beat count of a selection.
+- Author Touch notes with the preview touchpad, transform note positions, and format an entire chart or a selection.
+- Convert audio to 44.1 kHz, prepend silence or blank video, align background video to audio, and compress videos individually or in batches.
+- Detect BPM and audio offset, then use the calibration page to check timing against the track.
 
 ## Build
 
@@ -138,6 +130,17 @@ Customize fonts, backgrounds, and other visual elements, and overlay chart frame
 - Qt 6.10+ with Qt Quick, Quick Controls 2, Quick 3D, Multimedia, Shader Tools, Linguist Tools, and Multimedia private development headers
 
 See [scripts/README_EN.md](scripts/README_EN.md) for packaging details.
+
+### Get the Source
+
+Clone the development branch with its ScintillaQuick editor submodule:
+
+```bash
+git clone --branch dev --recurse-submodules https://github.com/Team-MiaCode/MiaCode.git
+cd MiaCode
+```
+
+For an existing checkout, run `git submodule update --init --recursive` before configuring.
 
 ### Windows
 
