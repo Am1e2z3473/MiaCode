@@ -18,8 +18,8 @@ MiaCode is a maimai chart authoring tool built with Qt 6 / C++ / QML, with editi
 
 <table align="center" width="100%">
   <tr>
-    <td align="center" width="50%"><img src="resources/screenshots/main-dark.png" alt="MiaCode dark theme" width="640"></td>
-    <td align="center" width="50%"><img src="resources/screenshots/main-light.png" alt="MiaCode light theme" width="640"></td>
+    <td align="center" width="50%"><img src="resources/screenshots/main-dark.png" alt="MiaCode dark theme with multiple tabs" width="640"></td>
+    <td align="center" width="50%"><img src="resources/screenshots/main-light.png" alt="MiaCode light theme with efficient sidebar and detached preview" width="640"></td>
   </tr>
   <tr>
     <td align="center">Dark theme</td>
@@ -29,9 +29,11 @@ MiaCode is a maimai chart authoring tool built with Qt 6 / C++ / QML, with editi
 
 ## Quick Start
 
-Release packages are available on the [official website](https://miacode.net/en/download.html) and [GitHub Releases](https://github.com/Team-MiaCode/MiaCode/releases).
-
-Nightly packages are available on [GitHub Actions](https://github.com/Team-MiaCode/MiaCode/actions/workflows/package.yml). Select a `dev` build.
+<p>
+  <a href="https://miacode.net/en/download.html"><img src="https://img.shields.io/badge/Website-miacode.net-3178C6?style=for-the-badge" alt="Website"></a>
+  <a href="https://github.com/Team-MiaCode/MiaCode/releases"><img src="https://img.shields.io/badge/Release-GitHub-24292F?style=for-the-badge&amp;logo=github" alt="Release"></a>
+  <a href="https://github.com/Team-MiaCode/MiaCode/actions/workflows/package.yml?query=branch%3Adev"><img src="https://img.shields.io/badge/Nightly_CI-GitHub_Actions-2088FF?style=for-the-badge&amp;logo=githubactions&amp;logoColor=white" alt="Nightly CI"></a>
+</p>
 
 Windows (x64 / ARM64) and macOS (Apple Silicon) are supported. Download and extract the archive for your system and architecture.
 
@@ -121,12 +123,16 @@ Supports online preview, PV downloads, and batch upload of local charts after si
     <td align="center">Chart formatting</td>
   </tr>
   <tr>
-    <td align="center"><img src="resources/screenshots/media-tools.png" alt="Audio and video tools" width="640"></td>
-    <td align="center"><img src="resources/screenshots/latency.png" alt="BPM and latency detection" width="640"></td>
+    <td align="center" colspan="2"><img src="resources/screenshots/media-tools.png" alt="Audio and video tools" width="1280"></td>
   </tr>
   <tr>
-    <td align="center">Audio and video tools</td>
-    <td align="center">BPM and latency detection</td>
+    <td align="center" colspan="2">Audio and video tools</td>
+  </tr>
+  <tr>
+    <td align="center" colspan="2"><img src="resources/screenshots/latency.png" alt="BPM and latency detection" width="960"></td>
+  </tr>
+  <tr>
+    <td align="center" colspan="2">BPM and latency detection</td>
   </tr>
 </table>
 

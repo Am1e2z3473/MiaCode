@@ -18,8 +18,8 @@ MiaCode 是一款基于 Qt 6 / C++ / QML 的 maimai 谱面创作工具，集成�
 
 <table align="center" width="100%">
   <tr>
-    <td align="center" width="50%"><img src="resources/screenshots/main-dark.png" alt="MiaCode 深色主题" width="640"></td>
-    <td align="center" width="50%"><img src="resources/screenshots/main-light.png" alt="MiaCode 浅色主题" width="640"></td>
+    <td align="center" width="50%"><img src="resources/screenshots/main-dark.png" alt="MiaCode 深色主题多标签页" width="640"></td>
+    <td align="center" width="50%"><img src="resources/screenshots/main-light.png" alt="MiaCode 浅色主题、高效侧栏与独立预览" width="640"></td>
   </tr>
   <tr>
     <td align="center">深色主题</td>
@@ -29,9 +29,11 @@ MiaCode 是一款基于 Qt 6 / C++ / QML 的 maimai 谱面创作工具，集成�
 
 ## 快速开始
 
-正式版安装包见 [官网 miacode.net](https://miacode.net/download.html) 或 [GitHub Releases](https://github.com/Team-MiaCode/MiaCode/releases)。
-
-nightly 构建包见 [GitHub Actions](https://github.com/Team-MiaCode/MiaCode/actions/workflows/package.yml)，选择 `dev` 分支的构建记录。
+<p>
+  <a href="https://miacode.net/download.html"><img src="https://img.shields.io/badge/%E5%AE%98%E7%BD%91-miacode.net-3178C6?style=for-the-badge" alt="官网"></a>
+  <a href="https://github.com/Team-MiaCode/MiaCode/releases"><img src="https://img.shields.io/badge/Release-GitHub-24292F?style=for-the-badge&amp;logo=github" alt="Release"></a>
+  <a href="https://github.com/Team-MiaCode/MiaCode/actions/workflows/package.yml?query=branch%3Adev"><img src="https://img.shields.io/badge/Nightly_CI-GitHub_Actions-2088FF?style=for-the-badge&amp;logo=githubactions&amp;logoColor=white" alt="Nightly CI"></a>
+</p>
 
 支持 Windows（x64 / ARM64）与 macOS（Apple 芯片），下载对应系统和架构的压缩包后解压。
 
@@ -121,12 +123,16 @@ Linux 用户可按下方步骤从源码构建。
     <td align="center">谱面整理</td>
   </tr>
   <tr>
-    <td align="center"><img src="resources/screenshots/media-tools.png" alt="音视频工具" width="640"></td>
-    <td align="center"><img src="resources/screenshots/latency.png" alt="BPM 与延迟检测" width="640"></td>
+    <td align="center" colspan="2"><img src="resources/screenshots/media-tools.png" alt="音视频工具" width="1280"></td>
   </tr>
   <tr>
-    <td align="center">音视频工具</td>
-    <td align="center">BPM 与延迟检测</td>
+    <td align="center" colspan="2">音视频工具</td>
+  </tr>
+  <tr>
+    <td align="center" colspan="2"><img src="resources/screenshots/latency.png" alt="BPM 与延迟检测" width="960"></td>
+  </tr>
+  <tr>
+    <td align="center" colspan="2">BPM 与延迟检测</td>
   </tr>
 </table>
 
