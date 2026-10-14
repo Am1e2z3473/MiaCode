@@ -6,9 +6,6 @@
 
 #include "app/services/ExportEngine.h"
 
-// Implements the export page's engine contract. The QML page names
-// miacode::ExportEngine, never this class — which is what lets the
-// implementation move out of Session in stage 4 without the page noticing.
 namespace miacode::runtime {
 
 class VideoExportHost final : public miacode::ExportEngine {

@@ -10,24 +10,6 @@
 
 namespace miacode {
 
-// What the export page needs the export engine to do.
-//
-// Stage 3.5 item 2: ExportSession used to reach `MainWindow::videoExport_`
-// — a private member holding a 3,600-line partial-class section — which was the
-// last direct private-member read anywhere in src/app/ui. That is not a
-// coupling an accessor can honestly fix: the QML page was depending on a
-// concrete piece of the window's insides.
-//
-// This is the seam instead. The page depends on these seven operations; the
-// engine depends on nothing here. Today MainWindow::ExportSection implements it
-// and installs itself into ApplicationServices, so the engine still physically
-// lives in the window — moving 3,600 lines of preview-canvas, timeline, SFX,
-// HUD and worker-process code is stage 4's job. What changed is the direction:
-// when the engine does move, only the implementation side changes, because the
-// page has never named it.
-//
-// Deliberately Qt Widgets-free. `export_engine_spec` links Qt6::Core+Gui only,
-// so a QtWidgets type appearing in this contract fails to link.
 class ExportEngine
 {
 public:

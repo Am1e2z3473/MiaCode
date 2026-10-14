@@ -8,20 +8,6 @@ class LatencySandboxController;
 
 namespace miacode {
 
-// 延迟检测's window-side half.
-//
-// Stage 3.5 item 2. The latency page reads three values off the document to
-// seed its detector, writes the detected results back, needs the track path to
-// know whether it can run at all, and drives the sandbox audition.
-//
-// The three document reads are deliberately a query on this interface rather
-// than a ChartWorkspace read: the latency page has no active difficulty, so
-// "the chart's bpm" means "&wholebpm, else the first inline (BPM) of any
-// non-empty difficulty" — a resolution rule that belongs with whoever owns the
-// page, not with the workspace.
-//
-// Deliberately Qt-GUI-free; the sandbox controller is forward-declared because
-// only a pointer crosses the boundary.
 class LatencyEngine
 {
 public:

@@ -1,11 +1,3 @@
----
-lifecycle: stable-current
-canonical_id: timeline.coordinate-focus
-owner: src/timeline
-last_verified: 2026-09-06
-code_anchors: ["src/timeline", "src/app/runtime/playback", "src/tools/timeline/TimelineModelSpec.cpp"]
----
-
 # Timeline 坐标与聚焦规格
 
 本文档汇总当前确定的 Timeline 运行时坐标、状态切换、跨区联动规则，以及相关 UI 设计约束。
@@ -178,21 +170,3 @@ code_anchors: ["src/timeline", "src/app/runtime/playback", "src/tools/timeline/T
 - 点击文字
   - 普通点击文字只移动 `C`。
   - `Ctrl+点文字` 会执行 `C -> R`，并在播放中触发暂停。
-
-## 8. 非阻塞参考项
-
-以下内容不是当前规格阻塞项，但可以在后续实现中参考：
-
-- Timeline 拖动起手可加入位移阈值，用于区分“单击”和“真实拖动”。
-- 未来可考虑将运行时 `L / R` 的语义与导出区间 `[L, R]` 进一步对齐。
-
-## 9. 当前结论
-
-- 当前规格已经覆盖：
-  - `L / R / C` 语义
-  - 播放 / 暂停 / 停止位 切换
-  - Timeline 与文本区的双向联动
-  - `Follow` 行为
-  - 播放快照与当前文本分离
-  - 当前文本为空、无逗号、暂时不可解析时的兜底策略
-- 当前剩余事项仅为实现细节与交互微调，不再属于阻塞性的规格缺口。

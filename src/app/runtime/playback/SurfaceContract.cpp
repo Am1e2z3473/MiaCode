@@ -17,11 +17,6 @@
 using namespace miacode::runtime::shared;
 using namespace miacode::runtime::playback_detail;
 
-// Session::setBackendActive, Session::chartNormalizeOptions,
-// Session::setChartNormalizeOptions, Session::uiRequestService, and
-// Session::jobProgressService moved to SessionForwarding.SurfaceContract.cpp
-// (stage 4.9d-6: TU boundary split so this file holds only Coordinator::
-// methods).
 
 namespace {
 
@@ -419,8 +414,6 @@ void miacode::runtime::PlaybackCoordinator::setMuriTapOnSlideThresholdMs(int thr
 
 QStringList miacode::runtime::PlaybackCoordinator::availableSkinDirectoryNames() const
 {
-    // Stage 4.9d-4a (T-class): calls runtime::shared directly instead of routing
-    // through the session_ member's stageMedia_ host — see runtime/Shared.cpp.
     return availablePreviewSkinDirectoryNames();
 }
 
@@ -431,11 +424,6 @@ QString miacode::runtime::PlaybackCoordinator::skinDisplayName(const QString& di
 
 QString miacode::runtime::PlaybackCoordinator::resolveSkinDir() const
 {
-    // Stage 4.9d-4b-2d: routed through PlaybackPreviewPort instead of the
-    // Session's stageMedia_ host directly. resolvePreviewSkinDir() still
-    // reads StageMediaHost's own previewAppearanceValues_ member under the
-    // hood — that body is unchanged, only the seam the coordinator reaches
-    // it through.
     return preview_.resolvePreviewSkinDir();
 }
 
@@ -513,11 +501,6 @@ void miacode::runtime::PlaybackCoordinator::refreshMediaAfterFileOperation()
 
 void miacode::runtime::PlaybackCoordinator::applySfxLevels()
 {
-    // Stage 4.9d-4a (T-class): Session::applyPreviewSfxLevels(bool reloadAssets =
-    // false)'s body, inlined for the reloadAssets=false path this call site always
-    // uses (previewSfxRuntime_/previewAudioSettings_ are state_ aliases). See
-    // Session::applyPreviewSfxLevels in runtime/preview/WarmupAndSettings.cpp,
-    // which still has its own (unrelated) caller in SessionBootstrap.cpp.
     if (state_.previewSfxRuntime_ != nullptr && state_.previewSfxRuntime_->audioEngineInitialized()) {
         state_.previewSfxRuntime_->applyLevels(state_.previewAudioSettings_);
     }
@@ -537,12 +520,6 @@ void miacode::runtime::PlaybackCoordinator::prepareForShutdown()
     // the forwarded call re-arm a flag we had already zeroed.
     preview_.preparePreviewForShutdown();
 
-    // Stage 4.9e-4: the playing_ flip used to happen inside
-    // preview_.preparePreviewForShutdown() (Session::setPreviewPlayingFlag,
-    // called from Session::preparePreviewForShutdown before playing_ moved to
-    // PlaybackState). Session no longer holds a mutable PlaybackState&, so
-    // this coordinator writes it directly, in the same relative position —
-    // still after the forwarded call above, per the ordering note.
     miacode::runtime::shared::writePreviewPlayingFlag(playbackState_, services_.shellNotifications(), false);
 
     state_.qtPreviewAwaitingFrameSwap_ = false;
@@ -678,18 +655,6 @@ void miacode::runtime::PlaybackCoordinator::setBottomTabsCurrentTabId(const QStr
     setCurrentBottomTabsTabId(bottomTabsTabIdFromString(tabId));
 }
 
-// Stage 4.9d-4b-2e: moved in verbatim from Session::setCurrentBottomTabsTabId
-// (BottomTabsTabId overload). The QString overload above now flows into this
-// one instead of the reverse (Session's setCurrentBottomTabsTabId(QString) used
-// to call its own enum overload); Session::setCurrentBottomTabsTabId(BottomTabsTabId)
-// is now the one-line forwarder — see SurfaceContract.cpp's Session-side definition.
-// The two cross-host calls the original body made — validation_->...() and
-// playback_->...() — are now validation_. (a reference, no null check needed) and
-// a direct call to this class's own flushDeferredTimelineBridgeState() (no more
-// self-indirection through a playback_ pointer). presentationChanged is announced
-// through services_.shellNotifications() directly, the signal's real destination
-// (see PlaybackState.cpp's updatePauseButtonAppearance for the established
-// retargeting precedent) rather than through Session's now-unused forwarding signal.
 void miacode::runtime::PlaybackCoordinator::setCurrentBottomTabsTabId(RuntimeContext::BottomTabsTabId tabId)
 {
     if (tabId == RuntimeContext::BottomTabsTabId::Unknown) {
@@ -755,11 +720,3 @@ void miacode::runtime::PlaybackCoordinator::noteTimelineSurfaceReady()
     }
     flushDeferredTimelineBridgeState();
 }
-
-
-// Session::bottomTabsTabIdFromString,
-// Session::currentBottomTabsTabId, Session::bottomTabsTabVisible,
-// Session::setCurrentBottomTabsTabId (both overloads), Session::setBottomTabsTabVisible,
-// and Session::restoreBottomTabsCurrentTabAfterRefresh moved to
-// SessionForwarding.SurfaceContract.cpp (stage 4.9d-6: TU boundary split so
-// this file holds only Coordinator:: methods).

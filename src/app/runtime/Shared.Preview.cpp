@@ -53,9 +53,6 @@ void appendPreviewFramePacingStatusLog(const QString& action, const QString& pay
 
 }  // namespace
 
-// Stage 4.9d-4a extractions — moved in verbatim from their previous homes (see the
-// forwarding shells at the call sites) so PlaybackCoordinator can call them without
-// routing through Session/StageMediaHost.
 
 void ensurePreviewSfxRuntimePrepared(RuntimeContext::State& state)
 {

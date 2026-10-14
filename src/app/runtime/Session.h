@@ -224,11 +224,6 @@ public:
         int skinLoadWaitMs = 2000;
     };
 
-    // The application services are constructed before the window and outlive
-    // it: the document domain, the UI-request boundary and the job-progress
-    // surface belong to miacode::ApplicationServices, not to a QWidget.
-    // Session borrows them (stage 3.5 item 1) — it must not own or
-    // re-create any of them.
     explicit Session(miacode::ApplicationServices& services,
                         QObject* parent = nullptr);
     ~Session() override;
@@ -462,26 +457,8 @@ private:
     void loadPortableState();
 
 public:
-    // PlaybackPreferencesPort: was private until stage 4.9d-4b-2a made it part
-    // of the coordinator's preferences port, which requires public access.
     void savePortableState() const override;
 
-    // The QML pages' bounded reach into the window.
-    //
-    // These were private, which meant CommandService, PreviewModel and
-    // PreviewSettingsModel each needed `friend class` — and a friend grant is
-    // unbounded: it lets any later edit reach any member, forever. Publishing
-    // exactly what those pages call replaced three blanket grants with this
-    // list, at no cost to the recorded surface (docs/specs/ui/
-    // UI_BACKEND_SURFACE_ZH.md already counted every name here).
-    //
-    // The skin/outline entries are catalog queries — path resolution and
-    // directory listing, no state of their own. The two setters already took a
-    // "persist" flag, so they match the preference surface below.
-    //
-    // Also two of PlaybackPreviewPort's nine methods (stage 4.9d-4b-2d); no
-    // visibility change needed here, they were already public for the QML
-    // pages above.
     QString resolvePreviewSkinDir() const override;
     void applyPreviewOutlineVariant(PreviewOutlineVariant variant, bool useAutoSelection,
                                     bool persistState) override;
@@ -530,8 +507,6 @@ public:
     bool currentEditorImeInputDisabled() const;
     bool currentWorkspacePanelsSwapped() const;
 
-    // PlaybackPreferencesPort: were private until stage 4.9d-4b-2a made them
-    // part of the coordinator's preferences port, which requires public access.
     void loadProjectRenderState() override;
     void setLastOpenDirectory(const QString& pathOrDir) override;
 

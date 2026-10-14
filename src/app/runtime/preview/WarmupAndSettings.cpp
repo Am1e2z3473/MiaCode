@@ -107,19 +107,9 @@ void warmupFileIntoOsCache(const QString& path, qint64 maxBytes = -1)
 
 }  // namespace
 
-// Stage 4.9d-4a: standardPreviewSkinDirectoryName / dxPreviewSkinDirectoryName /
-// legacyStandardPreviewSkinDirectoryName / normalizePreviewSkinDirectoryName /
-// hasCorePreviewSkinAssets moved from this file's anonymous namespace to
-// runtime::shared (runtime/Shared.h/.cpp) — availablePreviewSkinDirectoryNames()
-// and previewSkinDisplayName() below now call the shared:: versions (see their
-// forwarding bodies), and this file's other, unmoved callers of those helpers
-// (previewSkinVariantStorageValue, resolvePreviewSkinDir) reach them through the
-// `using namespace miacode::runtime::shared;` at the top of this file.
 
 void miacode::runtime::StageMediaHost::ensurePreviewSfxRuntimePrepared()
 {
-    // Stage 4.9d-4a: body moved to runtime::shared — see runtime/Shared.cpp.
-    // Qualified because this member shares the free function's name.
     miacode::runtime::shared::ensurePreviewSfxRuntimePrepared(state_);
 }
 
@@ -746,14 +736,11 @@ QString miacode::runtime::StageMediaHost::resolvePreviewSkinRootDir() const
 
 QStringList miacode::runtime::StageMediaHost::availablePreviewSkinDirectoryNames() const
 {
-    // Stage 4.9d-4a: body moved to runtime::shared — see runtime/Shared.cpp.
-    // Qualified because this member shares the free function's name.
     return miacode::runtime::shared::availablePreviewSkinDirectoryNames();
 }
 
 QString miacode::runtime::StageMediaHost::previewSkinDisplayName(const QString& directoryName) const
 {
-    // Stage 4.9d-4a: body moved to runtime::shared — see runtime/Shared.cpp.
     return miacode::runtime::shared::previewSkinDisplayName(directoryName);
 }
 

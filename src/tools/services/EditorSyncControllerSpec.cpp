@@ -254,6 +254,28 @@ bool verifyFollowCarriesItsIdentityForTheEditorToGateOn(QTextStream& err)
     return ok;
 }
 
+bool verifySelectionExportDelivery(QTextStream& err)
+{
+    EditorSyncController controller;
+    QSignalSpy requested(&controller, &EditorSyncController::selectionRangeExportRequested);
+    bool ok = require(!controller.requestSelectionRangeExport(kDifficulty, kRevision, 2, 9),
+                      QStringLiteral("selection export requires the current editor"), err);
+    makeReady(controller);
+    ok &= require(controller.requestSelectionRangeExport(kDifficulty, kRevision, 2, 9),
+                  QStringLiteral("ready selection export is accepted"), err);
+    flush();
+    ok &= require(requested.size() == 1 && requested.at(0).at(1).toInt() == 2
+                      && requested.at(0).at(2).toInt() == 9,
+                  QStringLiteral("selection export delivers the requested bounds"), err);
+    requested.clear();
+    controller.requestSelectionRangeExport(kDifficulty, kRevision, 4, 12);
+    controller.setEditorReadiness(kDifficulty, kRevision + 1, true);
+    flush();
+    ok &= require(requested.isEmpty(),
+                  QStringLiteral("revision changes discard pending selection exports"), err);
+    return ok;
+}
+
 }  // namespace
 
 int main(int argc, char** argv)
@@ -261,7 +283,8 @@ int main(int argc, char** argv)
     QCoreApplication app(argc, argv);
     QTextStream err(stderr);
     QTextStream out(stdout);
-    const bool ok = verifyNavigationRequiresTheReadyIdentity(err)
+    const bool ok = verifySelectionExportDelivery(err)
+        && verifyNavigationRequiresTheReadyIdentity(err)
         && verifyIdentityIsRecheckedAtDelivery(err)
         && verifyLosingTheEditorCancelsPendingWork(err)
         && verifyLocationPublishersShareTheGate(err)

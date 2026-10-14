@@ -64,10 +64,6 @@ class ApplicationContext final : public QObject
     Q_PROPERTY(QObject* netUpload READ netUpload CONSTANT)
 
 public:
-    // Stage 3.5 item 2 is complete here: the context takes the application
-    // service assembly and nothing else. No MainWindow — not a reference, not a
-    // parameter, not an include. Every domain reaches the window, while it
-    // still exists, through an interface the window implements.
     explicit ApplicationContext(miacode::ApplicationServices& services,
                                    QObject* parent = nullptr);
 

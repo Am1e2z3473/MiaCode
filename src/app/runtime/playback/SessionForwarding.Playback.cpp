@@ -1,10 +1,3 @@
-// Session::-owned playback forwarders, split out of Playback.cpp.
-//
-// Stage 4.9d-6: PlaybackCoordinator's implementation TUs are being separated
-// from the Session assembly so the coordinator can eventually link on its
-// own (see the Result Packet for the link-probe evidence). Playback.cpp now
-// holds only PlaybackCoordinator::-owned seek/tick/transport logic; this
-// file holds the Session::-owned thin forwarders that used to share that TU.
 
 #include "app/runtime/playback/PlaybackCoordinator.h"
 #include "app/runtime/Session.h"

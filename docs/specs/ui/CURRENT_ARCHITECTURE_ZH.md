@@ -1,15 +1,7 @@
----
-lifecycle: stable-current
-owner: src/app
-canonical_id: ui.runtime-ownership
-last_verified: 2026-10-06
-code_anchors: ["src/app/main.cpp", "src/app/ui/Bootstrap.cpp", "src/app/services/ApplicationServices.h", "src/app/services/ExportPagePort.h", "src/app/runtime/SessionBootstrap.cpp", "src/app/runtime/Session.h"]
----
-
 # 当前应用架构与所有权
 
 本规范描述 `MiaCode` 可执行文件（`src/app/`）内部的所有权。下层库的划分与依赖方向见
-[模块分层](../architecture/MODULE_LAYERING_CURRENT_ZH.md)。阶段目标、拆分进度与旧实现保留在原设计和 Git 历史；这些材料不能覆盖当前运行路径。
+[模块分层](../architecture/MODULE_LAYERING_CURRENT_ZH.md)。
 
 ## 前端、文档与运行时
 
@@ -73,9 +65,3 @@ Wayland 的窗口位置由合成器管理，应用恢复尺寸与最大化状态
 
 仓库地图见 [开发 skill](../../../.agents/skills/miacode-dev-guide/SKILL.md)。
 渲染与导出见 [当前渲染契约](../preview/CURRENT_RENDER_EXPORT_CONTRACT_ZH.md)。
-
-## 验证边界
-
-`application_services_spec`、`chart_workspace_spec`、`runtime_context_boundary_spec`、
-`playback_storage_boundary_spec` 保护装配和存储边界；QML 生命周期、文档与播放规格见
-[Spec 目录](../../tests/SPEC_CATALOG.md)。这些定向规格不能替代实际 UI 与设备验收。

@@ -1193,12 +1193,6 @@ void miacode::runtime::PlaybackCoordinator::anchorQtPreviewPlaybackToSecond(doub
         state_.previewFollowEnabled_);
 }
 
-// Stage 4.9d-3 (D-class): moved verbatim from DocumentSessionHost::updatePauseButtonAppearance
-// (document/DocumentEditorState.cpp) — pure ui_/state_ widget presentation, no
-// DocumentSessionHost-own state. Stage 4.9d-4b-1 retargeted the queued emit
-// from Session::presentationChanged (which only forwarded it) straight to
-// ShellNotifications, the signal's real destination — see SessionBootstrap.cpp
-// for the forwarding connect this bypasses.
 void miacode::runtime::PlaybackCoordinator::updatePauseButtonAppearance()
 {
     // The play/pause presentation changed, and the QML transport's button reads

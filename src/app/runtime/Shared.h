@@ -74,35 +74,7 @@ inline void writePreviewPauseSecond(
             .arg((next - previous) * 1000.0, 0, 'f', 3));
 }
 
-// Single writer for the preview playing flag.
-//
-// Why this exists: `playing_` sits right next to `pauseSecond_` in
-// RuntimeContext::State and used to have the same problem — it was written from
-// `Session::setPreviewPlayingFlag`, a method any holder of a Session& could call
-// directly. That was fine while playback logic lived on Session, but once it
-// moved into PlaybackCoordinator (which holds the same `state_` by reference),
-// the coordinator could just as easily have assigned `state_.playing_` inline
-// at its six call sites instead of forwarding through Session. Either path
-// compiles; only one keeps `playing_` at a single assignment site, which is the
-// property `preview_transport_push_spec` pins.
-//
-// So this follows the same rule as writePreviewPauseSecond immediately above:
-// a rule, not a headcount. `playing_` must never be assigned except through
-// this function. Check it with
-//
-//   grep -rn "playing_[[:space:]]*=[^=]" src --include="*.cpp" --include="*.h" \
-//     --include="*.inc" | grep -v writePreviewPlayingFlag
-//
-// which should match only the declaration in RuntimeContext.h and the
-// const-reference alias in SessionMembers.inc. Any other hit is a second
-// writer.
-//
-// Stage 4.9e-4: `playing_` and `previewTransportState_` moved from
-// RuntimeContext::State to RuntimeContext::PlaybackState (canonical
-// playback-authority storage, owned by PlaybackCoordinator). This writer
-// takes the mutable record directly — State only exposes a const& to it
-// now — so PlaybackCoordinator is the only caller that can compile a call
-// here.
+// Publish playback state changes through the shared notification path.
 void writePreviewPlayingFlag(
     RuntimeContext::PlaybackState& state,
     miacode::ShellNotifications& notifications,
@@ -138,12 +110,6 @@ int blockSpacingPixelsForPointSize(int pointSize, double spacingFactor);
 qint64 fileLastModifiedMs(const QFileInfo& fileInfo);
 double probeAudioDurationSeconds(const QString& trackPath);
 
-// Stage 4.9d-4a: bodies pulled out of miacode::runtime::StageMediaHost (and, for
-// setPreviewFixedTimerHighResolutionActive, Session) so PlaybackCoordinator can call
-// them without going through a Session reference. Both the original host method and the
-// coordinator's own copy now call these — see runtime/preview/StageMediaRoute.cpp,
-// runtime/preview/WarmupAndSettings.cpp, runtime/playback/FramePacing.cpp and
-// runtime/playback/SurfaceContract.cpp for the forwarding shells.
 void ensurePreviewSfxRuntimePrepared(RuntimeContext::State& state);
 void applyPreviewStageMediaRouteVisualSettings(RuntimeContext::State& state);
 void applyPreviewStageMediaRoutePlaybackRate(RuntimeContext::State& state, double rate, const char* site = nullptr);

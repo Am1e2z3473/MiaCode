@@ -4,27 +4,7 @@
 
 namespace miacode {
 
-// The playback coordinator's third narrow port: a seam onto document state —
-// dirty-flag recomputation, committing whatever field the QML editor is
-// currently holding, and editor-navigation requests. Like PlaybackValidationPort
-// (cut by host) and unlike PlaybackPreferencesPort (cut by capability, split
-// across three hosts), all four methods here already belong to exactly one
-// owner — DocumentSessionHost — so cutting by host is the honest shape: there
-// is nothing left to split.
-//
-// appliedWorkspaceRevision() is a read-only query, not a relocation of the
-// appliedQmlWorkspaceRevision_ field. That field is semantically document
-// domain (written at document/DocumentFileFlow.cpp:748, read there and at
-// document/DocumentBridge.cpp:504) but still lives on Session — a leftover
-// from before the domain split. Two text-scanning specs
-// (QmlDocumentLifecycleContractSpec.cpp) pin its
-// literal spelling as a Session member, so moving the field is the document
-// domain's own cleanup and out of scope here. This port only adds a query
-// DocumentSessionHost can answer from the Session& it already holds.
-//
-// Deliberately free of Session, QWidget, and QML/QSG types: DocumentPortSpec
-// proves that at link time, by implementing this port with a fake that pulls
-// in neither.
+// 播放协调器通过此端口提交文档编辑、请求导航并读取已应用的文档版本。
 class PlaybackDocumentPort
 {
 public:

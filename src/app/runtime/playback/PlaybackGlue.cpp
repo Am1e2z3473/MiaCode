@@ -25,9 +25,6 @@ void appendPreviewInteractionLog(const QString& action, const QString& payload =
 
 }  // namespace
 
-// Session::setAuditionSceneReady and Session::clearAuditionSceneReady moved
-// to SessionForwarding.PlaybackGlue.cpp (stage 4.9d-6: TU boundary split so
-// this file holds only Coordinator:: methods).
 
 // The readiness gate for latency-sandbox and export-page auditions (see
 // state_.auditionSceneReady_ in SessionMembers.inc for what it guards). A
@@ -223,10 +220,3 @@ void miacode::runtime::PlaybackCoordinator::onTogglePreviewPause()
     }
     updatePauseButtonAppearance();
 }
-
-// Session::onStopPreview, Session::onTogglePreviewPause, Session::cancelExportIntroLeadIn,
-// Session::exportIntroLeadInPlaying, Session::handleExportIntroSliderSeek,
-// Session::exportIntroLowerBoundSeconds, Session::refreshExportIntroState,
-// Session::setExportAuditionClockSchedule, and Session::clearExportAuditionClockSchedule
-// moved to SessionForwarding.PlaybackGlue.cpp (stage 4.9d-6: TU boundary split so
-// this file holds only Coordinator:: methods).

@@ -26,8 +26,7 @@
 - BASS 进程级配置在进程首次 BASS 设备枚举或初始化后即不可改，任何线程、任何设备（含波形解码的 no-sound 设备）都算；
   Windows 的 `BASS_CONFIG_DEV_DEFAULT` 由 `main()` 经 `src/audio/bass/PreviewBassDefaultDevice.h` 最先设定，新增 BASS 消费者不得抢在它之前。
 - 预览与导出共享纯时间/场景/SFX 语义；headless 帧不能依赖 QML Timer 推动动画。
-- 窗口、engine、音频资源和导出任务按 owner 生命周期释放；合并 Spec 不得削弱编译、链接或进程隔离。
-- 下层库不依赖 `MiaCode`、不读写 `preferences.json`；偏好、预览音频后端与波形解码器由进程入口注入，
-  分层以 `scripts/governance/module_layering.py` 与 boundary spec 校验。
+- 窗口、engine、音频资源和导出任务按 owner 生命周期释放。
+- 下层库不依赖 `MiaCode`、不读写 `preferences.json`；偏好、预览音频后端与波形解码器由进程入口注入。
 
-具体产品语义查 `docs/INDEX.md`；测试入口查 `docs/tests/SPEC_CATALOG.md`。
+具体产品语义查 `docs/INDEX.md`；测试入口查 `cmake/devtools/specs/`。

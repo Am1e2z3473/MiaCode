@@ -1,11 +1,3 @@
-// Session::-owned frame-pacing accessors, split out of FramePacing.cpp.
-//
-// Stage 4.9d-6: PlaybackCoordinator's implementation TUs are being separated
-// from the Session assembly so the coordinator can eventually link on its
-// own (see the Result Packet for the link-probe evidence). FramePacing.cpp
-// now holds only PlaybackCoordinator::-owned frame-pacing logic; this file
-// holds the Session::-owned storage-value parsing and thin read accessors
-// that used to share that TU.
 
 #include "app/runtime/playback/PlaybackCoordinator.h"
 #include "app/runtime/Session.h"
@@ -13,9 +5,6 @@
 
 void Session::setPreviewFixedTimerHighResolutionActive(bool active)
 {
-    // Stage 4.9d-4a: body (including its #ifdef Q_OS_WIN / Windows timeBeginPeriod
-    // path) moved to runtime::shared — see runtime/Shared.cpp. Qualified because
-    // this member shares the free function's name.
     miacode::runtime::shared::setPreviewFixedTimerHighResolutionActive(state_, active);
 }
 

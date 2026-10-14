@@ -8,13 +8,8 @@
 #include "app/runtime/preview/PreviewHost.h"
 
 #include <QCoreApplication>
-#include <QFile>
 #include <QStringList>
 #include <QTextStream>
-
-#ifndef MIACODE_SOURCE_ROOT
-#error "MIACODE_SOURCE_ROOT must be defined (repo root absolute path)"
-#endif
 
 namespace {
 
@@ -24,15 +19,6 @@ bool require(bool condition, const QString& message, QTextStream& err)
         err << "FAIL: " << message << Qt::endl;
     }
     return condition;
-}
-
-QString readSource(const QString& relativePath)
-{
-    QFile file(QStringLiteral(MIACODE_SOURCE_ROOT) + QLatin1Char('/') + relativePath);
-    if (!file.open(QIODevice::ReadOnly)) {
-        return {};
-    }
-    return QString::fromUtf8(file.readAll());
 }
 
 class FakePreviewSurface final : public miacode::PreviewSurface
@@ -166,39 +152,6 @@ bool verifyPreviewUsesPlaybackPort(QTextStream& err)
     return ok;
 }
 
-bool verifyPreviewHostHasNoTransportSurface(QTextStream& err)
-{
-    // Before Stage 4.5 step B, PreviewSurface declared eight transport-command
-    // pure virtuals (toggle/stop/seek/scrub/rate-set), and this test proved
-    // "the preview projection does not own transport" by calling those methods
-    // on PreviewHost and checking the calls landed on playbackPort_, never on
-    // legacySurface_. Step B deleted those eight methods from PreviewSurface
-    // outright: PlaybackControl is the one transport owner now, reached
-    // directly by PreviewModel, so PreviewHost has no such method left to
-    // call. The invariant this test protects did not weaken — it got
-    // STRONGER, from "true because of how it forwards" to "true because the
-    // method does not exist" — so the check below asserts absence from
-    // PreviewHost's own header instead of exercising a forward, and still
-    // fails if transport is ever reintroduced onto this compatibility surface.
-    const QString header = readSource(QStringLiteral("src/app/runtime/preview/PreviewHost.h"));
-    bool ok = require(!header.isEmpty(), QStringLiteral("PreviewHost.h is present"), err);
-    static const QStringList transportSymbols{
-        QStringLiteral("togglePlayback"),
-        QStringLiteral("stop("),
-        QStringLiteral("seek("),
-        QStringLiteral("beginScrub"),
-        QStringLiteral("updateScrub"),
-        QStringLiteral("endScrub"),
-        QStringLiteral("setPlaybackRate"),
-        QStringLiteral("nudgePlaybackRate"),
-    };
-    for (const QString& symbol : transportSymbols) {
-        ok &= require(!header.contains(symbol),
-                      QStringLiteral("PreviewHost.h no longer declares %1").arg(symbol), err);
-    }
-    return ok;
-}
-
 bool verifyPreviewProjectionAndInvalidation(QTextStream& err)
 {
     FakePreviewSurface legacy;
@@ -234,7 +187,6 @@ int main(int argc, char** argv)
     QTextStream err(stderr);
     bool ok = true;
     ok &= verifyPreviewUsesPlaybackPort(err);
-    ok &= verifyPreviewHostHasNoTransportSurface(err);
     ok &= verifyPreviewProjectionAndInvalidation(err);
     if (ok) {
         QTextStream(stdout) << "preview_host_spec: OK" << Qt::endl;

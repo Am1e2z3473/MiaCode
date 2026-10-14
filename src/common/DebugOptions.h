@@ -329,9 +329,7 @@ inline int previewDumpHwFrameBudget()
     // NO image files are written. When 0 (default) the hot path is a single relaxed-
     // atomic load + compare — zero readback, zero stall. Gated on --debug
     // (runtimeDebugOutputEnabled) because the stat lines are debug log artifacts. The
-    // literal lives HERE in src/ (not in third_party/qavhwdevice) so the
-    // debug_flag_index_spec drift guard governs its DEBUG_INDEX.md entry; the resolved
-    // int is PUBLISHED into the decoder via qavSetPreviewHwFrameDumpConfig (mirroring
+    // resolved value reaches the decoder via qavSetPreviewHwFrameDumpConfig (mirroring
     // qavSetSharedRenderD3D11Device). Set MIACODE_PREVIEW_DUMP_HWFRAMES=15.
     //
     // ⚠ Repro precondition: on an integrated GPU the buggy D3D11VA path is NOT the

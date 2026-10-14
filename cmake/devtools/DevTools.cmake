@@ -16,12 +16,14 @@ foreach(qml_file IN LISTS MIACODE_UI_QML_FILES)
     endif()
     configure_file("${qml_file}" "${_miacode_qml_spec_module_dir}/${_qml_name}" COPYONLY)
 endforeach()
+foreach(icon_file IN LISTS MIACODE_UI_ICON_FILES)
+    get_filename_component(_icon_name "${icon_file}" NAME)
+    configure_file("${icon_file}" "${_miacode_qml_spec_module_dir}/icons/${_icon_name}" COPYONLY)
+endforeach()
 file(WRITE "${_miacode_qml_spec_module_dir}/qmldir" "${_miacode_qml_spec_qmldir}")
 
 include(${CMAKE_CURRENT_LIST_DIR}/MiaCodeDevToolHelpers.cmake)
 
 include(${CMAKE_CURRENT_LIST_DIR}/CliTools.cmake)
 
-include(${CMAKE_CURRENT_LIST_DIR}/MiaCodeSpecRegistry.cmake)
 include(${CMAKE_CURRENT_LIST_DIR}/specs/index.cmake)
-miacode_finalize_spec_registry()

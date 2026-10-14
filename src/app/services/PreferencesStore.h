@@ -5,19 +5,6 @@
 
 namespace miacode {
 
-// 偏好设置's durable values.
-//
-// Stage 3.5 item 2. These are not plain settings: every setter also applies the
-// change — editor font size and line spacing re-lay out the text view, the
-// frame-rate modes re-pace the live surfaces, and swapping the workspace panels
-// rearranges the layout. That is why they stay behind an interface the window
-// implements rather than becoming a value object.
-//
-// Every setter takes `persist` because the same entry points serve both a user
-// edit (persist) and a restore from disk (do not). Dropping the flag would make
-// loading settings rewrite them.
-//
-// Deliberately Qt-GUI-free.
 class PreferencesStore
 {
 public:

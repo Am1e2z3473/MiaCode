@@ -71,9 +71,6 @@ Session::Session(miacode::ApplicationServices& services, QObject* parent)
     : QObject(parent)
     , applicationServices_(services)
 {
-    // Borrowed, not created: these services outlive the window and are owned by
-    // the non-Widget assembly (stage 3.5 item 1). The window only connects to
-    // them.
     editorSyncController_ = &applicationServices_.editorSync();
     connect(editorSyncController_, &miacode::EditorSyncController::editorContextChanged,
             this, &Session::refreshEditorAuthoringContext);

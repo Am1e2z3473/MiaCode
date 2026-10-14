@@ -20,7 +20,7 @@
 | 命令行诊断 | `src/devtools/`、`cmake/devtools/CliTools.cmake` | 开发程序入口集中于 devtools；领域算法链接所属库 |
 | 日志、诊断与偏好端口 | `src/common/` | DebugLog、PreferenceProvider 等基础设施与纯 helper；领域配置归所属模块 |
 | 偏好文档与存储 | `src/app/services/`、`src/app/runtime/settings/` | PreferenceDocument、PreferencesStore 和 PreferenceDocumentProvider；设置宿主负责装配与持久化 |
-| 库与依赖方向 | `cmake/MiaCodeModules.cmake`、`docs/specs/architecture/MODULE_LAYERING_CURRENT_ZH.md` | 一个目录属于一个库；跨库改动后运行 `scripts/governance/module_layering.py` |
+| 库与依赖方向 | `cmake/MiaCodeModules.cmake`、`docs/specs/architecture/MODULE_LAYERING_CURRENT_ZH.md` | 库与依赖定义位于 CMake |
 
 装配细节查 `src/app/runtime/SessionBootstrap.cpp` 和 `ApplicationServices` 的实际安装点。
 

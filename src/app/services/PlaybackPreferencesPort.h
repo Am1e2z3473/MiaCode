@@ -8,21 +8,7 @@
 
 namespace miacode {
 
-// The playback coordinator's one seam onto preferences and persisted state:
-// portable-state disk I/O, the 预览设置 page's render-setting map, and the
-// 音频设置 page's software-default mixer round trip.
-//
-// These eight methods are not one feature — their eventual owners are three
-// different hosts (savePortableState/loadProjectRenderState end up on
-// EditorHost, setLastOpenDirectory on DocumentSessionHost, the render/audio
-// preference read-writes stay on Session itself) — so the port is cut by
-// capability ("read/write/persist a preference"), not by host. Session
-// implements it because reaching across those three hosts is exactly the
-// orchestration job Session keeps once each domain has its own host.
-//
-// Deliberately free of Session, QWidget, and QML/QSG types: PreferencesPortSpec
-// proves that at link time, by implementing this port with a fake that pulls
-// in neither.
+// 播放协调器通过此端口读写偏好与持久化状态。
 class PlaybackPreferencesPort
 {
 public:

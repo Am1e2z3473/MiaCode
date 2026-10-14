@@ -1,13 +1,5 @@
 # Debug Index
 
-This document is the current user-facing index for MiaCode debug mode, log files, and preview/export diagnostics after the Qt Quick migration.
-
-> Reconciled against the code on 2026-08-10: **86 live `MIACODE_*` environment flags across 26 files**, including the four the idle-freeze diagnostics added — `MIACODE_UI_HANG_ACTIVE_PHASE_MS`, `MIACODE_UI_HANG_IDLE_HEARTBEAT_MS`, `MIACODE_ENABLE_DIAG_D3D11`, `MIACODE_ENABLE_DIAG_MODULE_LIST`.
->
-> Recount rather than trusting that number: `grep -rhoE '"MIACODE_[A-Z0-9_]+"' src --include="*.cpp" --include="*.h" | sort -u` yields 101 quoted literals, of which 86 are live env flags — subtract `MIACODE_SOURCE_ROOT` (a CMake compile definition) and the fourteen retired flags that survive only inside `kRetiredFlags` in `src/tools/debug_index/DebugFlagIndexSpec.cpp`. The drift guard `ctest -R debug_flag_index_spec` is the real enforcement — it fails if a flag read in `src/` is missing from this doc or a flag named here is no longer read. Its own summary reports a **larger** total (96) because its regex also counts the build-time compile definitions and hang-watchdog macros listed under "Other `MIACODE_*` tokens" below; that number is not the env-flag count.
->
-> When you add/remove a flag, update this index. The development skill links here rather than duplicating the flag list.
-
 ## Debug Entry Points
 
 - Preferred CLI switch: `--debug`
@@ -21,7 +13,7 @@ This document is the current user-facing index for MiaCode debug mode, log files
   - `Start_MiaCode_SoftwareVideoDecode.bat`
   - `Start_MiaCode_QtPluginDiag.bat`
   - `Start_MiaCode_IdleFreezeRepro.ps1` — launches the real `app\MiaCode.exe` in a timestamped evidence directory with an explicit `GpuBound` / `GpuOff` profile
-  - `first_play_probe/Run_FirstPlayProbe.bat` — tests whether the first Play is dead until restart. It checks whether `BASS_CONFIG_DEV_DEFAULT` can still be set after `BASS_Init(0)`, then runs guided repro rounds with `--debug` on a copy of a chart that has no waveform cache, and zips the verdicts and logs; see [its README](../../scripts/debug/first_play_probe/README_ZH.md). Fixed in `4d7c274e` ([root cause and fix record](../audit/PREVIEW_FIRST_PLAY_DEV_DEFAULT_ROOT_CAUSE_AND_FIX_ZH.md)): on fixed builds every round should report `VERDICT=MISS`, so a `HIT` means the startup ordering regressed
+  - `first_play_probe/Run_FirstPlayProbe.bat` — tests whether the first Play is dead until restart. It checks whether `BASS_CONFIG_DEV_DEFAULT` can still be set after `BASS_Init(0)`, then runs guided repro rounds with `--debug` on a copy of a chart that has no waveform cache, and zips the verdicts and logs
 
 Inside debug mode, runtime, audio, export, startup-timing, preview-profile, and PV-memory outputs are enabled unless they are individually disabled.
 Outside debug mode, the export log still keeps a concise stage/failure summary so users can report export issues without reproducing under `--debug`.
@@ -132,12 +124,6 @@ Freeze / contention diagnostics (debug mode only; the probes below are on by def
 - `window/visibility` records occlusion / minimize / expose transitions for the default QSG path — `surface=root_window|preview_composite`, `from` / `to` visibility, `exposed`, `minimized`, `occluded`, and `occluded_for_ms` on the transition back out. Transition-triggered, never per frame. `action=graphics_persistence` states once that the preview composite surface keeps `persistent_graphics` / `persistent_scene_graph`, i.e. minimizing does **not** release its GPU resources.
 - Audio channel `bass_audio_health` / `bass_audio_stall` cover preview audio underruns — see the audio-log notes below.
 
-Other `MIACODE_*` tokens seen by the source-index guard but not runtime flags:
-
-- `MIACODE_GIT_REVISION` / `MIACODE_GIT_DIRTY` — CMake-generated build identity macros embedded in `startup/process_identity`.
-- `MIACODE_EXTENSION_DEV_PATHS` — test-only environment literal used by `ExtensionManifestSpec`; production extension discovery does not read it.
-- `MIACODE_TEST_OUTPUT_ROOT` / `MIACODE_ZH_CN_QM_PATH` — CMake definitions for the bounded download fixture directory and compiled Chinese translation catalog used by `NetDownloadFlowSpec`.
-
 ## Category Gates
 
 These only matter while debug mode is active for the detailed channels. The always-on concise export summary remains available without `--debug`.
@@ -164,7 +150,7 @@ something goes wrong. The per-category gates above are snapshot into atomics at
 - **High-performance GPU hint (P2):** `MiaCode.exe` and `MiaCodeLauncher.exe` export the `NvOptimusEnablement` / `AmdPowerXpressRequestHighPerformance` symbols so hybrid-graphics laptops prefer the discrete GPU. This is a process-level *preference*, not a precise adapter binding — Windows Graphics Settings / vendor control panels can still override it. Confirmed by the `startup/gpu_hint` runtime log.
 - **Root Quick GPU binding:** root-window `fromAdapter` binding is now default ON. Set `MIACODE_GPU_BIND_HIGH_PERFORMANCE=0` / `off` / `false` to keep Qt's platform-default adapter as a rollback. The preview composite remains never `fromAdapter`-bound.
 - Export PBO diagnostics now describe the headless Quick export session, not a removed legacy renderer.
-- Background **PV/BG video decoding** in realtime preview (and therefore the export preview dialog) uses **QtAVPlayer (FFmpeg)** on Windows, macOS, and Linux instead of Qt Multimedia's `QMediaPlayer`. This is selected at **build time** by the `MIACODE_USE_QTAVPLAYER` compile macro — a CMake build-time macro, **not** an environment flag, so it cannot be toggled at runtime. Windows uses D3D11VA; macOS uses VideoToolbox with QtAVPlayer's Metal bridge; Linux uses VA-API through DRM/EGL. `MIACODE_FFMPEG_DEV_DIR` is the Windows/macOS CMake/package SDK-root input (Windows is provisioned by `scripts/ffmpeg/ensure-windows-ffmpeg-dev.ps1`; macOS packaging resolves an explicit SDK). Linux uses the host FFmpeg and libva via pkg-config. `MIACODE_PREVIEW_FORCE_SOFTWARE_VIDEO=1` is an explicit fallback on all three platforms, but hardware decoding is the default. The export *encoder output* is unaffected (still the standalone `ffmpeg` filtergraph). On `InvalidMedia` the preview backend retries once forcing FFmpeg software decode (`preview/stage_media action=video_software_fallback`).
+- Background **PV/BG video decoding** in realtime preview (and therefore the export preview dialog) uses **QtAVPlayer (FFmpeg)** on Windows, macOS, and Linux instead of Qt Multimedia's `QMediaPlayer`. Windows uses D3D11VA; macOS uses VideoToolbox with QtAVPlayer's Metal bridge; Linux uses VA-API through DRM/EGL. `MIACODE_FFMPEG_DEV_DIR` is the Windows/macOS CMake/package SDK-root input (Windows is provisioned by `scripts/ffmpeg/ensure-windows-ffmpeg-dev.ps1`; macOS packaging resolves an explicit SDK). Linux uses the host FFmpeg and libva via pkg-config. `MIACODE_PREVIEW_FORCE_SOFTWARE_VIDEO=1` is an explicit fallback on all three platforms, but hardware decoding is the default. The export *encoder output* is unaffected (still the standalone `ffmpeg` filtergraph). On `InvalidMedia` the preview backend retries once forcing FFmpeg software decode (`preview/stage_media action=video_software_fallback`).
 - `MIACODE_BUILD_DEV_TOOLS` is the **CMake configure option** (not an environment flag) that builds the developer spec/eval executables and registers them with CTest (`cmake -D MIACODE_BUILD_DEV_TOOLS=ON`; `scripts/build/build-win.ps1` turns it on for Debug configs). Some dev tools mention it in comments (e.g. `src/devtools/LatencyOffsetBatch.cpp`), which is why it appears in this index — it has no runtime effect in a shipped build.
 - `MIACODE_SIMAI_REPRO_CHART` is a **CTest/dev-tool-only** parser-spec repro hook. When set to a `maidata.txt` path containing `&inote_5=`, `simai_parser_spec` parses that real chart as an optional local corpus check; unset keeps the public spec deterministic. It has no runtime effect in `MiaCode.exe`.
 
@@ -224,7 +210,7 @@ Render-session backend (P5 — hidden, diagnostic):
 
 - `MIACODE_EXPORT_RENDER_BACKEND` — `d3d11_qrhi` (default) | `opengl` | `auto`. Selects the offscreen chart-render session for CLI export and the export worker. The default `d3d11_qrhi` path puts the export process on the Direct3D11 Qt Quick graphics API and drives `PreviewQuickD3D11ExportSession` (device created on the P3-policy adapter via `QQuickGraphicsDevice::fromDeviceAndContext`, `QQuickRenderTarget::fromD3D11Texture` R8G8B8A8 target, three-texture staging-ring CopyResource+Map readback). Init failure auto-falls back to the OpenGL session (`render_backend_fallback` export-log line: `fallback_from=d3d11_qrhi fallback_to=opengl reason=…`). `opengl` is the explicit rollback path. `auto` is currently identical to `d3d11_qrhi`. Windows-only; unknown values keep OpenGL. Selected backend, adapter LUID and readback mode appear in the `render_backend` export-log summary line; `render_stage_timing_summary` reports state/polish/sync/submit averages.
 
-## GPU Device Policy (P3/P4 — hidden, diagnostic)
+## GPU Device Policy
 
 Internal high-performance GPU device-policy skeleton (`src/common/GpuDevicePolicy.*`, namespace `miacode::gpu`; provider `src/app/platform/gpu_device_provider.cpp`). These are **hidden developer/support overrides**, not surfaced in the settings UI. **P3** **resolves + logs** the preferred adapter (`startup/gpu_policy` runtime log, gated on `--debug`); Windows adapter enumeration uses read-only DXGI (`IDXGIFactory6::EnumAdapterByGpuPreference` high-performance ordering, software adapters skipped), while Metal/Vulkan/OpenGL platforms use their normal platform-managed selection. The GUI forwards the raw request to the export worker via env so both processes log a matching policy. **P4** can then actually **bind** the Windows root Quick window to the resolved adapter via `QQuickGraphicsDevice::fromAdapter` (Qt owns the device) — logged at `startup/gpu_provider`, verified by the `quick_shell/device` actual-device probes for both the root and preview windows.
 
@@ -266,28 +252,6 @@ Still active:
 - `MIACODE_PREVIEW_DIAG_COMPARE_DUMP_FRAMES`
 - `MIACODE_PREVIEW_DIAG_COMPARE_DUMP_MAX_SAMPLES`
 - `MIACODE_PREVIEW_DIAG_COMPARE_DUMP_DIR`
-
-Retired from the main app:
-
-- The old native-dialog WinEvent hook and related `window/native*` investigation traces are no longer built into `MiaCode.exe`.
-- If Windows dialog investigation needs to return, it must live in a separate dev-only tool and must not ship in the release `dist/` package.
-
-Retired with the old preview renderer and not recommended anymore (no longer read by any code):
-
-- `MIACODE_ENABLE_PYGAME_PREVIEW`
-- `MIACODE_PREVIEW_DIAG_COMPARE_VIDEO_FALLBACK_EVERY`
-- `MIACODE_PREVIEW_DIAG_COMPARE_PRESENT_EVERY`
-- `MIACODE_PREVIEW_SESSION_SCRIPT` (was a preview session-script hook; gone)
-- `MIACODE_DISABLE_GL_DEBUG_MESSAGES` (GL debug-message gate; gone)
-- `MIACODE_SKIP_DIAG_D3D11` (skipped the startup D3D11 diagnostic probe back when that probe ran by default. The probe is now opt-in behind `MIACODE_ENABLE_DIAG_D3D11`, which made the skip unreachable unless an operator enabled and disabled the same probe in one run, so the enable flag is the single control.)
-- The DirectComposition / D3D11 render backend flags, all retired together on 2026-08-07 when `src/render/` and `src/sources/` were deleted. Every one of them cascaded off `MIACODE_PREVIEW_USE_DCOMP`, which had defaulted to off since beta34, so removing the backend made all six unreachable. The in-process QSG path is now the only preview and timeline renderer:
-  - `MIACODE_PREVIEW_USE_DCOMP` (parent opt-in; created the DComp-backed chart preview popup)
-  - `MIACODE_TIMELINE_USE_DCOMP` (DComp pipeline for the timeline pane, via `TimelineRenderView`)
-  - `MIACODE_PREVIEW_DCOMP_TOPLEVEL_HWND` (hosted DComp in an owned top-level HWND)
-  - `MIACODE_PREVIEW_DCOMP_PER_PIXEL_ALPHA` (per-pixel-alpha `WS_EX_NOREDIRECTIONBITMAP` popup)
-  - `MIACODE_PREVIEW_DCOMP_EXCLUSIVE` (made DComp the sole chart renderer)
-  - `MIACODE_PREVIEW_DCOMP_QUIESCE_QSG` (skipped QSG repaint subscriptions while DComp was active)
-- `MIACODE_PREVIEW_VISUAL_SMOOTHING` (gated visual-clock smoothing, which bounded the per-frame visual playhead delta so BASS-master-mixer cursor jitter could not reach the rendered scene. The G1 wall-clock flip made `qtPreviewElapsed_` the master timeline — monotonic and rate-correct by construction — so `applyVisualClockSmoothing` was collapsed to exactly its old smoothing-disabled branch and the gate was dropped with it. The flag had been a no-op ever since. The lookahead-vsync shift that survives in that function was always outside this gate and has its own `MIACODE_PREVIEW_VISUAL_LOOKAHEAD_VSYNCS` control.)
 
 Preview diagnostics now split these timing sources instead of reporting a single ambiguous FPS number:
 
@@ -366,7 +330,6 @@ Preview diagnostics now split these timing sources instead of reporting a single
 
 The in-process Qt Quick (QSG) path is the default and the only one needed for normal use; both realtime preview and export run through it. The toggles below select alternate render topologies for diagnostics and are **off by default**.
 
-The DirectComposition / D3D11 preview and timeline backend was **removed on 2026-08-07**. `src/render/` and `src/sources/` are gone, along with all six `MIACODE_*_DCOMP*` flags (see the retired list above). The QSG path is now the only render path; there is no alternate backend to A/B against.
 
 - `MIACODE_PREVIEW_QSG_FULL_DISABLE` — force QSG to the software/basic path (GPU-contention isolation test).
 - `MIACODE_PREVIEW_FORCE_BASIC_RENDER_LOOP` — force `QSG_RENDER_LOOP=basic` at startup.
@@ -379,6 +342,10 @@ The DirectComposition / D3D11 preview and timeline backend was **removed on 2026
 - `MIACODE_DISABLE_MMCSS` — opt out of MMCSS pro-audio thread scheduling (Windows; `common/Mmcss.cpp`).
 - `MIACODE_DISPLAY_VERSION_STRING` — override the displayed version string.
 - `MIACODE_SKIP_PREFLIGHT` — skip the launcher preflight checks (`wrapper/MiaCodeLauncher.cpp`).
+
+## Spec 输出
+
+- `MIACODE_HUD_SPEC_OUTPUT`：指定 HUD 字体 Spec 的图片输出目录。
 
 ## Useful Workflows
 

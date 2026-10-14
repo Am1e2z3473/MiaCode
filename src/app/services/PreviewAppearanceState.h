@@ -29,14 +29,6 @@ class PreviewAppearanceState final : public QObject
     Q_OBJECT
 
 public:
-    // The stored values, exposed as data so MainWindow can bind its same-named
-    // members to them by reference and keep reading and writing the single copy
-    // without changing a line on its restore/apply paths.
-    //
-    // That direct door is a transitional concession, not the interface: a write
-    // through `values()` does not emit `changed()`. Everything outside the
-    // window uses the typed setters below. The door closes with stage 4, when
-    // the window that needs it is gone.
     struct Values {
         QString skinDirectoryName = QStringLiteral("skinSD");
         PreviewSkinVariant skinVariant = PreviewSkinVariant::Standard;

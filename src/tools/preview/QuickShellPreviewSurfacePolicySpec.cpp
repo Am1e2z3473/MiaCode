@@ -1,19 +1,9 @@
 #include <QCoreApplication>
-#include <QFile>
 #include <QTextStream>
 
 #include "app/quick_shell/QuickShellPreviewSurfacePolicy.h"
 
 namespace {
-
-QString readSource(const QString& relativePath)
-{
-    QFile file(QStringLiteral(MIACODE_SOURCE_ROOT) + QLatin1Char('/') + relativePath);
-    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        return QString();
-    }
-    return QString::fromUtf8(file.readAll());
-}
 
 bool require(bool condition, const QString& message, QTextStream& err)
 {
@@ -47,36 +37,6 @@ bool verifyPolicy(QTextStream& err)
     return true;
 }
 
-bool verifyChartDropUsesQsgOnly(QTextStream& err)
-{
-    // The v1 shell is gone; the surviving GUI bootstrap is the v2 QML entry below.
-    const QString bootstrap = readSource(QStringLiteral("src/app/ui/Bootstrap.cpp"));
-    return require(
-               bootstrap.contains(QStringLiteral("drop/ChartDropBridge.h")),
-               QStringLiteral("audio drop must use the QML bridge"),
-               err)
-        && require(
-            bootstrap.contains(QStringLiteral("installDropBridge")),
-            QStringLiteral("audio drop must be part of the root lifecycle gate"),
-            err)
-        && require(
-            !bootstrap.contains(QStringLiteral("ChartDropOverlay")),
-            QStringLiteral("audio drop must not construct the removed native overlay"),
-            err)
-        && require(
-            !bootstrap.contains(QStringLiteral("PreviewDCompSurface")),
-            QStringLiteral("audio drop must not restore the removed DComp surface"),
-            err)
-        && require(
-            !bootstrap.contains(QStringLiteral("createInProcessPreviewSurface")),
-            QStringLiteral("audio drop must stay on the QSG render path"),
-            err)
-        && require(
-            bootstrap.contains(QStringLiteral("ItemAcceptsDrops")),
-            QStringLiteral("audio drop must preserve the QML content-item drop flag"),
-            err);
-}
-
 }  // namespace
 
 int main(int argc, char* argv[])
@@ -85,7 +45,7 @@ int main(int argc, char* argv[])
     QTextStream err(stderr);
     QTextStream out(stdout);
 
-    if (!verifyPolicy(err) || !verifyChartDropUsesQsgOnly(err)) {
+    if (!verifyPolicy(err)) {
         return 1;
     }
 

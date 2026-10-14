@@ -16,9 +16,9 @@ This directory keeps only public, repeatable build, release, asset, and diagnost
 
 ## Net API Generation
 
-Run `python scripts/api/generate_net_api.py` to generate the embedded C++ catalog, OpenAPI, TypeScript types and operation reference from `tools/net-api/operations.json` and `schemas.json`. Add `--check` to detect drift. For independent standards validation, run `npm ci --ignore-scripts` and `npm run validate` in `tools/net-api`. Generation uses the Python standard library; validation dependencies are development tools and do not enter the product runtime.
+Run `python scripts/api/generate_net_api.py` to generate the embedded C++ catalog, OpenAPI and TypeScript types from `tools/net-api/operations.json` and `schemas.json`. The generator uses the Python standard library.
 
-See the [Net API standardization plan](../docs/specs/net/NET_API_STANDARDIZATION_PLAN_ZH.md) for availability and extension rules. Generated HTTP routes do not imply a delivered gateway.
+See the [Net API](../docs/specs/net/NET_API_CONTRACT_ZH.md) for availability and extension rules. Generated HTTP routes do not imply a delivered gateway.
 
 ## Build And Package
 

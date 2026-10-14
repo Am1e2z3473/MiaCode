@@ -19,9 +19,6 @@ public:
     void addValidationDecoration(int line, int col, const QString& message, int endCol = -1);
     void clearValidationCache() override;
     void applyDeferredAnalysisUiUpdates() override;
-    // Stage 4.9d-4c: lets PlaybackCoordinator's async analysis-apply callback
-    // reach documentValidationChanged through the validation port instead of
-    // a Session reference — see PlaybackValidationPort.h.
     void notifyDocumentValidationChanged() override;
     void refreshValidationPanelForActiveField();
     void applyMuriRenderOptions();
