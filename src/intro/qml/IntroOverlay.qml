@@ -83,9 +83,6 @@ Item {
     // Banner payload pulled from the chart (title/artist/designer/level/
     // difficulty/bpm/mode), forwarded to the embedded MaimaiBannerCard.
     property var bannerTrack: ({})
-    property url bannerTemplate: "qrc:/intro/templates/maimai_banner.json"
-    // Parsed banner template, injected from C++ (avoids the async XHR that never
-    // completes under the headless export render loop).
     property var bannerTemplateData: null
 
     // Dim tint over the blurred backdrop so the crisp card reads.
@@ -314,7 +311,6 @@ Item {
         width: parent.height
         frame: root.frame
         fps: root.fps
-        templateSource: root.bannerTemplate
         externalTemplate: root.bannerTemplateData
         jacketImage: root.backgroundImage
         logoImage: root.logoImage

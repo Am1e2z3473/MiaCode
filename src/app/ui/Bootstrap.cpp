@@ -194,9 +194,7 @@ bool Bootstrap::start(const QString& startupOpenTarget)
         [](const QList<QQmlError>& warnings) {
             for (const QQmlError& warning : warnings) {
                 appendUiRuntimeLog(QStringLiteral("qml_warning"), warning.toString());
-                QTextStream(stderr) << "[QmlUi QML] " << warning.toString() << '\n';
             }
-            QTextStream(stderr).flush();
         });
     QObject::connect(
         engine_.get(),

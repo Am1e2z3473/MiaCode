@@ -53,7 +53,6 @@ Item {
         anchors.topMargin: 4
         anchors.bottomMargin: 4
         columns: root.columns
-        rows: root.rows
         columnSpacing: 0
         rowSpacing: 0
 
