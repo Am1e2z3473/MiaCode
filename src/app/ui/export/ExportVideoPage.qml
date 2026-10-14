@@ -525,31 +525,39 @@ Rectangle {
 
                             visible: root.session && root.session.activeTab === "export"
 
-                            AppButton {
-                                objectName: "playExportRangeButton"
+                            RowLayout {
                                 Layout.fillWidth: true
-                                text: root.session && root.session.rangePlaybackEnabled
-                                    && root.previewSession.playing
-                                    ? qsTrId("preview.stop") : qsTrId("dialog.video_export.range.play_clip")
-                                enabled: root.settingsAvailable && root.session.rangePreviewAvailable
-                                    && root.session.exportEndSeconds > root.session.exportStartSeconds
-                                onClicked: {
-                                    if (root.session.rangePlaybackEnabled && root.previewSession.playing) {
-                                        root.previewSession.stop()
-                                        return
-                                    }
-                                    root.session.rangePlaybackEnabled = true
-                                    root.previewSession.stop()
-                                    root.previewSession.positionSeconds = root.session.exportStartSeconds
-                                    root.previewSession.playing = true
+                                spacing: Theme.settingsRowSpacing
+
+                                ExportRangeSelector {
+                                    id: exportRangeSelector
+                                    objectName: "exportRangeSelector"
+                                    Layout.fillWidth: true
+                                    exportSession: root.session
+                                    previewSession: root.previewSession
                                 }
-                            }
-                            ExportRangeSelector {
-                                id: exportRangeSelector
-                                objectName: "exportRangeSelector"
-                                Layout.fillWidth: true
-                                exportSession: root.session
-                                previewSession: root.previewSession
+                                AppButton {
+                                    id: playExportRangeButton
+                                    objectName: "playExportRangeButton"
+                                    Layout.preferredWidth: Math.max(implicitWidth, exportRangeStartCurrentButton.implicitWidth)
+                                    Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
+                                    text: root.session && root.session.rangePlaybackEnabled
+                                        && root.previewSession.playing
+                                        ? qsTrId("preview.stop") : qsTrId("dialog.video_export.range.play_clip")
+                                    enabled: root.settingsAvailable && root.session.rangePreviewAvailable
+                                        && root.session.exportEndSeconds > root.session.exportStartSeconds
+                                    onClicked: {
+                                        if (root.session.rangePlaybackEnabled && root.previewSession.playing) {
+                                            root.previewSession.stop()
+                                            return
+                                        }
+                                        root.session.rangePlaybackEnabled = true
+                                        root.previewSession.stop()
+                                        root.previewSession.positionSeconds = exportRangeSelector.previewSecondForRangeSecond(
+                                            root.session.exportStartSeconds)
+                                        root.previewSession.playing = true
+                                    }
+                                }
                             }
                             RowLayout {
                                 Layout.fillWidth: true
@@ -577,6 +585,15 @@ Rectangle {
                                     }
                                 }
                                 Item { Layout.fillWidth: true }
+                                AppButton {
+                                    id: exportRangeStartCurrentButton
+                                    objectName: "exportRangeStartCurrentButton"
+                                    Layout.preferredWidth: playExportRangeButton.width
+                                    Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
+                                    text: qsTrId("dialog.video_export.range.set_current")
+                                    enabled: root.settingsAvailable && root.session.rangePreviewAvailable
+                                    onClicked: root.session.setExportStartToCurrentPreview()
+                                }
                             }
                             RowLayout {
                                 Layout.fillWidth: true
@@ -599,6 +616,14 @@ Rectangle {
                                     onEditingFinished: if (root.session) text = root.session.setExportEndText(text)
                                 }
                                 Item { Layout.fillWidth: true }
+                                AppButton {
+                                    objectName: "exportRangeEndCurrentButton"
+                                    Layout.preferredWidth: playExportRangeButton.width
+                                    Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
+                                    text: qsTrId("dialog.video_export.range.set_current")
+                                    enabled: root.settingsAvailable && root.session.rangePreviewAvailable
+                                    onClicked: root.session.setExportEndToCurrentPreview()
+                                }
                             }
                         }
 
