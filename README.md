@@ -15,16 +15,19 @@
 </p>
 
 MiaCode 是一款基于 Qt 6 / C++ / QML 的 maimai 谱面创作工具，集成编辑、实时预览、语法与无理检测、视频导出和封面创作。
-<table align="center" width="100%">
-  <tr>
-    <td align="center" width="50%"><p>截图占位：MiaCode 深色主题</p></td>
-    <td align="center" width="50%"><p>截图占位：MiaCode 浅色主题</p></td>
-  </tr>
-  <tr>
-    <td align="center">深色主题</td>
-    <td align="center">浅色主题</td>
-  </tr>
-</table>
+
+<p align="center">
+  <img src="resources/screenshots/main-dark.png" alt="MiaCode 深色主题，展示狐雨谱面、波形时间轴与实时预览" width="1280">
+</p>
+
+<details>
+  <summary>浅色主题</summary>
+  <p align="center">
+    <img src="resources/screenshots/main-light.png" alt="MiaCode 浅色主题下的狐雨谱面" width="1280">
+  </p>
+</details>
+
+截图展示 macOS 界面，使用《狐雨》（棗いつき）的谱面，谱师为天気雨。
 
 ## 快速开始
 
@@ -39,24 +42,28 @@ nightly 构建包见 [GitHub Actions](https://github.com/Team-MiaCode/MiaCode/ac
 
 Linux 用户可按下方步骤从源码构建。
 
+### 打开第一张谱面
+
+1. 打开 simai 格式的 `maidata.txt`，或将音频拖入工作区创建谱面。
+2. 在侧栏编辑歌曲信息、选择难度，在编辑器内编写谱面。拖动波形时间轴或预览进度条查看段落配置。
+3. 使用“保存”写入当前编辑页，或使用“保存整个文档”写入全部难度与歌曲信息。发布时可从侧栏打开视频导出或封面工具。
+
 ## 功能介绍
 
-### 特色
+### 编辑与预览
 
-- 支持 Windows、Apple 芯片的 macOS 和 Linux。
-
-- 多组件宽度自由调节，编辑器与预览区面板可左右交换重排。
-
-- 深、浅色主题与中 / 英 / 日三种语言支持，可跟随系统切换。
-
-- 键入修改实时更新，无需处于播放模式，可随时拖拽进度条查看配置。
+- 支持 simai 谱面编辑、语法高亮与时值补全，歌曲信息和各个难度通过标签页切换。
+- 通过段落书签定位，波形时间轴展示音符位置、长按时值与滑条轨迹。
+- 键入修改实时更新预览，暂停时可拖动进度查看配置；支持变速播放与分离预览窗口。
+- 面板宽度可调，编辑器与预览区可左右交换；支持深浅主题和中、英、日三种语言，主题与语言可跟随系统。
+- 支持自定义皮肤、判定线、预览字体与工作区背景。
 
 ### 语法与无理
 
 <table align="center" width="100%">
   <tr>
-    <td align="center" width="50%"><p>截图占位：语法检查结果</p></td>
-    <td align="center" width="50%"><p>截图占位：无理检测结果</p></td>
+    <td align="center" width="50%"><img src="resources/screenshots/syntax.png" alt="语法检查与行号定位" width="640"></td>
+    <td align="center" width="50%"><img src="resources/screenshots/muri.png" alt="无理检测结果与源码定位" width="640"></td>
   </tr>
   <tr>
     <td align="center">语法检查</td>
@@ -64,47 +71,44 @@ Linux 用户可按下方步骤从源码构建。
   </tr>
 </table>
 
-支持谱面语法检查与谱面无理配置检测，可快速跳转到指定行。
+语法检查按行列出错误与警告，无理检测标记叠键、撞尾等配置。点击检测结果可跳转到对应源码与预览位置。
 
 ### 视频与封面
 
-<table align="center" width="100%">
-  <tr>
-    <td align="center" width="50%"><p>截图占位：视频导出界面</p></td>
-    <td align="center" width="50%"><p>截图占位：封面编辑界面</p></td>
-  </tr>
-  <tr>
-    <td align="center">导出</td>
-    <td align="center">封面工具</td>
-  </tr>
-</table>
-
 #### 导出
 
-导出包含片头与全景 PV 的预览视频。
+<p align="center">
+  <img src="resources/screenshots/video-export.png" alt="视频导出设置与区间选择" width="1280">
+</p>
 
-支持自定义导出区间，或直接在编辑器内选择谱面段落区间并套用。
+导出包含片头、背景视频与可选谱面信息、音符统计的预览视频。可在导出工作区设置分辨率、帧率、音频码率与编码器。
+
+支持自定义导出区间、使用播放位置设置起止点，或将编辑器中的谱面选区套用到导出区间；导出前可试听所选区间。
 
 #### 封面
 
+<p align="center">
+  <img src="resources/screenshots/cover-editor.png" alt="封面编辑器中的谱面帧与难度卡片" width="1280">
+</p>
+
 导出用于发布谱面视频的平台封面。
 
-支持自定义字体、背景等样式，也可以叠加谱面帧截图，用于展示配置。
+以图层组合难度卡片、谱面帧、图片与文字，可调整位置、大小、层叠顺序和透明度，设置字体与背景，并将布局保存为预设。
 
 ### 更多实用功能
 
 <table align="center" width="100%">
   <tr>
-    <td align="center" width="50%"><p>截图占位：自动补全时值</p></td>
-    <td align="center" width="50%"><p>截图占位：一键谱面整理</p></td>
+    <td align="center" width="50%"><img src="resources/screenshots/completion.png" alt="编辑器时值补全候选" width="640"></td>
+    <td align="center" width="50%"><img src="resources/screenshots/normalize.png" alt="谱面整理选项" width="640"></td>
   </tr>
   <tr>
     <td align="center">时值自动补全</td>
     <td align="center">谱面整理</td>
   </tr>
   <tr>
-    <td align="center"><p>截图占位：音视频工具</p></td>
-    <td align="center"><p>截图占位：BPM 与延迟检测</p></td>
+    <td align="center"><img src="resources/screenshots/media-tools.png" alt="音视频处理工具" width="640"></td>
+    <td align="center"><img src="resources/screenshots/latency.png" alt="BPM 与延迟校准" width="640"></td>
   </tr>
   <tr>
     <td align="center">音视频工具</td>
@@ -112,19 +116,10 @@ Linux 用户可按下方步骤从源码构建。
   </tr>
 </table>
 
-- 自定义背景
-
-- 输入法禁止与全角字符转换
-- 书签跳转段落
-- 快捷编写 Touch 音符
-- 拖入音频创建谱面
-- 显示选区拍数
-- 重置摆键到 1 号
-- 自动补全时值
-- 一键谱面整理
-
-- 音视频工具
-- BPM 与延迟检测
+- 输入法禁止、全角字符转换与选区拍数显示。
+- 通过预览触控板编写 Touch 音符，调整音符位置，整理整张谱面或所选段落。
+- 音频转为 44.1 kHz、前置空白、PV 与音频对齐，以及单个或批量视频压缩。
+- 检测 BPM 与音频偏移，通过延迟校准页面试听并调整对齐。
 
 ## 构建
 
@@ -135,6 +130,17 @@ Linux 用户可按下方步骤从源码构建。
 - Qt 6.10+，包含 Qt Quick、Quick Controls 2、Quick 3D、Multimedia、Shader Tools、Linguist Tools，以及 Multimedia 私有开发头文件
 
 更详细的打包说明见 [scripts/README.md](scripts/README.md)。
+
+### 获取源码
+
+克隆开发分支并初始化 ScintillaQuick 编辑器子模块：
+
+```bash
+git clone --branch dev --recurse-submodules https://github.com/Team-MiaCode/MiaCode.git
+cd MiaCode
+```
+
+已有仓库在配置前执行 `git submodule update --init --recursive`。
 
 ### Windows
 
@@ -161,7 +167,7 @@ xcode-select --install
 brew install cmake python
 ```
 
-安装 Qt 6.10+（包含 Multimedia、Shader Tools 和 Quick 3D），准备预览 SDK 与导出用 FFmpeg，然后构建并打包：
+安装脚本默认使用的 Qt 6.11.1（包含 Multimedia、Shader Tools 和 Quick 3D），准备预览 SDK 与导出用 FFmpeg，然后构建并打包：
 
 ```bash
 python3 -m pip install aqtinstall
@@ -193,7 +199,7 @@ cmake --build build --target MiaCode --parallel 4
 
 - [src](src)：应用源码
 - [assets](assets)：运行资源、素材与生成数据
-- [resources](resources)：Qt resource collection
+- [resources](resources)：Qt 资源、应用图标与界面截图
 - [scripts](scripts)：构建与维护脚本
 - [third_party](third_party)：第三方依赖
 - [docs](docs)：文档
