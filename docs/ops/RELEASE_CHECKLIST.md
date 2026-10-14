@@ -48,39 +48,31 @@ shasum -a 256 dist/*.zip
 - [ ] Confirm BASS files are present only in the intended non-commercial release package.
 - [ ] Confirm FFmpeg build flags and license notes match the packaged binaries.
 
-## Publish
+## Distribution Channels
 
-Pushing a `v*` tag runs [release.yml](../../.github/workflows/release.yml): it builds the
-three platform packages and creates the GitHub Release with them attached. A tag carrying
-a prerelease identifier (`v2.1.0-beta.3`) publishes as a pre-release; `v2.1.0` publishes
-as a full release. The in-app update check does not read GitHub; offering a version as
-an update is the separate OSS step under [Update Manifest](#update-manifest).
+[package.yml](../../.github/workflows/package.yml) is the **Nightly** workflow. Branch
+pushes and manual runs build Nightly packages. It also exposes the shared build used
+by [release.yml](../../.github/workflows/release.yml).
 
-- [ ] Confirm `MIACODE_VERSION_*` in CMakeLists.txt already names the version you are
-      about to tag. The `tag` job checks this before the build starts, because a tag
-      ahead of CMakeLists.txt packages the old version under the new name.
-- [ ] Add the `## <version>` section to CHANGELOG.md — the update manifest lifts its
-      `zh_CN` release notes from that section. Other languages need `--notes`.
-- [ ] Create a signed tag if signing is part of the release process.
-- [ ] Push the tag, then watch the run: three `.7z` assets uploaded.
-- [ ] Add platform support, known issues, non-commercial positioning, and license notes
-      to the release body. `--generate-notes` only writes the commit list.
+The **Release** workflow is triggered manually against the selected ref. It builds the
+same three platforms with `channel: release` and stores the `.7z` packages as Actions
+artifacts for 14 days. Website publication uses the OSS procedure below.
 
-### Rehearsing without publishing
+Both channels use Release compiler optimization. The About dialog displays the
+embedded distribution channel, independently of the compiler configuration and version
+prerelease suffix.
 
-Push whatever you want to test to the `ci/release-rehearsal` branch:
+Local CMake configurations default to `MIACODE_RELEASE_CHANNEL=nightly`. For a Release
+package, configure with `-DMIACODE_RELEASE_CHANNEL=release` and build with
+`--config Release`. The packaging entry scripts accept the environment variable
+`MIACODE_RELEASE_CHANNEL=release`; Windows standalone packaging reads the channel from
+`generated/AppVersion.h`. Nightly package names contain `_nightly`; Release names use
+`MiaCode_<version>_<os>_<arch>.7z`.
 
-```bash
-git push --force-with-lease origin HEAD:ci/release-rehearsal
-```
-
-It builds the three packages exactly as a tag push would — same `release` channel, so
-the archive names are the ones a release would carry — and lists them in the log.
-Nothing is created: no Release, no tag. **Only a tag publishes**; a branch push never
-does, whatever it is named.
-
-It rehearses `v` + the version in CMakeLists.txt, which is the only tag the guard would
-accept for that commit anyway.
+- [ ] Confirm the selected ref carries the intended version in `CMakeLists.txt`.
+- [ ] Add the `## <version>` section to `CHANGELOG.md` for the manifest's `zh_CN` notes.
+- [ ] Run **Release** and download its three platform artifacts.
+- [ ] Publish the packages and update manifest through the OSS procedure below.
 
 ## Update Manifest
 
@@ -90,9 +82,9 @@ The in-app update check reads one fixed URL per major version:
 https://miacode.oss-cn-beijing.aliyuncs.com/update/<major>/latest.json
 ```
 
-There are no channels. Whatever that file names is what every build of the major is
-offered — release, prerelease and nightly builds alike — and a client only prompts when
-the manifest version is newer than its own. Nightly packages are never published there.
+The update feed is shared by distribution channels. Every build of the major reads
+the same manifest and prompts when its version is newer than the client version.
+Only Release-channel packages are published to this feed.
 
 The client accepts `schema` 1 and ignores anything higher. It requires `schema`, `major`
 and `version` to be whole numbers / a parseable semver, and a `platforms` entry for its
@@ -123,8 +115,9 @@ Platform keys must match `.github/workflows/package.yml`'s matrix exactly
 
 ### Publishing a version
 
-1. Build the release packages (see [Windows Package](#windows-package)); without
-   `MIACODE_PACKAGE_CHANNEL` they carry the release name `MiaCode_<version>_<os>_<arch>.7z`.
+1. Download the **Release** workflow artifacts, or build locally with
+   `MIACODE_RELEASE_CHANNEL=release` (see [Distribution Channels](#distribution-channels)).
+   Packages carry the release name `MiaCode_<version>_<os>_<arch>.7z`.
 2. Lay out the upload with
    [scripts/release/update-manifest.py](../../scripts/release/update-manifest.py):
 

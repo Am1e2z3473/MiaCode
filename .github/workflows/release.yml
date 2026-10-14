@@ -1,130 +1,19 @@
 name: Release
-run-name: ${{ (startsWith(github.ref, 'refs/tags/') || inputs.publish) && 'release' || 'rehearsal' }} · ${{ inputs.tag || github.ref_name }}
+run-name: Release ${{ github.ref_name }}
 
 on:
-  push:
-    tags: ["v*"]
-    # A rehearsal: everything a tag push does, except that nothing is published.
-    # The update manifest is not produced here: it is generated locally and
-    # uploaded to OSS by hand (docs/ops/RELEASE_CHECKLIST.md).
-    # It is a branch push rather than a workflow_dispatch because dispatch is
-    # only offered for workflows that already live on the default branch, and
-    # this one has to be rehearsable from the branch that changes it.
-    branches: ["ci/release-rehearsal"]
   workflow_dispatch:
-    inputs:
-      tag:
-        description: "Tag to rehearse, e.g. v2.0.0-beta.1. It does not have to exist yet."
-        type: string
-      publish:
-        description: "Really create the Release."
-        type: boolean
-        default: false
 
 permissions:
   contents: read
   actions: read
-
-env:
-  # Only a tag publishes. A branch push is always a rehearsal, whatever it is called.
-  PUBLISH: ${{ startsWith(github.ref, 'refs/tags/') || inputs.publish }}
 
 concurrency:
   group: release-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
-  # Cheap, and it runs before three hours of builds: a tag ahead of
-  # CMakeLists.txt would package the old version under the new name.
-  guard:
-    name: tag
-    runs-on: ubuntu-latest
-    outputs:
-      tag: ${{ steps.resolve.outputs.tag }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v7
-        with:
-          lfs: false
-
-      - name: Resolve the tag
-        id: resolve
-        env:
-          INPUT_TAG: ${{ inputs.tag }}
-        run: |
-          set -euo pipefail
-          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
-            tag="$GITHUB_REF_NAME"
-          elif [[ -n "${INPUT_TAG:-}" ]]; then
-            tag="$INPUT_TAG"
-          else
-            # A rehearsal off a branch can only mean the version this commit
-            # builds -- the check below would reject anything else anyway.
-            tag="v$(python3 scripts/release/update-manifest.py version)"
-          fi
-          echo "tag=$tag" >> "$GITHUB_OUTPUT"
-          echo "$tag"
-
-      - name: Check the tag against the build version
-        env:
-          TAG: ${{ steps.resolve.outputs.tag }}
-        run: |
-          set -euo pipefail
-          python3 scripts/release/update-manifest.py selfcheck
-          python3 scripts/release/update-manifest.py verify --tag "$TAG"
-
   build:
-    needs: guard
-    permissions:
-      contents: read
-      actions: read
     uses: ./.github/workflows/package.yml
     with:
       channel: release
-
-  publish:
-    name: ${{ (startsWith(github.ref, 'refs/tags/') || inputs.publish) && 'publish' || 'rehearse' }}
-    needs: [guard, build]
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    env:
-      TAG: ${{ needs.guard.outputs.tag }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v7
-        with:
-          lfs: false
-
-      - name: Download packages
-        uses: actions/download-artifact@v7
-        with:
-          path: artifacts
-
-      - name: List the packages
-        run: |
-          set -euo pipefail
-          find artifacts -name '*.7z' -exec ls -l {} +
-
-      - name: Publish the release
-        if: env.PUBLISH == 'true'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          set -euo pipefail
-          mapfile -t -d '' packages < <(find artifacts -name '*.7z' -print0)
-          if (( ${#packages[@]} == 0 )); then
-            echo "no package to publish" >&2
-            exit 1
-          fi
-          if gh release view "$TAG" >/dev/null 2>&1; then
-            echo "release $TAG already exists; uploading into it"
-          else
-            # A tag carrying a prerelease identifier publishes as a pre-release.
-            prerelease=""
-            if [[ "$TAG" == *-* ]]; then
-              prerelease="--prerelease"
-            fi
-            gh release create "$TAG" $prerelease --title "$TAG" --generate-notes
-          fi
-          gh release upload "$TAG" "${packages[@]}" --clobber

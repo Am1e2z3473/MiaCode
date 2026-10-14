@@ -72,8 +72,8 @@
         <translation>Efficient</translation>
     </message>
     <message id="about.build_type">
-        <source>Build Type</source>
-        <translation>Build Type</translation>
+        <source>Release Channel</source>
+        <translation>Release Channel</translation>
     </message>
     <message id="about.platform">
         <source>Release Platform</source>

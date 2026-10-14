@@ -72,8 +72,8 @@
         <translation>高效模式</translation>
     </message>
     <message id="about.build_type">
-        <source>Build Type</source>
-        <translation>构建类型</translation>
+        <source>Release Channel</source>
+        <translation>发行渠道</translation>
     </message>
     <message id="about.platform">
         <source>Release Platform</source>

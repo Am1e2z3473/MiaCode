@@ -72,8 +72,8 @@
         <translation>効率モード</translation>
     </message>
     <message id="about.build_type">
-        <source>Build Type</source>
-        <translation>ビルド種別</translation>
+        <source>Release Channel</source>
+        <translation>リリースチャンネル</translation>
     </message>
     <message id="about.platform">
         <source>Release Platform</source>

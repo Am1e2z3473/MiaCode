@@ -15,7 +15,6 @@ $ErrorActionPreference = "Stop"
 # Qt version, toolchains and the package contents contract live in one data
 # file so the build chain and the packaging chain cannot drift apart.
 $toolchainData = Import-PowerShellDataFile -Path (Join-Path $PSScriptRoot "windows-toolchain.psd1")
-$packageChannel = if ([string]::IsNullOrWhiteSpace($env:MIACODE_PACKAGE_CHANNEL)) { "" } else { $env:MIACODE_PACKAGE_CHANNEL }
 
 function Resolve-RepoPath {
     param(
@@ -328,6 +327,16 @@ if (![string]::IsNullOrWhiteSpace($QtRoot)) {
 }
 $versionInfo = Read-VersionInfoFromCMake -CMakeFilePath (Join-Path $repoRoot "CMakeLists.txt")
 $version = $versionInfo.PackageVersion
+$versionHeader = Join-Path $BuildDir "generated\AppVersion.h"
+$headerContent = Get-Content $versionHeader -Raw
+$releaseChannel = [regex]::Match($headerContent, '#define MIACODE_RELEASE_CHANNEL "([^"]+)"').Groups[1].Value
+if ($releaseChannel -notin @("nightly", "release")) {
+    throw "Configure the build with MIACODE_RELEASE_CHANNEL=nightly or release before packaging."
+}
+$packageChannel = if ($releaseChannel -eq "release") { "" } else { $releaseChannel }
+if (![string]::IsNullOrWhiteSpace($env:MIACODE_PACKAGE_CHANNEL)) {
+    $packageChannel = $env:MIACODE_PACKAGE_CHANNEL
+}
 if ($packageChannel -and $packageChannel -notmatch '^[A-Za-z0-9][A-Za-z0-9._-]*$') {
     throw "MIACODE_PACKAGE_CHANNEL must start with an alphanumeric character and contain only letters, digits, dots, underscores, or hyphens (got: $packageChannel)"
 }

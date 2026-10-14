@@ -43,6 +43,7 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
+$releaseChannel = if ([string]::IsNullOrWhiteSpace($env:MIACODE_RELEASE_CHANNEL)) { "nightly" } else { $env:MIACODE_RELEASE_CHANNEL }
 
 $toolchainData = Import-PowerShellDataFile -Path (Join-Path $PSScriptRoot "windows-toolchain.psd1")
 $toolchainSpec = $toolchainData.Toolchains.$Toolchain
@@ -257,7 +258,8 @@ Write-Host "Configure: generator '$generator', Qt '$QtRoot', config '$Config'"
 $configureArgs = @("-S", $repoRoot, "-B", $BuildDir, "-G", $generator,
     "-DCMAKE_PREFIX_PATH=$QtRoot",
     "-DCMAKE_TRY_COMPILE_CONFIGURATION=$Config",
-    "-DMIACODE_BUILD_DEV_TOOLS=$buildDevTools")
+    "-DMIACODE_BUILD_DEV_TOOLS=$buildDevTools",
+    "-DMIACODE_RELEASE_CHANNEL=$releaseChannel")
 if (![string]::IsNullOrWhiteSpace($vulkanIncludeDir)) {
     $configureArgs += "-DVulkan_INCLUDE_DIR=$vulkanIncludeDir"
 }

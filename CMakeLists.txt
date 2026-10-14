@@ -16,6 +16,16 @@ endif()
 # dialog adds its compile date to the visible version separately.
 set(MIACODE_DISPLAY_VERSION_STRING "${MIACODE_VERSION_STRING}")
 
+set(MIACODE_RELEASE_CHANNEL "nightly" CACHE STRING "Distribution channel: nightly or release")
+set_property(CACHE MIACODE_RELEASE_CHANNEL PROPERTY STRINGS nightly release)
+if (MIACODE_RELEASE_CHANNEL STREQUAL "nightly")
+    set(MIACODE_RELEASE_CHANNEL_DISPLAY "Nightly")
+elseif (MIACODE_RELEASE_CHANNEL STREQUAL "release")
+    set(MIACODE_RELEASE_CHANNEL_DISPLAY "Release")
+else()
+    message(FATAL_ERROR "MIACODE_RELEASE_CHANNEL must be nightly or release")
+endif()
+
 if (APPLE)
     # MiaCode's macOS release is Apple-Silicon-only. Keeping this fixed before
     # project() also makes every bundled dependency and helper inherit the same
