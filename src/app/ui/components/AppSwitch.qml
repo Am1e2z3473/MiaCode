@@ -11,7 +11,7 @@ Switch {
     // A switch that heads a group of settings (片头 → 添加片头) reads as that
     // group's section caption rather than as one row inside it.
     property bool sectionTitle: false
-    property bool indicatorOnRight: false
+    property bool indicatorOnRight: true
 
     font.family: Theme.uiFont
     font.pixelSize: root.sectionTitle ? Theme.sectionTitleFontSize : Theme.uiFontSize
