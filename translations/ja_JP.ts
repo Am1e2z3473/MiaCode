@@ -4711,6 +4711,10 @@ Error: %1</source>
         <source>This candidate already exists</source>
         <translation>この候補は既にあります</translation>
     </message>
+    <message id="dialog.video_export.range.set_current">
+        <source>Set to current value</source>
+        <translation>現在値に設定</translation>
+    </message>
     <message id="dialog.video_export.range.play_clip">
         <source>Play Export Range</source>
         <translation>出力範囲を再生</translation>
