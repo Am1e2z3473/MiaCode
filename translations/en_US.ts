@@ -1295,10 +1295,6 @@ Failed: %2</translation>
         <source>Interface zoom</source>
         <translation>Interface zoom</translation>
     </message>
-    <message id="dialog.preferences.ui_scale.hint">
-        <source>Scale text, icons, and controls together. Changes apply immediately.</source>
-        <translation>Scale text, icons, and controls together. Changes apply immediately.</translation>
-    </message>
     <message id="dialog.preferences.ui_scale.reset">
         <source>Reset to 100%</source>
         <translation>Reset to 100%</translation>

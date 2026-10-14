@@ -1295,10 +1295,6 @@ Failed: %2</source>
         <source>Interface zoom</source>
         <translation>界面缩放</translation>
     </message>
-    <message id="dialog.preferences.ui_scale.hint">
-        <source>Scale text, icons, and controls together. Changes apply immediately.</source>
-        <translation>同时缩放文字、图标和控件，修改后立即生效。</translation>
-    </message>
     <message id="dialog.preferences.ui_scale.reset">
         <source>Reset to 100%</source>
         <translation>重置为 100%</translation>

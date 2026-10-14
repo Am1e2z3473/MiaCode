@@ -53,7 +53,6 @@ Crash breadcrumb path note:
 - `miacode_startup_beacon_<pid>.txt` and `miacode_op_chain_<pid>.log` are resolved at process startup from `MIACODE_OPLOG_SHADOW_PATH`, then `MIACODE_LOG_DIR`, then `%TEMP%`.
 - Binding a chart-local `.miacode/logs/` directory later does not rebind those already-captured crash breadcrumb paths yet.
 - When a project log dir is bound while runtime debug output or `MIACODE_PREVIEW_HUD_PAINT_DIAG=1` is active, the runtime log writes `logging/crash_breadcrumb_hint` with the current PID plus `startup_beacon_hint` and `op_chain_hint`.
-- Longer-term work should rebind or mirror the crash shadow safely; the current line is a path signpost so investigations do not only check the chart log directory.
 
 Path overrides:
 
@@ -89,24 +88,6 @@ describe the existing preview image conversion; in particular,
 `to_image_output_bytes_estimate` is an accumulated output-size estimate, not
 allocator ownership or proof that those bytes remain live.
 
-This is an internal diagnostic. It does not enumerate or sample
-`VTDecoderXPCService` or any other external process, log PV filenames or frame
-content, add a frame mapping/readback, or add PV-memory records to the runtime
-or audio logs.
-
-Use the records to rank a capture in this order:
-
-1. Investigate existing per-frame `toImage()` churn when successful conversions
-   and current-process footprint rise together.
-2. If conversion activity is low or absent, investigate `QMediaPlayer` or
-   output-sink lifetime when memory grows during playback or has not settled by
-   `post_clear_15s` after `no_media`.
-3. Compare output attach/detach boundaries for VideoOutput or scene-graph
-   last-frame retention when the remaining playback counters are stable.
-4. Consider persistent Quick graphics resources only when a preview surface is
-   hidden/shown or remains retained after stop; it is not the leading
-   explanation for steady-playback growth.
-
 C++ hang-watchdog instrumentation macros, not environment variables:
 
 - `MIACODE_HANG_PHASE`
@@ -116,11 +97,11 @@ C++ hang-watchdog instrumentation macros, not environment variables:
 Freeze / contention diagnostics (debug mode only; the probes below are on by default in debug mode, but four flags tune or gate them — `MIACODE_UI_HANG_ACTIVE_PHASE_MS`, `MIACODE_UI_HANG_IDLE_HEARTBEAT_MS`, `MIACODE_ENABLE_DIAG_D3D11`, `MIACODE_ENABLE_DIAG_MODULE_LIST`):
 
 - `startup/process_identity` records the product `version`, build `git_revision`, `git_dirty`, and real executable identity so transient packages can be mapped precisely.
-- `ui/hang_watchdog` samples the GUI heartbeat every `250 ms`; it reports a marked phase after about `2 s` or an unmarked idle heartbeat stall after about `5 s` using a durable fatal-grade runtime record. Both timeouts are overridable per run — see `MIACODE_UI_HANG_ACTIVE_PHASE_MS` / `MIACODE_UI_HANG_IDLE_HEARTBEAT_MS`; the defaults are too coarse for a stall of only a couple of seconds. The watchdog deliberately performs no GUI-thread handle duplication, suspension, symbol initialization, stack walking, or process termination.
-- **If `miacode_durable_fallback_<pid>.log` exists, read it next to the runtime log.** Fatal-grade lines take a durable synchronous path that holds the log mutex across an open/write/flush/close; that wait is bounded at `2 s`, and a line that cannot get the lock in time is written to this per-process file instead. The file existing means some thread held the mutex longer than that — a stalled disk or a disconnected network share — and that those lines are **missing from the normal log**. It is a separate file on purpose: a writer that just failed to acquire the mutex must not append to the file the mutex guards. Without the bound, the hang watchdog reporting a frozen GUI thread would block on its own first line, so the freeze report never landed at all.
-- **A GUI stall shorter than the hang thresholds still gets a row.** `ui/hang_watchdog` `action=gui_thread_stall` opens with `edge=began` as soon as the heartbeat is `1000 ms` stale and closes with `edge=ended stall_ms=` when the GUI thread comes back, correlated by `episode=`. This exists because the hang thresholds leave a dead band: a stall between `2 s` (active-phase, and only inside a *marked* phase — ordinary playback marks none) and `5 s` (idle heartbeat) produced **no watchdog rows at all**, which is exactly where the observed audio-device-switch freezes landed (`2075 ms` and `4683 ms` in one capture). `stall_ms` is measured between two GUI-thread heartbeat timestamps, so it is the time the GUI thread actually went unserviced, not the `500 ms`-quantised window the watchdog noticed it in. Info level, never carries a stack — `edge=began` is written immediately so the fact survives a kill mid-stall. The threshold is a fixed constant, not an env flag. A stall that keeps going past the hang thresholds produces these rows *and* the `gui_thread_stale` ones.
+- `ui/hang_watchdog` 每 `250 ms` 采样 GUI 心跳，活动阶段超时约 `2 s`、空闲心跳超时约 `5 s` 时记录持久日志。阈值由 `MIACODE_UI_HANG_ACTIVE_PHASE_MS` / `MIACODE_UI_HANG_IDLE_HEARTBEAT_MS` 设置。
+- 日志锁等待超过 `2 s` 时，持久日志写入 `miacode_durable_fallback_<pid>.log`。
+- GUI 心跳停顿达到 `1000 ms` 时，`action=gui_thread_stall` 记录 `edge=began`；恢复时记录 `edge=ended stall_ms=`。记录以 `episode=` 关联，`stall_ms` 取两次 GUI 心跳的时间差。超过超时阈值时另记录 `gui_thread_stale`。
 - `idle/resource_gauge` writes sample `0` immediately and then process counters about every `30 s`.
-- `idle/vram_gauge` runs on the same `30 s` tick: one `action=adapter_scan` line with `adapter_count`, then one `action=sample` line per DXGI adapter with `local_budget_mb` / `local_usage_mb` / `nonlocal_*` and the derived `local_over_budget` / `nonlocal_over_budget`. Per-adapter because MiaCode straddles two GPUs on the reported hardware (root window on the high-performance adapter, preview composite on the default one) and `over_budget=1` is the DXGI-eviction cliff that explains order-of-magnitude playback collapse. Empty on non-Windows; the scan line is still written so "probe ran, no adapters" is distinguishable from "diagnostics absent".
+- `idle/vram_gauge` runs on the same `30 s` tick: one `action=adapter_scan` line with `adapter_count`, then one `action=sample` line per DXGI adapter with `local_budget_mb` / `local_usage_mb` / `nonlocal_*` and the derived `local_over_budget` / `nonlocal_over_budget`.
 - `window/visibility` records occlusion / minimize / expose transitions for the default QSG path — `surface=root_window|preview_composite`, `from` / `to` visibility, `exposed`, `minimized`, `occluded`, and `occluded_for_ms` on the transition back out. Transition-triggered, never per frame. `action=graphics_persistence` states once that the preview composite surface keeps `persistent_graphics` / `persistent_scene_graph`, i.e. minimizing does **not** release its GPU resources.
 - Audio channel `bass_audio_health` / `bass_audio_stall` cover preview audio underruns — see the audio-log notes below.
 
@@ -328,7 +309,7 @@ Preview diagnostics now split these timing sources instead of reporting a single
 
 ## Render Path Toggles (diagnostics / A·B only)
 
-The in-process Qt Quick (QSG) path is the default and the only one needed for normal use; both realtime preview and export run through it. The toggles below select alternate render topologies for diagnostics and are **off by default**.
+预览与导出共用 Qt Quick/QSG 场景。以下开关用于诊断，默认关闭。
 
 
 - `MIACODE_PREVIEW_QSG_FULL_DISABLE` — force QSG to the software/basic path (GPU-contention isolation test).
