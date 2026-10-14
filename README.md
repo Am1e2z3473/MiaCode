@@ -20,14 +20,9 @@ MiaCode 是一款基于 Qt 6 / C++ / QML 的 maimai 谱面创作工具，集成�
   <img src="resources/screenshots/main-dark.png" alt="MiaCode 深色主题，展示狐雨谱面、波形时间轴与实时预览" width="1280">
 </p>
 
-<details>
-  <summary>浅色主题</summary>
-  <p align="center">
-    <img src="resources/screenshots/main-light.png" alt="MiaCode 浅色主题下的狐雨谱面" width="1280">
-  </p>
-</details>
-
-截图展示 macOS 界面，使用《狐雨》（棗いつき）的谱面，谱师为天気雨。
+<p align="center">
+  <img src="resources/screenshots/main-light.png" alt="MiaCode 浅色主题下的狐雨谱面" width="1280">
+</p>
 
 ## 快速开始
 

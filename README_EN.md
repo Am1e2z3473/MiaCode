@@ -20,14 +20,9 @@ MiaCode is a maimai chart authoring tool built with Qt 6 / C++ / QML, with editi
   <img src="resources/screenshots/main-dark.png" alt="MiaCode dark theme with the 狐雨 chart, waveform timeline, and live preview" width="1280">
 </p>
 
-<details>
-  <summary>Light theme</summary>
-  <p align="center">
-    <img src="resources/screenshots/main-light.png" alt="The same chart in MiaCode's light theme" width="1280">
-  </p>
-</details>
-
-Screenshots show the macOS interface with 狐雨 by 棗いつき, charted by 天気雨.
+<p align="center">
+  <img src="resources/screenshots/main-light.png" alt="The same chart in MiaCode's light theme" width="1280">
+</p>
 
 ## Quick Start
 
