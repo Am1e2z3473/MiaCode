@@ -555,7 +555,8 @@ public:
         const qreal resolvedQuadRadius = layerState.warmup ? kFireworkQuadRadiusMin : qMax<qreal>(
             kFireworkQuadRadiusMin,
             qMax(
-                qMax(layerState.outerRadius, layerState.clipRadius),
+                // Include the wash feather and the shader's maximum exit scale.
+                qMax(layerState.outerRadius, layerState.clipRadius * 1.26),
                 qMax(
                     layerState.holeMaskRadius,
                     qMax(
@@ -564,7 +565,7 @@ public:
                     )
                 )
             )
-        );
+        ) * (layerState.warmup ? 1.0 : 1.045);
         int renderFlags = 0;
         if (layerState.drawFirework) {
             renderFlags |= kFireworkRenderFlagDrawStripe;
