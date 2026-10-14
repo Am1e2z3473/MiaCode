@@ -16,7 +16,8 @@ layout(std140, binding = 0) uniform buf {
     vec4 colorBallBig;
     vec4 sourceRect;
     vec4 timing;
-    vec4 starStates[32];
+    vec4 glowFields[22];
+    vec4 starsUvTransform;
 };
 
 void main()

@@ -397,6 +397,8 @@ miacode_add_module(miacode_preview_quick
         src/preview/quick_scene/PreviewQuickHudLayer.h
         src/preview/quick_scene/PreviewQuickJudgeEffectLayer.cpp
         src/preview/quick_scene/PreviewQuickJudgeEffectLayer.h
+        src/preview/quick_scene/PreviewFireworkPostProcess.cpp
+        src/preview/quick_scene/PreviewFireworkPostProcess.h
         src/preview/quick_scene/PreviewQuickJudgeFireworkLayer.cpp
         src/preview/quick_scene/PreviewQuickJudgeFireworkLayer.h
         src/preview/quick_scene/PreviewQuickMaimuriDxJudgeLayer.cpp
@@ -444,6 +446,7 @@ if(MIACODE_PREVIEW_MULTIMEDIA)
 endif()
 # qmltyperegistrar includes QML_ELEMENT headers by file name only.
 target_include_directories(miacode_preview_quick PRIVATE src/preview/quick_scene)
+target_link_libraries(miacode_preview_quick PRIVATE Qt6::QuickPrivate)
 if (WIN32)
     target_link_libraries(miacode_preview_quick PRIVATE
         d3d11
@@ -460,6 +463,9 @@ qt_add_shaders(miacode_preview_quick "preview_sprite_shaders"
         src/preview/quick_scene/shaders/PreviewStageDimMaterial.frag
         src/preview/quick_scene/shaders/PreviewFireworkMaterial.vert
         src/preview/quick_scene/shaders/PreviewFireworkMaterial.frag
+        src/preview/quick_scene/shaders/PreviewFireworkPost.vert
+        src/preview/quick_scene/shaders/PreviewFireworkPost.frag
+        src/preview/quick_scene/shaders/PreviewFireworkStar.frag
 )
 qt_add_qml_module(miacode_preview_quick
     URI MiaCode.Preview

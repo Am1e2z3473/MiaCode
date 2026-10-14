@@ -6,6 +6,7 @@ layout(location = 0) out vec4 fragColor;
 layout(binding = 1) uniform sampler2D source;
 layout(binding = 2) uniform sampler2D brightBlockMaskSource;
 layout(binding = 3) uniform sampler2D colorBallBigSource;
+layout(binding = 4) uniform sampler2D starsSource;
 
 layout(std140, binding = 0) uniform buf {
     mat4 qt_Matrix;
@@ -18,7 +19,8 @@ layout(std140, binding = 0) uniform buf {
     vec4 colorBallBig;
     vec4 sourceRect;
     vec4 timing;
-    vec4 starStates[32];
+    vec4 glowFields[22];
+    vec4 starsUvTransform;
 };
 
 const float kBrightBlockSpeed = 1.73;
@@ -63,46 +65,6 @@ vec3 cyclingSectorColor(int sectorIndex)
     int stepIndex = int(floor(max(0.0, timing.w - 0.003) * 9.0));
     int colorIndex = (sectorIndex + 1 - stepIndex) % 5;
     return sectorBaseColor((colorIndex + 5) % 5);
-}
-
-float fourPointStar(vec2 point, float radius, float pixelWidth)
-{
-    float tipRounding = radius * 0.018;
-    vec2 p = sqrt(point * point + vec2(tipRounding * tipRounding)) / radius;
-    const float exponent = 0.60;
-    vec2 powered = pow(p, vec2(exponent));
-    float shape = powered.x + powered.y - 1.0;
-    vec2 gradient = exponent * pow(max(p, vec2(0.001)), vec2(exponent - 1.0));
-    float distanceToEdge = shape * radius / length(gradient);
-    return 1.0 - smoothstep(-pixelWidth * 0.5, pixelWidth * 0.5, distanceToEdge);
-}
-
-vec4 rainbowStarLayer(vec2 localPos)
-{
-    vec4 layer = vec4(0.0);
-    float pixelWidth = max(length(fwidth(localPos)), 0.75);
-    for (int slot = 0; slot < 32; ++slot) {
-        vec4 starState = starStates[slot];
-        if (starState.w <= 0.0) {
-            continue;
-        }
-        vec2 relative = localPos - starState.xy;
-        if (abs(relative.x) > starState.z || abs(relative.y) > starState.z) {
-            continue;
-        }
-        int index = slot % 12;
-        int batch = slot / 12;
-        float widthRatio = 0.66 + float((index + batch * 2) % 5) * 0.035;
-        float outer = fourPointStar(relative, starState.z * widthRatio, pixelWidth);
-        if (outer <= 0.0) {
-            continue;
-        }
-        float alpha = outer * starState.w * 0.95;
-        int tintIndex = (index * 2 + batch + 1) % 5;
-        vec3 tint = mix(vec3(1.0, 0.98, 0.78), sectorBaseColor(tintIndex), 0.24);
-        layer = compositeSourceOver(vec4(tint * alpha, alpha), layer);
-    }
-    return layer;
 }
 
 float wrapAngleDegrees(float angle)
@@ -163,17 +125,17 @@ float brightBlockTravel(float age)
     return kBrightBlockSpeed * 1.25 * (1.0 - exp(-deceleration * age)) / deceleration;
 }
 
-float fireworkSectorCoverage(float angleDegrees, float sectorStartDegrees, float radius, float outerRadius)
+float fireworkSectorCoverage(float angleDegrees, float sectorStartDegrees,
+    float radius, float outerRadius, float pixelWidth)
 {
     float sectorHalfSpan = kSectorSpanDegrees * 0.5;
     float sectorCenterDegrees = sectorStartDegrees + sectorHalfSpan;
     float angularDistance = shortestAngleDistanceDegrees(angleDegrees, sectorCenterDegrees);
-    float angularFeatherDegrees = clamp(max(fwidth(angleDegrees), 0.35), 0.35, sectorHalfSpan);
-    float radialFeatherPixels = max(fwidth(radius), 0.75);
-    float angularCoverage =
-        1.0 - smoothstep(sectorHalfSpan - angularFeatherDegrees, sectorHalfSpan + angularFeatherDegrees, angularDistance);
-    float radialCoverage =
-        1.0 - smoothstep(outerRadius - radialFeatherPixels, outerRadius + radialFeatherPixels, radius);
+    // Measure the edge in scene pixels; wrapped angles have discontinuous derivatives.
+    float edgeDistance = radians(sectorHalfSpan - angularDistance) * radius;
+    float angularFeatherPixels = max(pixelWidth, radius * radians(0.35));
+    float angularCoverage = smoothstep(-angularFeatherPixels, angularFeatherPixels, edgeDistance);
+    float radialCoverage = 1.0 - smoothstep(outerRadius - pixelWidth, outerRadius + pixelWidth, radius);
     return angularCoverage * radialCoverage;
 }
 
@@ -245,21 +207,16 @@ vec4 sampleSoftColorBallLayer(vec2 localPos, float radius, float alpha, float as
     }
     // Reconstruct solid coverage while sampling the original colour gradient through the edge.
     vec2 samplePoint = localPos * min(1.0, 0.94 / max(radial, 0.001));
-    vec4 color = sampleColorBallLayer(samplePoint, radius, 1.0, aspect, useTextureBall);
-    if (retirement > 0.0) {
-        vec2 blurOffset = vec2(radius * 0.055 * retirement, 0.0);
-        color = color * 0.25
-            + sampleColorBallLayer(samplePoint + blurOffset.xy, radius, 1.0, aspect, useTextureBall) * 0.125
-            + sampleColorBallLayer(samplePoint - blurOffset.xy, radius, 1.0, aspect, useTextureBall) * 0.125
-            + sampleColorBallLayer(samplePoint + blurOffset.yx, radius, 1.0, aspect, useTextureBall) * 0.125
-            + sampleColorBallLayer(samplePoint - blurOffset.yx, radius, 1.0, aspect, useTextureBall) * 0.125
-            + sampleColorBallLayer(samplePoint + blurOffset, radius, 1.0, aspect, useTextureBall) * 0.0625
-            + sampleColorBallLayer(samplePoint - blurOffset, radius, 1.0, aspect, useTextureBall) * 0.0625
-            + sampleColorBallLayer(samplePoint + vec2(blurOffset.x, -blurOffset.x), radius, 1.0, aspect, useTextureBall) * 0.0625
-            + sampleColorBallLayer(samplePoint + vec2(-blurOffset.x, blurOffset.x), radius, 1.0, aspect, useTextureBall) * 0.0625;
+    vec4 color;
+    if (retirement > 0.0 && useTextureBall) {
+        vec2 uv = samplePoint / vec2(radius, radius * aspect) * 0.5 + vec2(0.5);
+        float level = log2(1.0 + 12.0 * retirement);
+        color = textureLod(colorBallBigSource, uv, level);
+    } else {
+        color = sampleColorBallLayer(samplePoint, radius, 1.0, aspect, useTextureBall);
     }
     vec3 tint = color.rgb / max(color.a, 0.001);
-    return vec4(tint * alpha * coverage, alpha * coverage);
+    return vec4(tint * 0.90 * alpha * coverage, alpha * coverage);
 }
 
 vec4 sampleBlurredColorBallLayer(vec2 localPos, float radius, float alpha, float aspect, bool useTextureBall, float blurProgress)
@@ -289,6 +246,8 @@ vec4 sampleFirework(vec2 texCoord)
     float exitScale = mix(1.0, 1.045, exitProgress);
     vec2 localPos = (texCoord * 2.0 - 1.0) * quadRadius / exitScale;
     float radius = length(localPos);
+    // Evaluate derivatives before radial and sector branches.
+    float pixelWidth = max(0.75, 0.5 * length(abs(dFdx(localPos)) + abs(dFdy(localPos))));
 
     float fireworkAlpha = fireworkAndHole.x;
     float fireworkRotationDegrees = fireworkAndHole.y;
@@ -317,7 +276,7 @@ vec4 sampleFirework(vec2 texCoord)
     }
 
     vec4 rayLayer = vec4(0.0);
-    if (drawFirework && radius <= outerRadius && fireworkAlpha > 0.0) {
+    if (drawFirework && radius <= outerRadius + pixelWidth && fireworkAlpha > 0.0) {
         float angleDegrees = wrapAngleDegrees(degrees(atan(localPos.y, localPos.x)));
         float fireworkContributionAlpha = clamp(fireworkAlpha / 0.90, 0.0, 1.0);
         // Fifteen evenly spaced sectors cover the circle. Locate the nearest
@@ -326,7 +285,7 @@ vec4 sampleFirework(vec2 texCoord)
             angleDegrees - kSectorPhaseDegrees - fireworkRotationDegrees);
         int sectorIndex = int(floor((sectorPhase + (kSectorStepDegrees - kSectorSpanDegrees) * 0.5) / kSectorStepDegrees)) % 15;
         float sectorStart = kSectorPhaseDegrees + fireworkRotationDegrees + float(sectorIndex) * kSectorStepDegrees;
-        float sectorCoverage = fireworkSectorCoverage(angleDegrees, sectorStart, radius, outerRadius);
+        float sectorCoverage = fireworkSectorCoverage(angleDegrees, sectorStart, radius, outerRadius, pixelWidth);
         if (sectorCoverage > 0.0) {
             // Opacity travels outward behind the expanding edge, ahead of the full dwell.
             float fieldDistance = clamp(radius / clipRadius, 0.0, 1.0);
@@ -370,7 +329,7 @@ vec4 sampleFirework(vec2 texCoord)
             float saturation = mix(0.96, 1.03, colorRise);
             float radialTint = smoothstep(0.05, 1.0, fieldDistance);
             float brightness = 0.78;
-            brightness *= mix(0.82, 1.04, radialTint);
+            brightness *= mix(0.82, 1.12, radialTint);
             brightness *= mix(0.90, 1.04, axial01);
             brightness *= mix(0.66, 1.12, brightBlockLight);
             vec3 baseColor = cyclingSectorColor(sectorIndex);
@@ -424,27 +383,13 @@ vec4 sampleFirework(vec2 texCoord)
         float density = exp(-dot(lightPoint, lightPoint) / (coreWidth * coreWidth));
         // Elliptical Gaussian fields merge into one light, then collapse into the round core.
         if (radius < clipRadius * 0.34) {
-            float rotation = radians(timing.w * 70.0);
-            const float directions[11] = float[11](
-                0.0, 0.39, 1.05, 1.42, 2.19, 2.64, 3.02, 3.85, 4.21, 4.90, 5.75);
             for (int ray = 0; ray < 11; ++ray) {
-                float index = float(ray);
-                float motionPhase = timing.w * (5.0 + 3.0 * (0.5 + 0.5 * sin(index * 1.73)));
-                float angle = directions[ray] + rotation
-                    + 0.075 * sin(motionPhase + index * 2.61) * dispersion;
-                vec2 axis = vec2(cos(angle), sin(angle));
-                vec2 across = vec2(-axis.y, axis.x);
-                float variation = 0.5 + 0.5 * sin(index * 4.13 + 1.7);
-                float reach = mix(0.126, 0.207, variation)
-                    * (1.0 + 0.16 * sin(motionPhase + index * 3.17) * dispersion);
-                float width = mix(0.023, 0.029, 0.5 + 0.5 * cos(index * 2.91))
-                    * (1.0 + 0.08 * sin(motionPhase * 0.83 + index * 1.91) * dispersion);
-                vec2 centre = axis * (0.010 + 0.006 * variation) * dispersion;
-                vec2 relative = lightPoint - centre;
-                vec2 fieldPoint = vec2(
-                    dot(relative, axis) / mix(0.026, reach, dispersion),
-                    dot(relative, across) / mix(0.026, width, dispersion));
-                float rayDensity = mix(0.88, 1.0, variation)
+                vec4 axes = glowFields[ray * 2];
+                vec4 shape = glowFields[ray * 2 + 1];
+                vec2 relative = lightPoint - shape.xy;
+                vec2 fieldPoint = vec2(dot(relative, axes.xy) * axes.z,
+                    dot(relative, vec2(-axes.y, axes.x)) * axes.w);
+                float rayDensity = shape.z
                     * exp(-2.0 * (pow(abs(fieldPoint.x), 2.4) + fieldPoint.y * fieldPoint.y));
                 // Weight the join by shared radiance so empty fields contribute zero light.
                 float blend = max(0.12 - abs(density - rayDensity), 0.0) / 0.12;
@@ -459,7 +404,7 @@ vec4 sampleFirework(vec2 texCoord)
 
     }
 
-    vec4 stars = rainbowStarLayer(localPos);
+    vec4 stars = texture(starsSource, texCoord * starsUvTransform.zw + starsUvTransform.xy);
     layerColor = compositeSourceOver(stars, layerColor);
 
     if (drawColorBallBig) {
@@ -519,27 +464,7 @@ vec4 sampleFirework(vec2 texCoord)
     return layerColor * fieldEdge;
 }
 
-vec3 fireworkBrightPass(vec4 color)
-{
-    float brightness = dot(color.rgb, vec3(0.2126, 0.7152, 0.0722));
-    return color.rgb * smoothstep(0.55, 0.90, brightness);
-}
-
 void main()
 {
-    // Sample the complete composition so stripes, balls and stars share the effect.
-    vec2 offset = vec2(clipRadius * 0.012 / (2.0 * quadRadius));
-    vec4 center = sampleFirework(vTexCoord);
-    vec4 left = sampleFirework(vTexCoord - vec2(offset.x, 0.0));
-    vec4 right = sampleFirework(vTexCoord + vec2(offset.x, 0.0));
-    vec4 top = sampleFirework(vTexCoord - vec2(0.0, offset.y));
-    vec4 bottom = sampleFirework(vTexCoord + vec2(0.0, offset.y));
-    vec4 softened = mix(center, (center * 4.0 + left + right + top + bottom) / 8.0, 0.18);
-    vec3 bloom = (fireworkBrightPass(center) * 4.0
-        + fireworkBrightPass(left) + fireworkBrightPass(right)
-        + fireworkBrightPass(top) + fireworkBrightPass(bottom)) * (0.08 / 8.0);
-    // Preserve premultiplied alpha when the glow extends beyond the source edge.
-    float bloomAlpha = clamp(max(bloom.r, max(bloom.g, bloom.b)), 0.0, 1.0);
-    float alpha = softened.a + bloomAlpha * (1.0 - softened.a);
-    fragColor = vec4(min(softened.rgb + bloom, vec3(alpha)), alpha) * qt_Opacity;
+    fragColor = sampleFirework(vTexCoord) * qt_Opacity;
 }

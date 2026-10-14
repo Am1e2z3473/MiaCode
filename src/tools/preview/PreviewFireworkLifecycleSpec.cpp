@@ -84,10 +84,10 @@ bool verifySpreadDwellAndTail(QTextStream& err)
         && require(dwell.colorBallBigRadius < dwell.clipRadius * 0.55
                        && dwell.holeRadius < 0.0,
                    QStringLiteral("large ball stays compact while spokes retain their roots"), err)
-        && require(tail.drawFirework && !tail.drawColorBallBig
+        && require(tail.drawFirework && tail.drawColorBallBig
                        && tail.holeRadius > tail.clipRadius * 0.3,
-                   QStringLiteral("large ball exits before outward spoke clearing completes"), err)
-        && require(layerAt(1.05).active && !layerAt(1.10).active,
+                   QStringLiteral("large ball remains visible through the spoke-clearing tail"), err)
+        && require(layerAt(1.05).active && !layerAt(1.05).drawColorBallBig && !layerAt(1.10).active,
                    QStringLiteral("firework release finishes at 1.10 seconds"), err);
 }
 
