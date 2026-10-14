@@ -22,11 +22,13 @@ PvCompressionPlan adjustedPvCompressionPlan(
     qint64 actualOutputBytes);
 
 bool isAcceptablePvCompressionOutput(qint64 originalBytes, qint64 outputBytes);
+QString pvCompressionEncoderFromInputInfo(const QString& ffmpegInputInfo);
 
 QStringList makePvCompressionPassArguments(
     const QString& inputPath,
     const QString& outputPath,
     const QString& passLogPath,
+    const QString& videoEncoder,
     const PvCompressionPlan& plan,
     int passNumber);
 
