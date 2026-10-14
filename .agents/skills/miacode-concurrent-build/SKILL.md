@@ -9,7 +9,7 @@ Release、并发上限和构建目录使用约定见 [AGENTS.md](../../../AGENTS
 
 - 用户指定目录时使用该目录；其他情况查看已有 `CMakeCache.txt` 的生成器、Qt 路径和开发工具开关。
 - 应用目标为 `MiaCode`；Windows 启动器目标为 `MiaCodeLauncher`。
-- 诊断目标定义见 `cmake/devtools/CliTools.cmake`；Spec 名称见 `docs/tests/SPEC_CATALOG.md`。
+- 诊断目标定义见 `cmake/devtools/CliTools.cmake`；Spec 名称见 `cmake/devtools/specs/`。
 - Windows 构建入口为 `scripts/build/build-win.ps1`；macOS 本地入口为 `scripts/build/build-macos-local.sh`。
 - 打包入口为 `scripts/build/package.py`、`scripts/build/package-win.ps1` 和 `scripts/build/package-mac.sh`，参数以脚本声明为准。
 - CMake preset 名称从 `CMakePresets.json` 读取。依赖配置见 `scripts/README.md`。

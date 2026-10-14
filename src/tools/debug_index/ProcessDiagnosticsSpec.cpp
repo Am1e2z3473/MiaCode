@@ -1,3 +1,5 @@
+#include <QString>
+#include "app/platform/ProcessIdentityFields.h"
 #include <QCoreApplication>
 #include <QFile>
 #include <QMetaObject>
@@ -53,6 +55,49 @@ QString readLogFile(const QString& path)
 
 }  // namespace
 
+namespace process_identity {
+
+int verifyProcessIdentity()
+{
+    QTextStream err(stderr);
+    QTextStream out(stdout);
+
+    using miacode::app::entry::formatProcessIdentityBuildFields;
+    bool ok = true;
+    ok &= require(
+        formatProcessIdentityBuildFields(
+            QStringLiteral("1.1.0-beta.7"),
+            QStringLiteral("677a962574bd"),
+            QStringLiteral("0"))
+            == QStringLiteral(
+                "version=1.1.0-beta.7 git_revision=677a962574bd git_dirty=0"),
+        QStringLiteral("clean build fields"),
+        err);
+    ok &= require(
+        formatProcessIdentityBuildFields(
+            QStringLiteral("1.1.0-beta.7"),
+            QStringLiteral("677a962574bd"),
+            QStringLiteral("1"))
+            .endsWith(QStringLiteral("git_dirty=1")),
+        QStringLiteral("dirty build fields"),
+        err);
+    ok &= require(
+        formatProcessIdentityBuildFields(
+            QStringLiteral("1.1.0-beta.7"),
+            QStringLiteral("unknown"),
+            QStringLiteral("unknown"))
+            .endsWith(QStringLiteral("git_revision=unknown git_dirty=unknown")),
+        QStringLiteral("source archive build fields"),
+        err);
+
+    if (ok) {
+        out << "Process identity fields spec passed." << Qt::endl;
+    }
+    return ok ? 0 : 1;
+}
+
+}
+
 int main(int argc, char* argv[])
 {
     QTemporaryDir logDir;
@@ -61,6 +106,7 @@ int main(int argc, char* argv[])
     }
     qputenv("MIACODE_LOG_DIR", logDir.path().toUtf8());
     QCoreApplication app(argc, argv);
+    if (process_identity::verifyProcessIdentity() != 0) return 1;
     QTextStream err(stderr);
     QTextStream out(stdout);
     bool ok = true;

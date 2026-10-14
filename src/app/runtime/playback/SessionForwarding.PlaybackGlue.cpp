@@ -1,12 +1,3 @@
-// Session::-owned audition-scene registration and export-intro forwarders,
-// split out of PlaybackGlue.cpp.
-//
-// Stage 4.9d-6: PlaybackCoordinator's implementation TUs are being separated
-// from the Session assembly so the coordinator can eventually link on its
-// own (see the Result Packet for the link-probe evidence). PlaybackGlue.cpp
-// now holds only PlaybackCoordinator::-owned playback-start/stop/toggle
-// logic; this file holds the Session::-owned methods that used to share
-// that TU.
 
 #include "app/runtime/playback/PlaybackCoordinator.h"
 #include "app/runtime/Session.h"

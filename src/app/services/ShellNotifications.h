@@ -4,19 +4,6 @@
 
 namespace miacode {
 
-// What the window pushes at the QML layer.
-//
-// Stage 3.5 item 2's last piece. Every method call has moved onto an interface,
-// but the Qml*Models still held a MainWindow& to connect its signals — so the
-// hidden window remained a compile-time dependency of eleven files for
-// notification alone.
-//
-// These are re-emitted here rather than moved because most of them are still
-// raised from widget-era code paths. That is fine for a notification: unlike the
-// handler hooks on DocumentBridge, nothing is waiting on a result, so a relay
-// changes nothing about the contract.
-//
-// Owned by ApplicationServices; MainWindow forwards into it.
 class ShellNotifications final : public QObject
 {
     Q_OBJECT

@@ -1,11 +1,3 @@
----
-lifecycle: stable-current
-owner: src/preview
-canonical_id: preview.render-export
-last_verified: 2026-10-13
-code_anchors: ["src/preview/runtime", "src/preview/quick_scene", "src/preview/stage_media", "src/core/scene", "src/export", "src/app/main.cpp"]
----
-
 # 当前预览与导出渲染契约
 
 ## 当前路径
@@ -19,9 +11,6 @@ code_anchors: ["src/preview/runtime", "src/preview/quick_scene", "src/preview/st
 - Windows headless 导出保留 D3D11/QRhi 会话 `PreviewQuickD3D11ExportSession`，以及
   `PreviewQuickExportSession` 的 OpenGL 路线（均在 `src/export/session/`）；后端选择见 `src/app/main.cpp` 与导出 backend。
   不把 QSG 场景路线与底层图形 API 混为一谈。
-- 视频导出 worker 仍是当前导出链路。已删除的是旧 DComp 图表渲染器和外置实时预览 worker，
-  不能因此删除现行导出进程或 D3D11/QRhi 支持。
-
 ## 共享契约
 
 | 行为 | 单一复用入口与同步面 |
@@ -48,11 +37,3 @@ HUD（含中央显示）在短边 1080、96 DPI 的统一逻辑画布上完成�
 再按实际画布等比缩放绘制。同一宽高比下，预览面板尺寸、屏幕 DPI 和输出分辨率只影响
 栅格清晰度，不改变布局比例；预览窗口实际宽高比改变时才重新适配几何。
 预览与导出始终使用该布局，旧快照中的 `fix_hud_text_layout` 字段忽略，不再传递开关。
-
-## 生命周期与验证
-
-音频 worker、设备 lease、QML engine 和导出任务有独立生命周期；资源重建与异步回调须匹配当前身份。
-不能为减少 Spec executable 而合并会互相污染全局状态或弱化链接依赖的边界规格。
-
-规格入口见 [Spec 目录](../../tests/SPEC_CATALOG.md) 的 preview、video_export、timeline 域。
-涉及后端与设备的行为须在实际平台验证，纯策略规格通过不等于 GPU/音频设备通过。

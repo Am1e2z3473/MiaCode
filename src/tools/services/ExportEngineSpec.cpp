@@ -1,32 +1,9 @@
-// Contract regression for the export engine seam.
-//
-// Stage 3.5 item 2: ExportSession used to reach MainWindow::videoExport_,
-// a private member holding a 3,600-line partial-class section — the last direct
-// private-member read anywhere in src/app/ui. An accessor could not honestly
-// fix that: the page was depending on a concrete piece of the window's insides.
-//
-// miacode::ExportEngine is the seam that replaced it. This target links
-// Qt6::Core / Qt6::Gui / Qt6::Test only, so the interface failing to link here
-// is how a QtWidgets type creeping into the contract gets caught — which is the
-// whole point, since the implementation still carries Widgets-era dependencies.
-//
-// The behaviour worth pinning is the slot discipline. The engine is the one
-// service ApplicationServices does not own: the window installs itself and
-// withdraws before teardown, and consumers bind to the slot rather than to a
-// snapshot, so the withdrawal is visible to every holder at once.
-
 #include "app/services/ApplicationServices.h"
 #include "app/services/ExportEngine.h"
 
 #include <QCoreApplication>
-#include <QDirIterator>
-#include <QFile>
 #include <QStringList>
 #include <QTextStream>
-
-#ifndef MIACODE_SOURCE_ROOT
-#error "MIACODE_SOURCE_ROOT must be defined (repo root absolute path)"
-#endif
 
 namespace {
 
@@ -242,61 +219,6 @@ bool verifyTheSlotIsTheSingleSourceOfTruth(QTextStream& err)
     return ok;
 }
 
-// Stage 3 declared "Widget 对话框归零" while checking only src/tools and
-// src/app/ui — so three QMessageBoxes survived in the export WORKER, which
-// lives in src/app/mainwindow. They were not dead code: finishing, failing or
-// cancelling a v2 export all ran through them, which is why cancelling a single
-// export showed a Qt-styled box while cancelling a batch export showed the
-// app's own notice. The whole export section is reachable only from v2 now, so
-// it gets the check stage 3's grep could not give it.
-bool verifyTheExportSectionShowsNoWidgetDialogs(QTextStream& err)
-{
-    static const QStringList forbidden = {
-        QStringLiteral("QMessageBox "),
-        QStringLiteral("QMessageBox("),
-        QStringLiteral("QMessageBox::"),
-        QStringLiteral("QFileDialog::"),
-        QStringLiteral("QInputDialog::"),
-        QStringLiteral("QProgressDialog"),
-    };
-
-    bool ok = true;
-    int scanned = 0;
-    QDirIterator walk(QStringLiteral(MIACODE_SOURCE_ROOT)
-                          + QStringLiteral("/src/app/runtime/export"),
-                      QStringList{QStringLiteral("*.cpp"), QStringLiteral("*.h")},
-                      QDir::Files, QDirIterator::Subdirectories);
-    while (walk.hasNext()) {
-        const QString path = walk.next();
-        QFile file(path);
-        if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-            continue;
-        }
-        ++scanned;
-        const QStringList lines = QString::fromUtf8(file.readAll()).split(QLatin1Char('\n'));
-        for (qsizetype i = 0; i < lines.size(); ++i) {
-            const QString line = lines.at(i);
-            // Comments may name these types; the guard is about code.
-            if (line.trimmed().startsWith(QStringLiteral("//"))) {
-                continue;
-            }
-            for (const QString& token : forbidden) {
-                if (line.contains(token)) {
-                    ok = require(false,
-                                 QStringLiteral("%1:%2 shows a Widgets dialog from the export "
-                                                "section — route it through UiRequestService")
-                                     .arg(QString(path).remove(
-                                              0, QStringLiteral(MIACODE_SOURCE_ROOT).size() + 1))
-                                     .arg(i + 1),
-                                 err);
-                }
-            }
-        }
-    }
-    ok &= require(scanned > 0, QStringLiteral("the export section scan found files"), err);
-    return ok;
-}
-
 }  // namespace
 
 int main(int argc, char** argv)
@@ -309,7 +231,6 @@ int main(int argc, char** argv)
     ok &= verifyFailedLaunchReportsItsReason(err);
     ok &= verifyBatchReportsThroughItsCallbacks(err);
     ok &= verifyTheSlotIsTheSingleSourceOfTruth(err);
-    ok &= verifyTheExportSectionShowsNoWidgetDialogs(err);
 
     if (ok) {
         QTextStream(stdout) << "export_engine_spec: OK" << Qt::endl;

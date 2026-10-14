@@ -139,17 +139,6 @@ public:
         bool timelineSyncEnabled_ = false;
     };
 
-    // Stage 4.9e-4: canonical playback-authority storage has a separate owner,
-    // same shape as TimelineState above. The nine fields here are exactly the
-    // ones that decide "where is the playhead right now / is it playing / at
-    // what rate" — the set PlaybackCoordinator::authoritativeAudioClockSecond
-    // itself reads to answer that question (Playback.cpp), plus
-    // previewTransportState_, which is written in lockstep with playing_ by
-    // the same single-writer primitive (writePreviewPlayingFlag). Every write
-    // site for every field below already lived inside playback/ before this
-    // move; the legacy State record keeps const-reference aliases for the many
-    // cross-domain readers, but it no longer owns these values and cannot
-    // write them.
     struct PlaybackState {
         bool playing_ = false;
         miacode::PlaybackTransportState previewTransportState_ =

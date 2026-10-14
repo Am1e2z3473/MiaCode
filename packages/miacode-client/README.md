@@ -1,6 +1,6 @@
 # MiaCode 应用 API 客户端
 
-本包定义新的应用 API，按稳定 operationId 调用。它的 transport 可接桌面宿主、未来本机 HTTP 网关或其他平台适配器；业务 DTO 使用同一份目录生成。
+本包定义新的应用 API，按稳定 operationId 调用。它的 transport 接入宿主提供的调用接口；业务 DTO 使用同一份目录生成。
 
 当前提供 TypeScript 类型、注入式 `ApiTransport`、HTTP 请求编码、任务等待和查询分页。当前桌面产品没有开放本机 HTTP 网关或 CLI；`HttpTransport` 与对应路由是待接入适配器的契约实现，不能据此直接访问正在运行的 MiaCode。运行时必须查询 `api.capabilities`，核对 `available` 和 `adapters`。
 

@@ -1073,8 +1073,6 @@ bool miacode::runtime::PlaybackCoordinator::moveEditorCursorToTimelineLocation(
 }
 
 
-// Session::resetPreviewTrackTimelineOffsets moved to
-// SessionForwarding.TimelineFlow.cpp (stage 4.9d-6: TU boundary split).
 
 
 miacode::waveform::WaveformCacheService* miacode::runtime::PlaybackCoordinator::ensureWaveformCacheService()
@@ -1087,50 +1085,3 @@ miacode::waveform::WaveformCacheService* miacode::runtime::PlaybackCoordinator::
         state_.previewWarmupPool_ != nullptr ? state_.previewWarmupPool_ : QThreadPool::globalInstance());
     return state_.waveformCacheService_;
 }
-
-// Session::applyWaveformData, Session::refreshWaveformCache (both overloads),
-// Session::applyLatencyDetectorOffset, Session::latencyDocumentWholeBpm,
-// Session::latencyDocumentOffsetSeconds, Session::latencyDocumentClockCount,
-// Session::latencyTrackPath, Session::applyLatencyDetectorBpm,
-// Session::applyLatencyDetectorClockCount, Session::setCurrentFilePath,
-// Session::updateWindowTitle, Session::editorText,
-// Session::scheduleTimelineRefresh, Session::refreshTimelineMetadata,
-// Session::refreshTimelineQuickModelFromCurrentText,
-// Session::applyLatestTimelinePreviewStateToPausedPreview,
-// Session::requestTimelineSlowRefresh, and Session::dispatchTimelineSlowRefresh
-// moved to SessionForwarding.TimelineFlow.cpp (stage 4.9d-6: TU boundary split so
-// this file holds only Coordinator:: methods).
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-// Session::scheduleTimelineAnalysisRefresh,
-// Session::scheduleTimelineAnalysisRefreshFromLatestPreviewState,
-// Session::requestTimelineAnalysisDispatch, Session::dispatchTimelineAnalysisRefresh,
-// Session::rebuildStaticMuriReferences, Session::timelineSecondForCursor,
-// Session::setTouchPadAuthoringAnchor, Session::resolveTimelineSecondForCursor,
-// Session::publishEditorCaret, Session::handleEditorPointerInteraction,
-// Session::editorSyncController (both overloads),
-// Session::applyTouchPadAuthoringPreviewAnchor, Session::seekPreviewToEditorLocation,
-// Session::editorAuthoringContextActive, Session::navigateTimelineToSecond,
-// Session::deferTimelineCursorBridgeUpdate, Session::resolveNearestTimelineNote,
-// Session::moveEditorCursorToTimelineLocation, and
-// Session::syncEditorCursorToPreviewSecond moved to SessionForwarding.TimelineFlow.cpp
-// (stage 4.9d-6: TU boundary split so this file holds only Coordinator:: methods).

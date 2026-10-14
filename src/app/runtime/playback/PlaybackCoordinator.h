@@ -335,10 +335,6 @@ public:
     void setFollowPreviewEnabled(bool enabled);
     QString bottomTabsCurrentTabId() const;
     void setBottomTabsCurrentTabId(const QString& tabId);
-    // Stage 4.9d-4b-2e: moved in verbatim from Session::setCurrentBottomTabsTabId
-    // (SurfaceContract.cpp) — public because Session::setCurrentBottomTabsTabId
-    // still has callers outside playback/ and forwards here one line, matching
-    // SessionForwarding.cpp's convention.
     void setCurrentBottomTabsTabId(RuntimeContext::BottomTabsTabId tabId);
     bool bottomTabsVisible() const;
     bool timelineTabVisible() const;
@@ -390,15 +386,9 @@ private:
     void finalizeQtPreviewPlaybackStart(double effectiveStartSecond);
     void softStopQtPreviewPlaybackToSecond(double second, bool centerView);
     void anchorQtPreviewPlaybackToSecond(double second, bool centerView);
-    // Stage 4.9d-3 (D-class): function bodies moved in verbatim from their
-    // former Session/ShellHost/DocumentSessionHost homes — see LayoutUi.cpp,
-    // PlaybackState.cpp, TimelineFlow.cpp and Playback.cpp for the definitions.
     void updatePauseButtonAppearance();
     void updateEditorFindBarGeometry();
     void applyFindOverlayInset();
-    // Stage 4.9d-4a (T-class): thin StageMediaHost forwards whose bodies only touch
-    // state_/ui_ (including via the state_.previewStageMediaHost_ pointer the
-    // coordinator already holds) — moved in verbatim, see SurfaceContract.cpp.
     bool previewStageMediaRouteHasVideo() const;
     void pausePreviewStageMediaRoutePlayback();
     void syncPreviewStageMediaRoutePlayback(double second);
@@ -406,15 +396,9 @@ private:
     void resetPreviewStageMediaRouteTimelineOffset();
     void submitPreviewStageMediaRoutePausedSeek(double second, quint64 generation);
     void seekPreviewStageMediaRouteWhilePaused(double second);
-    // Stage 4.9d-4a: Session-own preview methods with no other caller outside
-    // playback/ — moved in verbatim, see IntroRegion.cpp, PlaybackGlue.cpp,
-    // TimelineFlow.cpp and Playback.cpp for the definitions.
     bool currentExportIntroLeadInSpec(IntroBannerSpec* outSpec) const;
     bool ensureAuditionSceneReady();
     miacode::waveform::WaveformCacheService* ensureWaveformCacheService();
-    // Stage 4.9d-4b-1: Session::clearPreviewFollowDecoration's body only touched
-    // the editor-sync controller, which is reachable directly through
-    // services_.editorSync() — see FollowSync.cpp for the definition.
     void clearPreviewFollowDecoration();
     // Timer/connection parent and QPointer-tracked liveness anchor only — see
     // the class comment above. Production passes the owning Session.

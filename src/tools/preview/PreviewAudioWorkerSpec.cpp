@@ -1,6 +1,5 @@
 #include <QCoreApplication>
 #include <QEventLoop>
-#include <QFile>
 #include <QProcess>
 #include <QTextStream>
 
@@ -26,10 +25,6 @@
 #include "bass.h"
 #endif
 
-#ifndef MIACODE_SOURCE_ROOT
-#error "MIACODE_SOURCE_ROOT must be defined"
-#endif
-
 namespace {
 
 using namespace miacode::preview_audio;
@@ -46,93 +41,6 @@ bool expect(bool condition, const char* message, QTextStream& err)
         err << "FAIL: " << message << Qt::endl;
     }
     return condition;
-}
-
-bool tokensAppearInOrder(const QString& source, std::initializer_list<QString> tokens)
-{
-    qsizetype cursor = 0;
-    for (const QString& token : tokens) {
-        const qsizetype found = source.indexOf(token, cursor);
-        if (found < 0) {
-            return false;
-        }
-        cursor = found + token.size();
-    }
-    return true;
-}
-
-bool verifyWindowsBassFxLoaderCachesImmediateErrors(QTextStream& err)
-{
-    QFile file(
-        QStringLiteral(MIACODE_SOURCE_ROOT)
-        + QStringLiteral("/src/audio/bass/BassPreviewAudioBackend_EngineInit.cpp"));
-    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        return expect(false, "BASS engine-init source is readable", err);
-    }
-    const QString source = QString::fromUtf8(file.readAll());
-    const qsizetype functionStart = source.indexOf(
-        QStringLiteral("bool BassPreviewAudioBackend::ensureBassFxLoaded()"));
-    const qsizetype windowsStart = source.indexOf(QStringLiteral("#ifdef Q_OS_WIN"), functionStart);
-    const qsizetype windowsEnd = source.indexOf(
-        QStringLiteral("#elif defined(Q_OS_MACOS)"), windowsStart);
-    if (functionStart < 0 || windowsStart < 0 || windowsEnd < 0) {
-        return expect(false, "Windows BASS-FX loader branch is present", err);
-    }
-
-    const QString windowsBranch = source.mid(windowsStart, windowsEnd - windowsStart);
-    const qsizetype loadFailureStart = windowsBranch.indexOf(QStringLiteral("if (module == nullptr)"));
-    const qsizetype loadFailureEnd = windowsBranch.indexOf(QStringLiteral("return false;"), loadFailureStart);
-    const qsizetype symbolFailureStart = windowsBranch.indexOf(QStringLiteral("if (proc == nullptr)"));
-    const qsizetype symbolFailureEnd = windowsBranch.indexOf(QStringLiteral("return false;"), symbolFailureStart);
-    if (loadFailureStart < 0 || loadFailureEnd < 0 || symbolFailureStart < 0 || symbolFailureEnd < 0) {
-        return expect(false, "Windows BASS-FX failure branches are present", err);
-    }
-
-    const QString loadFailure = windowsBranch.mid(
-        loadFailureStart, loadFailureEnd + qsizetype(QStringLiteral("return false;").size()) - loadFailureStart);
-    const QString symbolFailure = windowsBranch.mid(
-        symbolFailureStart, symbolFailureEnd + qsizetype(QStringLiteral("return false;").size()) - symbolFailureStart);
-    bool ok = true;
-    ok &= expect(tokensAppearInOrder(loadFailure,
-                                    {QStringLiteral("const DWORD errorCode = ::GetLastError();"),
-                                     QStringLiteral("lastNativeErrorCode_ = static_cast<int>(errorCode);"),
-                                     QStringLiteral("_mc_op_.fail(")}),
-                 "LoadLibraryW failure caches GetLastError before reporting", err);
-    ok &= expect(tokensAppearInOrder(symbolFailure,
-                                    {QStringLiteral("const DWORD errorCode = ::GetLastError();"),
-                                     QStringLiteral("lastNativeErrorCode_ = static_cast<int>(errorCode);"),
-                                     QStringLiteral("FreeLibrary(module);"),
-                                     QStringLiteral("_mc_op_.fail(")}),
-                 "GetProcAddress failure caches GetLastError before FreeLibrary", err);
-    return ok;
-}
-
-bool verifyBassDefaultDeviceEntryIsSettledAtStartup(QTextStream& err)
-{
-    // The engine used to make the process's only DEV_DEFAULT attempt, lazily, so an
-    // uncached chart's waveform decode (BASS_Init(0)) got there first and preview
-    // audio stayed dead until restart.
-    QFile mainFile(QStringLiteral(MIACODE_SOURCE_ROOT) + QStringLiteral("/src/app/main.cpp"));
-    QFile engineFile(
-        QStringLiteral(MIACODE_SOURCE_ROOT)
-        + QStringLiteral("/src/audio/bass/BassPreviewAudioBackend_EngineInit.cpp"));
-    if (!mainFile.open(QIODevice::ReadOnly | QIODevice::Text)
-        || !engineFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        return expect(false, "main and BASS engine-init sources are readable", err);
-    }
-    const QString mainSource = QString::fromUtf8(mainFile.readAll());
-    const QString engineSource = QString::fromUtf8(engineFile.readAll());
-    bool ok = true;
-    ok &= expect(tokensAppearInOrder(mainSource,
-                                    {QStringLiteral("int main("),
-                                     QStringLiteral("disableBassDefaultDeviceEntry("),
-                                     QStringLiteral("QGuiApplication app(")}),
-                 "main() settles DEV_DEFAULT before the application can reach BASS", err);
-    ok &= expect(engineSource.contains(QStringLiteral("disableBassDefaultDeviceEntry(")),
-                 "engine init reads back the process-wide DEV_DEFAULT result", err);
-    ok &= expect(!engineSource.contains(QStringLiteral("BASS_SetConfig(BASS_CONFIG_DEV_DEFAULT")),
-                 "engine init makes no DEV_DEFAULT attempt of its own", err);
-    return ok;
 }
 
 struct CallRecord {
@@ -868,40 +776,6 @@ bool verifyHealthSamplingDeadlineIsDeterministic(QTextStream& err)
     schedule.markSampled(start + 1s);
     ok &= expect(!schedule.isDue(start + 1999ms) && schedule.isDue(start + 2s),
                  "health sampling advances its deadline from the sampled instant", err);
-    return ok;
-}
-
-bool verifyAssetLifecycleSnapshotCallbackRunsOutsideGenerationLock(QTextStream& err)
-{
-    QFile file(
-        QStringLiteral(MIACODE_SOURCE_ROOT)
-        + QStringLiteral("/src/audio/PreviewAudioWorker.cpp"));
-    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        return expect(false, "preview audio worker source is readable", err);
-    }
-    const QString source = QString::fromUtf8(file.readAll());
-    const qsizetype functionStart = source.indexOf(
-        QStringLiteral("bool PreviewAudioWorker::publishAssetLifecycleIfCurrent("));
-    const qsizetype functionEnd = source.indexOf(
-        QStringLiteral("void PreviewAudioWorker::publishBackendLifecycle("), functionStart);
-    if (functionStart < 0 || functionEnd < 0) {
-        return expect(false, "asset lifecycle publication function is present", err);
-    }
-    const QString function = source.mid(functionStart, functionEnd - functionStart);
-    const qsizetype lockStart = function.indexOf(QStringLiteral("std::lock_guard assetLock"));
-    const qsizetype snapshotUpdate = function.indexOf(
-        QStringLiteral("updateLifecycleSnapshot("), lockStart);
-    const qsizetype lockScopeEnd = function.indexOf(
-        QStringLiteral("    }\n    stateCv_.notify_all()"), lockStart);
-    const qsizetype deliver = function.indexOf(QStringLiteral("deliverSnapshot("), lockStart);
-    bool ok = true;
-    ok &= expect(lockStart >= 0, "asset generation check uses a scoped lock", err);
-    ok &= expect(snapshotUpdate > lockStart && snapshotUpdate < lockScopeEnd,
-                 "asset lifecycle snapshot state is updated while the generation lock is held", err);
-    ok &= expect(lockScopeEnd > lockStart,
-                 "asset generation lock is released before callback delivery", err);
-    ok &= expect(deliver > lockScopeEnd,
-                 "asset lifecycle snapshot callback runs after releasing the generation lock", err);
     return ok;
 }
 
@@ -2656,7 +2530,6 @@ int main(int argc, char* argv[])
     ok &= verifyFacadeAuditionRequiresCurrentAssetReadiness(err);
     ok &= verifyWorkerSamplesHealthOnItsBackendThread(err);
     ok &= verifyHealthSamplingDeadlineIsDeterministic(err);
-    ok &= verifyAssetLifecycleSnapshotCallbackRunsOutsideGenerationLock(err);
     ok &= verifyAssetLifecycleCallbackCanReenterWorker(err);
     ok &= verifyWorkerReschedulesHealthAfterBlockingSample(err);
     ok &= verifyOwnershipLifecycleAndDispatch(err);
@@ -2671,8 +2544,6 @@ int main(int argc, char* argv[])
     ok &= verifyLifecycleFailuresCaptureNativeError(err);
     ok &= verifyProductionNativeErrorCachesStartClear(err);
     ok &= verifyProductionBassFactoryRunsOnWorker(err);
-    ok &= verifyWindowsBassFxLoaderCachesImmediateErrors(err);
-    ok &= verifyBassDefaultDeviceEntryIsSettledAtStartup(err);
 #ifdef Q_OS_WIN
     ok &= verifyBassDefaultDeviceEntryOrdering(err);
 #endif

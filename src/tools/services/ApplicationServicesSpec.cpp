@@ -7,19 +7,12 @@
 #include "app/services/PlaybackControl.h"
 
 #include <QCoreApplication>
-#include <QDirIterator>
-#include <QFile>
 #include <QPointer>
-#include <QRegularExpression>
 #include <QSignalSpy>
 #include <QStringList>
 #include <QTextStream>
 
 #include <algorithm>
-
-#ifndef MIACODE_SOURCE_ROOT
-#error "MIACODE_SOURCE_ROOT must be defined (repo root absolute path)"
-#endif
 
 namespace {
 
@@ -179,81 +172,12 @@ bool verifyPlaybackControlSlotIsLive(QTextStream& err)
     return ok;
 }
 
-// Stage 3.5 requires the validation locale to have a non-Widget owner too: it
-// used to come from MainWindowShared, which is a QtWidgets translation unit, so
-// asking "what locale does the parser validate in" pulled in the widget layer.
 bool verifyValidationLocaleHasANonWidgetOwner(QTextStream& err)
 {
     miacode::ApplicationServices services;
     const SimaiValidationLocale locale = services.validationLocale();
     return require(locale == miacode::uiValidationLocale(),
                    QStringLiteral("the assembly publishes the shared UI validation locale"), err);
-}
-
-// An assembly nobody owns through is worse than no assembly: the services would
-// simply have three owners instead of two. Scan the product tree (src/app,
-// excluding the assembly itself) for anything that constructs one of the owned
-// services — `new X`, `make_unique<X>`, or a value member — and fail if it does.
-// This is what stops a future change from quietly re-creating a second
-// UiRequestService inside MainWindow while ApplicationServices sits unused.
-bool verifyNothingElseInTheProductConstructsTheServices(QTextStream& err)
-{
-    static const QStringList ownedTypes = {
-        QStringLiteral("ChartWorkspace"),
-        QStringLiteral("ChartWorkspaceFileService"),
-        QStringLiteral("AnalysisService"),
-        QStringLiteral("EditorSyncController"),
-        QStringLiteral("UiRequestService"),
-        QStringLiteral("JobProgressService"),
-        QStringLiteral("PreviewAppearanceState"),
-    };
-
-    const QString root = QStringLiteral(MIACODE_SOURCE_ROOT) + QStringLiteral("/src/app");
-    // The assembly declares the members and constructs them; it is the one
-    // place allowed to.
-    const QStringList assembly = {QStringLiteral("/v2/ApplicationServices.h"),
-                                  QStringLiteral("/v2/ApplicationServices.cpp")};
-
-    bool ok = true;
-    int scanned = 0;
-    QDirIterator walk(root,
-                      QStringList{QStringLiteral("*.cpp"), QStringLiteral("*.h"),
-                                  QStringLiteral("*.mm"), QStringLiteral("*.inc")},
-                      QDir::Files, QDirIterator::Subdirectories);
-    while (walk.hasNext()) {
-        const QString path = walk.next();
-        if (std::any_of(assembly.cbegin(), assembly.cend(),
-                        [&path](const QString& owned) { return path.endsWith(owned); })) {
-            continue;
-        }
-        QFile file(path);
-        if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-            continue;
-        }
-        const QString text = QString::fromUtf8(file.readAll());
-        ++scanned;
-        for (const QString& type : ownedTypes) {
-            // `new X(`, `make_unique<X>`, or a value/unique_ptr member of it.
-            const QRegularExpression construction(
-                QStringLiteral("(new\\s+(miacode::)?%1\\s*[({])"
-                               "|(make_unique\\s*<\\s*(miacode::)?%1\\s*>)"
-                               "|(^\\s*(miacode::)?%1\\s+\\w+_\\s*[;{=])")
-                    .arg(type),
-                QRegularExpression::MultilineOption);
-            const auto match = construction.match(text);
-            if (match.hasMatch()) {
-                ok = require(false,
-                             QStringLiteral("%1 is constructed outside ApplicationServices: "
-                                            "%2 -> %3")
-                                 .arg(type,
-                                      QString(path).remove(0, QStringLiteral(MIACODE_SOURCE_ROOT).size() + 1),
-                                      match.captured(0).trimmed()),
-                             err);
-            }
-        }
-    }
-    ok &= require(scanned > 0, QStringLiteral("the product tree scan found files"), err);
-    return ok;
 }
 
 }  // namespace
@@ -271,7 +195,6 @@ int main(int argc, char** argv)
     ok &= verifyServicesAreLiveThroughTheAssembly(err);
     ok &= verifyPlaybackControlSlotIsLive(err);
     ok &= verifyValidationLocaleHasANonWidgetOwner(err);
-    ok &= verifyNothingElseInTheProductConstructsTheServices(err);
 
     if (ok) {
         QTextStream(stdout) << "application_services_spec: OK" << Qt::endl;

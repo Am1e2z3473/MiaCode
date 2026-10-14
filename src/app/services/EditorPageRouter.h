@@ -4,18 +4,6 @@
 
 namespace miacode {
 
-// Switching the editor area between its full-page surfaces.
-//
-// Stage 3.5 items 2-3: PageHost holds the QML page id while this
-// interface keeps the runtime page-state transitions narrow. The host owns the
-// asynchronous QML leave guard; the router only commits the domain transition
-// after that guard succeeds.
-//
-// The interface remains deliberately small so page navigation does not expose
-// the old window/widget implementation or recreate a second page owner.
-//
-// Deliberately Qt-free — not even QObject. `editor_page_router_spec` links
-// Qt6::Core+Test only.
 class EditorPageRouter
 {
 public:

@@ -1,4 +1,4 @@
-# Keep source lists explicit. The registry scan validates coverage only.
+# Spec targets by domain.
 include(${CMAKE_CURRENT_LIST_DIR}/core.cmake)
 include(${CMAKE_CURRENT_LIST_DIR}/ui.cmake)
 include(${CMAKE_CURRENT_LIST_DIR}/services.cmake)

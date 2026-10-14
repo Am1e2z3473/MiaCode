@@ -39,10 +39,6 @@ miacode::runtime::StageMediaHost::StageMediaHost(
 
 void miacode::runtime::StageMediaHost::applyPreviewStageMediaRouteVisualSettings()
 {
-    // Stage 4.9d-4a: body moved to runtime::shared so PlaybackCoordinator can call
-    // it too without routing through Session — see runtime/Shared.cpp. Qualified
-    // (not the `using namespace` in scope) because this member shares the free
-    // function's name, which would otherwise hide it.
     miacode::runtime::shared::applyPreviewStageMediaRouteVisualSettings(state_);
 }
 
@@ -203,7 +199,6 @@ void miacode::runtime::StageMediaHost::resetPreviewStageMediaRouteTimelineOffset
 
 void miacode::runtime::StageMediaHost::applyPreviewStageMediaRoutePlaybackRate(double rate, const char* site)
 {
-    // Stage 4.9d-4a: body moved to runtime::shared — see runtime/Shared.cpp.
     miacode::runtime::shared::applyPreviewStageMediaRoutePlaybackRate(state_, rate, site);
 }
 
@@ -291,10 +286,6 @@ void miacode::runtime::StageMediaHost::ensureQuickShellPreviewCompositeSurfaceIn
 
 void miacode::runtime::StageMediaHost::refreshQuickShellPreviewCompositeSurfaceState()
 {
-    // Stage 4.9d-4a: body moved to runtime::shared (which inlines this class's
-    // ensureQuickShellPreviewCompositeSurfaceInitialized() and the hardcoded
-    // quickShellPreviewUsesSeparateSurface() == false, since a free function can't
-    // reach either) — see runtime/Shared.cpp.
     miacode::runtime::shared::refreshQuickShellPreviewCompositeSurfaceState(state_, session_);
 }
 
@@ -407,7 +398,6 @@ void miacode::runtime::StageMediaHost::shutdownPreviewStageMediaHost()
 
 void miacode::runtime::StageMediaHost::refreshPreviewStageMediaRouteDebugState(bool requestUpdate)
 {
-    // Stage 4.9d-4a: body moved to runtime::shared — see runtime/Shared.cpp.
     miacode::runtime::shared::refreshPreviewStageMediaRouteDebugState(state_, requestUpdate);
 }
 

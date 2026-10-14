@@ -1,11 +1,3 @@
-// Session-owned surface-contract accessors, split out of SurfaceContract.cpp.
-//
-// Stage 4.9d-6: PlaybackCoordinator's implementation TUs are being separated
-// from the Session assembly so the coordinator can eventually link on its
-// own (see the Result Packet for the link-probe evidence). SurfaceContract.cpp
-// now holds only PlaybackCoordinator-owned surface/bottom-tabs state logic;
-// this file holds the Session-owned chart-normalize settings and the two
-// narrow service accessors that used to share that TU.
 
 #include "app/runtime/playback/PlaybackCoordinator.h"
 #include "app/runtime/Session.h"
@@ -91,12 +83,6 @@ bool Session::bottomTabsTabVisible(BottomTabsTabId tabId) const
     return false;
 }
 
-// Stage 4.9d-4b-2e: function body moved to
-// PlaybackCoordinator::setCurrentBottomTabsTabId (SurfaceContract.cpp, near
-// bottomTabsTabIdToString) — this stays as a one-line forwarder per
-// SessionForwarding.cpp's convention because shell/Interaction.cpp,
-// document/DocumentPages.cpp and validation/ValidationRuntime.cpp still call
-// it from outside playback/.
 void Session::setCurrentBottomTabsTabId(BottomTabsTabId tabId)
 {
     playback_->setCurrentBottomTabsTabId(tabId);

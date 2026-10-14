@@ -8,23 +8,6 @@
 
 struct TimelineNoteMarker;
 
-// Overlay-build stage of the Muri analyzer (2026-05-29 god-file decomposition,
-// stage 2). Two related jobs that both turn parsed note markers into render-time
-// state:
-//   * buildOverlayActions — the playfield overlay: a pad-press window + a
-//     hand-action trail per note (taps/holds/touches/slides/wifi).
-//   * buildSlideState / buildWifiState — the per-marker "Muri state" for one
-//     slide / wifi trace: its segment area-checkpoint timeline (resolved against
-//     the surrounding pad windows) plus the early-clear flash when the trace
-//     would complete too fast. analyze() builds these after the overlay pass so
-//     the pad-window index is available. Internal to the Muri analyzer —
-//     namespace miacode::muri::detail.
-//
-// NOT owned here (shared, declared in MuriAnalyzerInternal.h): the pad-window /
-// trail primitives addPadWindow / addActionTrail / addSlidePadWindowsAndTrails /
-// addWifiPadWindowsAndTrails / notePad (also used by the runtime pad-window
-// builder) and the slide-judge timing math slideCriticalDeltaSecond /
-// slideJudgeIsBad / wifiJudgeIsBad (also used by the judge stages and analyze()).
 namespace miacode::muri::detail {
 
 // Appends a pad-press window and hand-action trail for every note marker. This

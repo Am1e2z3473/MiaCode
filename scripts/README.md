@@ -16,9 +16,9 @@
 
 ## Net API 规范生成
 
-`python scripts/api/generate_net_api.py` 从 `tools/net-api/operations.json` 与 `schemas.json` 生成内嵌 C++ 目录、OpenAPI、TypeScript 类型和接口说明；加 `--check` 检查漂移。独立标准校验在 `tools/net-api` 执行 `npm ci --ignore-scripts` 和 `npm run validate`。生成器仅使用 Python 标准库，校验工具的 Node 依赖不进入产品运行时。
+`python scripts/api/generate_net_api.py` 从 `tools/net-api/operations.json` 与 `schemas.json` 生成内嵌 C++ 目录、OpenAPI 和 TypeScript 类型。生成器使用 Python 标准库。
 
-当前可用范围及后续新增能力规则见 [Net 接口规范化计划](../docs/specs/net/NET_API_STANDARDIZATION_PLAN_ZH.md)。生成出的 HTTP 路由不表示网关已经开放。
+当前可用范围及后续新增能力规则见 [Net 接口](../docs/specs/net/NET_API_CONTRACT_ZH.md)。生成出的 HTTP 路由不表示网关已经开放。
 
 ## 构建与打包
 
@@ -102,8 +102,7 @@ macOS 的 QtAVPlayer 预览解码还需要 FFmpeg dev SDK，位于仓库本地�
 | `miacode_audio_probe` | 检查音频变速播放 |
 | `miacode_latency_offset_batch` | 批量评估谱面偏移检测 |
 
-Spec 按领域登记于 `cmake/devtools/specs/`，清单见
-[`SPEC_CATALOG.md`](../docs/tests/SPEC_CATALOG.md)。
+Spec 按领域登记于 `cmake/devtools/specs/`。
 
 ## 其他脚本
 

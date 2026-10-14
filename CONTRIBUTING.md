@@ -8,21 +8,15 @@
 依赖、平台构建和打包入口见 [scripts/README.md](scripts/README.md)。
 使用 Release 和适用的构建目录；开发者工具与规格通过 `MIACODE_BUILD_DEV_TOOLS=ON` 启用。
 
-规格位于 `src/tools/<domain>/`，通过 `cmake/devtools/specs/` 的 `miacode_add_spec` 注册。
-目标和契约见 [Spec 索引](docs/tests/SPEC_CATALOG.md)，按改动范围选择验证。
+规格位于 `src/tools/<domain>/`，通过 `cmake/devtools/specs/` 的 `miacode_add_dev_tool(... TEST ...)` 注册。
+目标与依赖见 `cmake/devtools/specs/`。
 PR 描述说明用户可见变化、同步范围、验证证据和影响验收的限制。
 
 ## 文档与技能
 
 共享规则维护于 `AGENTS.md`，技能维护源是 `.agents/skills/`。
 
-```sh
-python3 scripts/governance/docs_index.py --check
-cmake -DMIACODE_SPEC_CATALOG_CHECK=ON -P cmake/devtools/SpecCatalog.cmake
-```
-
-文档分类与元数据见 [docs/README.md](docs/README.md)。公开规范与验收清单使用中文，
-生成表格保留代码标识。构建产物、日志、dump 和本地实验资料留在忽略目录。
+构建产物、日志与本地实验资料留在忽略目录。
 
 ## 许可证与第三方内容
 

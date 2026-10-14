@@ -120,6 +120,89 @@ double rateAt(QObject* harness, int index)
     return result.toDouble();
 }
 
+bool verifyMenuAndTheme(QQmlEngine& engine, QTextStream& out, int* failed)
+{
+    QQmlComponent component(&engine);
+    component.setData(R"QML(
+import QtQuick
+import QtQuick.Controls
+import MiaCode.UI
+Item {
+    id: root
+    property string selectedCommand: ""
+    readonly property string paletteToken: Theme.activeThemeToken
+    readonly property color panelColor: Theme.colors.background.panel
+    QtObject {
+        id: preferences
+        property bool darkTheme: true
+        property bool blurMaterialsEnabled: false
+        property string activeThemeToken: "dark"
+    }
+    QtObject {
+        id: actions
+        property bool canTransform: true
+        property bool canNormalize: true
+        signal chartTransformRequested(string commandId)
+        onChartTransformRequested: function(commandId) { root.selectedCommand = commandId }
+    }
+    QtObject {
+        id: shortcutModel
+        property int revision: 0
+        function sequence(id, fallback) { return fallback || "Ctrl+J" }
+        function displayText(id, fallback) { return fallback || "Ctrl+J" }
+        function standardDisplayText(key) { return "" }
+    }
+    QtObject {
+        id: document
+        function chartTransformMenu() {
+            return [{id: "transform.mirror_lr", labelKey: "mirror", section: 0}]
+        }
+    }
+    QtObject { id: petModel; property bool visible: false }
+    MainMenu {
+        id: menu
+        commands: actions
+        shortcuts: shortcutModel
+        documentSession: document
+        pet: petModel
+    }
+    function triggerTransform() {
+        const adjust = menu.nativeMenus()[2]
+        for (let i = 0; i < adjust.count; ++i) {
+            const item = adjust.itemAt(i)
+            if (item && item.objectName === "adjustTransform_transform.mirror_lr") {
+                item.click()
+                return item.enabled
+            }
+        }
+        return false
+    }
+    function selectLight() {
+        preferences.darkTheme = false
+        preferences.activeThemeToken = "light"
+    }
+    Component.onCompleted: Theme.preferences = preferences
+    Component.onDestruction: Theme.preferences = null
+}
+)QML", QUrl(QStringLiteral("qrc:/spec/MenuThemeHarness.qml")));
+    std::unique_ptr<QObject> harness(component.create());
+    if (!harness) {
+        for (const auto& error : component.errors()) out << error.toString() << Qt::endl;
+        return expect(false, QStringLiteral("menu and theme instantiate"), out, failed);
+    }
+    QVariant triggered;
+    QMetaObject::invokeMethod(harness.get(), "triggerTransform", Q_RETURN_ARG(QVariant, triggered));
+    bool ok = expect(triggered.toBool()
+                         && harness->property("selectedCommand").toString() == QStringLiteral("transform.mirror_lr"),
+                     QStringLiteral("transform menu row dispatches its command"), out, failed);
+    const QVariant darkPanel = harness->property("panelColor");
+    QMetaObject::invokeMethod(harness.get(), "selectLight");
+    ok &= expect(harness->property("paletteToken").toString() == QStringLiteral("light")
+                     && harness->property("panelColor") != darkPanel,
+                 QStringLiteral("theme selection updates the bound palette"), out, failed);
+    return ok;
+}
+
 } // namespace
 
 int main(int argc, char** argv)
@@ -132,6 +215,7 @@ int main(int argc, char** argv)
 
     QQmlEngine engine;
     engine.addImportPath(QStringLiteral(MIACODE_QML_SPEC_IMPORT_ROOT));
+    if (!verifyMenuAndTheme(engine, out, &failed)) return 1;
     std::unique_ptr<QObject> harness = createHarness(engine, out);
     if (!expect(harness != nullptr, QStringLiteral("the rate menu and HUD instantiate"), out, &failed)) {
         return 1;

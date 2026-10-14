@@ -4,19 +4,6 @@
 
 namespace miacode {
 
-// 音视频处理's single-file operations.
-//
-// Stage 3.5 item 2. MediaToolsModel owns the PV batch queue itself — that is
-// the only part with state worth keeping between openings — and forwards these
-// seven to the window, which still holds the ffmpeg plumbing, the track/背景视频
-// paths and the backup files.
-//
-// `isTrack` selects which media the operation applies to: true for the audio
-// track, false for the background video. The two flows are otherwise identical,
-// which is why they share one entry point rather than doubling the surface.
-//
-// Deliberately Qt-GUI-free: the results are plain value maps, so the page can
-// render them and a Core-only spec can link the contract.
 class MediaToolsEngine
 {
 public:

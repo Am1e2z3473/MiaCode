@@ -1,13 +1,3 @@
-// Session::-owned timeline/editor-sync forwarders and legacy latency-detector
-// accessors, split out of TimelineFlow.cpp.
-//
-// Stage 4.9d-6: PlaybackCoordinator's implementation TUs are being separated
-// from the Session assembly so the coordinator can eventually link on its
-// own (see the Result Packet for the link-probe evidence). TimelineFlow.cpp
-// now holds only PlaybackCoordinator::-owned timeline-bridge/analysis logic
-// (plus the one interleaved ensureWaveformCacheService() Coordinator method
-// left in place); this file holds the latency-sandbox document accessors and
-// the editor/timeline cursor-sync group that used to share that TU.
 
 #include "app/runtime/playback/PlaybackCoordinator.h"
 #include "app/runtime/Session.h"

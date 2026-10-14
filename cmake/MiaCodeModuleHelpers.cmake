@@ -5,9 +5,7 @@ include_guard(GLOBAL)
 #     SOURCES <files...>
 #     [PUBLIC <deps...>] [PRIVATE <deps...>]
 #     [QRC <resources/*.qrc...>])
-# Static library exporting the src root. PUBLIC/PRIVATE take CMake targets and
-# link items; scripts/governance/module_layering.py checks the miacode_* ones
-# against the layering table.
+# Static library exporting the src root. PUBLIC/PRIVATE take CMake link items.
 function(miacode_add_module NAME)
     cmake_parse_arguments(PARSE_ARGV 1 MOD "" "" "SOURCES;PUBLIC;PRIVATE;QRC")
     if(MOD_UNPARSED_ARGUMENTS)

@@ -372,9 +372,6 @@ int runCliVideoExport(QGuiApplication& app, QString* errorMessage)
     request.touchFlowSpeed = request.noteFlowSpeed;
     request.skinLoadWaitMs = skinWaitMs;
 
-    // The CLI export path builds the same application services the shell does:
-    // they own the document domain and the job/UI boundaries, and the window
-    // only borrows them (stage 3.5 item 1).
     miacode::ApplicationServices applicationServices;
     Session window(applicationServices);
     QString resolvedOutputPath;

@@ -56,10 +56,6 @@ int previewFrameSwapWatchdogTimeoutMs(qint64 frameIntervalNs)
 
 }  // namespace
 
-// Session::setPreviewFixedTimerHighResolutionActive, Session::previewFrameRateModeFromStorageValue,
-// and Session::previewCanvasFrameRateModeFromStorageValue moved to
-// SessionForwarding.FramePacing.cpp (stage 4.9d-6: TU boundary split so this
-// file holds only Coordinator:: methods).
 
 QString miacode::runtime::PlaybackCoordinator::previewFrameRateModeStorageValue(PreviewCanvasFrameRateMode mode) const
 {
@@ -91,10 +87,6 @@ QString miacode::runtime::PlaybackCoordinator::timelineFrameRateModeStorageValue
     return previewFrameRateModeStorageValue(state_.timelineFrameRateMode_);
 }
 
-// Session::currentPreviewCanvasFrameRateMode, Session::currentPreviewStageMediaFrameRateMode,
-// Session::currentVideoDecodePrefersSoftware, and Session::currentTimelineFrameRateMode
-// moved to SessionForwarding.FramePacing.cpp (stage 4.9d-6: TU boundary
-// split so this file holds only Coordinator:: methods).
 
 Session::PreviewCanvasFrameRateMode miacode::runtime::PlaybackCoordinator::currentPreviewStageMediaFrameRateMode() const
 {

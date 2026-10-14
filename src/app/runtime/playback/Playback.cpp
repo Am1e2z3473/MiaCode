@@ -37,11 +37,6 @@ using namespace miacode::runtime::shared;
 
 using namespace miacode::runtime::playback_detail;
 
-// Session::hasActiveDifficulty, Session::activeDifficultyId, Session::activeChartText,
-// Session::currentTimingMetadata, Session::parsedRawFirstSeconds, Session::parsedFirstSeconds,
-// Session::parsedWholeBpm, Session::parsedClockCount, and Session::parsedLatencyMeterId
-// moved to SessionForwarding.Playback.cpp (stage 4.9d-6: TU boundary split so this
-// file holds only Coordinator:: methods).
 
 void miacode::runtime::PlaybackCoordinator::seekPreviewToSecond(double second, bool centerView)
 {
@@ -364,8 +359,6 @@ void miacode::runtime::PlaybackCoordinator::applyPreviewPlaybackRate(double rate
     miacode::oplog::appendStartupBeaconLine("ui/rate/exit reason=ok");
 }
 
-// Session::currentPreviewAuthoritativeAudioClockSecond moved to
-// SessionForwarding.Playback.cpp (stage 4.9d-6: TU boundary split).
 
 // Relationship to AudioClockSource::currentAudioClockSecond() (see
 // CoordinatorContract.cpp): that method returns
@@ -758,21 +751,3 @@ void miacode::runtime::PlaybackCoordinator::stopQtPreviewPlayback(bool keepPosit
         false,
         false);
 }
-
-// Session::schedulePreviewSeek, Session::seekPreviewDiscreteToSecond,
-// Session::requestPausedPreviewSeek, Session::applyPausedPreviewVisualSecond,
-// Session::submitPausedMediaSeek, Session::maybeSubmitLatestPausedMediaSeek,
-// Session::handlePausedPreviewMediaSeekCompleted, Session::stepPreviewBySeconds,
-// Session::handlePreviewSeekWheel, Session::beginPreviewHeldSeek,
-// Session::stopPreviewHeldSeek, Session::applyPreviewHeldSeekTick,
-// Session::seekPreviewToSecond and Session::applyPreviewPlaybackRate moved to
-// SessionForwarding.Playback.cpp (stage 4.9d-6: TU boundary split so this file
-// holds only Coordinator:: methods).
-
-// Session::startQtPreviewPlayback, Session::pauseQtPreviewPlaybackExact,
-// Session::stopQtPreviewPlayback, Session::applyQtPreviewPosition,
-// Session::syncPausedPreviewMediaTimestamps, Session::flushQtPreviewTimelinePosition,
-// Session::onTimelineRenderCadenceTick, Session::onTimelineCadenceWatchdogTick,
-// Session::onQtPreviewTick, and Session::jumpToNearestTimelineNote moved to
-// SessionForwarding.Playback.cpp (stage 4.9d-6: TU boundary split so this
-// file holds only Coordinator:: methods).

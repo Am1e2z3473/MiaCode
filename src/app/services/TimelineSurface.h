@@ -17,18 +17,6 @@ struct TimelineCommandStamp {
     friend bool operator==(const TimelineCommandStamp&, const TimelineCommandStamp&) = default;
 };
 
-// The bottom timeline and the tab strip beneath it.
-//
-// Stage 3.5 item 2. TimelineModel projects this into QML; the window still
-// owns the QSG timeline surface, the tab visibility rules and the navigation
-// that keeps the editor caret, the timeline and the preview playhead agreeing.
-//
-// The `shell*` names on the window date from the v1 QuickShell controller.
-// They are not carried over: the QML layer names the operations, not their
-// history.
-//
-// Deliberately Qt Widgets-free — the one object that crosses the boundary is
-// the timeline state bridge, handed over as a plain QObject* for QML.
 class TimelineSurface
 {
 public:

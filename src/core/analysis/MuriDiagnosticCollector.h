@@ -8,13 +8,6 @@
 
 struct TimelineNoteMarker;
 
-// Diagnostic-collection stage of the Muri analyzer (2026-05-29 god-file
-// decomposition, stage 5). Owns the analyzer's two output streams — the
-// diagnostics list and the judge-sprite events — while the pipeline stages inject
-// into it through these methods. analyze() builds one collector, threads it
-// through the simple-note and slide/wifi stages, calls finalize() (stable sort +
-// dense-overlap dedupe), then drains it into the MuriAnalysisReport. Internal to
-// the Muri analyzer — namespace miacode::muri::detail.
 namespace miacode::muri::detail {
 
 class MuriDiagnosticCollector {

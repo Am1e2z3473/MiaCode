@@ -10,26 +10,6 @@
 
 struct TimelineNoteMarker;
 
-// Slide / wifi runtime-judge stage of the Muri analyzer (2026-05-29 god-file
-// decomposition, stage 3). This is the time-stepped simulation that decides
-// whether each slide / wifi trace would be "judged too fast" — i.e. cleared by
-// finger traffic from *other* notes crossing its pads before the player could
-// have completed it. It replays the chart tick-by-tick:
-//   * build a runtime judge model per slide / wifi note (its ordered pad-area
-//     judge sequence, loaded from slide_data.json),
-//   * reconstruct the hands' pad-press footprint each tick (shared
-//     buildRuntimeHandActions / buildRuntimeTouchPoints, see Internal.h),
-//   * advance each note's area cursor as its pads go down / release, recording
-//     which marker caused each area to clear,
-//   * flag the note bad when it finishes outside its critical window AND its
-//     final area was cleared by a foreign marker.
-// The result feeds back into the per-marker MarkerMuriState (overlay stage) and
-// the slide-too-fast diagnostics. Internal to the Muri analyzer — namespace
-// miacode::muri::detail.
-//
-// All the working state (RuntimeSlideNoteState / RuntimeWifiNoteState /
-// EarlyJudgeCauseInfo) and the per-tick stepping helpers stay private to the .cpp
-// — only the four entry points below are shared with analyze().
 namespace miacode::muri::detail {
 
 // Replays every slide / wifi marker against the full hand-action footprint and

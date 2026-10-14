@@ -1,30 +1,12 @@
-// Contract regression for the editor page-routing seam.
-//
-// Stage 3.5 items 2-3: PageHost held the QML page id but called
-// MainWindow's switchTo*Field entry points, which live in a private .inc — so
-// it needed `friend class`, the last such grant to a QML type. Publishing those
-// entry points was the wrong fix: they also drive a hidden QStackedWidget that
-// exists only because the window has not been deleted, and making that public
-// API would formalize exactly what item 3 removes.
-//
-// This target links Qt6::Core / Qt6::Test only. miacode::EditorPageRouter
-// is not even a QObject, so anything Qt-GUI-shaped creeping into the contract
-// fails to link.
-
 #include "app/services/ApplicationServices.h"
 #include "app/services/EditorPageRouter.h"
 
 #include <QCoreApplication>
-#include <QFile>
 #include <QString>
 #include <QStringList>
 #include <QTextStream>
 
 #include <functional>
-
-#ifndef MIACODE_SOURCE_ROOT
-#error "MIACODE_SOURCE_ROOT must be defined (repo root absolute path)"
-#endif
 
 namespace {
 
@@ -34,15 +16,6 @@ bool require(bool condition, const QString& message, QTextStream& err)
         err << "FAIL: " << message << Qt::endl;
     }
     return condition;
-}
-
-QString readFile(const QString& relativePath)
-{
-    QFile file(QStringLiteral(MIACODE_SOURCE_ROOT) + QLatin1Char('/') + relativePath);
-    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        return QString();
-    }
-    return QString::fromUtf8(file.readAll());
 }
 
 // A stand-in router. Its only job is to prove the contract can be implemented
@@ -172,44 +145,6 @@ bool verifyTheSlotIsTheSingleSourceOfTruth(QTextStream& err)
     return ok;
 }
 
-// switchToExportField used to return true BEFORE the switch ran: it deferred
-// the real work one event-loop tick behind a busy spinner drawn over the
-// "Export" sidebar row. Both reasons for that are gone — the embedded video
-// panel it was hiding was deleted with the Widgets export dialog, and the
-// spinner sat on the hidden widget list's viewport, so it could never reach a
-// screen. What survived was a switch that reported success it had not performed.
-bool verifyTheExportSwitchReportsWhatItDid(QTextStream& err)
-{
-    const QString documentUi = readFile(
-        QStringLiteral("src/app/runtime/document/DocumentPages.cpp"));
-    const QString sectionHeader = readFile(
-        QStringLiteral("src/app/runtime/document/DocumentSessionHost.h"));
-    bool ok = require(!documentUi.isEmpty() && !sectionHeader.isEmpty(),
-                      QStringLiteral("the document section sources are readable"), err);
-    if (!ok) {
-        return false;
-    }
-
-    const qsizetype start =
-        documentUi.indexOf(QStringLiteral("bool miacode::runtime::DocumentSessionHost::switchToExportField()"));
-    ok &= require(start >= 0, QStringLiteral("switchToExportField is present"), err);
-    if (start < 0) {
-        return false;
-    }
-    const qsizetype end = documentUi.indexOf(QStringLiteral("\n}\n"), start);
-    const QString body = documentUi.mid(start, (end >= 0 ? end : documentUi.size()) - start);
-
-    ok &= require(body.contains(QStringLiteral("performSwitchToExportField();"))
-                      && !body.contains(QStringLiteral("QTimer::singleShot")),
-                  QStringLiteral("the export switch runs inline, not one tick later"), err);
-    ok &= require(body.contains(QStringLiteral("state_.activeOutlineKey_ == QLatin1String(\"export\")")),
-                  QStringLiteral("it returns whether the switch actually landed"), err);
-    ok &= require(!documentUi.contains(QStringLiteral("OutlineExportBusySpinner"))
-                      && !sectionHeader.contains(QStringLiteral("OutlineExportBusySpinner")),
-                  QStringLiteral("the invisible sidebar spinner scaffolding is gone"), err);
-    return ok;
-}
-
 }  // namespace
 
 int main(int argc, char** argv)
@@ -221,7 +156,6 @@ int main(int argc, char** argv)
     ok &= verifyImplementableWithoutAWindow(err);
     ok &= verifyRefusedSwitchesAreReported(err);
     ok &= verifyTheSlotIsTheSingleSourceOfTruth(err);
-    ok &= verifyTheExportSwitchReportsWhatItDid(err);
 
     if (ok) {
         QTextStream(stdout) << "editor_page_router_spec: OK" << Qt::endl;

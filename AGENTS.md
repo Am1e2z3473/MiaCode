@@ -23,7 +23,6 @@ Qt 6 / C++ / QML 谱面编辑、预览和导出工具。
 - 诊断使用 DebugLog 和 `--debug`；环境开关登记于 `docs/ops/DEBUG_INDEX.md`。
 - 构建使用 Release，复用已配置目录；同目录同时运行一个构建，在低性能设备上仅允许并发上限 4。
 - `MIACODE_BUILD_DEV_TOOLS=ON` 启用诊断工具和 Spec，定义位于 `cmake/devtools/`；库定义在 `cmake/MiaCodeModules.cmake`。
-- 跨库改动后运行 `python scripts/governance/module_layering.py` 检查分层。
 
 ## 工作方式
 
@@ -45,6 +44,6 @@ Qt 6 / C++ / QML 谱面编辑、预览和导出工具。
 - [构建](.agents/skills/miacode-concurrent-build/SKILL.md)
 - [界面设计](.agents/skills/qt-ui-design/SKILL.md)、[布局诊断](.agents/skills/qt-ui-layout-pitfalls/SKILL.md)
 - [模块分层](docs/specs/architecture/MODULE_LAYERING_CURRENT_ZH.md)
-- [当前规范](docs/INDEX.md)、[规格目标](docs/tests/SPEC_CATALOG.md)、[平台脚本](scripts/README.md)
+- [当前规范](docs/INDEX.md)、[测试目标](cmake/devtools/specs/)、[平台脚本](scripts/README.md)
 
 技能位于 `.agents/skills/`。

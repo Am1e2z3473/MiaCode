@@ -13,25 +13,6 @@
 
 namespace miacode {
 
-// The live preview: its transport, its runtime objects, and the settings that
-// are not plain appearance values.
-//
-// Stage 3.5 item 2. The appearance VALUES already left for
-// PreviewAppearanceState; what stays here is everything that needs the running
-// preview — the playhead and rate as read-only state, the QSG runtime and
-// stage-media host QML binds to, the skin/outline catalog on disk, and the
-// audio mixer.
-//
-// Stage 4.5 step B removed the transport commands (toggle/stop/seek/scrub/
-// rate-set) that used to live here: PlaybackControl is the one owner of
-// transport now, and PreviewModel calls it directly. What remains below is
-// read-only observation plus the non-transport preview responsibilities.
-//
-// The window's `shell*` prefixes are v1 QuickShell controller history and are
-// not carried forward.
-//
-// Deliberately Qt Widgets-free. The two runtime objects cross as plain
-// QObject* so this header does not need Qt Quick either.
 class PreviewSurface
 {
 public:

@@ -31,7 +31,7 @@ layering lives in `docs/specs/architecture/MODULE_LAYERING_CURRENT_ZH.md`.
 | `wrapper/` | — | Windows launcher |
 
 Keep sources with their domain owner and include them by their `src`-rooted path. A library
-only includes the layers it may depend on; `scripts/governance/module_layering.py` checks it.
+only includes the layers it may depend on.
 Reuse existing QML controls and application services; do not create parallel document, playback
 or resource-lookup authorities.
 
@@ -40,4 +40,4 @@ QSG export supports D3D11/QRhi and OpenGL sessions and an export worker;
 see `docs/specs/preview/CURRENT_RENDER_EXPORT_CONTRACT_ZH.md`.
 
 Executable contracts stay under `tools/` and link the libraries they cover; registration lives in
-`cmake/devtools/`. See `docs/tests/SPEC_CATALOG.md` for targeted validation.
+`cmake/devtools/`. Test targets are listed in `cmake/devtools/specs/`.

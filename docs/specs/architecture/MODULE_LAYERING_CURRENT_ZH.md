@@ -1,22 +1,13 @@
----
-lifecycle: stable-current
-owner: src
-canonical_id: architecture.module-layering
-last_verified: 2026-10-06
-code_anchors: ["cmake/MiaCodeModules.cmake", "cmake/MiaCodeModuleHelpers.cmake", "scripts/governance/module_layering.py", "src/common/PreferenceProvider.h", "src/audio/PreviewAudioWorkerFactory.h", "src/audio/AudioFileDecoder.h", "src/core/scene/PreviewFrameState.h", "src/app/main.cpp", "src/tools/boundary"]
----
-
 # 模块分层（当前）
 
 `src/` 下的产品代码按目录归属到静态库，`MiaCode` 可执行文件链接这些库。每个目录只属于一个库，
-下层库不依赖 `MiaCode`。后续拆分方向见 [模块分层与解耦方向](MODULE_LAYERING_ZH.md)；
-`MiaCode` 内部的所有权见 [当前应用架构](../ui/CURRENT_ARCHITECTURE_ZH.md)。
+下层库不依赖 `MiaCode`。`MiaCode` 内部的所有权见 [当前应用架构](../ui/CURRENT_ARCHITECTURE_ZH.md)。
 
 ## 库与目录
 
 库定义在 `cmake/MiaCodeModules.cmake`（`miacode_add_module`），源文件逐个列出。
 
-| CMake 目标 | 源目录 | 主要内容 | 允许依赖 |
+| CMake 目标 | 源目录 | 主要内容 | 依赖 |
 | --- | --- | --- | --- |
 | `miacode_base` | `src/common` | 日志、调试选项、诊断、任务取消、文件戳、本地化文本、崩溃恢复、看门狗、偏好端口 `PreferenceProvider` | Qt |
 | `miacode_chart` | `src/core/chart` | 文档、解析、变换、选择；音符模型 `model/TimelineData.h`（含 `MuriPadTimeEntry`）与 `model/TimelineMarkerOffset.h`；`ChartClockCount`、`ChartAssetPaths`、`IntroConfig`；`slide_data` 资源及其共享解析入口 `SlideReferenceData` | base |
@@ -34,19 +25,7 @@ code_anchors: ["cmake/MiaCodeModules.cmake", "cmake/MiaCodeModuleHelpers.cmake",
 | `MiaCode` | `src/app` | UI、services、runtime（含延迟检测 `runtime/latency`）、quick_shell、platform、进程入口 | 任意库 |
 
 `src/tools` 只放 Spec，`src/devtools` 是命令行诊断入口，`src/intro` 是片头素材，`src/extensions` 只由
-扩展清单 Spec 编译；这些目录不属于任何库。依赖可传递：允许依赖的库所依赖的库同样可用。
-
-## 约束
-
-- **include**：项目头文件一律写成以 `src` 为根的完整路径。每个库 PUBLIC 导出 `src` 根；唯一的例外是
-  qmltyperegistrar 生成的注册代码只按文件名包含 `QML_ELEMENT` 头文件，所以 `miacode_preview_quick`、
-  `miacode_timeline_quick` 和 `MiaCode` 以 PRIVATE 方式加入这些头文件所在目录，项目代码不依赖它。
-- **Qt 模块**：base 到 scene 只用 QtCore/QtGui；audio 加 QtMultimedia；QSG 库加 QtQuick/QtQml。
-  Qt 私有头只出现在 `stage_media`（QtAVPlayer 与 `MultimediaQuickPrivate`）和 `export`。场景状态不含
-  `QVideoFrame`：视频帧以 `PreviewVideoFrameHandle`（共享的不透明句柄）传递。
-- **第三方**：BASS 只在 `audio_bass` 和 `export`；QtAVPlayer/FFmpeg 只在 `stage_media`；ScintillaQuick 只在
-  `MiaCode`；miniz 与 QtNetwork 只在 `media_tools` 和 `MiaCode`。外部链接项登记在
-  [依赖 allowlist](../../ops/DEPENDENCY_ALLOWLIST.md)。
+扩展清单 Spec 编译；这些目录不属于任何库。依赖定义见 `cmake/MiaCodeModules.cmake`。
 
 ## 注入点
 
@@ -81,15 +60,6 @@ code_anchors: ["cmake/MiaCodeModules.cmake", "cmake/MiaCodeModuleHelpers.cmake",
 
 `app/services`、`app/runtime` 不包含 `app/ui`；只有进程入口包含 `app/MainEntrypoints.h`，
 GPU 与进程诊断声明在 `app/platform/PlatformDiagnostics.h`。
-
-## 检查
-
-- `scripts/governance/module_layering.py`：目录归属、include 方向、第三方与 Qt 私有头、`miacode_*` 链接边、
-  库源文件清单；`module_layering_test.py` 覆盖其行为。CI 的 `Module layering` 步骤运行两者。
-- `web_module_boundary_spec` 只链接 base、chart、analysis、scene、preview_quick；
-  `android_module_boundary_spec` 再加 timeline、timeline_quick、audio_bass。两者在不链接 `MiaCode` 的情况下
-  运行各库的代表路径，并确认静态库资源和 QML 模块可用。
-- Spec 与命令行诊断链接库，只直接列出 `MiaCode` 的源文件（可执行文件无法被链接）。
 
 ## 外部预览宿主的源码消费入口
 

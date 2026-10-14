@@ -1,17 +1,3 @@
-// Contract regression for the preview appearance settings owner.
-//
-// Stage 3.5 item 2: these eight values used to live as MainWindow private
-// members, read and written straight through `friend` access by
-// ExportSession and PreviewSettingsModel — two copies of the same
-// read/write logic against one hidden window. This target links Qt6::Core /
-// Qt6::Gui / Qt6::Test only, so if the appearance state ever reaches back for
-// QtWidgets or Qt Quick the spec fails to LINK.
-//
-// The behaviour worth pinning is the part the two duplicated copies used to
-// re-derive by hand: every setter reports whether the value actually moved, and
-// `changed` fires only on a real transition. Callers use that answer to skip
-// reloading a skin and rewriting the settings file.
-
 #include "app/services/PreviewAppearanceState.h"
 
 #include <QCoreApplication>

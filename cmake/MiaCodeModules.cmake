@@ -2,8 +2,6 @@
 #
 # Every library is static, exports the src root so headers are included by
 # their src-rooted path, and links only the layers it may depend on.
-# scripts/governance/module_layering.py checks the source lists and the
-# miacode_* link edges below against the layering table; keep them explicit.
 include_guard(GLOBAL)
 include(${CMAKE_CURRENT_LIST_DIR}/MiaCodeModuleHelpers.cmake)
 

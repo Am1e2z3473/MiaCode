@@ -3,11 +3,7 @@
 # never MiaCode, so a library that grows a dependency outside its combination
 # fails to link here before a platform build would notice.
 
-miacode_add_spec(web_module_boundary_spec
-    OWNER src
-    CONTRACT architecture.web-module-boundary
-    DOMAIN architecture KIND boundary RISK high
-    EXECUTION ctest STATUS active PLATFORM all
+miacode_add_dev_tool(web_module_boundary_spec TEST
     SOURCES
         src/tools/boundary/WebModuleBoundarySpec.cpp
     LIBS
@@ -17,12 +13,8 @@ miacode_add_spec(web_module_boundary_spec
     INCLUDES src
 )
 
-if(MIACODE_BUILD_APP OR CMAKE_SCRIPT_MODE_FILE)
-miacode_add_spec(android_module_boundary_spec
-    OWNER src
-    CONTRACT architecture.android-module-boundary
-    DOMAIN architecture KIND boundary RISK high
-    EXECUTION ctest STATUS active PLATFORM all
+if(MIACODE_BUILD_APP)
+miacode_add_dev_tool(android_module_boundary_spec TEST
     SOURCES
         src/tools/boundary/AndroidModuleBoundarySpec.cpp
     LIBS
