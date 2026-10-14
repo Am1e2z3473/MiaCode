@@ -18,30 +18,30 @@ Item {
     readonly property int tabCount: viewState.openEditorTabs.length
     readonly property real availableTabWidth: Math.max(0, width - (tabsOverflow ? overflowButton.width : 0))
     readonly property real activePreferredWidth: activeTabIndex >= 0
-        ? preferredTabWidths[activeTabIndex] : 0
+        ? preferredWidthForKey(viewState.activeEditorKey) : 0
     readonly property bool tabsOverflow: activeTabIndex >= 0
         ? activePreferredWidth + (tabCount - 1) * minimumTabWidth > width
         : tabCount * minimumTabWidth > width
-    readonly property var preferredTabWidths: viewState.openEditorTabs.map(key => {
+    function preferredWidthForKey(key) {
         const title = (documentSession.dirtyEditorKeys.indexOf(key) >= 0 ? "*" : "") + titleForKey(key)
         const iconWidth = difficultyIdForKey(key) > 0 ? Theme.difficultySwatchSize
             : key === viewState.metadataEditorKey || key === viewState.latencyEditorKey ? 15 : 0
-        // Match AppTab's content margins, close-button slot and visible row gaps.
         return Math.max(minimumTabWidth,
             Math.ceil(tabFontMetrics.advanceWidth(title) + 14 + 9 + 24 + 6 + (iconWidth > 0 ? iconWidth + 6 : 0)))
-    })
+    }
+    readonly property var preferredTabWidths: viewState.openEditorTabs.map(key => preferredWidthForKey(key))
     readonly property real preferredTabsWidth: preferredTabWidths.reduce((sum, value) => sum + value, 0)
-    readonly property var tabWidths: {
+    readonly property real inactiveTabScale: {
         const otherCount = tabCount - (activeTabIndex >= 0 ? 1 : 0)
         const otherPreferredWidth = preferredTabsWidth - activePreferredWidth
         const minimumOtherWidth = otherCount * minimumTabWidth
         const remainingWidth = availableTabWidth - activePreferredWidth
-        const scale = otherPreferredWidth > minimumOtherWidth
+        return otherPreferredWidth > minimumOtherWidth
             ? Math.max(0, Math.min(1, (remainingWidth - minimumOtherWidth)
                 / (otherPreferredWidth - minimumOtherWidth))) : 1
-        return preferredTabWidths.map((value, index) => index === activeTabIndex
-            ? value : minimumTabWidth + (value - minimumTabWidth) * scale)
     }
+    readonly property var tabWidths: preferredTabWidths.map((value, index) => index === activeTabIndex
+        ? value : minimumTabWidth + (value - minimumTabWidth) * inactiveTabScale)
 
     FontMetrics {
         id: tabFontMetrics
@@ -253,9 +253,10 @@ Item {
 
                     property bool suppressClickAfterDrag: false
 
-                    width: root.tabWidths[index]
+                    width: active ? preferredTabWidth
+                        : root.minimumTabWidth + (preferredTabWidth - root.minimumTabWidth) * root.inactiveTabScale
                     height: parent.height
-                    preferredTabWidth: root.preferredTabWidths[index]
+                    preferredTabWidth: root.preferredWidthForKey(modelData)
                     showSeparator: index < root.tabCount - 1
                         && root.viewState.openEditorTabs[index + 1] !== root.viewState.activeEditorKey
                     text: (root.documentSession.dirtyEditorKeys.indexOf(modelData) >= 0 ? "*" : "")

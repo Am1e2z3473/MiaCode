@@ -29,7 +29,6 @@ Item {
     // the card fully (no fade-in). The maimai track-start card does NOT fade as one
     // unit — frame/jacket/level/text appear with different delays (see partOpacity).
     property int revealStartFrame: -1
-    property url templateSource: Qt.resolvedUrl("../templates/maimai_banner.json")
     property url backgroundImage: ""
     property url jacketImage: ""
     property bool cacheStaticImages: true
@@ -37,12 +36,8 @@ Item {
     // Fallback art when no 曲绘 is available (see effectiveJacket).
     property url logoImage: "qrc:/icons/app-original.png"
     property var trackOverrides: ({})
-    // When the host supplies a parsed template object (the integrated export
-    // injects it from C++ so it doesn't depend on an async XMLHttpRequest that
-    // never fires under the headless QQuickRenderControl loop), use it verbatim
-    // and skip the templateSource XHR entirely.
     property var externalTemplate: null
-    property var template: defaultTemplate()
+    readonly property var template: externalTemplate || defaultTemplate()
 
     // When true, the outer blurred-jacket backdrop + dim + black base are skipped,
     // leaving only the card (rounded frame + tab) with alpha around it. Used to
@@ -176,17 +171,6 @@ Item {
             },
             transparentBackground: true
         }
-    }
-
-    function loadTemplate() {
-        var xhr = new XMLHttpRequest()
-        xhr.open("GET", templateSource)
-        xhr.onreadystatechange = function() {
-            if (xhr.readyState === XMLHttpRequest.DONE && xhr.status === 200) {
-                template = JSON.parse(xhr.responseText)
-            }
-        }
-        xhr.send()
     }
 
     function trackValue(name) {
@@ -424,24 +408,6 @@ Item {
     function cardShadowOffsetYValue() {
         var s = template.cardShadow || {}
         return (s.offsetY !== undefined) ? s.offsetY : 14
-    }
-
-    Component.onCompleted: {
-        if (externalTemplate) {
-            template = externalTemplate
-        } else {
-            loadTemplate()
-        }
-    }
-    onExternalTemplateChanged: {
-        if (externalTemplate) {
-            template = externalTemplate
-        }
-    }
-    onTemplateSourceChanged: {
-        if (!externalTemplate) {
-            loadTemplate()
-        }
     }
 
     QtObject {
