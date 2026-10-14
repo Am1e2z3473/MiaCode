@@ -4716,8 +4716,8 @@ Error: %1</source>
         <translation>現在値に設定</translation>
     </message>
     <message id="dialog.video_export.range.play_clip">
-        <source>Play Export Range</source>
-        <translation>出力範囲を再生</translation>
+        <source>Play Range</source>
+        <translation>範囲を再生</translation>
     </message>
     <message id="dialog.video_export.output_mode">
         <source>Output Format</source>

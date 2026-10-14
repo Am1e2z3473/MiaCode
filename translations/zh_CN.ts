@@ -4716,8 +4716,8 @@ Error: %1</source>
         <translation>设为当前值</translation>
     </message>
     <message id="dialog.video_export.range.play_clip">
-        <source>Play Export Range</source>
-        <translation>播放导出区间</translation>
+        <source>Play Range</source>
+        <translation>播放区间</translation>
     </message>
     <message id="dialog.video_export.output_mode">
         <source>Output Format</source>
