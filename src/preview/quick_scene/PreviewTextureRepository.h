@@ -80,7 +80,7 @@ public:
     void beginFrame();
     QSGTexture* textureForImage(const QImage& image, bool cacheable = true);
     QSGTexture* retainedTexture(const QString& slotName) const;
-    QSGTexture* retainedTextureForImage(const QString& slotName, const QImage& image);
+    QSGTexture* retainedTextureForImage(const QString& slotName, const QImage& image, bool mipmaps = false);
     void releaseRetainedTexture(const QString& slotName);
     QSGTexture* createOwnedTexture(const QImage& image) const;
     void noteSpriteBatchStats(const char* layerName, const PreviewSpriteBatchFrameProfile& profile);
