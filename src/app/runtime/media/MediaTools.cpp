@@ -1082,12 +1082,8 @@ bool alignVideoStreams(
     double videoAudioOffsetSeconds,
     miacode::JobProgressService* jobProgress,
     miacode::LocalizedText* error,
-    bool* cancelled = nullptr,
-    bool* unchangedBecauseOutputWasLarger = nullptr)
+    bool* cancelled = nullptr)
 {
-    if (unchangedBecauseOutputWasLarger != nullptr) {
-        *unchangedBecauseOutputWasLarger = false;
-    }
     const QFileInfo videoInfo(videoPath);
     const qint64 originalBytes = videoInfo.size();
     const QString backupPath = videoInfo.dir().filePath(
@@ -1099,7 +1095,7 @@ bool alignVideoStreams(
     }
 
     double durationSeconds = 0.0;
-        QString videoEncoder;
+    QString videoEncoder;
     if (!probeMediaDurationSeconds(
             ffmpegPath, backupPath, &durationSeconds, error, &videoEncoder,
             /*decodeToDetermineDuration=*/false)) {
@@ -1126,29 +1122,16 @@ bool alignVideoStreams(
         audioFilter = QStringLiteral("adelay=%1:all=1").arg(delayMilliseconds);
     }
 
-    bool encodedWithinOriginalSize = false;
-    for (const int quality : {23, 28}) {
-        QFile::remove(tempPath);
-        QStringList args;
-        args << QStringLiteral("-hide_banner")
-             << QStringLiteral("-y")
-             << QStringLiteral("-i") << backupPath
-             << QStringLiteral("-filter_complex")
-             << QStringLiteral("[0:v:0]%1[v];[0:a:0]%2[a]").arg(videoFilter, audioFilter)
-             << QStringLiteral("-map") << QStringLiteral("[v]")
-             << QStringLiteral("-map") << QStringLiteral("[a]")
-             << QStringLiteral("-map_metadata") << QStringLiteral("0")
-             << QStringLiteral("-map_chapters") << QStringLiteral("0")
-             << QStringLiteral("-c:v") << videoEncoder;
-        if (videoEncoder == QStringLiteral("libx264")
-            || videoEncoder == QStringLiteral("libx265")) {
+    auto appendEncoderQuality = [](QStringList& args, const QString& encoder, int quality) {
+        args << QStringLiteral("-c:v") << encoder;
+        if (encoder == QStringLiteral("libx264") || encoder == QStringLiteral("libx265")) {
             args << QStringLiteral("-preset") << QStringLiteral("veryfast")
                  << QStringLiteral("-crf") << QString::number(quality);
-        } else if (videoEncoder == QStringLiteral("libaom-av1")) {
+        } else if (encoder == QStringLiteral("libaom-av1")) {
             args << QStringLiteral("-cpu-used") << QStringLiteral("8")
                  << QStringLiteral("-crf") << QString::number(quality)
                  << QStringLiteral("-b:v") << QStringLiteral("0");
-        } else if (videoEncoder == QStringLiteral("libvpx-vp9")) {
+        } else if (encoder == QStringLiteral("libvpx-vp9")) {
             args << QStringLiteral("-deadline") << QStringLiteral("realtime")
                  << QStringLiteral("-cpu-used") << QStringLiteral("8")
                  << QStringLiteral("-crf") << QString::number(quality)
@@ -1156,38 +1139,81 @@ bool alignVideoStreams(
         } else {
             args << QStringLiteral("-q:v") << QString::number(quality);
         }
-        args << QStringLiteral("-pix_fmt") << QStringLiteral("yuv420p")
-             << QStringLiteral("-fps_mode:v") << QStringLiteral("passthrough")
-             << QStringLiteral("-c:a") << QStringLiteral("aac")
-             << QStringLiteral("-b:a") << QStringLiteral("128k")
-             << QStringLiteral("-movflags") << QStringLiteral("+faststart")
-             << tempPath;
-        if (!runFfmpegBlocking(
+    };
+
+    QFile::remove(tempPath);
+    QStringList alignmentArgs{
+        QStringLiteral("-hide_banner"),
+        QStringLiteral("-y"),
+        QStringLiteral("-i"), backupPath,
+        QStringLiteral("-filter_complex"),
+        QStringLiteral("[0:v:0]%1[v];[0:a:0]%2[a]").arg(videoFilter, audioFilter),
+        QStringLiteral("-map"), QStringLiteral("[v]"),
+        QStringLiteral("-map"), QStringLiteral("[a]"),
+        QStringLiteral("-map_metadata"), QStringLiteral("0"),
+        QStringLiteral("-map_chapters"), QStringLiteral("0"),
+    };
+    appendEncoderQuality(alignmentArgs, videoEncoder, 23);
+    alignmentArgs << QStringLiteral("-pix_fmt") << QStringLiteral("yuv420p")
+                  << QStringLiteral("-fps_mode:v") << QStringLiteral("passthrough")
+                  << QStringLiteral("-c:a") << QStringLiteral("aac")
+                  << QStringLiteral("-b:a") << QStringLiteral("128k")
+                  << QStringLiteral("-movflags") << QStringLiteral("+faststart")
+                  << tempPath;
+    if (!runFfmpegBlocking(
+            ffmpegPath,
+            alignmentArgs,
+            jobProgress,
+            miacode::localizedText("media_tools.processing_pv_mp4"),
+            miacode::localizedText("media_tools.processing_pv_mp4"),
+            durationSeconds + (videoAudioOffsetSeconds < 0.0 ? adjustmentSeconds : 0.0),
+            error,
+            cancelled)) {
+        QFile::remove(tempPath);
+        return false;
+    }
+    if (!replaceFileWithTemp(tempPath, videoPath, error)) {
+        QFile::remove(tempPath);
+        return false;
+    }
+
+    qint64 alignedBytes = QFileInfo(videoPath).size();
+    if (alignedBytes > originalBytes) {
+        QFile::remove(tempPath);
+        QStringList compressionArgs{
+            QStringLiteral("-hide_banner"),
+            QStringLiteral("-y"),
+            QStringLiteral("-i"), videoPath,
+            QStringLiteral("-map"), QStringLiteral("0:v:0"),
+            QStringLiteral("-map"), QStringLiteral("0:a:0"),
+            QStringLiteral("-map_metadata"), QStringLiteral("0"),
+            QStringLiteral("-map_chapters"), QStringLiteral("0"),
+        };
+        appendEncoderQuality(compressionArgs, videoEncoder, 30);
+        compressionArgs << QStringLiteral("-pix_fmt") << QStringLiteral("yuv420p")
+                        << QStringLiteral("-fps_mode:v") << QStringLiteral("passthrough")
+                        << QStringLiteral("-c:a") << QStringLiteral("copy")
+                        << QStringLiteral("-movflags") << QStringLiteral("+faststart")
+                        << tempPath;
+        miacode::LocalizedText compressionError;
+        bool compressionCancelled = false;
+        if (runFfmpegBlocking(
                 ffmpegPath,
-                args,
+                compressionArgs,
                 jobProgress,
                 miacode::localizedText("media_tools.processing_pv_mp4"),
                 miacode::localizedText("media_tools.processing_pv_mp4"),
                 durationSeconds + (videoAudioOffsetSeconds < 0.0 ? adjustmentSeconds : 0.0),
-                error,
-                cancelled)) {
-            QFile::remove(tempPath);
-            return false;
+                &compressionError,
+                &compressionCancelled)) {
+            const qint64 compressedBytes = QFileInfo(tempPath).size();
+            if (compressedBytes > 0 && compressedBytes < alignedBytes) {
+                replaceFileWithTemp(tempPath, videoPath, &compressionError);
+            }
         }
-        const qint64 outputBytes = QFileInfo(tempPath).size();
-        if (outputBytes > 0 && outputBytes <= originalBytes) {
-            encodedWithinOriginalSize = true;
-            break;
-        }
-    }
-    if (!encodedWithinOriginalSize) {
         QFile::remove(tempPath);
-        if (unchangedBecauseOutputWasLarger != nullptr) {
-            *unchangedBecauseOutputWasLarger = true;
-        }
-        return false;
     }
-    return replaceFileWithTemp(tempPath, videoPath, error);
+    return true;
 }
 
 } // namespace
@@ -1326,14 +1352,9 @@ void miacode::runtime::MediaJobsHost::onAlignBackgroundVideoToTrack()
     releasePreviewMediaForFileOperation();
     miacode::LocalizedText error;
     bool cancelled = false;
-    bool unchangedBecauseOutputWasLarger = false;
     if (!alignVideoStreams(
             ffmpegPath, videoPath, videoAudioOffsetSeconds, session_.jobProgressService(), &error,
-            &cancelled, &unchangedBecauseOutputWasLarger)) {
-        if (unchangedBecauseOutputWasLarger) {
-            reloadPreviewMediaAfterFileOperation(false);
-            return;
-        }
+            &cancelled)) {
         requests->postNotice(
             cancelled ? miacode::NoticeSeverity::Information
                       : miacode::NoticeSeverity::Error,
