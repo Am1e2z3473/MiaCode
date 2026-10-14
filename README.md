@@ -5,16 +5,18 @@
 <h1 align="center">MiaCode</h1>
 
 <p align="center">
-  <a href="https://github.com/Team-MiaCode/MiaCode/releases/latest"><img src="https://img.shields.io/github/v/release/Team-MiaCode/MiaCode" alt="Latest release"></a>
-  <a href="https://github.com/Team-MiaCode/MiaCode/stargazers"><img src="https://img.shields.io/github/stars/Team-MiaCode/MiaCode" alt="GitHub stars"></a>
-  <a href="LICENSE"><img src="https://img.shields.io/badge/source_code_license-MIT-blue" alt="Source code license: MIT"></a>
+  <a href="https://miacode.net/"><img src="https://img.shields.io/badge/%E5%AE%98%E7%BD%91-miacode.net-3178C6?style=for-the-badge" alt="官网"></a>
+  <a href="https://github.com/Team-MiaCode/MiaCode/releases/latest"><img src="https://img.shields.io/github/v/release/Team-MiaCode/MiaCode?style=for-the-badge&amp;label=Release&amp;logo=github&amp;color=24292F" alt="Latest release"></a>
+  <a href="https://github.com/Team-MiaCode/MiaCode/actions/workflows/package.yml?query=branch%3Adev"><img src="https://img.shields.io/badge/Nightly-CI-2088FF?style=for-the-badge&amp;logo=githubactions&amp;logoColor=white" alt="Nightly CI"></a>
+  <a href="https://github.com/Team-MiaCode/MiaCode/stargazers"><img src="https://img.shields.io/github/stars/Team-MiaCode/MiaCode?style=for-the-badge&amp;label=Stars" alt="GitHub stars"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue?style=for-the-badge" alt="Source code license: MIT"></a>
 </p>
 
 <p align="center">
   <a href="README.md">中文</a> | <a href="README_EN.md">English</a>
 </p>
 
-MiaCode 是一款基于 Qt 6 / C++ / QML 的 maimai 谱面创作工具，集成编辑、实时预览、语法与无理检测、视频导出和封面创作。
+MiaCode 是一款基于 Qt 6 / C++ / QML 的 maimai 谱面创作工具，集成编辑、实时预览、语法与无理检测、视频导出和封面创作，支持 Windows、Apple 芯片的 macOS 和 Linux。
 
 <table align="center" width="100%">
   <tr>
@@ -29,26 +31,26 @@ MiaCode 是一款基于 Qt 6 / C++ / QML 的 maimai 谱面创作工具，集成�
 
 ## 快速开始
 
-<p>
-  <a href="https://miacode.net/download.html"><img src="https://img.shields.io/badge/%E5%AE%98%E7%BD%91-miacode.net-3178C6?style=for-the-badge" alt="官网"></a>
-  <a href="https://github.com/Team-MiaCode/MiaCode/releases"><img src="https://img.shields.io/badge/Release-GitHub-24292F?style=for-the-badge&amp;logo=github" alt="Release"></a>
-  <a href="https://github.com/Team-MiaCode/MiaCode/actions/workflows/package.yml?query=branch%3Adev"><img src="https://img.shields.io/badge/Nightly_CI-GitHub_Actions-2088FF?style=for-the-badge&amp;logo=githubactions&amp;logoColor=white" alt="Nightly CI"></a>
+### 下载
+
+<p align="center">
+  <a href="https://miacode.net/download.html"><img src="resources/readme/download-website-zh.svg" alt="官网下载" width="264" height="88"></a>
+  <a href="https://github.com/Team-MiaCode/MiaCode/releases"><img src="resources/readme/download-release.svg" alt="GitHub Releases" width="264" height="88"></a>
+  <a href="https://github.com/Team-MiaCode/MiaCode/actions/workflows/package.yml?query=branch%3Adev"><img src="resources/readme/download-nightly.svg" alt="Nightly CI" width="264" height="88"></a>
 </p>
 
-支持 Windows（x64 / ARM64）与 macOS（Apple 芯片），下载对应系统和架构的压缩包后解压。
+提供 Windows 和 macOS 安装包。
+
+Linux 用户可[从源码构建](#构建)。
 
 - **Windows**：双击解压目录中的 `MiaCode.exe` 启动。
 - **macOS**：双击 `MiaCode.app` 启动，也可将其拖入“应用程序”文件夹。若系统显示安全提示，可在解压目录打开终端，执行 `xattr -dr com.apple.quarantine "MiaCode.app"` 后启动。
 
-Linux 用户可按下方步骤从源码构建。
-
-使用说明见 [官网 Wiki](https://miacode.net/miacode/index.html)。
+具体使用方法见[官网 Wiki](https://miacode.net/miacode/index.html)。
 
 ## 功能介绍
 
 ### 特色
-
-- 支持 Windows、Apple 芯片的 macOS 和 Linux。
 
 - 多组件宽度自由调节，编辑器与预览区面板可左右交换重排。
 
@@ -150,7 +152,8 @@ Linux 用户可按下方步骤从源码构建。
 - 音视频工具
 - BPM 与延迟检测
 
-## 构建
+<details>
+<summary><h2 id="构建">构建</h2></summary>
 
 ### 依赖
 
@@ -213,7 +216,10 @@ cmake --build build --target MiaCode --parallel 4
 
 音视频处理与导出使用独立的 `ffmpeg` 程序，可手动安装支持 H.264 / AAC 编码的 FFmpeg。
 
-## 仓库结构
+</details>
+
+<details>
+<summary><h2 id="仓库结构">仓库结构</h2></summary>
 
 - [src](src)：应用源码
 - [assets](assets)：运行资源、素材与生成数据
@@ -223,11 +229,26 @@ cmake --build build --target MiaCode --parallel 4
 - [docs](docs)：文档
 - [samples](samples)：规格测试示例资源
 
-## 许可证
+</details>
+
+<details>
+<summary><h2 id="许可证">许可证</h2></summary>
 
 自有代码使用 MIT 协议，随仓库分发的 Release 构建产物为非商业使用，具体边界见 [LICENSE_SCOPE.md](LICENSE_SCOPE.md)。
 
 第三方库、字体、音效、图片、FFmpeg、BASS、Qt 以及参考实现的各自许可证或分发限制参考 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
+
+</details>
+
+## 维护与反馈
+
+其他问题可以在 [Issues](https://github.com/Team-MiaCode/MiaCode/issues) 中查看，也可以在那里分享使用过程中的错误与异常。
+
+提交 [Issue](https://github.com/Team-MiaCode/MiaCode/issues) 时，说明错误或异常行为的现场状态、此前操作、复现步骤、MiaCode 版本、运行环境和问题现象，并附上相关信息。
+
+日志和调试信息对我们来说很重要，收集方式见[调试指南](docs/ops/DEBUG_INDEX.md)。
+
+代码和文档改进欢迎通过 Pull Request 分享，较大的功能或架构调整可以先在 Issue 中交流。
 
 ## 致谢
 
