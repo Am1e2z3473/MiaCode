@@ -621,16 +621,6 @@ AppDialog {
                                 onClicked: root.preferencesModel.uiScalePercent = 100
                             }
                         }
-
-                        Text {
-                            Layout.fillWidth: true
-                            Layout.leftMargin: root.settingsLabelWidth
-                            text: qsTrId("dialog.preferences.ui_scale.hint")
-                            font.family: Theme.uiFont
-                            font.pixelSize: Theme.secondaryFontSize
-                            color: Theme.colors.text.secondary
-                            wrapMode: Text.WordWrap
-                        }
                     }
 
                     PreferenceGroup {

@@ -53,8 +53,7 @@
 | `resources/app_icons.qrc`、`ui_shaders`、`miacode_i18n` | MiaCode | `:/icons/*`、`:/config/shortcuts.json`、`:/src/app/ui/shaders/*.qsb`、`:/i18n/*` |
 
 `MiaCode.Preview` 与 `MiaCode.Timeline` 由各自库的 `qt_add_qml_module` 提供静态插件，`main.cpp` 用
-`Q_IMPORT_QML_PLUGIN` 导入一次，进程内所有 QML engine（主界面、预览合成面、封面合成、导出）共用；
-不再有分散的 `qmlRegisterType`。`MiaCode.UI` 仍是 `MiaCode` 自身的模块。
+`Q_IMPORT_QML_PLUGIN` 导入一次，进程内所有 QML engine（主界面、预览合成面、封面合成、导出）共用。`MiaCode.UI` 仍是 `MiaCode` 自身的模块。
 
 ## app 内部方向
 
@@ -73,10 +72,10 @@ Qt WASM 单线程构建以同步方式加载皮肤、写入诊断日志，不启
 着色器同时保留桌面默认 GLSL 版本并加入 WebGL 2 所需的 300es。
 
 宿主通过 `add_subdirectory(<MiaCode checkout> <binary directory>)` 后链接
-`miacode_preview_quick`，无需复制源码或重列 C++ 文件。静态 QML 使用者还需导入
+`miacode_preview_quick`，静态 QML 使用者还需导入
 `MiaCode.Preview` 插件，具体示例见 Web 宿主。调用 `miacode::assets::setAssetRoot()` 注入绝对
 资源目录（支持 `:/assets` 与浏览器虚拟文件系统的 `/assets`）；空值恢复桌面发现，相对路径被拒绝。
-应在创建预览宿主前注入；更换根目录不会自动刷新已加载的纹理。
+资源根目录在创建预览宿主前注入，已加载纹理沿用加载时的目录。
 
 独立源码配置 `MIACODE_BUILD_DEV_TOOLS=ON` 可构建和运行 `web_module_boundary_spec`，验证解析、
 分析、HUD、资源与 QML 模块。它验证最小 Web 链接闭包，音频边界由音频及 Android 规格覆盖。

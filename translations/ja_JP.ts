@@ -1295,10 +1295,6 @@ Failed: %2</source>
         <source>Interface zoom</source>
         <translation>画面の拡大率</translation>
     </message>
-    <message id="dialog.preferences.ui_scale.hint">
-        <source>Scale text, icons, and controls together. Changes apply immediately.</source>
-        <translation>文字、アイコン、コントロールをまとめて拡大・縮小します。変更はすぐに適用されます。</translation>
-    </message>
     <message id="dialog.preferences.ui_scale.reset">
         <source>Reset to 100%</source>
         <translation>100% に戻す</translation>

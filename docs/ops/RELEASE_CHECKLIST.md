@@ -1,7 +1,5 @@
 # Release Checklist
 
-This checklist documents the local and GitHub Actions release flow.
-
 ## Version
 
 - [ ] Update `MIACODE_VERSION_MAJOR`, `MIACODE_VERSION_MINOR`, `MIACODE_VERSION_PATCH`, and `MIACODE_VERSION_PRERELEASE` in [CMakeLists.txt](../../CMakeLists.txt).
@@ -83,14 +81,6 @@ does, whatever it is named.
 
 It rehearses `v` + the version in CMakeLists.txt, which is the only tag the guard would
 accept for that commit anyway.
-
-Once this workflow reaches the default branch, Actions → Release → Run workflow offers
-the same thing with an explicit tag. It is a branch push rather than that because GitHub
-only offers `workflow_dispatch` for workflows already on the default branch, and the
-rehearsal has to work from the branch that changes the workflow.
-
-The rehearsal also warms the package cache under the release key, so a real tag push at
-the same commit skips the build.
 
 ## Update Manifest
 
