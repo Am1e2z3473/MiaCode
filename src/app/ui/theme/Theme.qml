@@ -598,8 +598,15 @@ QtObject {
     readonly property font codeFont: preferences ? preferences.codeFont : Qt.font({})
     // 行距, in the pixels of bottom margin each text block carries.
     readonly property int codeBlockSpacing: preferences ? preferences.editorBlockSpacing : 0
-    readonly property int uiFontSize: (preferences ? preferences.fontSize : 13) + 1
-    readonly property int timelineFontSize: preferences ? preferences.fontSize : 13
+    readonly property int uiFontSize: preferences ? preferences.fontSize : 13
+    readonly property real uiScale: (preferences?.uiScalePercent ?? 100) / 100.0
+
+    function iconSourceSize(width, height) {
+        // IconImage does not upscale a smaller source within its display box.
+        // Retain baseline resolution below 100%; the scene performs the shrink.
+        const resolutionScale = Math.max(1, uiScale)
+        return Qt.size(Math.ceil(width * resolutionScale), Math.ceil(height * resolutionScale))
+    }
     readonly property int headingFontSize: uiFontSize + 2
     // Section captions inside a settings page: body size, set apart from body
     // text by DemiBold and text.section; the page heading stays two steps up.

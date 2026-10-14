@@ -136,11 +136,13 @@ bool testWindowLayout(QTextStream& out)
 
     qmlRegisterType<ScintillaQuick_item>("EditorProbe", 1, 0, "Editor");
     QQmlEngine engine;
+    engine.addImportPath(QStringLiteral(MIACODE_QML_SPEC_IMPORT_ROOT));
     QQmlComponent component(&engine);
     component.setData((QStringLiteral(R"(
 import QtQuick
 import QtQuick.Controls
 import EditorProbe 1.0
+import MiaCode.UI
 Item {
     id: root
     width: 700

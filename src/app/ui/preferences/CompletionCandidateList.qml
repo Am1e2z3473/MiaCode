@@ -294,7 +294,7 @@ Column {
                                 width: 14
                                 height: 14
                                 source: Qt.resolvedUrl("icons/close.svg")
-                                sourceSize: Qt.size(14, 14)
+                                sourceSize: Theme.iconSourceSize(14, 14)
                                 color: card.removable ? Theme.colors.text.secondary : Theme.colors.text.disabled
                             }
                         }

@@ -601,6 +601,8 @@ set(MIACODE_UI_QML_FILES
     src/app/ui/ViewState.qml
     src/app/ui/theme/Theme.qml
     src/app/ui/components/IconButton.qml
+    src/app/ui/components/UiScaleSurface.qml
+    src/app/ui/chrome/UiScaleShortcuts.qml
     src/app/ui/components/AppCheckBox.qml
     src/app/ui/components/AppDropDownButton.qml
     src/app/ui/components/AppTab.qml

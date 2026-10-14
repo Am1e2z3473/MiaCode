@@ -57,6 +57,26 @@ QString parseShortcutObject(const QJsonObject& object)
     return parseShortcutTextValue(object.value(QStringLiteral("default")));
 }
 
+QString legacyShortcutId(const QString& id)
+{
+    if (id == QStringLiteral("ui.zoom_in")) return QStringLiteral("editor.font_increase");
+    if (id == QStringLiteral("ui.zoom_out")) return QStringLiteral("editor.font_decrease");
+    return {};
+}
+
+QJsonObject migratedShortcutEntries(QJsonObject entries)
+{
+    for (const QString& id : {QStringLiteral("ui.zoom_in"), QStringLiteral("ui.zoom_out")}) {
+        const QString legacy = legacyShortcutId(id);
+        if (entries.contains(legacy)) {
+            // An explicit new entry in the same section takes priority.
+            if (!entries.contains(id)) entries.insert(id, entries.value(legacy));
+            entries.remove(legacy);
+        }
+    }
+    return entries;
+}
+
 }  // namespace
 
 ShortcutRegistry& ShortcutRegistry::instance()
@@ -239,8 +259,22 @@ void ShortcutRegistry::mergeJsonObject(const QJsonObject& root)
 {
     if (root.contains(QStringLiteral("editable"))) {
         editableShortcutIds_ = parseStringList(root.value(QStringLiteral("editable")));
+        bool migrated = false;
+        for (const QString& id : {QStringLiteral("ui.zoom_in"), QStringLiteral("ui.zoom_out")}) {
+            const QString legacy = legacyShortcutId(id);
+            if (editableShortcutIds_.contains(legacy)) {
+                for (QString& editableId : editableShortcutIds_) {
+                    if (editableId == legacy) editableId = id;
+                }
+                migrated = true;
+            }
+        }
+        editableShortcutIds_.removeDuplicates();
+        if (migrated && !editableShortcutIds_.contains(QStringLiteral("ui.zoom_reset"))) {
+            editableShortcutIds_.append(QStringLiteral("ui.zoom_reset"));
+        }
     }
-    const QJsonObject actions = root.value(QStringLiteral("actions")).toObject();
+    const QJsonObject actions = migratedShortcutEntries(root.value(QStringLiteral("actions")).toObject());
     for (auto it = actions.constBegin(); it != actions.constEnd(); ++it) {
         const QJsonObject actionObject = it.value().toObject();
         const QString parsed = parseShortcutObject(actionObject);
@@ -270,7 +304,7 @@ void ShortcutRegistry::mergeJsonObject(const QJsonObject& root)
         }
     }
 
-    const QJsonObject contextual = root.value(QStringLiteral("contextual")).toObject();
+    const QJsonObject contextual = migratedShortcutEntries(root.value(QStringLiteral("contextual")).toObject());
     for (auto it = contextual.constBegin(); it != contextual.constEnd(); ++it) {
         const QJsonObject shortcutObject = it.value().toObject();
         const QString parsed = parseShortcutObject(shortcutObject);
@@ -336,6 +370,21 @@ bool ShortcutRegistry::saveUserOverrides()
     for (auto it = pendingChanges_.constBegin(); it != pendingChanges_.constEnd(); ++it) {
         const QString& id = it.key();
         const PendingShortcut& change = it.value();
+        // When the user edits an upgraded command, retire the old owned field
+        // so resetting the new binding cannot resurrect a stale font shortcut.
+        // Keep legacy metadata and defaults, as with all other override edits.
+        const QString legacy = legacyShortcutId(id);
+        if (!legacy.isEmpty()) {
+            for (const bool context : {false, true}) {
+                QJsonObject& entries = context ? contextual : actions;
+                QJsonObject object = entries.value(legacy).toObject();
+                if (object.contains(QStringLiteral("shortcut"))) {
+                    object.remove(QStringLiteral("shortcut"));
+                    entries.insert(legacy, object);
+                    (context ? contextualChanged : actionsChanged) = true;
+                }
+            }
+        }
         if (change.reset) {
             // Remove both owned fields so a lower app entry cannot resurrect an
             // old UI override. Metadata and hand-authored defaults survive.
@@ -350,7 +399,7 @@ bool ShortcutRegistry::saveUserOverrides()
             }
             QString fallback = defaultShortcutText(id);
             for (const QJsonObject& entries : {actions, contextual}) {
-                const QString candidate = parseShortcutObject(entries.value(id).toObject());
+                const QString candidate = parseShortcutObject(migratedShortcutEntries(entries).value(id).toObject());
                 if (!candidate.isEmpty()) {
                     fallback = candidate;
                 }
@@ -360,7 +409,8 @@ bool ShortcutRegistry::saveUserOverrides()
             }
         }
         // contextual is applied after actions by the existing load contract.
-        const bool context = contextual.value(id).isObject();
+        const bool context = contextual.value(id).isObject()
+            || (!legacy.isEmpty() && contextual.value(legacy).isObject());
         QJsonObject& entries = context ? contextual : actions;
         QJsonObject object = entries.value(id).toObject();
         object.insert(QStringLiteral("shortcut"), change.text);

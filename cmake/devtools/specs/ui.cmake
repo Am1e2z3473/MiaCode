@@ -12,6 +12,7 @@ miacode_add_dev_tool(qml_scintilla_editor_spec TEST
 )
 set_tests_properties(qml_scintilla_editor_spec PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
 target_compile_definitions(qml_scintilla_editor_spec PRIVATE
+    "MIACODE_QML_SPEC_IMPORT_ROOT=\"${MIACODE_QML_SPEC_IMPORT_ROOT}\""
     "MIACODE_SOURCE_ROOT=\"${CMAKE_CURRENT_SOURCE_DIR}\"")
 
 miacode_add_dev_tool(qml_app_background_model_spec TEST
@@ -164,6 +165,14 @@ miacode_add_dev_tool(qml_preview_rate_spec TEST
     INCLUDES src
 )
 target_compile_definitions(qml_preview_rate_spec PRIVATE
+    "MIACODE_QML_SPEC_IMPORT_ROOT=\"${MIACODE_QML_SPEC_IMPORT_ROOT}\"")
+
+miacode_add_dev_tool(qml_ui_scale_spec TEST
+    SOURCES src/tools/ui/QmlUiScaleSpec.cpp
+    LIBS Qt6::Core Qt6::Gui Qt6::Qml Qt6::Quick Qt6::QuickControls2 Qt6::Test
+    INCLUDES src
+)
+target_compile_definitions(qml_ui_scale_spec PRIVATE
     "MIACODE_QML_SPEC_IMPORT_ROOT=\"${MIACODE_QML_SPEC_IMPORT_ROOT}\"")
 
 miacode_add_dev_tool(qml_preview_rate_feedback_spec TEST

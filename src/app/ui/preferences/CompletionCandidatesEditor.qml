@@ -73,7 +73,7 @@ Rectangle {
                         width: 16
                         height: 16
                         source: Qt.resolvedUrl(root.expanded ? "icons/chevron-down.svg" : "icons/chevron-right.svg")
-                        sourceSize: Qt.size(16, 16)
+                        sourceSize: Theme.iconSourceSize(16, 16)
                         color: Theme.colors.text.secondary
                     }
                     Text {

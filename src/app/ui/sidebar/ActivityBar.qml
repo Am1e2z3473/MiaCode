@@ -121,21 +121,28 @@ Rectangle {
         height: Theme.activityButtonSize
         hoverEnabled: true
 
-        contentItem: ControlsImpl.IconImage {
-            anchors.centerIn: parent
-            width: Theme.activityIconSize
-            height: Theme.activityIconSize
-            source: button.selected && button.filledIconSource.toString().length > 0
-                ? button.filledIconSource : button.iconSource
-            sourceSize: Qt.size(Theme.activityIconSize, Theme.activityIconSize)
-            color: !button.enabled ? Theme.colors.text.disabled
-                 : button.selected ? Theme.colors.activityIcon.active
-                 : button.hovered ? Theme.colors.activityIcon.hover
-                 : Theme.colors.activityIcon.idle
+        // Controls size contentItem to the button's available area. Keep the
+        // icon inside a container so its higher-resolution source cannot
+        // change its painted size relative to the selection chrome.
+        contentItem: Item {
+            ControlsImpl.IconImage {
+                objectName: "activityButtonIcon"
+                anchors.centerIn: parent
+                width: Theme.activityIconSize
+                height: Theme.activityIconSize
+                source: button.selected && button.filledIconSource.toString().length > 0
+                    ? button.filledIconSource : button.iconSource
+                sourceSize: Theme.iconSourceSize(Theme.activityIconSize, Theme.activityIconSize)
+                color: !button.enabled ? Theme.colors.text.disabled
+                     : button.selected ? Theme.colors.activityIcon.active
+                     : button.hovered ? Theme.colors.activityIcon.hover
+                     : Theme.colors.activityIcon.idle
+            }
         }
 
         background: Item {
             HoverChrome {
+                objectName: "activityButtonChrome"
                 anchors.fill: parent
                 contentWidth: Theme.activityIconSize + 1
                 contentHeight: Theme.activityIconSize

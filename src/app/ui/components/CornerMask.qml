@@ -21,7 +21,7 @@ ShaderEffect {
     readonly property color wallpaperBaseColor: Theme.colors.background.surface
     property color panelBackingColor: Theme.surfaceColor(Theme.colors.background.panel)
     property color separatorColor: Theme.separatorColor
-    readonly property real separatorWidth: 1 / (Screen.devicePixelRatio * radius)
+    readonly property real separatorWidth: 1 / (Screen.devicePixelRatio * Theme.uiScale * radius)
     // Replace only this corner-sized patch in the Quick surface. Its outside
     // pixels retain alpha so the system material remains visible underneath.
     blending: false
@@ -29,16 +29,16 @@ ShaderEffect {
         sourceItem: root.visible && !Theme.nativeMaterialActive ? root.backgroundSource : null
         sourceRect: Qt.rect(root.backgroundOffset.x, root.backgroundOffset.y,
                             root.width, root.height)
-        textureSize: Qt.size(Math.ceil(root.width * root.Screen.devicePixelRatio),
-                             Math.ceil(root.height * root.Screen.devicePixelRatio))
+        textureSize: Qt.size(Math.ceil(root.width * root.Screen.devicePixelRatio * Theme.uiScale),
+                             Math.ceil(root.height * root.Screen.devicePixelRatio * Theme.uiScale))
         visible: false
     }
     readonly property var panelSource: ShaderEffectSource {
         sourceItem: root.visible ? root.panelItem : null
         sourceRect: Qt.rect(root.panelOffset.x, root.panelOffset.y,
                             root.width, root.height)
-        textureSize: Qt.size(Math.ceil(root.width * root.Screen.devicePixelRatio),
-                             Math.ceil(root.height * root.Screen.devicePixelRatio))
+        textureSize: Qt.size(Math.ceil(root.width * root.Screen.devicePixelRatio * Theme.uiScale),
+                             Math.ceil(root.height * root.Screen.devicePixelRatio * Theme.uiScale))
         visible: false
     }
 

@@ -85,7 +85,7 @@ Item {
                             anchors.fill: parent
                             visible: cell.modelData.kind !== "total"
                             source: cell.modelData.iconSource
-                            sourceSize: Qt.size(32, 32)
+                            sourceSize: Theme.iconSourceSize(32, 32)
                             fillMode: Image.PreserveAspectFit
                             smooth: true
                         }
@@ -96,7 +96,7 @@ Item {
                             height: 20
                             visible: cell.modelData.kind === "total"
                             source: Qt.resolvedUrl("icons/chart.svg")
-                            sourceSize: Qt.size(width, height)
+                            sourceSize: Theme.iconSourceSize(width, height)
                             color: Theme.colors.text.secondary
                         }
                     }

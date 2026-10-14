@@ -19,7 +19,6 @@ Item {
     required property var shortcuts
     required property var commands
     required property var previewSession
-    required property var preferencesModel
     required property bool sourceEditorFocused
     // Transforms edit the chart, so they are inert without one.
     property bool commandsEnabled: true
@@ -52,26 +51,6 @@ Item {
 
     // Preview commands bind straight to the preview session instead of going
     // through the backend command table.
-    Shortcut {
-        sequence: root.shortcuts.revision >= 0
-            ? root.shortcuts.sequence("editor.font_decrease", "Ctrl+Alt+-")
-            : ""
-        enabled: root.commandsEnabled && sequence !== ""
-        context: Qt.WindowShortcut
-        onActivated: root.preferencesModel.setEditorFontSize(
-                         root.preferencesModel.editorFontSize - 1)
-    }
-
-    Shortcut {
-        sequence: root.shortcuts.revision >= 0
-            ? root.shortcuts.sequence("editor.font_increase", "Ctrl+Alt+=")
-            : ""
-        enabled: root.commandsEnabled && sequence !== ""
-        context: Qt.WindowShortcut
-        onActivated: root.preferencesModel.setEditorFontSize(
-                         root.preferencesModel.editorFontSize + 1)
-    }
-
     Shortcut {
         sequence: root.shortcuts.revision >= 0
             ? root.shortcuts.sequence("preview.stop_or_play", "Ctrl+X")

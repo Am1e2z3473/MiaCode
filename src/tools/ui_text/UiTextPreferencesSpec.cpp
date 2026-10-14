@@ -2,6 +2,7 @@
 
 #include <QCoreApplication>
 #include <QJsonObject>
+#include <QTemporaryDir>
 #include <QTextStream>
 
 namespace {
@@ -107,6 +108,35 @@ int main(int argc, char** argv)
     ok &= expect(PreferenceDocument::themePreferenceFromToken(QStringLiteral("unknown"))
                      == PreferenceDocument::ThemePreference::System,
                  QStringLiteral("unknown theme tokens still fall back to system"), err);
+
+    QTemporaryDir scaleDirectory;
+    ok &= expect(scaleDirectory.isValid(), QStringLiteral("temporary UI scale preferences directory"), err);
+    if (scaleDirectory.isValid()) {
+        const QString path = scaleDirectory.filePath(QStringLiteral("preferences.json"));
+        PreferenceDocument::Repository repository(path);
+        QJsonObject scaleRoot = repository.snapshot();
+        QJsonObject scaleUi = scaleRoot.value(QStringLiteral("ui")).toObject();
+        scaleUi.insert(QStringLiteral("ui_scale_percent"), 137);
+        scaleUi.insert(QStringLiteral("editor_text_font_size"), 17);
+        scaleRoot.insert(QStringLiteral("ui"), scaleUi);
+        ok &= expect(repository.replace(scaleRoot), QStringLiteral("UI scale preferences persist"), err);
+
+        PreferenceDocument::Repository reopened(path);
+        QJsonObject reopenedRoot = reopened.snapshot();
+        QJsonObject reopenedUi = reopenedRoot.value(QStringLiteral("ui")).toObject();
+        ok &= expect(reopenedUi.value(QStringLiteral("ui_scale_percent")).toInt() == 137
+                         && reopenedUi.value(QStringLiteral("editor_text_font_size")).toInt() == 17,
+                     QStringLiteral("UI scale and editor font size retain independent values across launches"), err);
+        reopenedUi.insert(QStringLiteral("ui_scale_percent"), 100);
+        reopenedRoot.insert(QStringLiteral("ui"), reopenedUi);
+        ok &= expect(reopened.replace(reopenedRoot), QStringLiteral("reset UI scale preferences persist"), err);
+
+        PreferenceDocument::Repository resetLifetime(path);
+        const QJsonObject resetUi = resetLifetime.snapshot().value(QStringLiteral("ui")).toObject();
+        ok &= expect(resetUi.value(QStringLiteral("ui_scale_percent")).toInt() == 100
+                         && resetUi.value(QStringLiteral("editor_text_font_size")).toInt() == 17,
+                     QStringLiteral("resetting UI scale preserves the editor font size"), err);
+    }
 
     if (ok) {
         QTextStream(stdout) << "ui_text_preferences_spec ok\n";

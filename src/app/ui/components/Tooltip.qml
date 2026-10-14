@@ -14,7 +14,7 @@ ToolTip {
     y: {
         const above = -root.implicitHeight - 6
         const anchorTop = root.parent && root.hostWindow
-            ? root.parent.mapToItem(root.hostWindow.contentItem, 0, 0).y : 0
+            ? root.parent.mapToItem(root.Overlay.overlay, 0, 0).y : 0
         return anchorTop + above >= root.topMargin
             ? above : (root.parent ? root.parent.height : 0) + 6
     }

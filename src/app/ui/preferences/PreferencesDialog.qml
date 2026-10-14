@@ -95,6 +95,12 @@ AppDialog {
 
     property int currentPageIndex: 0
     property string capturingId: ""
+
+    Binding {
+        target: root.shortcuts
+        property: "captureActive"
+        value: root.visible && root.capturingId.length > 0
+    }
     property var shortcutRows: []
     readonly property var aboutInfo: root.preferences.aboutInfo()
     readonly property real sidebarWidth: root.width < 650 ? 140 : 180
@@ -135,6 +141,7 @@ AppDialog {
 
     function shortcutGroup(id) {
         switch (id.split(".")[0]) {
+        case "ui": return qsTrId("qml.interface")
         case "transform": return qsTrId("dialog.preferences.group.chart_transforms")
         case "preview": return qsTrId("dialog.preferences.group.playback")
         case "timeline": return qsTrId("dialog.preferences.group.timeline")
@@ -594,6 +601,35 @@ AppDialog {
                             text: qsTrId("dialog.preferences.blur_materials")
                             checked: root.preferencesModel.blurMaterialsEnabled
                             onToggled: root.preferencesModel.blurMaterialsEnabled = checked
+                        }
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: Theme.settingsRowSpacing
+
+                            PreferenceCombo {
+                                objectName: "preferencesUiScaleCombo"
+                                label: qsTrId("dialog.preferences.ui_scale")
+                                options: root.preferencesModel.uiScaleOptions
+                                currentValue: root.preferencesModel.uiScalePercent
+                                onPicked: value => root.preferencesModel.uiScalePercent = value
+                            }
+                            AppButton {
+                                objectName: "preferencesUiScaleResetButton"
+                                text: qsTrId("dialog.preferences.ui_scale.reset")
+                                enabled: root.preferencesModel.uiScalePercent !== 100
+                                onClicked: root.preferencesModel.uiScalePercent = 100
+                            }
+                        }
+
+                        Text {
+                            Layout.fillWidth: true
+                            Layout.leftMargin: root.settingsLabelWidth
+                            text: qsTrId("dialog.preferences.ui_scale.hint")
+                            font.family: Theme.uiFont
+                            font.pixelSize: Theme.secondaryFontSize
+                            color: Theme.colors.text.secondary
+                            wrapMode: Text.WordWrap
                         }
                     }
 

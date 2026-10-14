@@ -51,7 +51,7 @@ Item {
     // The lane can land on fractional logical coordinates on a fractional-DPR
     // display. Keep narrow playback geometry on the device-pixel grid so its
     // apparent width does not change as the center moves between samples.
-    readonly property real renderDpr: Math.max(1, Number(Screen.devicePixelRatio) || 1)
+    readonly property real renderDpr: Math.max(1, Number(Screen.devicePixelRatio) || 1) * Theme.uiScale
     readonly property real timestampBandHeight: 0
     // What the overlay reads out. Hovering asks "what is under my pointer";
     // dragging asks "where is the thing I am moving", and those are not the
@@ -286,7 +286,7 @@ Item {
         // evaluation; caching it in a binding can retain the pre-layout origin.
         function sceneOriginX() {
             const mapped = lane.mapToItem(null, 0, 0)
-            return mapped && isFinite(mapped.x) ? mapped.x : 0
+            return mapped && isFinite(mapped.x) ? mapped.x / Theme.uiScale : 0
         }
         // A fixed window carries the playhead through its drawn width, so it
         // stays inside the window even when the window is drawn wider than its

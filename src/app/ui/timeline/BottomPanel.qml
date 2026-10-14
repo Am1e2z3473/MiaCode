@@ -79,7 +79,7 @@ Item {
                     color: issueRow.leadingColor
                     wrapMode: Text.Wrap
                     font.family: Theme.codeFont.family
-                    font.pixelSize: Theme.timelineFontSize
+                    font.pixelSize: Theme.uiFontSize
                 }
 
                 Label {
@@ -88,7 +88,7 @@ Item {
                     color: Theme.colors.text.primary
                     wrapMode: Text.Wrap
                     font.family: Theme.uiFont
-                    font.pixelSize: Theme.timelineFontSize
+                    font.pixelSize: Theme.uiFontSize
                 }
             }
         }
@@ -165,11 +165,11 @@ Item {
         visible: timelineItem.hoverTooltipText.length > 0
         text: timelineItem.hoverTooltipText
         x: {
-            const position = timelineItem.mapToItem(null, timelineItem.hoverTooltipPosition)
+            const position = timelineItem.mapToItem(parent, timelineItem.hoverTooltipPosition)
             return position.x + 12
         }
         y: {
-            const position = timelineItem.mapToItem(null, timelineItem.hoverTooltipPosition)
+            const position = timelineItem.mapToItem(parent, timelineItem.hoverTooltipPosition)
             return position.y + 16
         }
     }
@@ -200,7 +200,7 @@ Item {
                         .arg(root.documentSession.syntaxWarningCount)
                 color: Theme.colors.text.secondary
                 font.family: Theme.uiFont
-                font.pixelSize: Theme.timelineFontSize
+                font.pixelSize: Theme.uiFontSize
             }
         }
 
@@ -236,7 +236,7 @@ Item {
                 : qsTrId("validation.no_syntax_errors_detected")
             color: Theme.colors.text.secondary
             font.family: Theme.uiFont
-            font.pixelSize: Theme.timelineFontSize
+            font.pixelSize: Theme.uiFontSize
         }
     }
 
@@ -266,7 +266,7 @@ Item {
                         .arg(root.muriWarningCount)
                 color: Theme.colors.text.secondary
                 font.family: Theme.uiFont
-                font.pixelSize: Theme.timelineFontSize
+                font.pixelSize: Theme.uiFontSize
             }
         }
 
@@ -301,7 +301,7 @@ Item {
                 : qsTrId("validation.no_muri_issues_detected")
             color: Theme.colors.text.secondary
             font.family: Theme.uiFont
-            font.pixelSize: Theme.timelineFontSize
+            font.pixelSize: Theme.uiFontSize
         }
     }
 

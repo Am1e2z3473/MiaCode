@@ -26,6 +26,15 @@ ShortcutModel::ShortcutModel(ShortcutRegistry& registry, QObject* parent)
 
 qulonglong ShortcutModel::revision() const { return revision_; }
 
+bool ShortcutModel::captureActive() const { return captureActive_; }
+
+void ShortcutModel::setCaptureActive(bool active)
+{
+    if (captureActive_ == active) return;
+    captureActive_ = active;
+    emit captureActiveChanged();
+}
+
 QString ShortcutModel::sequence(const QString& id, const QString& fallback) const
 {
     return resolve(registry_, id, fallback).toString(QKeySequence::PortableText);

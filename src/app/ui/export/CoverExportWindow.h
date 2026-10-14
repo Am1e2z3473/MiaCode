@@ -15,6 +15,7 @@ class QQuickWindow;
 
 namespace miacode::ui {
 class WorkbenchSettings;
+class ShortcutModel;
 
 class CoverExportWindow final : public QObject
 {
@@ -24,6 +25,7 @@ public:
     CoverExportWindow(miacode::ExportEngine& exportEngine,
                          miacode::PlaybackControl*& playbackControlSlot,
                          WorkbenchSettings& preferences,
+                         ShortcutModel& shortcuts,
                          const QIcon& icon,
                          QObject* parent = nullptr);
     ~CoverExportWindow() override;
@@ -35,6 +37,7 @@ public:
 
 private:
     WorkbenchSettings& preferences_;
+    ShortcutModel& shortcuts_;
     QIcon icon_;
     PlatformChrome platform_;
     WindowChrome windowChrome_;

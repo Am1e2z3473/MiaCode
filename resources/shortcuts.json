@@ -12,7 +12,7 @@
     "transform.random_rotate", "transform.clear_complete_elements", "transform.reset_tap_notes",
     "preview.stop_or_play", "preview.play_pause_global", "preview.speed_down", "preview.speed_up",
     "preview.pause_display_hold", "timeline.zoom_in", "timeline.zoom_out",
-    "editor.font_decrease", "editor.font_increase", "editor.overwrite_mode"
+    "ui.zoom_out", "ui.zoom_in", "ui.zoom_reset", "editor.overwrite_mode"
   ],
   "actions": {
     "file.quit": {
@@ -195,21 +195,29 @@
       "context": "timeline",
       "owner": "TimelineView / TimelineQuickItem"
     },
-    "editor.font_decrease": {
-      "label_key": "shortcut.editor.font_decrease",
-      "label_zh": "编辑器字号减小",
-      "label_en": "Decrease Editor Font",
+    "ui.zoom_out": {
+      "label_key": "shortcut.ui.zoom_out",
+      "label_zh": "缩小界面",
+      "label_en": "Zoom Out Interface",
       "default": "Ctrl+Alt+-",
       "context": "window",
-      "owner": "MainWindow.FrameBootstrapFinalize"
+      "owner": "QML UiScaleShortcuts"
     },
-    "editor.font_increase": {
-      "label_key": "shortcut.editor.font_increase",
-      "label_zh": "编辑器字号增大",
-      "label_en": "Increase Editor Font",
+    "ui.zoom_in": {
+      "label_key": "shortcut.ui.zoom_in",
+      "label_zh": "放大界面",
+      "label_en": "Zoom In Interface",
       "default": "Ctrl+Alt+=",
       "context": "window",
-      "owner": "MainWindow.FrameBootstrapFinalize"
+      "owner": "QML UiScaleShortcuts"
+    },
+    "ui.zoom_reset": {
+      "label_key": "shortcut.ui.zoom_reset",
+      "label_zh": "重置界面缩放",
+      "label_en": "Reset Interface Zoom",
+      "default": "Ctrl+Alt+0",
+      "context": "window",
+      "owner": "QML UiScaleShortcuts"
     },
     "editor.overwrite_mode": {
       "label_key": "shortcut.editor.overwrite_mode",

@@ -49,7 +49,7 @@ Rectangle {
                 text: "MiaCode"
                 color: Theme.colors.text.heading
                 font.family: Theme.uiFont
-                font.pixelSize: Theme.uiFontSize + 23
+                font.pixelSize: 36
                 font.weight: Font.DemiBold
                 horizontalAlignment: Text.AlignHCenter
             }

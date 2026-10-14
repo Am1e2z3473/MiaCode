@@ -8,6 +8,7 @@
 
 #include <QVariantMap>
 #include <QCoreApplication>
+#include <algorithm>
 
 namespace miacode::ui {
 
@@ -39,6 +40,8 @@ PreferencesModel::PreferencesModel(miacode::PreferencesStore*& storeSlot,
     connect(&completionDivisions_, &CompletionCandidateModel::savedValuesChanged,
             this, &PreferencesModel::persistCompletionCandidates);
     connect(&settings, &WorkbenchSettings::blurMaterialsEnabledChanged,
+            this, &PreferencesModel::interfaceChanged);
+    connect(&settings, &WorkbenchSettings::uiScalePercentChanged,
             this, &PreferencesModel::interfaceChanged);
     connect(&miacode::LocaleService::instance(), &miacode::LocaleService::languageChanged,
             this, [this](const QString&) {
@@ -177,6 +180,33 @@ void PreferencesModel::setBlurMaterialsEnabled(bool enabled)
 {
     if (settings_ != nullptr) {
         settings_->setBlurMaterialsEnabled(enabled);
+    }
+}
+
+QVariantList PreferencesModel::uiScaleOptions() const
+{
+    QList<int> percentages{75, 90, 100, 110, 125, 150, 175, 200};
+    const int current = uiScalePercent();
+    if (!percentages.contains(current)) {
+        percentages.append(current);
+        std::sort(percentages.begin(), percentages.end());
+    }
+    QVariantList rows;
+    for (int percent : percentages) {
+        rows.append(option(percent, QStringLiteral("%1%").arg(percent)));
+    }
+    return rows;
+}
+
+int PreferencesModel::uiScalePercent() const
+{
+    return settings_ != nullptr ? settings_->uiScalePercent() : 100;
+}
+
+void PreferencesModel::setUiScalePercent(int percent)
+{
+    if (settings_ != nullptr) {
+        settings_->setUiScalePercent(percent);
     }
 }
 

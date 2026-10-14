@@ -57,7 +57,7 @@ ComboBox {
         height: 12
 
         source: Qt.resolvedUrl("icons/chevron-down.svg")
-        sourceSize: Qt.size(12, 12)
+        sourceSize: Theme.iconSourceSize(12, 12)
         color: root.enabled ? Theme.colors.text.secondary : Theme.colors.text.disabled
     }
 

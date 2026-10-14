@@ -33,7 +33,7 @@ ChromeRow {
             Layout.alignment: Qt.AlignVCenter
             source: root.selected && root.filledIconSource.toString().length > 0
                 ? root.filledIconSource : root.iconSource
-            sourceSize: Qt.size(16, 16)
+            sourceSize: Theme.iconSourceSize(16, 16)
             color: root.contentColor
         }
 

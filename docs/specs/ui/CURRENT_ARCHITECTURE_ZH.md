@@ -56,6 +56,28 @@ QML 控件、弹层和表单优先复用 `src/app/ui/components/`；主题在 `t
 `app/runtime/settings/PreferenceDocumentProvider`。
 共享请求/进度复用 UiRequestService 和 JobProgressService；文件与资源解析复用现有领域服务。
 
+整体界面缩放由 `WorkbenchSettings.uiScalePercent` 管理，保存到
+`preferences_v2.json` 的 `ui.ui_scale_percent`，默认 100%，范围 75%–200%。
+首选项“界面 / 外观”即时调整；主窗口、分离预览和封面窗口复用 `UiScaleSurface`，
+按同一倍率缩放布局、文字、图标和所属窗口的 Overlay，布局与弹层位置仍使用基础 UI 单位。
+系统窗口坐标与材质区域按倍率转换；字体使用可变换的 Qt 文本渲染，SVG 图标按倍率提高源尺寸。
+界面缩放与编辑器独立字号、时间轴时间缩放、封面画布缩放分别保存，不改变导出配置或输出尺寸。
+
+主窗口、分离预览和封面窗口各安装一次 `UiScaleShortcuts`，以 `Qt.WindowShortcut` 接收当前窗口的按键，
+最终修改共享 `WorkbenchSettings` 的同一个缩放偏好。快捷键录入期间暂停缩放快捷键，防止录入时改变界面。
+
+| 动作 | 默认快捷键 | Registry ID |
+| --- | --- | --- |
+| 放大界面 10 个百分点 | `Ctrl+Alt+=` | `ui.zoom_in` |
+| 缩小界面 10 个百分点 | `Ctrl+Alt+-` | `ui.zoom_out` |
+| 恢复 100% | `Ctrl+Alt+0` | `ui.zoom_reset` |
+
+macOS 的 `Ctrl` 对应 Command，`Alt` 对应 Option。分音调整、时间轴滚轮缩放和封面画布缩放保留各自的快捷键。
+旧 `editor.font_increase` / `editor.font_decrease` 的自定义按键在读取 `shortcuts.json` 时分别映射到
+`ui.zoom_in` / `ui.zoom_out`，旧 ID 不再注册独立动作。同一配置节同时包含新旧 ID 时，以新 ID 为准；
+`contextual` 高于 `actions`、CWD 文件高于程序目录文件的既有优先级保持。修改或重置升级后的动作时，
+只清除旧 ID 的 `shortcut` 字段，保留元数据和手写 `default`；外部 CWD 输入仅供读取。
+
 主窗口的状态转换与几何记忆由 `WindowChrome` 管理，`Bootstrap` 在显示前恢复、
 接受关闭后保存。最小化保留窗口状态中的最大化与全屏标志，系统恢复沿用缩小前状态。
 `preferences_v2.json` 的 `ui.main_window` 保存 `normal_geometry`（`x`、`y`、`width`、`height`）、

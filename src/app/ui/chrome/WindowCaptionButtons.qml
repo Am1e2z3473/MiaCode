@@ -66,7 +66,7 @@ Row {
                 source: Qt.resolvedUrl(button.buttonType === "minimize" ? "icons/remove.svg"
                     : button.buttonType === "maximize" ? "icons/maximize.svg"
                     : button.buttonType === "restore" ? "icons/restore.svg" : "icons/close.svg")
-                sourceSize: Qt.size(14, 14)
+                sourceSize: Theme.iconSourceSize(14, 14)
                 color: button.iconColor
             }
         }

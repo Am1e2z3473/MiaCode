@@ -36,14 +36,14 @@ AppStickyPopup {
         TextMetrics {
             id: titleMetrics
             font.family: Theme.uiFont
-            font.pixelSize: Theme.timelineFontSize
+            font.pixelSize: Theme.uiFontSize
             text: row.text
         }
 
         TextMetrics {
             id: valueMetrics
             font.family: Theme.uiFont
-            font.pixelSize: Theme.timelineFontSize
+            font.pixelSize: Theme.uiFontSize
             text: valueLabel.text
         }
 
@@ -66,7 +66,7 @@ AppStickyPopup {
                     anchors.rightMargin: 8
                     text: row.text
                     font.family: Theme.uiFont
-                    font.pixelSize: Theme.timelineFontSize
+                    font.pixelSize: Theme.uiFontSize
                     color: Theme.colors.text.primary
                     elide: Text.ElideRight
                 }
@@ -77,7 +77,7 @@ AppStickyPopup {
                     anchors.verticalCenter: parent.verticalCenter
                     text: row.valueText
                     font.family: Theme.uiFont
-                    font.pixelSize: Theme.timelineFontSize
+                    font.pixelSize: Theme.uiFontSize
                     color: Theme.colors.text.secondary
                     horizontalAlignment: Text.AlignRight
                 }
