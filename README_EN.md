@@ -5,16 +5,18 @@
 <h1 align="center">MiaCode</h1>
 
 <p align="center">
-  <a href="https://github.com/Team-MiaCode/MiaCode/releases/latest"><img src="https://img.shields.io/github/v/release/Team-MiaCode/MiaCode" alt="Latest release"></a>
-  <a href="https://github.com/Team-MiaCode/MiaCode/stargazers"><img src="https://img.shields.io/github/stars/Team-MiaCode/MiaCode" alt="GitHub stars"></a>
-  <a href="LICENSE"><img src="https://img.shields.io/badge/source_code_license-MIT-blue" alt="Source code license: MIT"></a>
+  <a href="https://miacode.net/en/"><img src="https://img.shields.io/badge/Website-miacode.net-3178C6?style=for-the-badge" alt="Website"></a>
+  <a href="https://github.com/Team-MiaCode/MiaCode/releases/latest"><img src="https://img.shields.io/github/v/release/Team-MiaCode/MiaCode?style=for-the-badge&amp;label=Release&amp;logo=github&amp;color=24292F" alt="Latest release"></a>
+  <a href="https://github.com/Team-MiaCode/MiaCode/actions/workflows/package.yml?query=branch%3Adev"><img src="https://img.shields.io/badge/Nightly-CI-2088FF?style=for-the-badge&amp;logo=githubactions&amp;logoColor=white" alt="Nightly CI"></a>
+  <a href="https://github.com/Team-MiaCode/MiaCode/stargazers"><img src="https://img.shields.io/github/stars/Team-MiaCode/MiaCode?style=for-the-badge&amp;label=Stars" alt="GitHub stars"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue?style=for-the-badge" alt="Source code license: MIT"></a>
 </p>
 
 <p align="center">
   <a href="README.md">中文</a> | <a href="README_EN.md">English</a>
 </p>
 
-MiaCode is a maimai chart authoring tool built with Qt 6 / C++ / QML, with editing, live preview, syntax and Muri checks, video export, and cover creation.
+MiaCode is a maimai chart authoring tool built with Qt 6 / C++ / QML, with editing, live preview, syntax and Muri checks, video export, and cover creation for Windows, Apple Silicon macOS, and Linux.
 
 <table align="center" width="100%">
   <tr>
@@ -29,26 +31,26 @@ MiaCode is a maimai chart authoring tool built with Qt 6 / C++ / QML, with editi
 
 ## Quick Start
 
-<p>
-  <a href="https://miacode.net/en/download.html"><img src="https://img.shields.io/badge/Website-miacode.net-3178C6?style=for-the-badge" alt="Website"></a>
-  <a href="https://github.com/Team-MiaCode/MiaCode/releases"><img src="https://img.shields.io/badge/Release-GitHub-24292F?style=for-the-badge&amp;logo=github" alt="Release"></a>
-  <a href="https://github.com/Team-MiaCode/MiaCode/actions/workflows/package.yml?query=branch%3Adev"><img src="https://img.shields.io/badge/Nightly_CI-GitHub_Actions-2088FF?style=for-the-badge&amp;logo=githubactions&amp;logoColor=white" alt="Nightly CI"></a>
+### Download
+
+<p align="center">
+  <a href="https://miacode.net/en/download.html"><img src="resources/readme/download-website-en.svg" alt="Official Download" width="264" height="88"></a>
+  <a href="https://github.com/Team-MiaCode/MiaCode/releases"><img src="resources/readme/download-release.svg" alt="GitHub Releases" width="264" height="88"></a>
+  <a href="https://github.com/Team-MiaCode/MiaCode/actions/workflows/package.yml?query=branch%3Adev"><img src="resources/readme/download-nightly.svg" alt="Nightly CI" width="264" height="88"></a>
 </p>
 
-Windows (x64 / ARM64) and macOS (Apple Silicon) are supported. Download and extract the archive for your system and architecture.
+Packages are available for Windows and macOS.
+
+Linux users can [build from source](#build).
 
 - **Windows**: Double-click `MiaCode.exe` in the extracted folder.
 - **macOS**: Double-click `MiaCode.app`, or drag it into Applications. If macOS displays a security prompt, open Terminal in the extracted folder and run `xattr -dr com.apple.quarantine "MiaCode.app"`, then launch the app.
 
-Linux users can build from source using the instructions below.
-
-Usage documentation is available on the [official Wiki](https://miacode.net/en/miacode/index.html).
+See the [official Wiki](https://miacode.net/en/miacode/index.html) for usage instructions.
 
 ## Features
 
 ### Highlights
-
-- Supports Windows, macOS on Apple Silicon, and Linux.
 
 - Adjustable panel widths, with interchangeable editor and preview positions.
 
@@ -150,7 +152,8 @@ Supports online preview, PV downloads, and batch upload of local charts after si
 - Audio and video tools
 - BPM and latency detection
 
-## Build
+<details>
+<summary><h2 id="build">Build</h2></summary>
 
 ### Requirements
 
@@ -213,7 +216,10 @@ cmake --build build --target MiaCode --parallel 4
 
 Audio/video processing and export use a separate `ffmpeg` executable. Install FFmpeg with H.264 / AAC encoding support.
 
-## Repository Layout
+</details>
+
+<details>
+<summary><h2 id="repository-layout">Repository Layout</h2></summary>
 
 - [src](src): application source
 - [assets](assets): runtime assets and generated data
@@ -223,11 +229,26 @@ Audio/video processing and export use a separate `ffmpeg` executable. Install FF
 - [docs](docs): documentation
 - [samples](samples): sample resources for specification tests
 
-## License
+</details>
+
+<details>
+<summary><h2 id="license">License</h2></summary>
 
 Project-owned code is MIT-licensed. Release binaries distributed with the repository are intended for non-commercial use; see [LICENSE_SCOPE.md](LICENSE_SCOPE.md) for the scope.
 
 See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for the licenses and distribution restrictions of third-party libraries, fonts, sound effects, images, FFmpeg, BASS, Qt, and reference implementations.
+
+</details>
+
+## Maintenance and Feedback
+
+Browse [existing issues](https://github.com/Team-MiaCode/MiaCode/issues), or share errors and unexpected behavior there.
+
+When opening an [issue](https://github.com/Team-MiaCode/MiaCode/issues), include the state of the error or unexpected behavior, the preceding actions, reproduction steps, MiaCode version, environment, observed behavior, and relevant information.
+
+Logs and diagnostic information are important to us. See the [debugging guide](docs/ops/DEBUG_INDEX.md) for collection details.
+
+Code and documentation improvements are welcome through pull requests. Larger feature or architecture changes can be discussed in an issue first.
 
 ## Acknowledgements
 
