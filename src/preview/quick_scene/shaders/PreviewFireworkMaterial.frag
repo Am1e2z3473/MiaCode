@@ -272,14 +272,22 @@ vec4 sampleBlurredColorBallLayer(vec2 localPos, float radius, float alpha, float
     // Mip filtering blurs the complete premultiplied image, including its single alpha edge.
     float level = log2(1.0 + 12.0 * blur);
     vec4 color = useTextureBall ? textureLod(colorBallBigSource, uv, level) : proceduralColorBall(uv);
-    return color * alpha;
+    float radial = length(uv * 2.0 - 1.0);
+    float expansion = smoothstep(0.03, 0.30, timing.x);
+    float retirement = smoothstep(0.70, 1.05, timing.x);
+    float featherStart = mix(0.84, 0.78, expansion);
+    featherStart = mix(featherStart, 0.60, retirement);
+    float edgeCoverage = 1.0 - smoothstep(featherStart, 0.98, radial);
+    // Retain the colour body while feathering its outer silhouette.
+    float bodyCoverage = mix(0.98, 0.90, smoothstep(0.12, 0.65, radial));
+    return color * (alpha * bodyCoverage * edgeCoverage);
 }
 
-void main()
+vec4 sampleFirework(vec2 texCoord)
 {
     float exitProgress = smoothstep(0.90, 1.10, timing.w + 1.0 / 30.0);
     float exitScale = mix(1.0, 1.045, exitProgress);
-    vec2 localPos = (vTexCoord * 2.0 - 1.0) * quadRadius / exitScale;
+    vec2 localPos = (texCoord * 2.0 - 1.0) * quadRadius / exitScale;
     float radius = length(localPos);
 
     float fireworkAlpha = fireworkAndHole.x;
@@ -295,8 +303,7 @@ void main()
     float fallbackColorBallAlpha = colorBallBig.z;
     int renderFlags = renderFlagsFromFloat(colorBallBig.w);
     if (hasRenderFlag(renderFlags, kRenderFlagWarmup)) {
-        fragColor = vec4(0.0);
-        return;
+        return vec4(0.0);
     }
     bool drawFirework = hasRenderFlag(renderFlags, kRenderFlagDrawStripe);
     bool drawColorBallBig = hasRenderFlag(renderFlags, kRenderFlagDrawBigBall);
@@ -332,7 +339,7 @@ void main()
             float headFade = smoothstep(1.0 - headFeather, 1.01, radius / outerRadius);
             float frontAlpha = 1.0 - headFade * (1.0 - edgeArrival);
             float sectorAlpha = fireworkContributionAlpha * sectorCoverage
-                * launchAlpha * frontAlpha;
+                * launchAlpha * frontAlpha * 0.74;
             float sectorCenter = sectorStart + kSectorSpanDegrees * 0.5;
             float angularDistance = shortestAngleDistanceDegrees(angleDegrees, sectorCenter);
             float axial01 = 1.0 - smoothstep(0.0, kSectorSpanDegrees * 0.5, angularDistance);
@@ -362,7 +369,7 @@ void main()
             float colorRise = smoothstep(0.16, 0.34, timing.x);
             float saturation = mix(0.96, 1.03, colorRise);
             float radialTint = smoothstep(0.05, 1.0, fieldDistance);
-            float brightness = 0.92;
+            float brightness = 0.78;
             brightness *= mix(0.82, 1.04, radialTint);
             brightness *= mix(0.90, 1.04, axial01);
             brightness *= mix(0.66, 1.12, brightBlockLight);
@@ -397,7 +404,7 @@ void main()
         float washClearRadius = clipRadius * mix(-0.30, 1.30, washRetirement);
         float washClear = smoothstep(washClearRadius - clipRadius * 0.26,
             washClearRadius + clipRadius * 0.26, radius);
-        float washAlpha = 0.22 * fireworkAlpha * washEdge * washClear;
+        float washAlpha = 0.14 * fireworkAlpha * washEdge * washClear;
         washEmission = vec3(0.86, 0.88, 0.91) * washAlpha;
     }
 
@@ -408,12 +415,11 @@ void main()
 
     if (drawFirework && fireworkAlpha > 0.0 && lightShrink > 0.0) {
         // Independent light emission: soft radiance with no filled spike boundary.
-        float elapsed = timing.w + 1.0 / 30.0;
-        float burstProgress = clamp((elapsed - 0.133) / 0.100, 0.0, 1.0);
+        float burstProgress = clamp(timing.x / 0.100, 0.0, 1.0);
         float outward = burstProgress * burstProgress * (3.0 - 2.0 * burstProgress);
         float roundness = 1.0 - pow(lightRetirement, 4.0);
         float dispersion = outward * roundness;
-        vec2 lightPoint = localPos / (clipRadius * lightShrink);
+        vec2 lightPoint = localPos / (clipRadius * lightShrink * 0.75);
         float coreWidth = mix(0.026, 0.054, dispersion);
         float density = exp(-dot(lightPoint, lightPoint) / (coreWidth * coreWidth));
         // Elliptical Gaussian fields merge into one light, then collapse into the round core.
@@ -488,7 +494,7 @@ void main()
 
     }
     if (drawColorBallSmall) {
-        float retirement = clamp((timing.w + 1.0 / 30.0 - 0.15) / 0.183, 0.0, 1.0);
+        float retirement = clamp(timing.x / 0.150, 0.0, 1.0);
         vec4 ball = sampleSoftColorBallLayer(
             localPos, colorBallRadius, colorBallAlpha, sourceAspect, useTextureBall, retirement);
         layerColor = compositeSourceOver(ball, layerColor);
@@ -502,13 +508,38 @@ void main()
 
     // Core coverage removes the underlying tint; emission keeps its own warm colour.
     layerColor.rgb += washEmission * (1.0 - layerColor.a);
-    float coreCoverage = clamp(rootLayer.a * 1.25, 0.0, 1.0);
-    vec3 coreEmission = rootLayer.rgb * 1.25;
+    float coreCoverage = clamp(rootLayer.a * 1.10, 0.0, 1.0);
+    vec3 coreEmission = rootLayer.rgb * 1.10;
     layerColor = vec4(
         coreEmission + layerColor.rgb * (1.0 - coreCoverage),
         coreCoverage + layerColor.a * (1.0 - coreCoverage));
 
 
     float fieldEdge = 1.0 - 0.42 * smoothstep(clipRadius * 0.98, clipRadius * 1.06, radius);
-    fragColor = layerColor * qt_Opacity * fieldEdge;
+    return layerColor * fieldEdge;
+}
+
+vec3 fireworkBrightPass(vec4 color)
+{
+    float brightness = dot(color.rgb, vec3(0.2126, 0.7152, 0.0722));
+    return color.rgb * smoothstep(0.55, 0.90, brightness);
+}
+
+void main()
+{
+    // Sample the complete composition so stripes, balls and stars share the effect.
+    vec2 offset = vec2(clipRadius * 0.012 / (2.0 * quadRadius));
+    vec4 center = sampleFirework(vTexCoord);
+    vec4 left = sampleFirework(vTexCoord - vec2(offset.x, 0.0));
+    vec4 right = sampleFirework(vTexCoord + vec2(offset.x, 0.0));
+    vec4 top = sampleFirework(vTexCoord - vec2(0.0, offset.y));
+    vec4 bottom = sampleFirework(vTexCoord + vec2(0.0, offset.y));
+    vec4 softened = mix(center, (center * 4.0 + left + right + top + bottom) / 8.0, 0.18);
+    vec3 bloom = (fireworkBrightPass(center) * 4.0
+        + fireworkBrightPass(left) + fireworkBrightPass(right)
+        + fireworkBrightPass(top) + fireworkBrightPass(bottom)) * (0.08 / 8.0);
+    // Preserve premultiplied alpha when the glow extends beyond the source edge.
+    float bloomAlpha = clamp(max(bloom.r, max(bloom.g, bloom.b)), 0.0, 1.0);
+    float alpha = softened.a + bloomAlpha * (1.0 - softened.a);
+    fragColor = vec4(min(softened.rgb + bloom, vec3(alpha)), alpha) * qt_Opacity;
 }

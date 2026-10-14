@@ -64,13 +64,13 @@ const std::array<ScalarCurveKey, 11> kJudgeEffectFireworkColorBallBigAlphaKeys =
     {0.033, 0.95},
     {0.1, 0.9},
     {0.133, 0.8},
-    {0.167, 0.44},
-    {0.2, 0.32},
-    {0.233, 0.3},
-    {0.3, 0.3},
-    {0.4, 0.32},
-    {0.6, 0.28},
-    {1.2, 0.28},
+    {0.167, 0.60},
+    {0.2, 0.52},
+    {0.233, 0.50},
+    {0.3, 0.50},
+    {0.4, 0.50},
+    {0.6, 0.46},
+    {1.2, 0.46},
 }};
 
 const std::array<ScalarCurveKey, 9> kJudgeEffectFireworkHoleKeys = {{
@@ -173,8 +173,8 @@ PreviewJudgeFireworkLayerState buildPreviewJudgeFireworkLayerState(
     const qreal fireworkAlpha = sampleScalarCurve(kJudgeEffectFireworkAlphaKeys, clipTime);
     const qreal fireworkRotationDegrees = animationTime * kFireworkRotationDegreesPerSecond;
     const qreal smallGrowth = qBound<qreal>(0.0, (clipTime - 1.0 / 30.0) / (0.333 - 1.0 / 30.0), 1.0);
-    const qreal smallRetirement = qBound<qreal>(0.0, (clipTime - 0.150) / 0.150, 1.0);
-    const qreal bigRetirement = qBound<qreal>(0.0, (clipTime - 0.600) / 0.300, 1.0);
+    const qreal smallRetirement = qBound<qreal>(0.0, clipTime / 0.150, 1.0);
+    const qreal bigRetirement = qBound<qreal>(0.0, (clipTime - 0.700) / 0.350, 1.0);
     const qreal colorBallScale = 0.200 + 0.040 * smallGrowth;
     const qreal colorBallBigScale = 1.12 * sampleScalarCurve(kJudgeEffectFireworkColorBallBigScaleKeys, clipTime);
     const qreal colorBallAlpha = 0.90 * (1.0 - smallRetirement * smallRetirement);
