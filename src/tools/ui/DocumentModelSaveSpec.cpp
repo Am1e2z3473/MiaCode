@@ -123,6 +123,13 @@ bool verifyRejectedDraftBlocksPersistenceAndLeave()
     ok &= expect(model.saveAs(QUrl::fromLocalFile(copy)) && !workspace.isNetPreview()
         && !model.dirty() && read(copy).contains("&custom=online copy"),
         "corrected online-preview input can still be saved as a local document");
+    int metadataNotifications = 0;
+    QObject::connect(&model, &miacode::ui::DocumentModel::metadataChanged,
+                     &model, [&] { ++metadataNotifications; });
+    workspace.updateDocumentField(miacode::ChartWorkspaceDocumentField::First,
+                                  QStringLiteral("0.375"));
+    ok &= expect(metadataNotifications > 0 && model.currentDifficultyOffset() == QLatin1String("0.375"),
+                 "a calibration write through the workspace updates the header offset projection");
     analysis.shutdown();
     return ok;
 }

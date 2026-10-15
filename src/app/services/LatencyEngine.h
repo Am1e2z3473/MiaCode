@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QString>
+#include <QtGlobal>
 
 namespace miacode::latency {
 class LatencySandboxController;
@@ -16,6 +17,7 @@ public:
     virtual double documentWholeBpm() const = 0;
     virtual double documentOffsetSeconds() const = 0;
     virtual int documentClockCount() const = 0;
+    virtual quint64 documentOpenGeneration() const = 0;
     // Empty when there is no audio to detect against, which is what the page
     // shows its "no track" state for.
     virtual QString trackPath() const = 0;

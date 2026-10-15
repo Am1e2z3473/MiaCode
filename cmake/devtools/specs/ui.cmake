@@ -216,3 +216,16 @@ miacode_add_dev_tool(qml_document_replacement_sequence_spec TEST
 )
 target_compile_definitions(qml_document_replacement_sequence_spec PRIVATE
     "MIACODE_SOURCE_ROOT=\"${CMAKE_CURRENT_SOURCE_DIR}\"")
+
+miacode_add_dev_tool(latency_model_spec TEST
+    SOURCES
+        src/tools/ui/LatencyModelSpec.cpp
+        src/app/ui/latency/LatencyModel.cpp
+        src/app/ui/latency/LatencyModel.h
+        src/app/runtime/latency/LatencySandboxController.h
+    LIBS Qt6::Core Qt6::Gui Qt6::Qml Qt6::Quick Qt6::QuickControls2
+    INCLUDES src
+)
+set_tests_properties(latency_model_spec PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+target_compile_definitions(latency_model_spec PRIVATE
+    "MIACODE_QML_SPEC_IMPORT_ROOT=\"${MIACODE_QML_SPEC_IMPORT_ROOT}\"")

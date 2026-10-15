@@ -43,6 +43,7 @@ public:
     double documentWholeBpm() const override;
     double documentOffsetSeconds() const override;
     int documentClockCount() const override;
+    quint64 documentOpenGeneration() const override;
     QString trackPath() const override;
     void applyDetectorBpm(double bpm) override;
     void applyDetectorOffset(double seconds) override;
