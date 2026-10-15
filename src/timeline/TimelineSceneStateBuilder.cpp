@@ -27,7 +27,7 @@ using miacode::timeline::TimelineThemeColors;
 
 constexpr int kPlayableLaneCount = 8;
 constexpr int kLaneCount = kPlayableLaneCount + 1;
-constexpr int kHeaderHeight = 20;
+constexpr int kHeaderHeight = 26;
 constexpr int kLaneHeight = 20;
 constexpr double kMinimumContentScale = 0.25;
 constexpr double kMinimumTextScale = 0.5;
@@ -483,10 +483,10 @@ TimelineSceneState TimelineSceneStateBuilder::build(const TimelineSceneBuildRequ
     state.skinDirectory = trimmedSkinDirectory.isEmpty() ? QString() : QDir::cleanPath(trimmedSkinDirectory);
 
     const qreal headerScrollX = state.horizontalScrollValue;
-    const qreal headerSafeLeft = qMax<qreal>(0.0, state.headerLeftLimit);
+    const qreal headerSafeLeft = qMax<qreal>(state.timelineLeft, state.headerLeftLimit);
     const qreal headerSafeRight =
         qMin<qreal>(state.viewportSize.width(), qMax<qreal>(headerSafeLeft, state.headerRightLimit));
-    const qreal headerMarkerSafeLeft = qMax<qreal>(0.0, state.headerMarkerLeftLimit);
+    const qreal headerMarkerSafeLeft = qMax<qreal>(state.timelineLeft, state.headerMarkerLeftLimit);
     const qreal headerMarkerSafeRight =
         qMin<qreal>(state.viewportSize.width(), qMax<qreal>(headerMarkerSafeLeft, state.headerMarkerRightLimit));
     const qreal headerEmitPadding = qMax<qreal>(0.0, static_cast<qreal>(request.horizontalCullPaddingPx));
