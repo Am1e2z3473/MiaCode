@@ -1299,10 +1299,6 @@ Failed: %2</source>
         <source>Interface zoom</source>
         <translation>画面の拡大率</translation>
     </message>
-    <message id="dialog.preferences.ui_scale.reset">
-        <source>Reset to 100%</source>
-        <translation>100% に戻す</translation>
-    </message>
     <message id="dialog.preferences.update.auto_check">
         <source>Check for updates at startup</source>
         <translation>起動時にアップデートを確認</translation>

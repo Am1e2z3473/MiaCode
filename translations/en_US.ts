@@ -1299,10 +1299,6 @@ Failed: %2</translation>
         <source>Interface zoom</source>
         <translation>Interface zoom</translation>
     </message>
-    <message id="dialog.preferences.ui_scale.reset">
-        <source>Reset to 100%</source>
-        <translation>Reset to 100%</translation>
-    </message>
     <message id="dialog.preferences.update.auto_check">
         <source>Check for updates at startup</source>
         <translation>Check for updates at startup</translation>

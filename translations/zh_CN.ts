@@ -1299,10 +1299,6 @@ Failed: %2</source>
         <source>Interface zoom</source>
         <translation>界面缩放</translation>
     </message>
-    <message id="dialog.preferences.ui_scale.reset">
-        <source>Reset to 100%</source>
-        <translation>重置为 100%</translation>
-    </message>
     <message id="dialog.preferences.update.auto_check">
         <source>Check for updates at startup</source>
         <translation>启动时检查更新</translation>

@@ -603,23 +603,12 @@ AppDialog {
                             onToggled: root.preferencesModel.blurMaterialsEnabled = checked
                         }
 
-                        RowLayout {
-                            Layout.fillWidth: true
-                            spacing: Theme.settingsRowSpacing
-
-                            PreferenceCombo {
-                                objectName: "preferencesUiScaleCombo"
-                                label: qsTrId("dialog.preferences.ui_scale")
-                                options: root.preferencesModel.uiScaleOptions
-                                currentValue: root.preferencesModel.uiScalePercent
-                                onPicked: value => root.preferencesModel.uiScalePercent = value
-                            }
-                            AppButton {
-                                objectName: "preferencesUiScaleResetButton"
-                                text: qsTrId("dialog.preferences.ui_scale.reset")
-                                enabled: root.preferencesModel.uiScalePercent !== 100
-                                onClicked: root.preferencesModel.uiScalePercent = 100
-                            }
+                        PreferenceCombo {
+                            objectName: "preferencesUiScaleCombo"
+                            label: qsTrId("dialog.preferences.ui_scale")
+                            options: root.preferencesModel.uiScaleOptions
+                            currentValue: root.preferencesModel.uiScalePercent
+                            onPicked: value => root.preferencesModel.uiScalePercent = value
                         }
                     }
 
