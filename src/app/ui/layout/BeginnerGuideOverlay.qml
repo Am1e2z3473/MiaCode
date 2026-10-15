@@ -290,6 +290,23 @@ Popup {
                         id: bodyColumn
                         width: viewport.availableWidth
                         spacing: Theme.panelPadding
+                        Flow {
+                            width: parent.width
+                            spacing: Theme.panelPadding
+                            visible: (root.selectedSection.icons || []).length > 0
+
+                            Repeater {
+                                model: root.selectedSection.icons || []
+                                delegate: ControlsImpl.IconImage {
+                                    required property url modelData
+                                    width: root.iconSize
+                                    height: root.iconSize
+                                    source: modelData
+                                    sourceSize: Theme.iconSourceSize(width, height)
+                                    color: Theme.colors.text.active
+                                }
+                            }
+                        }
                         GridLayout {
                             width: parent.width
                             columns: root.selectedSection.columns || 2
@@ -324,6 +341,7 @@ Popup {
                                         spacing: Theme.panelPadding
 
                                         Item {
+                                            visible: !!feature.modelData.icon || sample.visible
                                             Layout.preferredWidth: sample.visible
                                                 ? Math.max(root.iconSize, sample.implicitWidth) : root.iconSize
                                             Layout.preferredHeight: root.iconSize

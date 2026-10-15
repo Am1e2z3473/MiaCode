@@ -60,16 +60,16 @@
         <translation>Menu</translation>
     </message>
     <message id="dialog.preferences.sidebar_mode">
-        <source>Sidebar mode</source>
-        <translation>Sidebar mode</translation>
+        <source>Navigation mode</source>
+        <translation>Navigation mode</translation>
     </message>
     <message id="dialog.preferences.sidebar_mode.standard">
         <source>Standard</source>
         <translation>Standard</translation>
     </message>
     <message id="dialog.preferences.sidebar_mode.efficient">
-        <source>Efficient</source>
-        <translation>Efficient</translation>
+        <source>Classic</source>
+        <translation>Classic</translation>
     </message>
     <message id="about.build_type">
         <source>Release Channel</source>
@@ -4562,6 +4562,18 @@ Error: %1</translation>
     <message id="guide.document_actions.title">
         <source>File actions</source>
         <translation>File actions</translation>
+    </message>
+    <message id="guide.navigation.classic.title">
+        <source>Creation menu</source>
+        <translation>Creation menu</translation>
+    </message>
+    <message id="guide.navigation.classic.hint">
+        <source>Expand the sidebar to open the creation menu.</source>
+        <translation>Expand the sidebar to open the creation menu.</translation>
+    </message>
+    <message id="guide.navigation.classic.chart">
+        <source>All chart creation menus are here.</source>
+        <translation>All chart creation menus are here.</translation>
     </message>
     <message id="guide.navigation.title">
         <source>Navigation</source>
