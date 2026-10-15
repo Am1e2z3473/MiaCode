@@ -3,6 +3,8 @@
 
 #include "app/ui/document/DocumentModel.h"
 
+#include <QDesktopServices>
+#include <QFileInfo>
 
 namespace miacode::ui {
 CommandService::CommandService(
@@ -64,6 +66,12 @@ void CommandService::closeDocument()
 
 bool CommandService::saveDocument() { return document_->save(); }
 bool CommandService::saveWholeDocument() { return document_->saveWholeDocument(); }
+bool CommandService::openCurrentFolder()
+{
+    const QString path = document_->currentFilePath();
+    return !path.isEmpty()
+        && QDesktopServices::openUrl(QUrl::fromLocalFile(QFileInfo(path).absolutePath()));
+}
 bool CommandService::saveDocumentAs(const QUrl& fileUrl) { return document_->saveAs(fileUrl); }
 void CommandService::discardDocumentChanges() { document_->discardChanges(); }
 void CommandService::selectDifficulty(int id) { document_->selectDifficulty(id); }

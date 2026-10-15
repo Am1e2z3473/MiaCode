@@ -40,6 +40,10 @@ Item {
     readonly property bool beginnerGuideActive: beginnerGuide.visible
     readonly property bool editorActive: state.hasActiveEditor && !pages.overlayActive
         && !beginnerGuideActive
+    readonly property bool currentEditorSaveEnabled: editorActive
+        && documentSession.dirtyEditorKeys.indexOf(state.activeEditorKey) >= 0
+    readonly property bool wholeDocumentSaveEnabled: documentSession.hasDocument
+        && documentSession.dirty
     readonly property bool editorCommandsAvailable: state.difficultyEditorActive
         && !pages.overlayActive && !beginnerGuideActive
     readonly property bool chartEditorActive: documentSession.hasDocument
@@ -319,8 +323,8 @@ Item {
                 shortcuts: root.applicationContext.shortcuts
                 documentSession: root.documentSession
                 pet: root.applicationContext.pet
-                saveEnabled: root.editorActive
-                wholeDocumentSaveEnabled: root.documentSession.hasDocument
+                saveEnabled: root.currentEditorSaveEnabled
+                wholeDocumentSaveEnabled: root.wholeDocumentSaveEnabled
                 documentAvailable: root.documentSession.hasDocument
                 editorCommandsEnabled: root.editorCommandsAvailable
                 chartCommandsEnabled: root.chartEditorActive
@@ -357,7 +361,10 @@ Item {
                 bottomActive: (state.difficultyEditorActive || state.latencyEditorActive)
                               && state.bottomPanelVisible && root.timelineSession.panelVisible
                 bottomPanelEnabled: state.difficultyEditorActive || state.latencyEditorActive
-                saveEnabled: root.editorActive
+                saveEnabled: root.currentEditorSaveEnabled
+                wholeDocumentSaveEnabled: root.wholeDocumentSaveEnabled && !root.beginnerGuideActive
+                currentFolderAvailable: root.documentSession.hasDocument
+                    && root.documentSession.currentFilePath.length > 0 && !root.beginnerGuideActive
                 canUndo: menuCommands.canUndo
                 canRedo: menuCommands.canRedo
                 onToggleSidebarRequested: root.toggleSidebar()
@@ -368,7 +375,9 @@ Item {
                 onUndoRequested: root.undo()
                 onRedoRequested: root.redo()
                 onOpenRequested: openFileDialog.open()
+                onOpenCurrentFolderRequested: root.commands.openCurrentFolder()
                 onSaveRequested: root.saveDocument()
+                onSaveWholeDocumentRequested: root.saveWholeDocument()
                 onAudioSettingsRequested: audioSettingsDialog.open()
                 onPreviewSettingsRequested: previewSettingsDialog.open()
                 onUnavailableFeatureRequested: featureName => root.showUnavailableFeature(featureName)
