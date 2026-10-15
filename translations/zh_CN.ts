@@ -60,16 +60,16 @@
         <translation>菜单</translation>
     </message>
     <message id="dialog.preferences.sidebar_mode">
-        <source>Sidebar mode</source>
-        <translation>侧栏模式</translation>
+        <source>Navigation mode</source>
+        <translation>导航模式</translation>
     </message>
     <message id="dialog.preferences.sidebar_mode.standard">
         <source>Standard</source>
-        <translation>标准模式</translation>
+        <translation>标准</translation>
     </message>
     <message id="dialog.preferences.sidebar_mode.efficient">
-        <source>Efficient</source>
-        <translation>高效模式</translation>
+        <source>Classic</source>
+        <translation>经典</translation>
     </message>
     <message id="about.build_type">
         <source>Release Channel</source>
@@ -4562,6 +4562,18 @@ Error: %1</source>
     <message id="guide.document_actions.title">
         <source>File actions</source>
         <translation>文件操作</translation>
+    </message>
+    <message id="guide.navigation.classic.title">
+        <source>Creation menu</source>
+        <translation>创作菜单</translation>
+    </message>
+    <message id="guide.navigation.classic.hint">
+        <source>Expand the sidebar to open the creation menu.</source>
+        <translation>展开侧栏查看创作菜单。</translation>
+    </message>
+    <message id="guide.navigation.classic.chart">
+        <source>All chart creation menus are here.</source>
+        <translation>所有谱面创作相关菜单都在这里。</translation>
     </message>
     <message id="guide.navigation.title">
         <source>Navigation</source>

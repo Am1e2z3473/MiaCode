@@ -60,16 +60,16 @@
         <translation>メニュー</translation>
     </message>
     <message id="dialog.preferences.sidebar_mode">
-        <source>Sidebar mode</source>
-        <translation>サイドバーモード</translation>
+        <source>Navigation mode</source>
+        <translation>ナビゲーションモード</translation>
     </message>
     <message id="dialog.preferences.sidebar_mode.standard">
         <source>Standard</source>
-        <translation>標準モード</translation>
+        <translation>標準</translation>
     </message>
     <message id="dialog.preferences.sidebar_mode.efficient">
-        <source>Efficient</source>
-        <translation>効率モード</translation>
+        <source>Classic</source>
+        <translation>クラシック</translation>
     </message>
     <message id="about.build_type">
         <source>Release Channel</source>
@@ -4562,6 +4562,18 @@ Error: %1</source>
     <message id="guide.document_actions.title">
         <source>File actions</source>
         <translation>ファイル操作</translation>
+    </message>
+    <message id="guide.navigation.classic.title">
+        <source>Creation menu</source>
+        <translation>制作メニュー</translation>
+    </message>
+    <message id="guide.navigation.classic.hint">
+        <source>Expand the sidebar to open the creation menu.</source>
+        <translation>サイドバーを開くと制作メニューが表示されます。</translation>
+    </message>
+    <message id="guide.navigation.classic.chart">
+        <source>All chart creation menus are here.</source>
+        <translation>譜面制作に関するすべてのメニューがここにあります。</translation>
     </message>
     <message id="guide.navigation.title">
         <source>Navigation</source>

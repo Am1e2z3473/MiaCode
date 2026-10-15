@@ -664,10 +664,24 @@ Item {
                 id: "navigation",
                 target: splitView.navigationItem,
                 fallbackTarget: mainToolBar.workspaceActionsItem,
-                hint: qsTrId("guide.navigation.hint"),
-                title: qsTrId("guide.navigation.title"),
+                hint: root.preferences.efficientSidebarEnabled
+                    ? qsTrId("guide.navigation.classic.hint") : qsTrId("guide.navigation.hint"),
+                title: root.preferences.efficientSidebarEnabled
+                    ? qsTrId("guide.navigation.classic.title") : qsTrId("guide.navigation.title"),
                 columns: 1,
-                features: [
+                icons: root.preferences.efficientSidebarEnabled ? [
+                    Qt.resolvedUrl("icons/metadata.svg"),
+                    Qt.resolvedUrl("icons/metronome.svg"),
+                    Qt.resolvedUrl("icons/file.svg"),
+                    Qt.resolvedUrl("icons/video.svg"),
+                    Qt.resolvedUrl("icons/image.svg"),
+                    Qt.resolvedUrl("icons/folder-zip.svg"),
+                    Qt.resolvedUrl("icons/tools.svg"),
+                    Qt.resolvedUrl("icons/settings.svg")
+                ] : [],
+                features: root.preferences.efficientSidebarEnabled ? [
+                    { label: qsTrId("guide.navigation.classic.chart") }
+                ] : [
                     { icon: Qt.resolvedUrl("icons/file.svg"), label: qsTrId("guide.navigation.chart") },
                     { icon: Qt.resolvedUrl("icons/export.svg"), label: qsTrId("guide.navigation.export") },
                     { icon: Qt.resolvedUrl("icons/tools.svg"), label: qsTrId("guide.navigation.tools") },
@@ -675,7 +689,8 @@ Item {
                 ],
                 placement: "right",
                 alignment: "start"
-            },
+            }
+        ].concat(root.preferences.efficientSidebarEnabled ? [] : [
             {
                 id: "chart-sidebar",
                 target: splitView.chartSidebarItem,
@@ -690,7 +705,8 @@ Item {
                 ],
                 placement: "right",
                 alignment: "start"
-            },
+            }
+        ]).concat([
             {
                 id: "workspace-actions",
                 target: mainToolBar.workspaceActionsItem,
@@ -737,7 +753,7 @@ Item {
                 placement: "above",
                 alignment: "end"
             }
-        ]
+        ])
     }
 
     // Input-heavy media tools keep their own dialogs; the launcher is a submenu.
