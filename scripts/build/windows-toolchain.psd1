@@ -6,7 +6,7 @@
 @{
     Qt = @{
         Version = '6.11.1'
-        Modules = @('qtmultimedia', 'qtshadertools', 'qtquick3d')
+        Modules = @('qtmultimedia', 'qtshadertools')
         # Probed in order before any download. {version} and {archdir} expand
         # per selected toolchain. A candidate must contain lib\cmake\Qt6 and
         # bin\windeployqt.exe to be accepted.
@@ -115,8 +115,7 @@
         QtRuntimeDllBaseNames = @(
             'Qt6Core', 'Qt6Gui', 'Qt6Multimedia',
             'Qt6Network', 'Qt6OpenGL', 'Qt6Quick', 'Qt6Qml', 'Qt6QmlMeta', 'Qt6QmlModels',
-            'Qt6QmlWorkerScript', 'Qt6QuickControls2', 'Qt6Svg',
-            'Qt6Quick3D', 'Qt6Quick3DRuntimeRender', 'Qt6Quick3DUtils'
+            'Qt6QmlWorkerScript', 'Qt6QuickControls2', 'Qt6Svg'
         )
         # Removed after deployment: the app does not link them.
         DeprecatedQtRuntimeDllBaseNames = @('Qt6OpenGLWidgets')
@@ -183,7 +182,6 @@
             'app-qt:Qt6Network', 'app-qt:Qt6OpenGL', 'app-qt:Qt6Quick', 'app-qt:Qt6Qml',
             'app-qt:Qt6QmlMeta', 'app-qt:Qt6QmlModels', 'app-qt:Qt6QmlWorkerScript',
             'app-qt:Qt6QuickControls2', 'app-qt:Qt6Svg',
-            'app-qt:Qt6Quick3D', 'app-qt:Qt6Quick3DRuntimeRender', 'app-qt:Qt6Quick3DUtils',
             'app\bass.dll', 'app\bassmix.dll', 'app\bass_fx.dll',
             'app\bassopus.dll', 'app\bassflac.dll',
             'app\platforms\qwindows.dll',

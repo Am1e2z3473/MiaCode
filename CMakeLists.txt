@@ -128,7 +128,7 @@ configure_file(
     @ONLY
 )
 
-find_package(Qt6 6.10 REQUIRED COMPONENTS Core Concurrent Gui LinguistTools Multimedia Quick Quick3D Quick3DHelpers Qml QuickControls2 ShaderTools)
+find_package(Qt6 6.10 REQUIRED COMPONENTS Core Concurrent Gui GuiPrivate LinguistTools Multimedia Quick Qml QuickControls2 ShaderTools)
 
 qt_policy(SET QTP0001 NEW)
 
@@ -571,6 +571,8 @@ qt_add_shaders(MiaCode "ui_shaders"
     PREFIX "/"
     FILES
         src/app/ui/shaders/corner_mask.frag
+        src/app/ui/pet/shaders/pet.vert
+        src/app/ui/pet/shaders/pet.frag
 )
 set_target_properties(MiaCode PROPERTIES
     MACOSX_BUNDLE_BUNDLE_NAME "MiaCode"
@@ -869,6 +871,8 @@ qt_add_qml_module(MiaCode
         src/app/ui/Bootstrap.h
         src/app/ui/pet/PetOverlayController.cpp
         src/app/ui/pet/PetOverlayController.h
+        src/app/ui/pet/PetScene.cpp
+        src/app/ui/pet/PetScene.h
         src/app/ui/shell/RootLifecycle.h
         src/app/ui/timeline/TimelineThemeBridge.cpp
         src/app/ui/timeline/TimelineThemeBridge.h
@@ -877,9 +881,6 @@ qt_add_qml_module(MiaCode
     RESOURCES
         ${MIACODE_UI_ICON_FILES}
         ${MIACODE_PET_ASSET_FILES}
-    IMPORTS
-        QtQuick3D
-        QtQuick3D.Helpers
 )
 
 set(MIACODE_TRANSLATION_TS_FILES
@@ -921,8 +922,7 @@ target_link_libraries(MiaCode PRIVATE
     Qt6::Network
     Qt6::Qml
     Qt6::Quick
-    Qt6::Quick3D
-    Qt6::Quick3DHelpers
+    Qt6::GuiPrivate
     Qt6::QuickControls2
     Qt6::Multimedia
     soundtouch
@@ -933,6 +933,7 @@ target_include_directories(MiaCode PRIVATE
     # qmltyperegistrar includes QML_ELEMENT headers by file name only; project
     # code includes them by their src-rooted path.
     src/app/ui/editor
+    src/app/ui/pet
     src/app/ui/timeline
 )
 target_compile_definitions(MiaCode PRIVATE HAVE_QT_MULTIMEDIA=1)

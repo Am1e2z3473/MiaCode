@@ -81,12 +81,7 @@ function Test-QtRoot {
     if ([string]::IsNullOrWhiteSpace($Path) -or !(Test-Path $Path)) {
         return $false
     }
-    foreach ($component in @("Qt6", "Qt6Quick3D", "Qt6Quick3DHelpers")) {
-        if (!(Test-Path (Join-Path $Path "lib\cmake\$component\${component}Config.cmake"))) {
-            return $false
-        }
-    }
-    return Test-Path (Join-Path $Path "bin\windeployqt.exe")
+    return (Test-Path (Join-Path $Path "lib\cmake\Qt6\Qt6Config.cmake")) -and (Test-Path (Join-Path $Path "bin\windeployqt.exe"))
 }
 
 function Expand-QtCandidate {
