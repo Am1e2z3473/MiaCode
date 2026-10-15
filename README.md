@@ -46,7 +46,7 @@ Linux 用户可[从源码构建](#构建)。
 - **Windows**：双击解压目录中的 `MiaCode.exe` 启动。
 - **macOS**：双击 `MiaCode.app` 启动，也可将其拖入“应用程序”文件夹。若系统显示安全提示，可在解压目录打开终端，执行 `xattr -dr com.apple.quarantine "MiaCode.app"` 后启动。
 
-具体使用方法见[官网 Wiki](https://miacode.net/miacode/index.html)。
+具体使用方法见[快速开始](https://miacode.net/miacode/quick-start)。
 
 ## 功能介绍
 

@@ -46,7 +46,7 @@ Linux users can [build from source](#build).
 - **Windows**: Double-click `MiaCode.exe` in the extracted folder.
 - **macOS**: Double-click `MiaCode.app`, or drag it into Applications. If macOS displays a security prompt, open Terminal in the extracted folder and run `xattr -dr com.apple.quarantine "MiaCode.app"`, then launch the app.
 
-See the [official Wiki](https://miacode.net/en/miacode/index.html) for usage instructions.
+See the [Quick Start](https://miacode.net/en/miacode/quick-start) for usage instructions.
 
 ## Features
 
