@@ -72,33 +72,36 @@ Item {
                 Row {
                     anchors.centerIn: parent
                     width: Math.min(root.contentWidth, cell.width - 8)
-                    height: Math.max(36, textColumn.implicitHeight)
+                    height: Math.max(28, textColumn.implicitHeight)
                     spacing: root.contentSpacing
 
                     Item {
                         width: root.iconSlotWidth
-                        height: 36
+                        height: 28
                         anchors.verticalCenter: parent.verticalCenter
 
                         Image {
                             anchors.centerIn: parent
-                            width: 20
-                            height: cell.modelData.kind === "hold" ? 36 : 20
+                            width: cell.modelData.kind === "hold" ? 18
+                                : cell.modelData.kind === "slide" ? 24 : 20
+                            height: cell.modelData.kind === "hold" ? 26 : width
                             visible: cell.modelData.kind !== "total"
                             source: cell.modelData.iconSource
                             sourceSize: Theme.iconSourceSize(width, height)
-                            fillMode: Image.PreserveAspectFit
+                            fillMode: cell.modelData.kind === "hold"
+                                ? Image.Stretch : Image.PreserveAspectFit
                             smooth: true
                         }
 
                         ControlsImpl.IconImage {
                             anchors.centerIn: parent
-                            width: 24
-                            height: 24
+                            width: 26
+                            height: 26
                             visible: cell.modelData.kind === "total"
                             source: Qt.resolvedUrl("icons/chart.svg")
                             sourceSize: Theme.iconSourceSize(width, height)
                             color: Theme.colors.text.secondary
+                            anchors.verticalCenterOffset: -1
                         }
                     }
 
