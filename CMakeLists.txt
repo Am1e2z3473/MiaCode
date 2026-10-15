@@ -756,7 +756,9 @@ set(MIACODE_UI_ICON_FILES
     src/app/ui/resources/icons/sliders-horizontal-fill.svg
     src/app/ui/resources/icons/more-fill.svg
     src/app/ui/resources/icons/folder-open.svg
+    src/app/ui/resources/icons/folder-arrow-right.svg
     src/app/ui/resources/icons/save.svg
+    src/app/ui/resources/icons/save-multiple.svg
     src/app/ui/resources/icons/undo.svg
     src/app/ui/resources/icons/redo.svg
     src/app/ui/resources/icons/play.svg

@@ -400,7 +400,7 @@ Item {
                 text: qsTrId("action.save_as")
                 shortcut: StandardKey.SaveAs
                 shortcutText: root.shortcuts.standardDisplayText(StandardKey.SaveAs)
-                enabled: root.commandsEnabled && root.wholeDocumentSaveEnabled
+                enabled: root.commandsEnabled && root.documentAvailable
                 onTriggered: root.commands.saveAsRequested()
             }
         }

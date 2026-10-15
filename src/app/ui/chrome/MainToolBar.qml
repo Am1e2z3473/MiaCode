@@ -11,7 +11,9 @@ Rectangle {
     signal toggleSidebarRequested()
     signal toggleBottomRequested()
     signal openRequested()
+    signal openCurrentFolderRequested()
     signal saveRequested()
+    signal saveWholeDocumentRequested()
     signal undoRequested()
     signal redoRequested()
     signal audioSettingsRequested()
@@ -20,7 +22,9 @@ Rectangle {
 
     property bool sidebarActive: false
     property bool bottomActive: false
-    property bool saveEnabled: true
+    property bool saveEnabled: false
+    property bool wholeDocumentSaveEnabled: false
+    property bool currentFolderAvailable: false
     property bool bottomPanelEnabled: true
     property bool canUndo: false
     property bool canRedo: false
@@ -68,17 +72,35 @@ Rectangle {
         z: 1
 
         ToolBarButton {
+            objectName: "openDocumentButton"
             id: openButton
             iconSource: Qt.resolvedUrl("icons/folder-open.svg")
             tooltip: qsTrId("action.open")
             onClicked: root.openRequested()
         }
         ToolBarButton {
+            objectName: "openCurrentFolderButton"
+            iconSource: Qt.resolvedUrl("icons/folder-arrow-right.svg")
+            tooltip: qsTrId("action.open_current_folder")
+            enabled: root.currentFolderAvailable
+            onClicked: root.openCurrentFolderRequested()
+        }
+        Item { width: 6; height: 1 }
+        ToolBarButton {
+            objectName: "saveCurrentEditorButton"
             iconSource: Qt.resolvedUrl("icons/save.svg")
             tooltip: qsTrId("action.save")
             enabled: root.saveEnabled
             onClicked: root.saveRequested()
         }
+        ToolBarButton {
+            objectName: "saveWholeDocumentButton"
+            iconSource: Qt.resolvedUrl("icons/save-multiple.svg")
+            tooltip: qsTrId("qml.save_entire_document")
+            enabled: root.wholeDocumentSaveEnabled
+            onClicked: root.saveWholeDocumentRequested()
+        }
+        Item { width: 6; height: 1 }
         ToolBarButton {
             iconSource: Qt.resolvedUrl("icons/undo.svg")
             tooltip: qsTrId("qml.undo")

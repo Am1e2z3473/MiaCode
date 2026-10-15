@@ -135,6 +135,10 @@
         <source>Open</source>
         <translation>開く</translation>
     </message>
+    <message id="action.open_current_folder">
+        <source>Open Current Folder</source>
+        <translation>現在のフォルダーを開く</translation>
+    </message>
     <message id="action.open_folder">
         <source>Open Folder</source>
         <translation>フォルダーを開く</translation>

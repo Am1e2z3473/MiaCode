@@ -36,6 +36,7 @@ public:
     Q_INVOKABLE void restoreBackupDocument(const QString& path);
     Q_INVOKABLE bool saveDocument();
     Q_INVOKABLE bool saveWholeDocument();
+    Q_INVOKABLE bool openCurrentFolder();
     Q_INVOKABLE bool saveDocumentAs(const QUrl& fileUrl);
     Q_INVOKABLE void discardDocumentChanges();
     Q_INVOKABLE void selectDifficulty(int id);

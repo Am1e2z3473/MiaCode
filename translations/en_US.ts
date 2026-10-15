@@ -135,6 +135,10 @@
         <source>Open</source>
         <translation>Open</translation>
     </message>
+    <message id="action.open_current_folder">
+        <source>Open Current Folder</source>
+        <translation>Open Current Folder</translation>
+    </message>
     <message id="action.open_folder">
         <source>Open Folder</source>
         <translation>Open Folder</translation>
