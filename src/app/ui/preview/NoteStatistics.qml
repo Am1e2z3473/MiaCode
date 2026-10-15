@@ -72,27 +72,29 @@ Item {
                 Row {
                     anchors.centerIn: parent
                     width: Math.min(root.contentWidth, cell.width - 8)
-                    height: Math.max(24, textColumn.implicitHeight)
+                    height: Math.max(36, textColumn.implicitHeight)
                     spacing: root.contentSpacing
 
                     Item {
                         width: root.iconSlotWidth
-                        height: 24
+                        height: 36
                         anchors.verticalCenter: parent.verticalCenter
 
                         Image {
-                            anchors.fill: parent
+                            anchors.centerIn: parent
+                            width: 20
+                            height: cell.modelData.kind === "hold" ? 36 : 20
                             visible: cell.modelData.kind !== "total"
                             source: cell.modelData.iconSource
-                            sourceSize: Theme.iconSourceSize(32, 32)
+                            sourceSize: Theme.iconSourceSize(width, height)
                             fillMode: Image.PreserveAspectFit
                             smooth: true
                         }
 
                         ControlsImpl.IconImage {
                             anchors.centerIn: parent
-                            width: 20
-                            height: 20
+                            width: 24
+                            height: 24
                             visible: cell.modelData.kind === "total"
                             source: Qt.resolvedUrl("icons/chart.svg")
                             sourceSize: Theme.iconSourceSize(width, height)
