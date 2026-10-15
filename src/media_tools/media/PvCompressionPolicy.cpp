@@ -57,10 +57,12 @@ QString pvCompressionEncoderFromInputInfo(const QString& ffmpegInputInfo)
     }
 
     const QString codec = match.captured(1).toLower();
-    if (codec == QStringLiteral("h264")) {
+    if (codec == QStringLiteral("h264") || codec == QStringLiteral("mpeg2")
+        || codec == QStringLiteral("mpeg2video") || codec == QStringLiteral("mpeg1")
+        || codec == QStringLiteral("mpeg1video")) {
         return QStringLiteral("libx264");
     }
-    if (codec == QStringLiteral("hevc")) {
+    if (codec == QStringLiteral("hevc") || codec == QStringLiteral("h265")) {
         return QStringLiteral("libx265");
     }
     if (codec == QStringLiteral("av1")) {
@@ -104,17 +106,14 @@ QStringList makePvCompressionPassArguments(
 if (videoEncoder == QStringLiteral("libx264")
         || videoEncoder == QStringLiteral("libx265")) {
         args << QStringLiteral("-preset") << QStringLiteral("fast");
+    }
+    if (videoEncoder == QStringLiteral("libx265")) {
+        args << QStringLiteral("-x265-params")
+             << QStringLiteral("pass=%1:stats=%2")
+                    .arg(QString::number(passNumber), passLogPath);
     } else if (videoEncoder == QStringLiteral("libaom-av1")) {
         args << QStringLiteral("-cpu-used") << QStringLiteral("6")
              << QStringLiteral("-row-mt") << QStringLiteral("1");
-    } else if (videoEncoder == QStringLiteral("libvpx-vp9")) {
-        args << QStringLiteral("-deadline") << QStringLiteral("good")
-             << QStringLiteral("-cpu-used") << QStringLiteral("4");
-    }
-
-    if (passNumber == 1) {
-        args << QStringLiteral("-f") << QStringLiteral("null") << QProcess::nullDevice();
-    } else {
         args << QStringLiteral("-movflags") << QStringLiteral("+faststart") << outputPath;
     }
     return args;

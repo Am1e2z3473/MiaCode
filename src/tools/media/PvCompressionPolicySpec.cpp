@@ -68,9 +68,17 @@ int main(int argc, char** argv)
             == QStringLiteral("libx264"),
         "H.264 sources use the H.264 encoder");
     ok &= check(
+        pvCompressionEncoderFromInputInfo(QStringLiteral("Stream #0:0: Video: mpeg2video (Main), 1920x1080"))
+            == QStringLiteral("libx264"),
+        "MPEG-2 sources fall back to H.264 for compatibility");
+    ok &= check(
         pvCompressionEncoderFromInputInfo(QStringLiteral("Stream #0:0: Video: hevc (Main), 1920x1080"))
             == QStringLiteral("libx265"),
         "HEVC sources use the HEVC encoder");
+    ok &= check(
+        pvCompressionEncoderFromInputInfo(QStringLiteral("Stream #0:0: Video: h265 (Main), 1920x1080"))
+            == QStringLiteral("libx265"),
+        "H.265 aliases also use the HEVC encoder");
     ok &= check(
         pvCompressionEncoderFromInputInfo(QStringLiteral("Stream #0:0: Video: av1 (Main), 1920x1080"))
             == QStringLiteral("libaom-av1"),
@@ -79,6 +87,18 @@ int main(int argc, char** argv)
         pvCompressionEncoderFromInputInfo(QStringLiteral("Stream #0:0: Video: unknown, 1920x1080"))
             .isEmpty(),
         "unsupported source codecs are rejected rather than converted");
+
+    const QStringList hevcPass = makePvCompressionPassArguments(
+        QStringLiteral("input.mp4"),
+        QStringLiteral("output.mp4"),
+        QStringLiteral("passlog"),
+        QStringLiteral("libx265"),
+        plan,
+        2);
+    const int x265ParamsIndex = argumentValueIndex(hevcPass, QStringLiteral("-x265-params"));
+    ok &= check(
+        x265ParamsIndex >= 0 && hevcPass.value(x265ParamsIndex + 1).startsWith(QStringLiteral("pass=2:stats=")),
+        "HEVC two-pass compression uses x265 pass statistics");
 
     const int fpsModeIndex = argumentValueIndex(secondPass, QStringLiteral("-fps_mode"));
     ok &= check(
