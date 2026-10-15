@@ -27,7 +27,7 @@ using miacode::timeline::TimelineThemeColors;
 
 constexpr int kPlayableLaneCount = 8;
 constexpr int kLaneCount = kPlayableLaneCount + 1;
-constexpr int kHeaderHeight = 26;
+constexpr int kHeaderHeight = 36;
 constexpr int kLaneHeight = 20;
 constexpr double kMinimumContentScale = 0.25;
 constexpr double kMinimumTextScale = 0.5;
