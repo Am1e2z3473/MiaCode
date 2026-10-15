@@ -159,7 +159,7 @@ Linux 用户可[从源码构建](#构建)。
 
 - CMake 3.21+
 - C++20 编译器
-- Qt 6.10+，包含 Qt Quick、Quick Controls 2、Quick 3D、Multimedia、Shader Tools、Linguist Tools，以及 Multimedia 私有开发头文件
+- Qt 6.10+，包含 Qt Quick、Quick Controls 2、Multimedia、Shader Tools、Linguist Tools，以及 Gui 与 Multimedia 私有开发头文件
 
 更详细的打包说明见 [scripts/README.md](scripts/README.md)。
 
@@ -188,12 +188,12 @@ xcode-select --install
 brew install cmake python
 ```
 
-安装 Qt 6.10+（包含 Multimedia、Shader Tools 和 Quick 3D），准备预览 SDK 与导出用 FFmpeg，然后构建并打包：
+安装 Qt 6.10+（包含 Multimedia 和 Shader Tools），准备预览 SDK 与导出用 FFmpeg，然后构建并打包：
 
 ```bash
 python3 -m pip install aqtinstall
 python3 -m aqt install-qt mac desktop 6.11.1 clang_64 --outputdir .qt \
-  --modules qtmultimedia qtshadertools qtquick3d
+  --modules qtmultimedia qtshadertools
 bash scripts/ffmpeg/ensure-macos-ffmpeg-dev.sh
 bash scripts/ffmpeg/ensure-macos-ffmpeg.sh
 bash scripts/build/build-macos-local.sh
@@ -203,7 +203,7 @@ bash scripts/build/build-macos-local.sh
 
 ### Linux（适用于高级用户）
 
-Linux 无打包脚本，需要手动安装 CMake 3.21+、C++20 编译器、pkg-config 和 Qt 6.10+（包含 Qt Quick、Quick Controls 2、Quick 3D、Multimedia、Multimedia 的私有开发头文件、Shader Tools 和 Linguist Tools），以及 FFmpeg、VA-API、DRM、OpenGL / EGL 的开发库。FFmpeg 开发库需包含 `libavfilter`、`libavcodec`、`libavformat`、`libavutil`、`libswresample` 和 `libswscale`。
+Linux 无打包脚本，需要手动安装 CMake 3.21+、C++20 编译器、pkg-config 和 Qt 6.10+（包含 Qt Quick、Quick Controls 2、Multimedia、Multimedia 的私有开发头文件、Shader Tools 和 Linguist Tools），以及 FFmpeg、VA-API、DRM、OpenGL / EGL 的开发库。FFmpeg 开发库需包含 `libavfilter`、`libavcodec`、`libavformat`、`libavutil`、`libswresample` 和 `libswscale`。
 
 在仓库根目录执行以下命令，将 `[/path/to/Qt/6.x/gcc_64]` 替换为 Qt 安装目录：
 

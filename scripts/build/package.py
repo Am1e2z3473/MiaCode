@@ -21,7 +21,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 DIST = ROOT / "dist"
 QT_VERSION = "6.11.1"
-QT_MODULES = ("qtmultimedia", "qtshadertools", "qtquick3d", "qttasktree")
+QT_MODULES = ("qtmultimedia", "qtshadertools")
 MACHO_MAGICS = {
     b"\xfe\xed\xfa\xce",
     b"\xfe\xed\xfa\xcf",
@@ -132,8 +132,6 @@ def provision_windows_qt():
     module_cmake = {
         "qtmultimedia": "Qt6Multimedia",
         "qtshadertools": "Qt6ShaderTools",
-        "qtquick3d": "Qt6Quick3D",
-        "qttasktree": "Qt6TaskTree",
     }
     for module in QT_MODULES:
         if not qt_component(root, module_cmake[module]):
@@ -211,10 +209,6 @@ def provision_macos_qt():
         missing.append("qtmultimedia")
     if not qt_component(root, "Qt6ShaderTools"):
         missing.append("qtshadertools")
-    if not qt_component(root, "Qt6Quick3D"):
-        missing.append("qtquick3d")
-    if not qt_component(root, "Qt6TaskTree"):
-        missing.append("qttasktree")
     if missing:
         aqt(*missing)
     else:

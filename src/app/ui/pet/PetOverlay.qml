@@ -1,7 +1,6 @@
 import QtQuick
 import QtQuick.Window
 import QtQuick.Controls
-import QtQuick3D
 import MiaCode.UI
 
 Window {
@@ -100,28 +99,12 @@ Window {
         Accessible.role: Accessible.Animation
         Accessible.name: qsTrId("pet.accessible_name")
 
-        View3D {
+        PetScene {
+            id: petScene
             anchors.fill: parent
+            cameraMirrored: petWindow.controller.cameraMirrored
 
-            environment: SceneEnvironment {
-                backgroundMode: SceneEnvironment.Transparent
-                antialiasingMode: SceneEnvironment.NoAA
-            }
-
-            Node {
-                id: cameraTarget
-                position: Qt.vector3d(0, 0.5, 0)
-            }
-
-            PerspectiveCamera {
-                position: Qt.vector3d(petWindow.controller.cameraMirrored ? 1.7 : -1.7, 1.05, -2.1)
-                lookAtNode: cameraTarget
-                fieldOfView: 34
-                clipNear: 0.01
-                clipFar: 100
-            }
-
-            Fox {
+            model: Fox {
                 clip: petWindow.animationState === "sleeping"
                       ? "animation.fox.sleep"
                       : petWindow.animationState === "sitting"
@@ -219,6 +202,7 @@ Window {
         onTriggered: {
             petWindow.animationPhase += frameTime
             petWindow.lifeTime += frameTime
+            petScene.advanceFrame()
         }
     }
 

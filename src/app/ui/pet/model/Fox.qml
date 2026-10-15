@@ -1,9 +1,8 @@
 // 桌宠狐狸定稿模型：骨骼、盒式 UV 与动画以官方基岩包为来源。
 import QtQuick
-import QtQuick3D
-import QtQuick3D.Helpers
+import MiaCode.UI
 
-Node {
+PetModelNode {
     id: fox
     property string clip: ""
     property real phase: 0
@@ -41,38 +40,23 @@ Node {
                              cx*sy*cz + sx*cy*sz,
                              cx*cy*sz - sx*sy*cz)
     }
-    Texture {
-        id: skin
-        source: "pet/minecraft/fox.png"
-        magFilter: Texture.Nearest
-        minFilter: Texture.Nearest
-        generateMipmaps: false
-        tilingModeHorizontal: Texture.ClampToEdge
-        tilingModeVertical: Texture.ClampToEdge
-    }
-    DefaultMaterial {
-        id: fur
-        lighting: DefaultMaterial.NoLighting
-        diffuseMap: skin
-        cullMode: Material.BackFaceCulling
-    }
-    Node {
+    PetModelNode {
         objectName: "world"
         position: Qt.vector3d(-(0 + (0 + fox.sittingWeight * (0 - (0)) + fox.sleepingWeight * (0 - (0)) + fox.wiggleWeight * (0 - (0)))) / 16, (0 + (0 + fox.sittingWeight * (0 - (0)) + fox.sleepingWeight * (0 - (0)) + fox.wiggleWeight * (0 - (0)))) / 16, (0 + (0 + fox.sittingWeight * (0 - (0)) + fox.sleepingWeight * (0 - (0)) + fox.wiggleWeight * (0 - (0)))) / 16)
         rotation: fox.rotationZYX((0 + fox.sittingWeight * (0 - (0)) + fox.sleepingWeight * (0 - (0)) + fox.wiggleWeight * (0 - (0))), (0 + fox.sittingWeight * (0 - (0)) + fox.sleepingWeight * (0 - (0)) + fox.wiggleWeight * (0 - (0))), (0 + fox.sittingWeight * (0 - (0)) + fox.sleepingWeight * (0 - (0)) + fox.wiggleWeight * (0 - (0))))
-        Node {
+        PetModelNode {
             objectName: "root"
             position: Qt.vector3d(-(0 + (0 + fox.sittingWeight * (0 - (0)) + fox.sleepingWeight * (0 - (0)) + fox.wiggleWeight * (0 - (0)))) / 16, (0 + (0 + fox.sittingWeight * (0 - (0)) + fox.sleepingWeight * (0 - (0)) + fox.wiggleWeight * (0 - (0)))) / 16, (0 + (0 + fox.sittingWeight * (0 - (0)) + fox.sleepingWeight * (0 - (0)) + fox.wiggleWeight * (0 - (0)))) / 16)
             rotation: fox.rotationZYX((0 + fox.sittingWeight * (0 - (0)) + fox.sleepingWeight * (0 - (0)) + fox.wiggleWeight * (0 - (0))), (0 + fox.sittingWeight * (0 - (0)) + fox.sleepingWeight * (0 - (0)) + fox.wiggleWeight * (0 - (0))), (0 + fox.sittingWeight * (0 - (0)) + fox.sleepingWeight * (0 - (0)) + fox.wiggleWeight * (0 - (0))))
-            Node {
+            PetModelNode {
                 objectName: "body"
                 position: Qt.vector3d(-(0 + (0 + fox.sittingWeight * ((0 + 0.0) - (0)) + fox.sleepingWeight * ((0 + 0.0) - (0)) + fox.wiggleWeight * ((0 + 0.0) - (0)))) / 16, (8 + (0 + fox.sittingWeight * ((0 + 1.0) - (0)) + fox.sleepingWeight * ((0 + -4.8) - (0)) + fox.wiggleWeight * ((0 + -1.8) - (0)))) / 16, (0 + (0 + fox.sittingWeight * ((0 + 0.0) - (0)) + fox.sleepingWeight * ((0 + 0.0) - (0)) + fox.wiggleWeight * ((0 + 0.0) - (0)))) / 16)
                 rotation: fox.rotationZYX(((0 + (-(0))) + fox.sittingWeight * (((0 + (-(0))) + -60.0) - ((0 + (-(0))))) + fox.sleepingWeight * (((0 + (-(0))) + 0.0) - ((0 + (-(0))))) + fox.wiggleWeight * (((0 + (-(0))) + 0.0) - ((0 + (-(0)))))), ((0 + 0.0) + fox.sittingWeight * (((0 + 0.0) + 0.0) - ((0 + 0.0))) + fox.sleepingWeight * (((0 + 0.0) + 0.0) - ((0 + 0.0))) + fox.wiggleWeight * (((0 + 0.0) + ((Math.cos((((fox.lifeTime * 20.0) * 53.7)) * Math.PI / 180) * 5.0) - ((0 + 0.0)))) - ((0 + 0.0)))), ((0 + 0.0) + fox.sittingWeight * (((0 + 0.0) + 0.0) - ((0 + 0.0))) + fox.sleepingWeight * (((0 + 0.0) + -90.0) - ((0 + 0.0))) + fox.wiggleWeight * (((0 + 0.0) + 0.0) - ((0 + 0.0)))))
-                Model {
+                PetModelNode {
                     objectName: "body_mesh"
-                    materials: [fur]
+
                     scale: Qt.vector3d(1, 1 + fox.breathing * 0.04, 1 + fox.breathing * 0.02)
-                    geometry: ProceduralMesh {
+                    geometry: PetMesh {
                         positions: [
                             Qt.vector3d(0.1875, 0.1875, -0.1875),
                             Qt.vector3d(0.1875, -0.1875, -0.1875),
@@ -99,32 +83,7 @@ Node {
                             Qt.vector3d(0.1875, -0.1875, 0.5),
                             Qt.vector3d(-0.1875, -0.1875, 0.5)
                         ]
-                        normals: [
-                            Qt.vector3d(1, 0, 0),
-                            Qt.vector3d(1, 0, 0),
-                            Qt.vector3d(1, 0, 0),
-                            Qt.vector3d(1, 0, 0),
-                            Qt.vector3d(-1, 0, 0),
-                            Qt.vector3d(-1, 0, 0),
-                            Qt.vector3d(-1, 0, 0),
-                            Qt.vector3d(-1, 0, 0),
-                            Qt.vector3d(0, 2.22044605e-16, -1),
-                            Qt.vector3d(0, 2.22044605e-16, -1),
-                            Qt.vector3d(0, 2.22044605e-16, -1),
-                            Qt.vector3d(0, 2.22044605e-16, -1),
-                            Qt.vector3d(0, -2.22044605e-16, 1),
-                            Qt.vector3d(0, -2.22044605e-16, 1),
-                            Qt.vector3d(0, -2.22044605e-16, 1),
-                            Qt.vector3d(0, -2.22044605e-16, 1),
-                            Qt.vector3d(0, 1, 2.22044605e-16),
-                            Qt.vector3d(0, 1, 2.22044605e-16),
-                            Qt.vector3d(0, 1, 2.22044605e-16),
-                            Qt.vector3d(0, 1, 2.22044605e-16),
-                            Qt.vector3d(0, -1, -2.22044605e-16),
-                            Qt.vector3d(0, -1, -2.22044605e-16),
-                            Qt.vector3d(0, -1, -2.22044605e-16),
-                            Qt.vector3d(0, -1, -2.22044605e-16)
-                        ]
+
                         uv0s: [
                             Qt.vector2d(0.468994141, 0.343261719),
                             Qt.vector2d(0.562255859, 0.343261719),
@@ -154,15 +113,15 @@ Node {
                         indexes: [0, 2, 1, 2, 3, 1, 4, 6, 5, 6, 7, 5, 8, 10, 9, 10, 11, 9, 12, 14, 13, 14, 15, 13, 16, 18, 17, 18, 19, 17, 20, 22, 21, 22, 23, 21]
                     }
                 }
-                Node {
+                PetModelNode {
                     objectName: "head"
                     position: Qt.vector3d(-(0 + (0 + fox.sittingWeight * ((0 + 0.0) - (0)) + fox.sleepingWeight * ((0 + 1.8) - (0)) + fox.wiggleWeight * ((0 + 0.0) - (0)))) / 16, (0 + (0 + fox.sittingWeight * ((0 + 3.0) - (0)) + fox.sleepingWeight * ((0 + -0.4) - (0)) + fox.wiggleWeight * ((0 + -0.8) - (0)))) / 16, (-3 + (0 + fox.sittingWeight * ((0 + -3.0) - (0)) + fox.sleepingWeight * ((0 + -2.0) - (0)) + fox.wiggleWeight * ((0 + 0.0) - (0)))) / 16)
                     rotation: fox.rotationZYX((0 + fox.sittingWeight * ((0 + 60.0) - (0)) + fox.sleepingWeight * ((0 + 0.0) - (0)) + fox.wiggleWeight * ((0 + Math.max((-5.0), Math.min(0, ((-5.0) * (fox.wiggleTime / 2.0))))) - (0))) + fox.idleMotion * Math.sin(fox.lifeTime * 1.3) * 2.5, (0 + fox.sittingWeight * ((0 + 0.0) - (0)) + fox.sleepingWeight * ((0 + -115.0) - (0)) + fox.wiggleWeight * ((0 + 0.0) - (0))), (0 + fox.sittingWeight * ((0 + 0.0) - (0)) + fox.sleepingWeight * ((0 + ((Math.cos(((fox.sleepTime * 160.0)) * Math.PI / 180) + 90) - (0))) - (0)) + fox.wiggleWeight * ((0 + Math.max(0, Math.min(25.0, (25.0 * (fox.wiggleTime / 2.0))))) - (0))) + fox.idleMotion * Math.sin(fox.lifeTime * 0.7) * 1.5)
-                    Model {
+                    PetModelNode {
                         objectName: "head_mesh"
-                        materials: [fur]
+
                         visible: !fox.sleeping
-                        geometry: ProceduralMesh {
+                        geometry: PetMesh {
                             positions: [
                                 Qt.vector3d(0.25, 0.125, 0),
                                 Qt.vector3d(0.25, 0.125, -0.375),
@@ -261,104 +220,7 @@ Node {
                                 Qt.vector3d(0.125, -0.25, -0.5625),
                                 Qt.vector3d(-0.125, -0.25, -0.5625)
                             ]
-                            normals: [
-                                Qt.vector3d(1, 0, 0),
-                                Qt.vector3d(1, 0, 0),
-                                Qt.vector3d(1, 0, 0),
-                                Qt.vector3d(1, 0, 0),
-                                Qt.vector3d(-1, 0, 0),
-                                Qt.vector3d(-1, 0, 0),
-                                Qt.vector3d(-1, 0, 0),
-                                Qt.vector3d(-1, 0, 0),
-                                Qt.vector3d(0, 1, 0),
-                                Qt.vector3d(0, 1, 0),
-                                Qt.vector3d(0, 1, 0),
-                                Qt.vector3d(0, 1, 0),
-                                Qt.vector3d(0, -1, 0),
-                                Qt.vector3d(0, -1, 0),
-                                Qt.vector3d(0, -1, 0),
-                                Qt.vector3d(0, -1, 0),
-                                Qt.vector3d(0, 0, 1),
-                                Qt.vector3d(0, 0, 1),
-                                Qt.vector3d(0, 0, 1),
-                                Qt.vector3d(0, 0, 1),
-                                Qt.vector3d(0, 0, -1),
-                                Qt.vector3d(0, 0, -1),
-                                Qt.vector3d(0, 0, -1),
-                                Qt.vector3d(0, 0, -1),
-                                Qt.vector3d(1, 0, 0),
-                                Qt.vector3d(1, 0, 0),
-                                Qt.vector3d(1, 0, 0),
-                                Qt.vector3d(1, 0, 0),
-                                Qt.vector3d(-1, 0, 0),
-                                Qt.vector3d(-1, 0, 0),
-                                Qt.vector3d(-1, 0, 0),
-                                Qt.vector3d(-1, 0, 0),
-                                Qt.vector3d(0, 1, 0),
-                                Qt.vector3d(0, 1, 0),
-                                Qt.vector3d(0, 1, 0),
-                                Qt.vector3d(0, 1, 0),
-                                Qt.vector3d(0, -1, 0),
-                                Qt.vector3d(0, -1, 0),
-                                Qt.vector3d(0, -1, 0),
-                                Qt.vector3d(0, -1, 0),
-                                Qt.vector3d(0, 0, 1),
-                                Qt.vector3d(0, 0, 1),
-                                Qt.vector3d(0, 0, 1),
-                                Qt.vector3d(0, 0, 1),
-                                Qt.vector3d(0, 0, -1),
-                                Qt.vector3d(0, 0, -1),
-                                Qt.vector3d(0, 0, -1),
-                                Qt.vector3d(0, 0, -1),
-                                Qt.vector3d(1, 0, 0),
-                                Qt.vector3d(1, 0, 0),
-                                Qt.vector3d(1, 0, 0),
-                                Qt.vector3d(1, 0, 0),
-                                Qt.vector3d(-1, 0, 0),
-                                Qt.vector3d(-1, 0, 0),
-                                Qt.vector3d(-1, 0, 0),
-                                Qt.vector3d(-1, 0, 0),
-                                Qt.vector3d(0, 1, 0),
-                                Qt.vector3d(0, 1, 0),
-                                Qt.vector3d(0, 1, 0),
-                                Qt.vector3d(0, 1, 0),
-                                Qt.vector3d(0, -1, 0),
-                                Qt.vector3d(0, -1, 0),
-                                Qt.vector3d(0, -1, 0),
-                                Qt.vector3d(0, -1, 0),
-                                Qt.vector3d(0, 0, 1),
-                                Qt.vector3d(0, 0, 1),
-                                Qt.vector3d(0, 0, 1),
-                                Qt.vector3d(0, 0, 1),
-                                Qt.vector3d(0, 0, -1),
-                                Qt.vector3d(0, 0, -1),
-                                Qt.vector3d(0, 0, -1),
-                                Qt.vector3d(0, 0, -1),
-                                Qt.vector3d(1, 0, 0),
-                                Qt.vector3d(1, 0, 0),
-                                Qt.vector3d(1, 0, 0),
-                                Qt.vector3d(1, 0, 0),
-                                Qt.vector3d(-1, 0, 0),
-                                Qt.vector3d(-1, 0, 0),
-                                Qt.vector3d(-1, 0, 0),
-                                Qt.vector3d(-1, 0, 0),
-                                Qt.vector3d(0, 1, 0),
-                                Qt.vector3d(0, 1, 0),
-                                Qt.vector3d(0, 1, 0),
-                                Qt.vector3d(0, 1, 0),
-                                Qt.vector3d(0, -1, 0),
-                                Qt.vector3d(0, -1, 0),
-                                Qt.vector3d(0, -1, 0),
-                                Qt.vector3d(0, -1, 0),
-                                Qt.vector3d(0, 0, 1),
-                                Qt.vector3d(0, 0, 1),
-                                Qt.vector3d(0, 0, 1),
-                                Qt.vector3d(0, 0, 1),
-                                Qt.vector3d(0, 0, -1),
-                                Qt.vector3d(0, 0, -1),
-                                Qt.vector3d(0, 0, -1),
-                                Qt.vector3d(0, 0, -1)
-                            ]
+
                             uv0s: [
                                 Qt.vector2d(0.000244140625, 0.812011719),
                                 Qt.vector2d(0.0935058594, 0.812011719),
@@ -460,15 +322,15 @@ Node {
                             indexes: [0, 2, 1, 2, 3, 1, 4, 6, 5, 6, 7, 5, 8, 10, 9, 10, 11, 9, 12, 14, 13, 14, 15, 13, 16, 18, 17, 18, 19, 17, 20, 22, 21, 22, 23, 21, 24, 26, 25, 26, 27, 25, 28, 30, 29, 30, 31, 29, 32, 34, 33, 34, 35, 33, 36, 38, 37, 38, 39, 37, 40, 42, 41, 42, 43, 41, 44, 46, 45, 46, 47, 45, 48, 50, 49, 50, 51, 49, 52, 54, 53, 54, 55, 53, 56, 58, 57, 58, 59, 57, 60, 62, 61, 62, 63, 61, 64, 66, 65, 66, 67, 65, 68, 70, 69, 70, 71, 69, 72, 74, 73, 74, 75, 73, 76, 78, 77, 78, 79, 77, 80, 82, 81, 82, 83, 81, 84, 86, 85, 86, 87, 85, 88, 90, 89, 90, 91, 89, 92, 94, 93, 94, 95, 93]
                         }
                     }
-                    Node {
+                    PetModelNode {
                         objectName: "head_sleeping"
                         position: Qt.vector3d(-(0 + (0 + fox.sittingWeight * (0 - (0)) + fox.sleepingWeight * (0 - (0)) + fox.wiggleWeight * (0 - (0)))) / 16, (0 + (0 + fox.sittingWeight * (0 - (0)) + fox.sleepingWeight * (0 - (0)) + fox.wiggleWeight * (0 - (0)))) / 16, (0 + (0 + fox.sittingWeight * (0 - (0)) + fox.sleepingWeight * (0 - (0)) + fox.wiggleWeight * (0 - (0)))) / 16)
                         rotation: fox.rotationZYX((0 + fox.sittingWeight * (0 - (0)) + fox.sleepingWeight * (0 - (0)) + fox.wiggleWeight * (0 - (0))), (0 + fox.sittingWeight * (0 - (0)) + fox.sleepingWeight * (0 - (0)) + fox.wiggleWeight * (0 - (0))), (0 + fox.sittingWeight * (0 - (0)) + fox.sleepingWeight * (0 - (0)) + fox.wiggleWeight * (0 - (0))))
-                        Model {
+                        PetModelNode {
                             objectName: "head_sleeping_mesh"
-                            materials: [fur]
+
                             visible: fox.sleeping
-                            geometry: ProceduralMesh {
+                            geometry: PetMesh {
                                 positions: [
                                     Qt.vector3d(0.25, 0.125, 0),
                                     Qt.vector3d(0.25, 0.125, -0.375),
@@ -567,104 +429,7 @@ Node {
                                     Qt.vector3d(0.125, -0.25, -0.5625),
                                     Qt.vector3d(-0.125, -0.25, -0.5625)
                                 ]
-                                normals: [
-                                    Qt.vector3d(1, 0, 0),
-                                    Qt.vector3d(1, 0, 0),
-                                    Qt.vector3d(1, 0, 0),
-                                    Qt.vector3d(1, 0, 0),
-                                    Qt.vector3d(-1, 0, 0),
-                                    Qt.vector3d(-1, 0, 0),
-                                    Qt.vector3d(-1, 0, 0),
-                                    Qt.vector3d(-1, 0, 0),
-                                    Qt.vector3d(0, 1, 0),
-                                    Qt.vector3d(0, 1, 0),
-                                    Qt.vector3d(0, 1, 0),
-                                    Qt.vector3d(0, 1, 0),
-                                    Qt.vector3d(0, -1, 0),
-                                    Qt.vector3d(0, -1, 0),
-                                    Qt.vector3d(0, -1, 0),
-                                    Qt.vector3d(0, -1, 0),
-                                    Qt.vector3d(0, 0, 1),
-                                    Qt.vector3d(0, 0, 1),
-                                    Qt.vector3d(0, 0, 1),
-                                    Qt.vector3d(0, 0, 1),
-                                    Qt.vector3d(0, 0, -1),
-                                    Qt.vector3d(0, 0, -1),
-                                    Qt.vector3d(0, 0, -1),
-                                    Qt.vector3d(0, 0, -1),
-                                    Qt.vector3d(1, 0, 0),
-                                    Qt.vector3d(1, 0, 0),
-                                    Qt.vector3d(1, 0, 0),
-                                    Qt.vector3d(1, 0, 0),
-                                    Qt.vector3d(-1, 0, 0),
-                                    Qt.vector3d(-1, 0, 0),
-                                    Qt.vector3d(-1, 0, 0),
-                                    Qt.vector3d(-1, 0, 0),
-                                    Qt.vector3d(0, 1, 0),
-                                    Qt.vector3d(0, 1, 0),
-                                    Qt.vector3d(0, 1, 0),
-                                    Qt.vector3d(0, 1, 0),
-                                    Qt.vector3d(0, -1, 0),
-                                    Qt.vector3d(0, -1, 0),
-                                    Qt.vector3d(0, -1, 0),
-                                    Qt.vector3d(0, -1, 0),
-                                    Qt.vector3d(0, 0, 1),
-                                    Qt.vector3d(0, 0, 1),
-                                    Qt.vector3d(0, 0, 1),
-                                    Qt.vector3d(0, 0, 1),
-                                    Qt.vector3d(0, 0, -1),
-                                    Qt.vector3d(0, 0, -1),
-                                    Qt.vector3d(0, 0, -1),
-                                    Qt.vector3d(0, 0, -1),
-                                    Qt.vector3d(1, 0, 0),
-                                    Qt.vector3d(1, 0, 0),
-                                    Qt.vector3d(1, 0, 0),
-                                    Qt.vector3d(1, 0, 0),
-                                    Qt.vector3d(-1, 0, 0),
-                                    Qt.vector3d(-1, 0, 0),
-                                    Qt.vector3d(-1, 0, 0),
-                                    Qt.vector3d(-1, 0, 0),
-                                    Qt.vector3d(0, 1, 0),
-                                    Qt.vector3d(0, 1, 0),
-                                    Qt.vector3d(0, 1, 0),
-                                    Qt.vector3d(0, 1, 0),
-                                    Qt.vector3d(0, -1, 0),
-                                    Qt.vector3d(0, -1, 0),
-                                    Qt.vector3d(0, -1, 0),
-                                    Qt.vector3d(0, -1, 0),
-                                    Qt.vector3d(0, 0, 1),
-                                    Qt.vector3d(0, 0, 1),
-                                    Qt.vector3d(0, 0, 1),
-                                    Qt.vector3d(0, 0, 1),
-                                    Qt.vector3d(0, 0, -1),
-                                    Qt.vector3d(0, 0, -1),
-                                    Qt.vector3d(0, 0, -1),
-                                    Qt.vector3d(0, 0, -1),
-                                    Qt.vector3d(1, 0, 0),
-                                    Qt.vector3d(1, 0, 0),
-                                    Qt.vector3d(1, 0, 0),
-                                    Qt.vector3d(1, 0, 0),
-                                    Qt.vector3d(-1, 0, 0),
-                                    Qt.vector3d(-1, 0, 0),
-                                    Qt.vector3d(-1, 0, 0),
-                                    Qt.vector3d(-1, 0, 0),
-                                    Qt.vector3d(0, 1, 0),
-                                    Qt.vector3d(0, 1, 0),
-                                    Qt.vector3d(0, 1, 0),
-                                    Qt.vector3d(0, 1, 0),
-                                    Qt.vector3d(0, -1, 0),
-                                    Qt.vector3d(0, -1, 0),
-                                    Qt.vector3d(0, -1, 0),
-                                    Qt.vector3d(0, -1, 0),
-                                    Qt.vector3d(0, 0, 1),
-                                    Qt.vector3d(0, 0, 1),
-                                    Qt.vector3d(0, 0, 1),
-                                    Qt.vector3d(0, 0, 1),
-                                    Qt.vector3d(0, 0, -1),
-                                    Qt.vector3d(0, 0, -1),
-                                    Qt.vector3d(0, 0, -1),
-                                    Qt.vector3d(0, 0, -1)
-                                ]
+
                                 uv0s: [
                                     Qt.vector2d(0.000244140625, 0.437011719),
                                     Qt.vector2d(0.0935058594, 0.437011719),
@@ -767,21 +532,21 @@ Node {
                             }
                         }
                     }
-                    Node {
+                    PetModelNode {
                         objectName: "held_item"
                         position: Qt.vector3d(-(-2 + (0 + fox.sittingWeight * (0 - (0)) + fox.sleepingWeight * (0 - (0)) + fox.wiggleWeight * (0 - (0)))) / 16, (-4.7 + (0 + fox.sittingWeight * (0 - (0)) + fox.sleepingWeight * (0 - (0)) + fox.wiggleWeight * (0 - (0)))) / 16, (-10 + (0 + fox.sittingWeight * (0 - (0)) + fox.sleepingWeight * (0 - (0)) + fox.wiggleWeight * (0 - (0)))) / 16)
                         rotation: fox.rotationZYX((0 + fox.sittingWeight * (0 - (0)) + fox.sleepingWeight * (0 - (0)) + fox.wiggleWeight * (0 - (0))), (0 + fox.sittingWeight * (0 - (0)) + fox.sleepingWeight * (0 - (0)) + fox.wiggleWeight * (0 - (0))), (0 + fox.sittingWeight * (0 - (0)) + fox.sleepingWeight * (0 - (0)) + fox.wiggleWeight * (0 - (0))))
                     }
                 }
-                Node {
+                PetModelNode {
                     objectName: "leg0"
                     position: Qt.vector3d(-(-3 + (0 + fox.sittingWeight * ((0 + 0.0) - (0)) + fox.sleepingWeight * (0 - (0)) + fox.wiggleWeight * ((0 + 0.0) - (0)))) / 16, (-2 + (0 + fox.sittingWeight * ((0 + 4.0) - (0)) + fox.sleepingWeight * (0 - (0)) + fox.wiggleWeight * ((0 + 1.6) - (0)))) / 16, (6 + (0 + fox.sittingWeight * ((0 + 2.5) - (0)) + fox.sleepingWeight * (0 - (0)) + fox.wiggleWeight * ((0 + 0.0) - (0)))) / 16)
                     rotation: fox.rotationZYX((0 + fox.sittingWeight * ((0 + -15.0) - (0)) + fox.sleepingWeight * (0 - (0)) + fox.wiggleWeight * ((0 + 0.0) - (0))), (0 + fox.sittingWeight * ((0 + 0.0) - (0)) + fox.sleepingWeight * (0 - (0)) + fox.wiggleWeight * ((0 + 0.0) - (0))), (0 + fox.sittingWeight * ((0 + 0.0) - (0)) + fox.sleepingWeight * (0 - (0)) + fox.wiggleWeight * ((0 + 0.0) - (0))))
-                    Model {
+                    PetModelNode {
                         objectName: "leg0_mesh"
-                        materials: [fur]
+
                         visible: !fox.sleeping
-                        geometry: ProceduralMesh {
+                        geometry: PetMesh {
                             positions: [
                                 Qt.vector3d(0.0003125, 0, 0.0625),
                                 Qt.vector3d(0.0003125, 0, -0.0625),
@@ -808,32 +573,7 @@ Node {
                                 Qt.vector3d(0.0003125, -0.375, -0.0625),
                                 Qt.vector3d(-0.1246875, -0.375, -0.0625)
                             ]
-                            normals: [
-                                Qt.vector3d(1, 0, 0),
-                                Qt.vector3d(1, 0, 0),
-                                Qt.vector3d(1, 0, 0),
-                                Qt.vector3d(1, 0, 0),
-                                Qt.vector3d(-1, 0, 0),
-                                Qt.vector3d(-1, 0, 0),
-                                Qt.vector3d(-1, 0, 0),
-                                Qt.vector3d(-1, 0, 0),
-                                Qt.vector3d(0, 1, 0),
-                                Qt.vector3d(0, 1, 0),
-                                Qt.vector3d(0, 1, 0),
-                                Qt.vector3d(0, 1, 0),
-                                Qt.vector3d(0, -1, 0),
-                                Qt.vector3d(0, -1, 0),
-                                Qt.vector3d(0, -1, 0),
-                                Qt.vector3d(0, -1, 0),
-                                Qt.vector3d(0, 0, 1),
-                                Qt.vector3d(0, 0, 1),
-                                Qt.vector3d(0, 0, 1),
-                                Qt.vector3d(0, 0, 1),
-                                Qt.vector3d(0, 0, -1),
-                                Qt.vector3d(0, 0, -1),
-                                Qt.vector3d(0, 0, -1),
-                                Qt.vector3d(0, 0, -1)
-                            ]
+
                             uv0s: [
                                 Qt.vector2d(0.218994141, 0.187011719),
                                 Qt.vector2d(0.249755859, 0.187011719),
@@ -864,15 +604,15 @@ Node {
                         }
                     }
                 }
-                Node {
+                PetModelNode {
                     objectName: "leg1"
                     position: Qt.vector3d(-(1 + (0 + fox.sittingWeight * ((0 + 0.0) - (0)) + fox.sleepingWeight * (0 - (0)) + fox.wiggleWeight * ((0 + 0.0) - (0)))) / 16, (-2 + (0 + fox.sittingWeight * ((0 + 4.0) - (0)) + fox.sleepingWeight * (0 - (0)) + fox.wiggleWeight * ((0 + 1.6) - (0)))) / 16, (6 + (0 + fox.sittingWeight * ((0 + 2.5) - (0)) + fox.sleepingWeight * (0 - (0)) + fox.wiggleWeight * ((0 + 0.0) - (0)))) / 16)
                     rotation: fox.rotationZYX((0 + fox.sittingWeight * ((0 + -15.0) - (0)) + fox.sleepingWeight * (0 - (0)) + fox.wiggleWeight * ((0 + 0.0) - (0))), (0 + fox.sittingWeight * ((0 + 0.0) - (0)) + fox.sleepingWeight * (0 - (0)) + fox.wiggleWeight * ((0 + 0.0) - (0))), (0 + fox.sittingWeight * ((0 + 0.0) - (0)) + fox.sleepingWeight * (0 - (0)) + fox.wiggleWeight * ((0 + 0.0) - (0))))
-                    Model {
+                    PetModelNode {
                         objectName: "leg1_mesh"
-                        materials: [fur]
+
                         visible: !fox.sleeping
-                        geometry: ProceduralMesh {
+                        geometry: PetMesh {
                             positions: [
                                 Qt.vector3d(-0.0003125, 0, 0.0625),
                                 Qt.vector3d(-0.0003125, 0, -0.0625),
@@ -899,32 +639,7 @@ Node {
                                 Qt.vector3d(-0.0003125, -0.375, -0.0625),
                                 Qt.vector3d(-0.1253125, -0.375, -0.0625)
                             ]
-                            normals: [
-                                Qt.vector3d(1, 0, 0),
-                                Qt.vector3d(1, 0, 0),
-                                Qt.vector3d(1, 0, 0),
-                                Qt.vector3d(1, 0, 0),
-                                Qt.vector3d(-1, 0, 0),
-                                Qt.vector3d(-1, 0, 0),
-                                Qt.vector3d(-1, 0, 0),
-                                Qt.vector3d(-1, 0, 0),
-                                Qt.vector3d(0, 1, 0),
-                                Qt.vector3d(0, 1, 0),
-                                Qt.vector3d(0, 1, 0),
-                                Qt.vector3d(0, 1, 0),
-                                Qt.vector3d(0, -1, 0),
-                                Qt.vector3d(0, -1, 0),
-                                Qt.vector3d(0, -1, 0),
-                                Qt.vector3d(0, -1, 0),
-                                Qt.vector3d(0, 0, 1),
-                                Qt.vector3d(0, 0, 1),
-                                Qt.vector3d(0, 0, 1),
-                                Qt.vector3d(0, 0, 1),
-                                Qt.vector3d(0, 0, -1),
-                                Qt.vector3d(0, 0, -1),
-                                Qt.vector3d(0, 0, -1),
-                                Qt.vector3d(0, 0, -1)
-                            ]
+
                             uv0s: [
                                 Qt.vector2d(0.343994141, 0.187011719),
                                 Qt.vector2d(0.374755859, 0.187011719),
@@ -955,15 +670,15 @@ Node {
                         }
                     }
                 }
-                Node {
+                PetModelNode {
                     objectName: "leg2"
                     position: Qt.vector3d(-(-3 + (0 + fox.sittingWeight * ((0 + 0.0) - (0)) + fox.sleepingWeight * (0 - (0)) + fox.wiggleWeight * ((0 + 0.0) - (0)))) / 16, (-2 + (0 + fox.sittingWeight * ((0 + 0.75) - (0)) + fox.sleepingWeight * (0 - (0)) + fox.wiggleWeight * ((0 + 1.6) - (0)))) / 16, (-1 + (0 + fox.sittingWeight * ((0 + 3.5) - (0)) + fox.sleepingWeight * (0 - (0)) + fox.wiggleWeight * ((0 + 0.0) - (0)))) / 16)
                     rotation: fox.rotationZYX((0 + fox.sittingWeight * ((0 + 40.0) - (0)) + fox.sleepingWeight * (0 - (0)) + fox.wiggleWeight * ((0 + 0.0) - (0))), (0 + fox.sittingWeight * ((0 + 0.0) - (0)) + fox.sleepingWeight * (0 - (0)) + fox.wiggleWeight * ((0 + 0.0) - (0))), (0 + fox.sittingWeight * ((0 + 0.0) - (0)) + fox.sleepingWeight * (0 - (0)) + fox.wiggleWeight * ((0 + 0.0) - (0))))
-                    Model {
+                    PetModelNode {
                         objectName: "leg2_mesh"
-                        materials: [fur]
+
                         visible: !fox.sleeping
-                        geometry: ProceduralMesh {
+                        geometry: PetMesh {
                             positions: [
                                 Qt.vector3d(0.0003125, 0, 0.0625),
                                 Qt.vector3d(0.0003125, 0, -0.0625),
@@ -990,32 +705,7 @@ Node {
                                 Qt.vector3d(0.0003125, -0.375, -0.0625),
                                 Qt.vector3d(-0.1246875, -0.375, -0.0625)
                             ]
-                            normals: [
-                                Qt.vector3d(1, 0, 0),
-                                Qt.vector3d(1, 0, 0),
-                                Qt.vector3d(1, 0, 0),
-                                Qt.vector3d(1, 0, 0),
-                                Qt.vector3d(-1, 0, 0),
-                                Qt.vector3d(-1, 0, 0),
-                                Qt.vector3d(-1, 0, 0),
-                                Qt.vector3d(-1, 0, 0),
-                                Qt.vector3d(0, 1, 0),
-                                Qt.vector3d(0, 1, 0),
-                                Qt.vector3d(0, 1, 0),
-                                Qt.vector3d(0, 1, 0),
-                                Qt.vector3d(0, -1, 0),
-                                Qt.vector3d(0, -1, 0),
-                                Qt.vector3d(0, -1, 0),
-                                Qt.vector3d(0, -1, 0),
-                                Qt.vector3d(0, 0, 1),
-                                Qt.vector3d(0, 0, 1),
-                                Qt.vector3d(0, 0, 1),
-                                Qt.vector3d(0, 0, 1),
-                                Qt.vector3d(0, 0, -1),
-                                Qt.vector3d(0, 0, -1),
-                                Qt.vector3d(0, 0, -1),
-                                Qt.vector3d(0, 0, -1)
-                            ]
+
                             uv0s: [
                                 Qt.vector2d(0.218994141, 0.187011719),
                                 Qt.vector2d(0.249755859, 0.187011719),
@@ -1046,15 +736,15 @@ Node {
                         }
                     }
                 }
-                Node {
+                PetModelNode {
                     objectName: "leg3"
                     position: Qt.vector3d(-(1 + (0 + fox.sittingWeight * ((0 + 0.0) - (0)) + fox.sleepingWeight * (0 - (0)) + fox.wiggleWeight * ((0 + 0.0) - (0)))) / 16, (-2 + (0 + fox.sittingWeight * ((0 + 0.75) - (0)) + fox.sleepingWeight * (0 - (0)) + fox.wiggleWeight * ((0 + 1.6) - (0)))) / 16, (-1 + (0 + fox.sittingWeight * ((0 + 3.5) - (0)) + fox.sleepingWeight * (0 - (0)) + fox.wiggleWeight * ((0 + 0.0) - (0)))) / 16)
                     rotation: fox.rotationZYX((0 + fox.sittingWeight * ((0 + 40.0) - (0)) + fox.sleepingWeight * (0 - (0)) + fox.wiggleWeight * ((0 + 0.0) - (0))), (0 + fox.sittingWeight * ((0 + 0.0) - (0)) + fox.sleepingWeight * (0 - (0)) + fox.wiggleWeight * ((0 + 0.0) - (0))), (0 + fox.sittingWeight * ((0 + 0.0) - (0)) + fox.sleepingWeight * (0 - (0)) + fox.wiggleWeight * ((0 + 0.0) - (0))))
-                    Model {
+                    PetModelNode {
                         objectName: "leg3_mesh"
-                        materials: [fur]
+
                         visible: !fox.sleeping
-                        geometry: ProceduralMesh {
+                        geometry: PetMesh {
                             positions: [
                                 Qt.vector3d(-0.0003125, 0, 0.0625),
                                 Qt.vector3d(-0.0003125, 0, -0.0625),
@@ -1081,32 +771,7 @@ Node {
                                 Qt.vector3d(-0.0003125, -0.375, -0.0625),
                                 Qt.vector3d(-0.1253125, -0.375, -0.0625)
                             ]
-                            normals: [
-                                Qt.vector3d(1, 0, 0),
-                                Qt.vector3d(1, 0, 0),
-                                Qt.vector3d(1, 0, 0),
-                                Qt.vector3d(1, 0, 0),
-                                Qt.vector3d(-1, 0, 0),
-                                Qt.vector3d(-1, 0, 0),
-                                Qt.vector3d(-1, 0, 0),
-                                Qt.vector3d(-1, 0, 0),
-                                Qt.vector3d(0, 1, 0),
-                                Qt.vector3d(0, 1, 0),
-                                Qt.vector3d(0, 1, 0),
-                                Qt.vector3d(0, 1, 0),
-                                Qt.vector3d(0, -1, 0),
-                                Qt.vector3d(0, -1, 0),
-                                Qt.vector3d(0, -1, 0),
-                                Qt.vector3d(0, -1, 0),
-                                Qt.vector3d(0, 0, 1),
-                                Qt.vector3d(0, 0, 1),
-                                Qt.vector3d(0, 0, 1),
-                                Qt.vector3d(0, 0, 1),
-                                Qt.vector3d(0, 0, -1),
-                                Qt.vector3d(0, 0, -1),
-                                Qt.vector3d(0, 0, -1),
-                                Qt.vector3d(0, 0, -1)
-                            ]
+
                             uv0s: [
                                 Qt.vector2d(0.343994141, 0.187011719),
                                 Qt.vector2d(0.374755859, 0.187011719),
@@ -1137,14 +802,14 @@ Node {
                         }
                     }
                 }
-                Node {
+                PetModelNode {
                     objectName: "tail"
                     position: Qt.vector3d(-(0 + (0 + fox.sittingWeight * ((0 + 0.0) - (0)) + fox.sleepingWeight * ((0 + 0.0) - (0)) + fox.wiggleWeight * (0 - (0)))) / 16, (0 + (0 + fox.sittingWeight * ((0 + -0.075) - (0)) + fox.sleepingWeight * ((0 + 0.0) - (0)) + fox.wiggleWeight * (0 - (0)))) / 16, (7 + (0 + fox.sittingWeight * ((0 + -0.15) - (0)) + fox.sleepingWeight * ((0 + 1.5) - (0)) + fox.wiggleWeight * (0 - (0)))) / 16)
                     rotation: fox.rotationZYX((0 + fox.sittingWeight * ((0 + 60.0) - (0)) + fox.sleepingWeight * ((0 + -125.0) - (0)) + fox.wiggleWeight * ((0 + 0.0) - (0))), (0 + fox.sittingWeight * ((0 + 0.0) - (0)) + fox.sleepingWeight * ((0 + 0.0) - (0)) + fox.wiggleWeight * ((0 + ((Math.cos((((fox.lifeTime * 20.0) * 53.7)) * Math.PI / 180) * 10.0) - (0))) - (0))) + fox.idleMotion * Math.sin(fox.lifeTime * 1.1) * 6, (0 + fox.sittingWeight * ((0 + 0.0) - (0)) + fox.sleepingWeight * ((0 + 0.0) - (0)) + fox.wiggleWeight * ((0 + 0.0) - (0))))
-                    Model {
+                    PetModelNode {
                         objectName: "tail_mesh"
-                        materials: [fur]
-                        geometry: ProceduralMesh {
+
+                        geometry: PetMesh {
                             positions: [
                                 Qt.vector3d(0.125, 0.158410821, 0.0913962651),
                                 Qt.vector3d(0.125, -0.149341601, 0.0371312096),
@@ -1171,32 +836,7 @@ Node {
                                 Qt.vector3d(0.125, -0.247018701, 0.591085571),
                                 Qt.vector3d(-0.125, -0.247018701, 0.591085571)
                             ]
-                            normals: [
-                                Qt.vector3d(1, 0, 0),
-                                Qt.vector3d(1, 0, 0),
-                                Qt.vector3d(1, 0, 0),
-                                Qt.vector3d(1, 0, 0),
-                                Qt.vector3d(-1, 0, 0),
-                                Qt.vector3d(-1, 0, 0),
-                                Qt.vector3d(-1, 0, 0),
-                                Qt.vector3d(-1, 0, 0),
-                                Qt.vector3d(0, 0.173648178, -0.984807753),
-                                Qt.vector3d(0, 0.173648178, -0.984807753),
-                                Qt.vector3d(0, 0.173648178, -0.984807753),
-                                Qt.vector3d(0, 0.173648178, -0.984807753),
-                                Qt.vector3d(0, -0.173648178, 0.984807753),
-                                Qt.vector3d(0, -0.173648178, 0.984807753),
-                                Qt.vector3d(0, -0.173648178, 0.984807753),
-                                Qt.vector3d(0, -0.173648178, 0.984807753),
-                                Qt.vector3d(0, 0.984807753, 0.173648178),
-                                Qt.vector3d(0, 0.984807753, 0.173648178),
-                                Qt.vector3d(0, 0.984807753, 0.173648178),
-                                Qt.vector3d(0, 0.984807753, 0.173648178),
-                                Qt.vector3d(0, -0.984807753, -0.173648178),
-                                Qt.vector3d(0, -0.984807753, -0.173648178),
-                                Qt.vector3d(0, -0.984807753, -0.173648178),
-                                Qt.vector3d(0, -0.984807753, -0.173648178)
-                            ]
+
                             uv0s: [
                                 Qt.vector2d(0.437744141, 0.843261719),
                                 Qt.vector2d(0.515380859, 0.843261719),

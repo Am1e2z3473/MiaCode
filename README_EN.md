@@ -159,7 +159,7 @@ Supports online preview, PV downloads, and batch upload of local charts after si
 
 - CMake 3.21+
 - C++20 compiler
-- Qt 6.10+ with Qt Quick, Quick Controls 2, Quick 3D, Multimedia, Shader Tools, Linguist Tools, and Multimedia private development headers
+- Qt 6.10+ with Qt Quick, Quick Controls 2, Multimedia, Shader Tools, Linguist Tools, and Gui and Multimedia private development headers
 
 See [scripts/README_EN.md](scripts/README_EN.md) for packaging details.
 
@@ -188,12 +188,12 @@ xcode-select --install
 brew install cmake python
 ```
 
-Install Qt 6.11.1 with Multimedia, Shader Tools, and Quick 3D, prepare the preview SDK and export FFmpeg, then build and package:
+Install Qt 6.11.1 with Multimedia and Shader Tools, prepare the preview SDK and export FFmpeg, then build and package:
 
 ```bash
 python3 -m pip install aqtinstall
 python3 -m aqt install-qt mac desktop 6.11.1 clang_64 --outputdir .qt \
-  --modules qtmultimedia qtshadertools qtquick3d
+  --modules qtmultimedia qtshadertools
 bash scripts/ffmpeg/ensure-macos-ffmpeg-dev.sh
 bash scripts/ffmpeg/ensure-macos-ffmpeg.sh
 bash scripts/build/build-macos-local.sh
@@ -203,7 +203,7 @@ Set `QT_ROOT` to reuse an existing Qt installation. The local script reuses depe
 
 ### Linux (Advanced Users)
 
-Linux builds require manual setup. Install CMake 3.21+, a C++20 compiler, pkg-config, and Qt 6.10+ (including Qt Quick, Quick Controls 2, Quick 3D, Multimedia, the Multimedia private development headers, Shader Tools, and Linguist Tools), along with development libraries for FFmpeg, VA-API, DRM, and OpenGL / EGL. The FFmpeg development libraries must include `libavfilter`, `libavcodec`, `libavformat`, `libavutil`, `libswresample`, and `libswscale`.
+Linux builds require manual setup. Install CMake 3.21+, a C++20 compiler, pkg-config, and Qt 6.10+ (including Qt Quick, Quick Controls 2, Multimedia, the Gui and Multimedia private development headers, Shader Tools, and Linguist Tools), along with development libraries for FFmpeg, VA-API, DRM, and OpenGL / EGL. The FFmpeg development libraries must include `libavfilter`, `libavcodec`, `libavformat`, `libavutil`, `libswresample`, and `libswscale`.
 
 Run the following commands from the repository root, replacing `[/path/to/Qt/6.x/gcc_64]` with your Qt installation directory:
 
