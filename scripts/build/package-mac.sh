@@ -443,7 +443,7 @@ rm -rf "$DIST_DIR"
 mkdir -p "$DIST_DIR"
 cp -R "$APP_PATH" "$DIST_DIR/"
 
-for release_doc in LICENSE LICENSE_SCOPE.md THIRD_PARTY_NOTICES.md; do
+for release_doc in LICENSE THIRD_PARTY_NOTICES.md; do
   if [[ ! -f "$ROOT_DIR/$release_doc" ]]; then
     echo "Missing release documentation file: $ROOT_DIR/$release_doc" >&2
     exit 1
@@ -552,7 +552,7 @@ Gatekeeper 提示
 包内容
 MiaCode.app：应用程序
 Start_MiaCode_Debug.command：诊断启动器
-LICENSE、LICENSE_SCOPE.md、THIRD_PARTY_NOTICES.md 和 licenses/：许可证与第三方声明
+LICENSE、THIRD_PARTY_NOTICES.md 和 licenses/：许可证与第三方声明
 EOF
 
 cat >"$DIST_DIR/README_EN.txt" <<'EOF'
@@ -574,7 +574,7 @@ Open Start_MiaCode_Debug.command to start MiaCode in diagnostic mode. Logs are w
 Package Contents
 MiaCode.app: application
 Start_MiaCode_Debug.command: diagnostic launcher
-LICENSE, LICENSE_SCOPE.md, THIRD_PARTY_NOTICES.md, and licenses/: license and third-party notices
+LICENSE, THIRD_PARTY_NOTICES.md, and licenses/: license and third-party notices
 EOF
 
 debug_launcher_source="$ROOT_DIR/scripts/debug/Start_MiaCode_Debug.command"

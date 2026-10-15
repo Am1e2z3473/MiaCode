@@ -102,7 +102,7 @@ def keys():
     source = digest(git_tree(
         "CMakeLists.txt", "CMakePresets.json", "cmake", "src", "resources", "assets",
         "translations", "templates", "third_party", "scripts", "licenses", "LICENSE",
-        "LICENSE_SCOPE.md", "THIRD_PARTY_NOTICES.md", ".github/workflows/package.yml",
+        "THIRD_PARTY_NOTICES.md", ".github/workflows/package.yml",
         ".gitmodules", ".gitattributes",
     ))
     recipe = digest(git_tree("scripts/build/package.py", "scripts/ffmpeg", "scripts/build/windows-toolchain.psd1"))

@@ -17,9 +17,3 @@ PR 描述说明用户可见变化、同步范围、验证证据和影响验收�
 共享规则维护于 `AGENTS.md`，技能维护源是 `.agents/skills/`。
 
 构建产物、日志与本地实验资料留在忽略目录。
-
-## 许可证与第三方内容
-
-项目自有源码使用 MIT License。仓库整体、随仓库分发的资源、打包二进制和 release archive 当前定位为非商业使用，除非具体文件或第三方许可证另有说明。
-涉及依赖、素材、字体、音频和打包内容时阅读 [LICENSE](LICENSE)、
-[LICENSE_SCOPE.md](LICENSE_SCOPE.md)和[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)，核对来源与授权。
