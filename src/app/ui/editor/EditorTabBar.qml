@@ -189,7 +189,9 @@ Item {
     Shape {
         anchors.fill: parent
         clip: true
-        preferredRendererType: Shape.CurveRenderer
+        // The compound strip path has a tab-shaped cutout. CurveRenderer can
+        // triangulate that hole across the empty strip on macOS/Metal.
+        preferredRendererType: Shape.GeometryRenderer
 
         ShapePath {
             strokeWidth: -1
