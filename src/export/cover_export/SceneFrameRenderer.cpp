@@ -54,7 +54,9 @@ bool SceneFrameRenderer::bootstrap(const VideoExportTask& task, QString* errorMe
     cache->rebuild(task.noteMarkers);
     frameState_.progressStatsCache = cache;
     frameState_.muriAnalysisReport = task.muriAnalysisReport;
-    frameState_.muriRenderOptions = task.muriRenderOptions;
+    // Cover chart frames always use the regular scene, regardless of the
+    // preview or video export's Muri render settings.
+    frameState_.muriRenderOptions = MuriRenderOptions{};
     frameState_.sceneContentRevision = ++sceneContentRevision_;
     frameState_.media.stageMediaAvailable = false;
     frameState_.render.backgroundBrightnessOuter = task.backgroundBrightnessOuter;
