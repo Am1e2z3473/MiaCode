@@ -1177,42 +1177,12 @@ bool alignVideoStreams(
         return false;
     }
 
-    qint64 alignedBytes = QFileInfo(videoPath).size();
-    if (alignedBytes > originalBytes) {
-        QFile::remove(tempPath);
-        QStringList compressionArgs{
-            QStringLiteral("-hide_banner"),
-            QStringLiteral("-y"),
-            QStringLiteral("-i"), videoPath,
-            QStringLiteral("-map"), QStringLiteral("0:v:0"),
-            QStringLiteral("-map"), QStringLiteral("0:a:0"),
-            QStringLiteral("-map_metadata"), QStringLiteral("0"),
-            QStringLiteral("-map_chapters"), QStringLiteral("0"),
-        };
-        appendEncoderQuality(compressionArgs, videoEncoder, 30);
-        compressionArgs << QStringLiteral("-pix_fmt") << QStringLiteral("yuv420p")
-                        << QStringLiteral("-fps_mode:v") << QStringLiteral("passthrough")
-                        << QStringLiteral("-c:a") << QStringLiteral("copy")
-                        << QStringLiteral("-movflags") << QStringLiteral("+faststart")
-                        << tempPath;
-        miacode::LocalizedText compressionError;
-        bool compressionCancelled = false;
-        if (runFfmpegBlocking(
-                ffmpegPath,
-                compressionArgs,
-                jobProgress,
-                miacode::localizedText("media_tools.processing_pv_mp4"),
-                miacode::localizedText("media_tools.processing_pv_mp4"),
-                durationSeconds + (videoAudioOffsetSeconds < 0.0 ? adjustmentSeconds : 0.0),
-                &compressionError,
-                &compressionCancelled)) {
-            const qint64 compressedBytes = QFileInfo(tempPath).size();
-            if (compressedBytes > 0 && compressedBytes < alignedBytes) {
-                replaceFileWithTemp(tempPath, videoPath, &compressionError);
-            }
-        }
-        QFile::remove(tempPath);
-    }
+    // We are intentionally changing the underlying PV stream timings; a
+    // successful alignment may legitimately produce a larger file than the
+    // original source. Do not try to force a second shrink pass here: the
+    // feature's job is to align the media, not to re-interpret the output as a
+    // failed compression.
+    QFile::remove(tempPath);
     return true;
 }
 
