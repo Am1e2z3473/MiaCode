@@ -145,7 +145,7 @@ private:
     static constexpr int kUiScaleDefaultPercent = 100;
     static constexpr int kUiScaleMinimumPercent = 75;
     static constexpr int kUiScaleMaximumPercent = 200;
-    static constexpr double kBottomPanelDefaultHeightRatio = 0.35;
+    static constexpr double kBottomPanelDefaultHeightRatio = 0.25;
     static constexpr double kPreviewDefaultWidthRatio = 0.5;
     static constexpr int kSidebarMinimumContentWidth = 120;
     static constexpr int kSidebarMaximumContentWidth = 272;
