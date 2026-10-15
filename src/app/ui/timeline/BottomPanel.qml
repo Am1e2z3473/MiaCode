@@ -178,13 +178,13 @@ Item {
         }
     }
 
+    // Header controls share the tab row's edge inset, measured on their chrome.
     AppDropDownButton {
         id: zoomButton
-        compact: true
 
-        x: Theme.panelPadding - Theme.chromeInsetX
+        x: tabs.edgePadding - Theme.chromeInsetX + Theme.chromeHighlightOutset
         y: timelineItem.y + Math.max(0, (timelineItem.timelineTop - height) / 2)
-        height: implicitHeight
+        height: Theme.controlHighlightHeight + 2 * (Theme.chromeInsetY - Theme.chromeHighlightOutset)
         visible: timelineItem.visible
         text: qsTrId("qml.1").arg(Math.round(root.timelineSession.stateBridge
             ? root.timelineSession.stateBridge.zoomScale * 100
@@ -204,11 +204,10 @@ Item {
 
     IconButton {
         id: brightnessButton
-        compact: true
 
         width: implicitWidth
         height: implicitHeight
-        x: root.width - Theme.panelPadding - width + horizontalInset
+        x: root.width - tabs.edgePadding - width + horizontalInset
         y: timelineItem.y + Math.max(0, (timelineItem.timelineTop - height) / 2)
         visible: timelineItem.visible
         iconSource: Qt.resolvedUrl("icons/sliders-horizontal.svg")
