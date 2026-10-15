@@ -6,7 +6,6 @@ AppStickyPopup {
     id: root
 
     required property var stateBridge
-    required property var timelineSession
     openAbove: true
 
     readonly property int brightnessPercentMin: 20
@@ -112,25 +111,6 @@ AppStickyPopup {
 
         ParameterItem {
             width: parent.width
-            text: qsTrId("qml.timeline_zoom")
-            readonly property var presets: root.stateBridge ? root.stateBridge.zoomPresetValues : []
-            valueText: qsTrId("qml.1").arg(Math.round(root.stateBridge
-                ? root.stateBridge.zoomScale * 100 : 50))
-            from: 0
-            to: Math.max(0, presets.length - 1)
-            stepSize: 1
-            value: {
-                for (let index = 0; index < presets.length; ++index) {
-                    if (Math.abs(presets[index] - root.stateBridge.zoomScale) <= 1e-6)
-                        return index
-                }
-                return 0
-            }
-            onEdited: value => root.stateBridge.applyZoomPreset(presets[Math.round(value)])
-        }
-
-        ParameterItem {
-            width: parent.width
             text: qsTrId("shell.timeline_waveform_brightness")
             readonly property real brightness: root.stateBridge ? root.stateBridge.waveformBrightness : 0.5
             valueText: qsTrId("qml.1").arg(Math.round(brightness * 100))
@@ -151,28 +131,6 @@ AppStickyPopup {
             stepSize: root.brightnessPercentStep
             value: root.percentFromBrightness(brightness)
             onEdited: value => root.stateBridge.measureLineBrightness = value / 100
-        }
-
-        AppMenuSeparator { width: parent.width }
-
-        AppSwitch {
-            id: followSwitch
-            width: parent.width
-            implicitHeight: Theme.menuRowHeight
-            leftPadding: 12
-            rightPadding: 16
-            text: root.timelineSession.followCodeLabel
-            checked: root.stateBridge && root.stateBridge.followPreviewEnabled
-            onToggled: {
-                if (root.stateBridge && checked !== root.stateBridge.followPreviewEnabled)
-                    root.timelineSession.followPreviewToggled(checked)
-            }
-            Connections {
-                target: root.stateBridge
-                function onFollowPreviewEnabledChanged() {
-                    followSwitch.checked = root.stateBridge.followPreviewEnabled
-                }
-            }
         }
     }
 }
