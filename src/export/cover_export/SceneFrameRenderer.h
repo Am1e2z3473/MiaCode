@@ -30,7 +30,8 @@ namespace miacode::cover_export {
 //
 // The "arbitrary T" decoupling that looked scary in the handoff is trivial here:
 // the heavy per-chart data — note markers, skin/judge sprite atlases, muri
-// report, render settings — is loaded ONCE in bootstrap() from the export task;
+// report, gameplay settings — is loaded ONCE in bootstrap() from the export task;
+// Muri render options use the regular-mode defaults instead;
 // each renderAt() only moves the playhead and re-grabs the WARM scene, so
 // scrubbing the frame-picker never re-parses. (This is exactly what the video
 // export does per output frame; cf. VideoExportQuickRenderBackend::bootstrap +
