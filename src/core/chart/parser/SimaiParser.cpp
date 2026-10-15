@@ -812,7 +812,6 @@ void finalizeEachGroup(ParseState* state, const QVector<int>& groupIndices)
     QVector<int> touchHoldIndices;
     QVector<int> slideIndices;
     QSet<int> headStarLanes;
-    int headlessSlideCount = 0;
 
     for (int index : groupIndices) {
         miacode::task::CancellationScope::checkpoint();
@@ -848,8 +847,6 @@ void finalizeEachGroup(ParseState* state, const QVector<int>& groupIndices)
             slideIndices.append(index);
             if (marker.hasHeadStar) {
                 headStarLanes.insert(marker.lane);
-            } else {
-                ++headlessSlideCount;
             }
         }
     }
@@ -858,8 +855,7 @@ void finalizeEachGroup(ParseState* state, const QVector<int>& groupIndices)
         tapIndices.size()
         + holdIndices.size()
         + touchHoldIndices.size()
-        + headStarLanes.size()
-        + headlessSlideCount;
+        + headStarLanes.size();
     const int noteEachGroupCount = touchIndices.size() + logicalUnitCount;
 
     if (noteEachGroupCount >= 2) {
@@ -884,7 +880,9 @@ void finalizeEachGroup(ParseState* state, const QVector<int>& groupIndices)
         // double-star indicator.
         for (int index : slideIndices) {
             miacode::task::CancellationScope::checkpoint();
-            (*noteMarkers)[index].headEach = true;
+            if ((*noteMarkers)[index].hasHeadStar) {
+                (*noteMarkers)[index].headEach = true;
+            }
         }
     }
 

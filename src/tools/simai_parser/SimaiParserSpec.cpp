@@ -1103,6 +1103,56 @@ int main(int argc, char** argv)
     }
 
     {
+        for (const QString& headlessModifier : {QStringLiteral("?"), QStringLiteral("!")}) {
+            const SimaiParseResult parsed = SimaiParser::parseForTimeline(
+                QStringLiteral("2/3%1-6[8:1],\nE").arg(headlessModifier));
+            expect(parsed.ok && parsed.noteMarkers.size() == 2,
+                   QStringLiteral("tap paired with %1 headless slide parses").arg(headlessModifier));
+            const TimelineNoteMarker* tap = firstMarkerOfType(parsed, QStringLiteral("tap"));
+            const TimelineNoteMarker* slide = firstSlideLikeMarker(parsed);
+            if (tap != nullptr && slide != nullptr) {
+                expect(!tap->isEach,
+                       QStringLiteral("headless slide %1 does not make tap each").arg(headlessModifier));
+                expect(!slide->headEach,
+                       QStringLiteral("headless slide %1 has no each head").arg(headlessModifier));
+            }
+        }
+
+        const SimaiParseResult headed = SimaiParser::parseForTimeline(QStringLiteral("2/3-6[8:1],\nE"));
+        const TimelineNoteMarker* headedTap = firstMarkerOfType(headed, QStringLiteral("tap"));
+        const TimelineNoteMarker* headedSlide = firstSlideLikeMarker(headed);
+        expect(headed.ok && headedTap != nullptr && headedSlide != nullptr,
+               QStringLiteral("tap paired with headed slide parses"));
+        if (headedTap != nullptr && headedSlide != nullptr) {
+            expect(headedTap->isEach && headedSlide->headEach,
+                   QStringLiteral("headed slide still makes its paired tap each"));
+        }
+
+        const SimaiParseResult mixed = SimaiParser::parseForTimeline(
+            QStringLiteral("2/3-6[8:1]/4!-7[8:1],\nE"));
+        expect(mixed.ok && mixed.noteMarkers.size() == 3,
+               QStringLiteral("tap, headed slide and headless slide parse together"));
+        if (mixed.noteMarkers.size() == 3) {
+            const TimelineNoteMarker& mixedTap = mixed.noteMarkers.at(0);
+            const TimelineNoteMarker& visibleHead = mixed.noteMarkers.at(1);
+            const TimelineNoteMarker& hiddenHead = mixed.noteMarkers.at(2);
+            expect(mixedTap.isEach && visibleHead.headEach && !hiddenHead.headEach,
+                   QStringLiteral("only visible heads participate in mixed each group"));
+        }
+
+        const SimaiParseResult tracks = SimaiParser::parseForTimeline(
+            QStringLiteral("3!-6[8:1]/4!-7[8:1],\nE"));
+        expect(tracks.ok && tracks.noteMarkers.size() == 2,
+               QStringLiteral("paired headless slide tracks parse"));
+        if (tracks.noteMarkers.size() == 2) {
+            expect(tracks.noteMarkers.at(0).slideEach && tracks.noteMarkers.at(1).slideEach,
+                   QStringLiteral("headless slide tracks retain slide each"));
+            expect(!tracks.noteMarkers.at(0).headEach && !tracks.noteMarkers.at(1).headEach,
+                   QStringLiteral("headless slide tracks do not acquire each heads"));
+        }
+    }
+
+    {
         // Mine notes (simai `m`). The `m` is accepted on tap / hold / touch /
         // touch-hold / slide; slide heads and tracks have independent mine flags. Mines must NOT
         // turn the chart unparseable (the historical motivation for this work).
