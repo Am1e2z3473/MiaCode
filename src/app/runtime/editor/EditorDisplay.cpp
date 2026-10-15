@@ -473,7 +473,7 @@ void miacode::runtime::EditorHost::applyPortablePreviewSettings(const QJsonObjec
         state_.previewShowValidationSummary_ = preview.value("show_validation_summary").toBool(true);
     }
     if (preview.value("follow_preview").isBool()) {
-        state_.previewFollowEnabled_ = preview.value("follow_preview").toBool(false);
+        state_.previewFollowEnabled_ = preview.value("follow_preview").toBool(true);
     }
     state_.previewViewportLockEnabled_ = true;
     state_.previewProgressFollowEnabled_ = true;

@@ -398,7 +398,7 @@
         bool showSlideTracks_ = true;
         bool showJudgeMarkers_ = false;
         bool showTouchTrail_ = false;
-        bool previewFollowEnabled_ = false;
+        bool previewFollowEnabled_ = true;
         bool previewViewportLockEnabled_ = true;
         bool previewProgressFollowEnabled_ = true;
         MuriAnalysisReport muriAnalysisReport_;

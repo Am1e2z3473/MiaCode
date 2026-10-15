@@ -109,18 +109,5 @@ Item {
         }
 
         Item { Layout.fillWidth: true }
-
-        AppCheckBox {
-            Layout.alignment: Qt.AlignVCenter
-            compact: true
-            font.pixelSize: Theme.uiFontSize
-            visible: root.timelineSession.currentTabId === "timeline"
-            text: root.timelineSession.followCodeLabel
-            checked: root.timelineSession.stateBridge
-                ? root.timelineSession.stateBridge.followPreviewEnabled
-                : false
-            Accessible.description: qsTrId("qml.follow_current_chart_source_position")
-            onClicked: root.timelineSession.followPreviewToggled(checked)
-        }
     }
 }

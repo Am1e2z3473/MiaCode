@@ -6,6 +6,7 @@ AppStickyPopup {
     id: root
 
     required property var stateBridge
+    required property var timelineSession
     openAbove: true
 
     readonly property int brightnessPercentMin: 20
@@ -131,6 +132,29 @@ AppStickyPopup {
             stepSize: root.brightnessPercentStep
             value: root.percentFromBrightness(brightness)
             onEdited: value => root.stateBridge.measureLineBrightness = value / 100
+        }
+
+        AppMenuSeparator { width: parent.width }
+
+        AppSwitch {
+            id: followSwitch
+            width: parent.width
+            implicitHeight: Theme.menuRowHeight
+            leftPadding: 12
+            rightPadding: 16
+            text: root.timelineSession.followCodeLabel
+            checked: root.stateBridge && root.stateBridge.followPreviewEnabled
+            Accessible.description: qsTrId("qml.follow_current_chart_source_position")
+            onToggled: {
+                if (root.stateBridge && checked !== root.stateBridge.followPreviewEnabled)
+                    root.timelineSession.followPreviewToggled(checked)
+            }
+            Connections {
+                target: root.stateBridge
+                function onFollowPreviewEnabledChanged() {
+                    followSwitch.checked = root.stateBridge.followPreviewEnabled
+                }
+            }
         }
     }
 }

@@ -232,6 +232,7 @@ Item {
     TimelineSettingsMenu {
         id: settingsMenu
         stateBridge: root.timelineSession.stateBridge
+        timelineSession: root.timelineSession
     }
 
     Item {
