@@ -70,9 +70,6 @@ QString laneLabelForIndex(int laneIndex)
     if (laneIndex >= 0 && laneIndex < kPlayableLaneCount) {
         return QString::number(laneIndex + 1);
     }
-    if (laneIndex == kPlayableLaneCount) {
-        return QStringLiteral("T");
-    }
     return QString();
 }
 
@@ -522,9 +519,10 @@ TimelineSceneState TimelineSceneStateBuilder::build(const TimelineSceneBuildRequ
     const TimelineThemeColors theme = timelineThemeColors();
     const QFont laneLabelFont = timelineLaneLabelFont(request.headerLineNumberFont, state.contentScale);
     const QFontMetricsF laneLabelMetrics(laneLabelFont);
+    // Shared digit ink keeps every lane label on one baseline grid.
+    const QRectF laneLabelInkRect = laneLabelMetrics.tightBoundingRect(QStringLiteral("12345678"));
     const bool showLaneLabels = state.laneHeight >=
-        laneLabelMetrics.tightBoundingRect(QStringLiteral("12345678T")).height()
-            + 2.0 * kTimelineTextVerticalPadding;
+        laneLabelInkRect.height() + 2.0 * kTimelineTextVerticalPadding;
     // Surface fills cover the full viewport below the header.
     // Content layers keep their own timeline clips.
     const qreal backgroundHeight = request.viewportSize.height() - state.timelineTop;
@@ -569,14 +567,19 @@ TimelineSceneState TimelineSceneStateBuilder::build(const TimelineSceneBuildRequ
         }
         TimelineSceneTextLabel label;
         label.text = laneLabelForIndex(lane);
-        const QRectF inkRect = laneLabelMetrics.tightBoundingRect(label.text);
+        if (label.text.isEmpty()) {
+            continue;
+        }
+        // Center by advance: digits share one advance width, while per-glyph ink
+        // centering shifts narrow or asymmetric digits such as 1 and 4.
+        const qreal advance = laneLabelMetrics.horizontalAdvance(label.text);
         label.font = laneLabelFont;
         label.color = theme.label;
         label.logicalSize = timelineTextLogicalSize(label.font, label.text);
         label.topLeft = QPointF(
-            qRound((state.timelineLeft - inkRect.width()) * 0.5 - inkRect.left() - kTimelineTextHorizontalPadding),
-            qRound(y + (state.laneHeight - inkRect.height()) * 0.5
-                   - inkRect.top() - laneLabelMetrics.ascent() - kTimelineTextVerticalPadding));
+            qRound((state.timelineLeft - advance) * 0.5 - kTimelineTextHorizontalPadding),
+            qRound(y + (state.laneHeight - laneLabelInkRect.height()) * 0.5
+                   - laneLabelInkRect.top() - laneLabelMetrics.ascent() - kTimelineTextVerticalPadding));
         state.laneLabels.append(label);
     }
 
