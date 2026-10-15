@@ -20,6 +20,26 @@ QString spriteTypeForKind(const QString& kind)
     return kind;
 }
 
+QImage visibleNoteImage(const QImage& source)
+{
+    const QImage image = source.convertToFormat(QImage::Format_ARGB32_Premultiplied);
+    int left = image.width();
+    int top = image.height();
+    int right = -1;
+    int bottom = -1;
+    for (int y = 0; y < image.height(); ++y) {
+        const auto* pixels = reinterpret_cast<const QRgb*>(image.constScanLine(y));
+        for (int x = 0; x < image.width(); ++x) {
+            if (qAlpha(pixels[x]) == 0) continue;
+            left = qMin(left, x);
+            right = qMax(right, x);
+            top = qMin(top, y);
+            bottom = qMax(bottom, y);
+        }
+    }
+    return right >= left ? image.copy(left, top, right - left + 1, bottom - top + 1) : QImage();
+}
+
 class NoteImageProvider final : public QQuickImageProvider
 {
 public:
@@ -38,12 +58,16 @@ public:
         }
 
         const QString skinDirectory = model_->currentSkinDirectory();
-        if (skinDirectory != cachedSkinDirectory_) {
+        if (skinDirectory != cachedSkinDirectory_ || icons_.isEmpty()) {
             cachedSkinDirectory_ = skinDirectory;
-            assets_ = miacode::timeline::loadTimelineNoteAssets(skinDirectory);
+            const auto assets = miacode::timeline::loadTimelineNoteAssets(skinDirectory);
+            for (const QString& type : {QStringLiteral("tap"), QStringLiteral("hold"),
+                     QStringLiteral("slide"), QStringLiteral("touch"), QStringLiteral("tap_break")}) {
+                icons_.insert(type, visibleNoteImage(assets.noteIcons.value(type).toImage()));
+            }
         }
 
-        QImage image = assets_.noteIcons.value(spriteTypeForKind(kind)).toImage();
+        QImage image = icons_.value(spriteTypeForKind(kind));
         if (image.isNull()) {
             image = QImage(1, 1, QImage::Format_ARGB32_Premultiplied);
             image.fill(Qt::transparent);
@@ -59,7 +83,7 @@ public:
 private:
     QPointer<PreviewModel> model_;
     QString cachedSkinDirectory_;
-    miacode::timeline::TimelineNoteAssetSet assets_;
+    QHash<QString, QImage> icons_;
 };
 
 } // namespace
