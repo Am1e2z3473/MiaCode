@@ -179,7 +179,7 @@ private:
     double playheadSeconds_ = 0.0;
     double cursorSeconds_ = 0.0;
     bool showSlideTracks_ = true;
-    bool followPreviewEnabled_ = false;
+    bool followPreviewEnabled_ = true;
     bool viewportLockEnabled_ = false;
     bool followProgressEnabled_ = true;
     bool timelineSyncEnabled_ = false;
