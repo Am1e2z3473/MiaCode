@@ -1,4 +1,4 @@
-﻿#include "common/LocalizedText.h"
+#include "common/LocalizedText.h"
 
 #include "app/services/UiRequestService.h"
 #include "app/runtime/document/DocumentSessionHost.h"
@@ -105,7 +105,7 @@ void miacode::runtime::DocumentSessionHost::resetAutosaveState(const QString& re
     // is now the truth — clear any stale crash-recovery file and the
     // in-memory snapshot. If the user was working on a different chart
     // or just saved, we don't want a future crash to write a recovery
-    // file with the now-stale content. The next markCurrentFieldDirty
+    // file with the now-stale content. The next noteDocumentEditedForAutosave
     // refills the snapshot.
     cleanupCrashRecoveryForCleanExit();
 }
@@ -219,8 +219,8 @@ void miacode::runtime::DocumentSessionHost::applyBackupFile(const QString& norma
     const miacode::ChartWorkspaceResult replaced = workspace.replaceSource(backupText);
     if (!replaced.accepted) {
         workspace.openSource(backupText, state_.currentFilePath_);
-        workspace.rebindSavePoint(diskReferenceText);
     }
+    workspace.rebindSavePoint(diskReferenceText);
     // A backup can carry designer names the live document had unified; the
     // restored content decides whether the mode still holds.
     reconcileUnifiedDocumentDesigner(
@@ -231,7 +231,6 @@ void miacode::runtime::DocumentSessionHost::applyBackupFile(const QString& norma
     state_.autosaveLastHistoryContentSignature_.clear();
     state_.autosaveLastHistorySnapshotMs_ = kAutosaveUnsetTimestampMs;
     state_.documentDirty_ = workspace.snapshot().dirty;
-    state_.currentFieldDirty_ = true;
     updateDirtyState();
     session_.scheduleTimelineRefresh();
     // The status bar this used to write to is hidden under the QML shell, so
@@ -483,28 +482,6 @@ bool miacode::runtime::DocumentSessionHost::saveToPath(const QString& path)
     const QString normalizedPath = path.isEmpty() ? QString() : QDir::cleanPath(path);
     const QString targetName = QFileInfo(normalizedPath.isEmpty() ? path : normalizedPath).fileName();
 
-    QElapsedTimer applyTimer;
-    applyTimer.start();
-    const bool applied = applyCurrentFieldToDocument();
-    miacode::debug_log::appendTimingLine(
-        miacode::debug_log::Channel::Runtime,
-        QStringLiteral("close_timing/document"),
-        QStringLiteral("apply_current_field_to_document"),
-        applyTimer.elapsed(),
-        QStringLiteral("trigger=save_to_path result=%1 target=%2")
-            .arg(applied ? QStringLiteral("applied") : QStringLiteral("failed"), targetName)
-    );
-    if (!applied) {
-        _mc_op_.fail(QStringLiteral("apply_current_field_to_document failed"));
-        miacode::debug_log::appendTimingLine(
-            miacode::debug_log::Channel::Runtime,
-            QStringLiteral("close_timing/document"),
-            QStringLiteral("save_to_path"),
-            totalTimer.elapsed(),
-            QStringLiteral("result=apply_failed target=%1").arg(targetName)
-        );
-        return false;
-    }
     bool firstOk = false;
     (void)session_.parsedFirstSeconds(&firstOk);
     if (!firstOk) {
@@ -539,7 +516,6 @@ bool miacode::runtime::DocumentSessionHost::saveToPath(const QString& path)
         rebuildAutosaveMetadata(autosaveDirectoryPath);
     }
     state_.documentDirty_ = false;
-    state_.currentFieldDirty_ = false;
     updateDirtyState();
     session_.updateWindowTitle();
     miacode::debug_log::appendTimingLine(

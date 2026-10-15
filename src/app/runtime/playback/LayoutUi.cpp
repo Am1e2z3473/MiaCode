@@ -18,8 +18,8 @@ using namespace miacode::runtime::shared;
 double miacode::runtime::PlaybackCoordinator::previewContentDurationSeconds() const
 {
     double chartEndSeconds = 0.0;
-    if (state_.timelineQuickStateBridge_ != nullptr) {
-        chartEndSeconds = qMax(chartEndSeconds, state_.timelineQuickStateBridge_->durationSeconds());
+    if (state_.timeline_.timelineQuickStateBridge_ != nullptr) {
+        chartEndSeconds = qMax(chartEndSeconds, state_.timeline_.timelineQuickStateBridge_->durationSeconds());
     }
     return miacode::content_duration::totalContentDurationSeconds(
         chartEndSeconds, state_.previewTrackDurationSeconds_);

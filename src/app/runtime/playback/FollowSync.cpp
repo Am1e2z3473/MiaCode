@@ -64,7 +64,7 @@ void miacode::runtime::PlaybackCoordinator::updatePreviewFollowDecorationForTime
     } else {
         QElapsedTimer timer;
         timer.start();
-        resolved = state_.timelineQuickModel_.resolvePreviewFollowBinding(
+        resolved = state_.timeline_.timelineQuickModel_.resolvePreviewFollowBinding(
             qMax(0.0, anchoredSecond), &binding);
         if (resolveElapsedNs != nullptr) {
             *resolveElapsedNs = timer.nsecsElapsed();
@@ -90,7 +90,7 @@ void miacode::runtime::PlaybackCoordinator::updatePreviewFollowDecorationForTime
     // The workspace revision QML last committed — the same identity
     // requestEditorNavigation publishes, and the one the editor compares
     // against. This used to carry the validation snapshot's revision instead,
-    // which is timelineRevision_: a different counter that only advances on
+    // which is state_.timeline_.timelineRevision_: a different counter that only advances on
     // some of the commits the workspace counts, so a single difficulty switch
     // was enough to put the two permanently out of step and silently kill
     // 代码跟随 for the rest of the session.

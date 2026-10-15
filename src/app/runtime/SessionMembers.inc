@@ -19,14 +19,6 @@
         // host renders it.
         miacode::UiRequestService* uiRequests_ = nullptr;
         miacode::JobProgressService* jobProgress_ = nullptr;
-        // Chart-wide timing offset (`&first`). Lives in the difficulty-page
-        // header (next to Lv), not the metadata page — see FrameBootstrap.
-        // Per-difficulty designer state (`&des_N` + the "share one designer"
-        // toggle) is managed by a dialog, not a persistent checkbox, so there
-        // is no unifiedDesignerCheckbox_ widget; the mode itself lives in
-        // ChartWorkspace.
-        // Per-difficulty designer (`&des_N`) header field. Distinct from the
-        // metadata page's document-level designer field (&des).
         QTimer* previewHeldSeekTimer_ = nullptr;
     };
 
@@ -39,34 +31,7 @@
         State(const State&) = delete;
         State& operator=(const State&) = delete;
 
-        // Timeline refresh / snapshot / readiness / cursor / analysis storage
-        // is owned by TimelineState. The aliases below are the migration-period
-        // compatibility view for call sites that still read them through the
-        // shared record; State itself no longer stores any of these values.
         TimelineState& timeline_;
-        TimelineQuickStateBridge*& timelineQuickStateBridge_ = timeline_.timelineQuickStateBridge_;
-        bool& timelineReady_ = timeline_.timelineReady_;
-        quint64& deferredTimelineBridgeFlushGeneration_ = timeline_.deferredTimelineBridgeFlushGeneration_;
-        bool& pendingQuickTimelineCursorSync_ = timeline_.pendingQuickTimelineCursorSync_;
-        double& pendingQuickTimelineCursorSecond_ = timeline_.pendingQuickTimelineCursorSecond_;
-        bool& pendingQuickTimelineCursorCenterView_ = timeline_.pendingQuickTimelineCursorCenterView_;
-        int& lastTimelineParseDifficultyId_ = timeline_.lastTimelineParseDifficultyId_;
-        QString& lastTimelineParseChartText_ = timeline_.lastTimelineParseChartText_;
-        miacode::simai::SimaiTimingMetadata& lastTimelineParseTimingMetadata_ = timeline_.lastTimelineParseTimingMetadata_;
-        SimaiParseResult& lastTimelineParseResult_ = timeline_.lastTimelineParseResult_;
-        QVector<TimelineNoteMarker>& latestTimelineNoteMarkers_ = timeline_.latestTimelineNoteMarkers_;
-        QByteArray& latestTimelineNoteMarkerSignature_ = timeline_.latestTimelineNoteMarkerSignature_;
-        quint64& latestTimelinePreviewRevision_ = timeline_.latestTimelinePreviewRevision_;
-        bool& latestTimelinePreviewSnapshotReady_ = timeline_.latestTimelinePreviewSnapshotReady_;
-        TimelineQuickModel& timelineQuickModel_ = timeline_.timelineQuickModel_;
-        TimelineSlowRefreshRequest& pendingTimelineSlowRefresh_ = timeline_.pendingTimelineSlowRefresh_;
-        TimelineSlowRefreshRequest& pendingTimelineAnalysisRefresh_ = timeline_.pendingTimelineAnalysisRefresh_;
-        quint64& timelineRevision_ = timeline_.timelineRevision_;
-        quint64& timelineSlowRequestedRevision_ = timeline_.timelineSlowRequestedRevision_;
-        quint64& timelineAnalysisRequestedRevision_ = timeline_.timelineAnalysisRequestedRevision_;
-        quint64& waveformRefreshGeneration_ = timeline_.waveformRefreshGeneration_;
-        PreviewCanvasFrameRateMode& timelineFrameRateMode_ = timeline_.timelineFrameRateMode_;
-        bool& timelineSyncEnabled_ = timeline_.timelineSyncEnabled_;
 
         // Canonical playback-authority storage is owned by PlaybackState (see
         // RuntimeContext.h for which nine fields and why). The aliases below
@@ -260,7 +225,6 @@
         qint64 videoExportWorkerPredictedTotalMs_ = -1;
         int projectLastOpenedDifficultyId_ = 0;
         bool documentDirty_ = false;
-        bool currentFieldDirty_ = false;
         // playing_ / previewTransportState_ moved to PlaybackState — see the
         // const-ref alias block above.
         bool qtPreviewTimelineDirty_ = false;
@@ -527,14 +491,8 @@
     PreviewRuntime*& scene_ = state_.scene_;
     PreviewStageMediaHost*& previewStageMediaHost_ = state_.previewStageMediaHost_;
     QuickShellPreviewCompositeSurface*& quickShellPreviewCompositeSurface_ = state_.quickShellPreviewCompositeSurface_;
-    TimelineQuickStateBridge*& timelineQuickStateBridge_ = state_.timelineQuickStateBridge_;
     bool& backendActive_ = state_.backendActive_;
     bool& uiFocusBridgeMode_ = state_.uiFocusBridgeMode_;
-    bool& timelineReady_ = state_.timelineReady_;
-    quint64& deferredTimelineBridgeFlushGeneration_ = state_.deferredTimelineBridgeFlushGeneration_;
-    bool& pendingQuickTimelineCursorSync_ = state_.pendingQuickTimelineCursorSync_;
-    double& pendingQuickTimelineCursorSecond_ = state_.pendingQuickTimelineCursorSecond_;
-    bool& pendingQuickTimelineCursorCenterView_ = state_.pendingQuickTimelineCursorCenterView_;
     BottomTabsTabId& currentBottomTabsTabId_ = state_.currentBottomTabsTabId_;
     double& bottomTabsContentScale_ = state_.bottomTabsContentScale_;
     bool& bottomTabsResizeDragActive_ = state_.bottomTabsResizeDragActive_;
@@ -582,20 +540,6 @@
     QString& pendingAbnormalExitBackupRestorePath_ = state_.pendingAbnormalExitBackupRestorePath_;
     QString& pendingAbnormalExitBackupRestoreChartPath_ = state_.pendingAbnormalExitBackupRestoreChartPath_;
     bool& pendingAbnormalExitBackupRestoreScheduled_ = state_.pendingAbnormalExitBackupRestoreScheduled_;
-    int& lastTimelineParseDifficultyId_ = state_.lastTimelineParseDifficultyId_;
-    QString& lastTimelineParseChartText_ = state_.lastTimelineParseChartText_;
-    miacode::simai::SimaiTimingMetadata& lastTimelineParseTimingMetadata_ = state_.lastTimelineParseTimingMetadata_;
-    SimaiParseResult& lastTimelineParseResult_ = state_.lastTimelineParseResult_;
-    QVector<TimelineNoteMarker>& latestTimelineNoteMarkers_ = state_.latestTimelineNoteMarkers_;
-    QByteArray& latestTimelineNoteMarkerSignature_ = state_.latestTimelineNoteMarkerSignature_;
-    quint64& latestTimelinePreviewRevision_ = state_.latestTimelinePreviewRevision_;
-    bool& latestTimelinePreviewSnapshotReady_ = state_.latestTimelinePreviewSnapshotReady_;
-    TimelineQuickModel& timelineQuickModel_ = state_.timelineQuickModel_;
-    TimelineSlowRefreshRequest& pendingTimelineSlowRefresh_ = state_.pendingTimelineSlowRefresh_;
-    TimelineSlowRefreshRequest& pendingTimelineAnalysisRefresh_ = state_.pendingTimelineAnalysisRefresh_;
-    quint64& timelineRevision_ = state_.timelineRevision_;
-    quint64& timelineSlowRequestedRevision_ = state_.timelineSlowRequestedRevision_;
-    quint64& timelineAnalysisRequestedRevision_ = state_.timelineAnalysisRequestedRevision_;
     QByteArray& lastPreviewNoteMarkerSignature_ = state_.lastPreviewNoteMarkerSignature_;
     QByteArray& muriAnalysisReportNoteMarkerSignature_ = state_.muriAnalysisReportNoteMarkerSignature_;
     int& muriAnalysisReportDifficultyId_ = state_.muriAnalysisReportDifficultyId_;
@@ -624,7 +568,6 @@
     bool& deferredQuickShellStartupStageMediaFlushScheduled_ = state_.deferredQuickShellStartupStageMediaFlushScheduled_;
     QString& deferredQuickShellStartupStageMediaChartPath_ = state_.deferredQuickShellStartupStageMediaChartPath_;
     double& deferredQuickShellStartupStageMediaPausedSecond_ = state_.deferredQuickShellStartupStageMediaPausedSecond_;
-    quint64& waveformRefreshGeneration_ = state_.waveformRefreshGeneration_;
     bool& pendingDeferredValidationUiRefresh_ = state_.pendingDeferredValidationUiRefresh_;
     bool& pendingDeferredMuriUiRefresh_ = state_.pendingDeferredMuriUiRefresh_;
     QString& previewSfxWarmupChartPath_ = state_.previewSfxWarmupChartPath_;
@@ -647,7 +590,6 @@
     qint64& videoExportWorkerPredictedTotalMs_ = state_.videoExportWorkerPredictedTotalMs_;
     int& projectLastOpenedDifficultyId_ = state_.projectLastOpenedDifficultyId_;
     bool& documentDirty_ = state_.documentDirty_;
-    bool& currentFieldDirty_ = state_.currentFieldDirty_;
     const bool& playing_ = state_.playing_;
     bool& qtPreviewTimelineDirty_ = state_.qtPreviewTimelineDirty_;
     bool& qtPreviewAwaitingFrameSwap_ = state_.qtPreviewAwaitingFrameSwap_;
@@ -742,7 +684,6 @@
     bool& previewFollowEnabled_ = state_.previewFollowEnabled_;
     bool& previewViewportLockEnabled_ = state_.previewViewportLockEnabled_;
     bool& previewProgressFollowEnabled_ = state_.previewProgressFollowEnabled_;
-    bool& timelineSyncEnabled_ = state_.timelineSyncEnabled_;
     MuriAnalysisReport& muriAnalysisReport_ = state_.muriAnalysisReport_;
     QVector<MuriStaticReference>& muriStaticReferences_ = state_.muriStaticReferences_;
     MuriRenderOptions& muriRenderOptions_ = state_.muriRenderOptions_;

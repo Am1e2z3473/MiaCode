@@ -11,7 +11,6 @@ public:
     virtual ~PlaybackDocumentPort() = default;
 
     virtual void updateDirtyState() = 0;
-    virtual bool applyCurrentFieldToDocument() = 0;
     virtual bool requestEditorNavigation(int line, int column, int endLine, int endColumn,
                                          bool selectToken, bool focusEditor, bool centerView) = 0;
     virtual quint64 appliedWorkspaceRevision() const = 0;

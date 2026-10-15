@@ -43,6 +43,10 @@ Item {
                 && !root.mediaHost.hasVideoMedia
             fillMode: root.fitContain ? Image.PreserveAspectFit : Image.PreserveAspectCrop
             source: root.mediaHost ? root.mediaHost.imageSource : ""
+            onStatusChanged: {
+                if (status === Image.Error && root.mediaHost)
+                    root.mediaHost.reportImageLoadFailure(source)
+            }
             asynchronous: true
             cache: true
             smooth: true

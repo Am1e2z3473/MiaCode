@@ -97,6 +97,19 @@ void runSpecs(QTextStream& out, int* failed)
         expectTrue(reparsed.difficulty(5) != nullptr, "reparsed keeps the real difficulty 5", failed, out);
     }
 
+    {
+        SimaiDocument doc = SimaiDocument::fromText("&des=Shared\n&lv_5=12\n&inote_5=(120){1}1,\n");
+        expectEqual(doc.effectiveDesignerForSlot(5), "Shared", "empty difficulty designer uses document designer", failed, out);
+        doc.setDesignerForSlot(5, "  ");
+        expectEqual(doc.effectiveDesignerForSlot(5), "Shared", "whitespace difficulty designer uses document designer", failed, out);
+        expectEqual(doc.designerForSlot(5), "  ", "raw slot designer retains whitespace", failed, out);
+        doc.setDesignerForSlot(5, " Alice ");
+        expectEqual(doc.effectiveDesignerForSlot(5), " Alice ", "difficulty designer preserves its original value", failed, out);
+        expectEqual(doc.effectiveDesignerForSlot(3), "Shared", "empty uncharted slot uses document designer", failed, out);
+        doc.setDesignerForSlot(3, "Bob");
+        expectEqual(doc.effectiveDesignerForSlot(3), "Bob", "standalone slot uses its own designer", failed, out);
+    }
+
     // --- setDesignerForSlot: existing diff vs chart-less slot. ---
     {
         SimaiDocument doc = SimaiDocument::fromText("&lv_5=12\n&inote_5=(120){1}1,\n");

@@ -53,7 +53,7 @@ bool miacode::runtime::DocumentSessionHost::updateDocumentField(
 
     const bool timingChanged = field == Session::DocumentField::First;
     state_.documentDirty_ = workspace.snapshot().dirty;
-    markCurrentFieldDirty();
+    noteDocumentEditedForAutosave();
     updateDirtyState();
     session_.updateWindowTitle();
     if (timingChanged) {
@@ -76,7 +76,7 @@ bool miacode::runtime::DocumentSessionHost::updateDifficultyField(
     }
 
     state_.documentDirty_ = workspace.snapshot().dirty;
-    markCurrentFieldDirty();
+    noteDocumentEditedForAutosave();
     updateDirtyState();
     return true;
 }
@@ -96,7 +96,7 @@ bool miacode::runtime::DocumentSessionHost::updateActiveChartText(const QString&
         return false;
     }
     state_.documentDirty_ = workspace.snapshot().dirty;
-    markCurrentFieldDirty();
+    noteDocumentEditedForAutosave();
     updateDirtyState();
     session_.scheduleTimelineRefresh();
     emit session_.documentValidationChanged();
@@ -147,7 +147,7 @@ Session::DocumentSourceReplaceResult miacode::runtime::DocumentSessionHost::repl
         miacode::DocumentBridge::UnifiedDesignerReconcileReason::SourceReplaced);
     loadDocument();
     state_.documentDirty_ = session_.applicationServices_.workspace().snapshot().dirty;
-    markCurrentFieldDirty();
+    noteDocumentEditedForAutosave();
     updateDirtyState();
     session_.scheduleTimelineRefresh();
     result.revision = session_.documentValidationSnapshot().revision;
@@ -164,7 +164,7 @@ bool miacode::runtime::DocumentSessionHost::addDocumentDifficulty(int difficulty
         return false;
     }
     state_.documentDirty_ = session_.applicationServices_.workspace().snapshot().dirty;
-    markCurrentFieldDirty();
+    noteDocumentEditedForAutosave();
     const bool selected = switchToDifficultyField(difficultyId);
     updateDirtyState();
     return selected;

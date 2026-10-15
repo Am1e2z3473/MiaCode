@@ -35,7 +35,6 @@ void miacode::runtime::VideoExportHost::onPackAsZip()
     // Flush the in-progress editor field into the document so the packaged
     // maidata.txt matches what the user sees (same contract as save-to-path).
     if (session_.documents_ != nullptr) {
-        session_.documents_->applyCurrentFieldToDocument();
     }
 
     const QString chartText = session_.applicationServices_.workspace().document().toText();

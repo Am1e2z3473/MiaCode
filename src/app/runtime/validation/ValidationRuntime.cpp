@@ -1,4 +1,4 @@
-﻿#include "app/runtime/validation/ValidationHost.h"
+#include "app/runtime/validation/ValidationHost.h"
 #include "app/runtime/playback/PlaybackCoordinator.h"
 #include "app/runtime/shell/ShellHost.h"
 
@@ -125,7 +125,7 @@ miacode::runtime::ValidationHost::documentValidationSnapshot() const
         .arg(timingMetadata.wholeTimeSignatureNumerator)
         .arg(timingMetadata.wholeTimeSignatureDenominator)
         .arg(timingMetadata.wholeTimeSignatureValid ? 1 : 0);
-    input.timelineRevision = state_.timelineRevision_;
+    input.timelineRevision = state_.timeline_.timelineRevision_;
 
     miacode::ui::DocumentValidationProjectionCache cache;
     const auto it = state_.validationCacheByDifficulty_.constFind(input.difficultyId);
@@ -169,7 +169,7 @@ Session::QmlAnalysisSnapshot miacode::runtime::ValidationHost::qmlAnalysisSnapsh
     input.muriRevision = state_.muriAnalysisReportTimelineRevision_;
     input.muriSignatureAligned = state_.muriAnalysisResultAvailable_
         && !state_.muriAnalysisReportNoteMarkerSignature_.isEmpty()
-        && state_.latestTimelineNoteMarkerSignature_ == state_.muriAnalysisReportNoteMarkerSignature_;
+        && state_.timeline_.latestTimelineNoteMarkerSignature_ == state_.muriAnalysisReportNoteMarkerSignature_;
     input.muriStaticReferencesAligned = state_.muriStaticReferencesAvailable_
         && state_.muriStaticReferencesDifficultyId_ == input.muriDifficultyId
         && state_.muriStaticReferencesTimelineRevision_ == input.muriRevision
@@ -209,35 +209,26 @@ bool miacode::runtime::ValidationHost::runValidateSimaiSilently()
     const QString chartText = session_.activeChartText();
     const SimaiValidationLocale validationLocale = miacode::uiValidationLocale();
     const miacode::simai::SimaiTimingMetadata timingMetadata = session_.currentTimingMetadata();
-    const SimaiParseResult* cachedLenientResult =
-        (state_.lastTimelineParseDifficultyId_ == difficultyId
-            && state_.lastTimelineParseChartText_ == chartText
-            && state_.lastTimelineParseTimingMetadata_ == timingMetadata)
-        ? &state_.lastTimelineParseResult_
-        : nullptr;
-
     Session::ValidationCacheEntry entry;
     const auto cacheIt = state_.validationCacheByDifficulty_.constFind(difficultyId);
     if (cacheIt != state_.validationCacheByDifficulty_.constEnd()
         && cacheIt->chartText == chartText
         && cacheIt->validationLocale == validationLocale
         && cacheIt->timingMetadata == timingMetadata
-        && cacheIt->validationRevision == state_.timelineRevision_) {
+        && cacheIt->validationRevision == state_.timeline_.timelineRevision_) {
         entry = cacheIt.value();
     } else {
         QElapsedTimer reportTimer;
         reportTimer.start();
         const SimaiValidationReport report =
-            SimaiParser::buildValidationReport(chartText, validationLocale, cachedLenientResult, timingMetadata);
+            SimaiParser::buildValidationReport(chartText, validationLocale, timingMetadata);
         entry.chartText = chartText;
         entry.validationLocale = validationLocale;
         entry.timingMetadata = timingMetadata;
-        entry.validationRevision = state_.timelineRevision_;
+        entry.validationRevision = state_.timeline_.timelineRevision_;
         entry.ok = report.ok;
         entry.errorCount = report.errorCount;
         entry.warningCount = report.warningCount;
-        entry.lenientNoteCount = report.lenientNoteCount;
-        entry.lenientErrorCount = report.lenientErrorCount;
         entry.strictNoteCount = report.strictNoteCount;
         entry.strictErrorCount = report.strictErrorCount;
         entry.issues.clear();
@@ -256,11 +247,9 @@ bool miacode::runtime::ValidationHost::runValidateSimaiSilently()
         if (state_.runtimeDebugOutputEnabled_) {
             session_.shell_->appendOutput(
                 "edit/validation_perf",
-                QStringLiteral("build_report=%1ms issues=%2 cached_lenient=%3")
+                QStringLiteral("build_report=%1ms issues=%2")
                     .arg(reportTimer.elapsed())
-                    .arg(entry.issues.size())
-                    .arg(cachedLenientResult != nullptr ? QStringLiteral("1") : QStringLiteral("0"))
-            );
+                    .arg(entry.issues.size()));
         }
     }
 

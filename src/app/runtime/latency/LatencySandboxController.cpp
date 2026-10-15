@@ -126,10 +126,10 @@ void LatencySandboxController::installSandboxScene()
     // from the current mode by Session::applyPreviewAudioSettingsToRuntime, so
     // entering the page dispatches the audition mix and leaving it re-dispatches
     // the user's normal mix (see the dispatch calls in install/teardown below).
-    cachedNoteMarkers_ = owner_->state_.latestTimelineNoteMarkers_;
-    cachedNoteMarkerSignature_ = owner_->state_.latestTimelineNoteMarkerSignature_;
-    if (owner_->state_.timelineQuickStateBridge_ != nullptr) {
-        cachedSnapshot_ = owner_->state_.timelineQuickStateBridge_->renderSnapshot();
+    cachedNoteMarkers_ = owner_->state_.timeline_.latestTimelineNoteMarkers_;
+    cachedNoteMarkerSignature_ = owner_->state_.timeline_.latestTimelineNoteMarkerSignature_;
+    if (owner_->state_.timeline_.timelineQuickStateBridge_ != nullptr) {
+        cachedSnapshot_ = owner_->state_.timeline_.timelineQuickStateBridge_->renderSnapshot();
     } else {
         cachedSnapshot_ = TimelineRenderSnapshot();
     }
@@ -169,7 +169,7 @@ void LatencySandboxController::teardownSandboxScene()
         owner_->state_.latencySandboxAuditionActive_ = false;
         owner_->clearAuditionSceneReady();
         // Don't let a later difficulty reuse the sandbox's "ready" snapshot.
-        owner_->state_.latestTimelinePreviewSnapshotReady_ = false;
+        owner_->state_.timeline_.latestTimelinePreviewSnapshotReady_ = false;
     }
 
     restoreOriginalTimeline();
@@ -219,8 +219,8 @@ void LatencySandboxController::applyPlayheadToScene(double seconds)
     if (auto* authority = owner_->applicationServices_.playbackStateAuthority(); authority != nullptr) {
         authority->repositionSilently(clamped, "latency_sandbox_apply_playhead");
     }
-    if (owner_->state_.timelineQuickStateBridge_ != nullptr) {
-        owner_->state_.timelineQuickStateBridge_->setPlayheadSeconds(clamped, false);
+    if (owner_->state_.timeline_.timelineQuickStateBridge_ != nullptr) {
+        owner_->state_.timeline_.timelineQuickStateBridge_->setPlayheadSeconds(clamped, false);
     }
     if (owner_->state_.scene_ != nullptr) {
         owner_->state_.scene_->setPlayheadSeconds(clamped, true);
@@ -242,10 +242,10 @@ void LatencySandboxController::setupSandboxPreviewState()
     // Preview note markers + "snapshot ready" flags — the same state a
     // slow-refresh publishes for a real difficulty, so preparePreviewStartState
     // accepts it and the real transport can play the test chart.
-    owner_->state_.latestTimelineNoteMarkers_ = previewState.shiftedNoteMarkers;
-    owner_->state_.latestTimelineNoteMarkerSignature_ = previewState.noteMarkerSignature;
-    owner_->state_.latestTimelinePreviewRevision_ = owner_->state_.timelineRevision_;
-    owner_->state_.latestTimelinePreviewSnapshotReady_ = true;
+    owner_->state_.timeline_.latestTimelineNoteMarkers_ = previewState.shiftedNoteMarkers;
+    owner_->state_.timeline_.latestTimelineNoteMarkerSignature_ = previewState.noteMarkerSignature;
+    owner_->state_.timeline_.latestTimelinePreviewRevision_ = owner_->state_.timeline_.timelineRevision_;
+    owner_->state_.timeline_.latestTimelinePreviewSnapshotReady_ = true;
     // The sandbox's test chart is synthesized here and cannot change underneath
     // the scene, so it is always current; the rebuild is only a safety net.
     owner_->setAuditionSceneReady({}, [this]() {
@@ -259,10 +259,10 @@ void LatencySandboxController::setupSandboxPreviewState()
 
     // Bottom timeline — reuse the real timeline model so the test chart's notes
     // (and beat/measure grid) render exactly like a difficulty's timeline.
-    owner_->state_.timelineQuickModel_.rebuildFromText(chartText, offsetSeconds_);
-    if (owner_->state_.timelineQuickStateBridge_ != nullptr) {
-        owner_->state_.timelineQuickStateBridge_->setTimelineData(
-            owner_->state_.timelineQuickModel_.snapshot());
+    owner_->state_.timeline_.timelineQuickModel_.rebuildFromText(chartText, offsetSeconds_);
+    if (owner_->state_.timeline_.timelineQuickStateBridge_ != nullptr) {
+        owner_->state_.timeline_.timelineQuickStateBridge_->setTimelineData(
+            owner_->state_.timeline_.timelineQuickModel_.snapshot());
     }
 
     // SFX timeline for the test taps.
@@ -290,13 +290,13 @@ void LatencySandboxController::restoreOriginalTimeline()
     if (owner_.isNull() || !hasCachedTimeline_) {
         return;
     }
-    owner_->state_.latestTimelineNoteMarkers_ = cachedNoteMarkers_;
-    owner_->state_.latestTimelineNoteMarkerSignature_ = cachedNoteMarkerSignature_;
+    owner_->state_.timeline_.latestTimelineNoteMarkers_ = cachedNoteMarkers_;
+    owner_->state_.timeline_.latestTimelineNoteMarkerSignature_ = cachedNoteMarkerSignature_;
     if (owner_->state_.scene_ != nullptr) {
         owner_->state_.scene_->setNoteMarkers(cachedNoteMarkers_);
     }
-    if (owner_->state_.timelineQuickStateBridge_ != nullptr) {
-        owner_->state_.timelineQuickStateBridge_->setTimelineData(cachedSnapshot_);
+    if (owner_->state_.timeline_.timelineQuickStateBridge_ != nullptr) {
+        owner_->state_.timeline_.timelineQuickStateBridge_->setTimelineData(cachedSnapshot_);
     }
     if (owner_->state_.previewSfxRuntime_ != nullptr) {
         owner_->state_.previewSfxRuntime_->configureTimeline(

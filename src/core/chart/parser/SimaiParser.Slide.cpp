@@ -317,64 +317,9 @@ void parseSlideToken(ParseState* state, const QString& token, int lineNumber, in
     marker.wifiPadEnterTimes.clear();
     marker.wifiCriticalProportion = 1.0;
 
-        if (!populateSlideFromLookup(marker.slideTrackKey, &marker)) {
-        if (!state->allowInvalidStarFallback) {
-            appendTokenError(state, lineNumber, column, classifyInvalidNoteMessage(token));
-            return;
-        }
-        const QPointF start = polarPoint(kOuterLaneRadius, lane);
-        const QPointF end = polarPoint(kOuterLaneRadius, marker.endLane);
-        QVector<QPointF> segmentPoints;
-        QVector<double> segmentAngles;
-        buildLinearSamples(start, end, &segmentPoints, &segmentAngles);
-        marker.slideSegmentPoints = QVector<QVector<QPointF>>{segmentPoints};
-        marker.slideSegmentAngles = QVector<QVector<double>>{segmentAngles};
-
-        if (marker.type == "slide") {
-            QVector<QPointF> areaPoints = buildTrackArrowPoints(start, end, true);
-            QVector<double> areaRotations(areaPoints.size(), -slideAngleDegrees(start, end));
-            marker.slideTrackAreaPoints = QVector<QVector<QVector<QPointF>>>{QVector<QVector<QPointF>>{areaPoints}};
-            marker.slideTrackAreaRotations = QVector<QVector<QVector<double>>>{QVector<QVector<double>>{areaRotations}};
-            marker.slideTrackAreaThresholds = QVector<QVector<double>>{QVector<double>{0.0}};
-            marker.slideTrackAreaCheckpoints = QVector<QVector<QVector<double>>>{QVector<QVector<double>>{QVector<double>()}};
-            marker.slideTrackAreaCutIndices = QVector<QVector<QVector<int>>>{QVector<QVector<int>>{QVector<int>()}};
-            marker.slideSegmentPadEnterTimes = QVector<QVector<MuriPadTimeEntry>>{QVector<MuriPadTimeEntry>()};
-            marker.slideSegmentCriticalProportions = QVector<double>{1.0};
-        } else {
-            const QPointF delta = end - start;
-            const QPointF normal(-delta.y(), delta.x());
-            const double normalLength = std::hypot(normal.x(), normal.y());
-            const QPointF unitNormal = normalLength > 0.0
-                ? QPointF(normal.x() / normalLength, normal.y() / normalLength)
-                : QPointF(0.0, 0.0);
-            const QVector<double> laneOffsets{-28.0, 0.0, 28.0};
-            for (double offset : laneOffsets) {
-                QVector<QPointF> lanePoints;
-                QVector<double> laneAngles;
-                buildLinearSamples(
-                    QPointF(start.x() + unitNormal.x() * offset, start.y() + unitNormal.y() * offset),
-                    QPointF(end.x() + unitNormal.x() * offset, end.y() + unitNormal.y() * offset),
-                    &lanePoints,
-                    &laneAngles
-                );
-                marker.wifiLanePoints.append(lanePoints);
-                marker.wifiLaneAngles.append(laneAngles);
-            }
-            QVector<QPointF> areaPoints = buildTrackArrowPoints(start, end, false);
-            QVector<double> areaRotations(areaPoints.size(), slideAngleDegrees(start, end));
-            QVector<int> imageIndices;
-            imageIndices.reserve(areaPoints.size());
-            for (int i = 0; i < areaPoints.size(); ++i) {
-                imageIndices.append(i % 11);
-            }
-            marker.wifiTrackAreaPoints = QVector<QVector<QPointF>>{areaPoints};
-            marker.wifiTrackAreaRotations = QVector<QVector<double>>{areaRotations};
-            marker.wifiTrackAreaImageIndices = QVector<QVector<int>>{imageIndices};
-            marker.wifiTrackAreaThresholds = QVector<double>{0.0};
-            marker.wifiTrackAreaCheckpoints = QVector<QVector<double>>{QVector<double>()};
-            marker.wifiPadEnterTimes.clear();
-            marker.wifiCriticalProportion = 1.0;
-        }
+    if (!populateSlideFromLookup(marker.slideTrackKey, &marker)) {
+        appendTokenError(state, lineNumber, column, classifyInvalidNoteMessage(token));
+        return;
     }
 
     populateSlideTrackLengths(&marker);

@@ -731,12 +731,10 @@ void markOpenIntervalMatches(
 SimaiParseResult parseInternal(
     const QString& text,
     bool strictMode,
-    bool allowInvalidStarFallback,
     const miacode::simai::SimaiTimingMetadata& timingMetadata)
 {
     ParseState state;
     state.strictMode = strictMode;
-    state.allowInvalidStarFallback = allowInvalidStarFallback;
     applyInitialTimingMetadata(&state, timingMetadata);
 
     QString token;
@@ -1495,10 +1493,7 @@ SimaiParseResult SimaiParser::parseForTimeline(
 {
     MC_OP("SimaiParser::parseForTimeline");
     _mc_op_.note(QStringLiteral("text_len=%1").arg(text.size()));
-    // Invalid-star preview was only ever switched on by the About-icon easter egg,
-    // now removed, so this argument is false at both call sites and the branches
-    // it guards inside parseInternal are unreachable — see the TODO note.
-    return parseInternal(text, false, false, timingMetadata);
+    return parseInternal(text, false, timingMetadata);
 }
 
 SimaiParseResult SimaiParser::validateSyntax(
@@ -1507,7 +1502,7 @@ SimaiParseResult SimaiParser::validateSyntax(
 {
     MC_OP("SimaiParser::validateSyntax");
     _mc_op_.note(QStringLiteral("text_len=%1").arg(text.size()));
-    SimaiParseResult result = parseInternal(text, true, false, timingMetadata);
+    SimaiParseResult result = parseInternal(text, true, timingMetadata);
     return result;
 }
 
@@ -1534,20 +1529,12 @@ void SimaiParser::localizeValidationReport(SimaiValidationReport& report, SimaiV
 SimaiValidationReport SimaiParser::buildValidationReport(
     const QString& text,
     SimaiValidationLocale locale,
-    const SimaiParseResult* lenientResult,
     const miacode::simai::SimaiTimingMetadata& timingMetadata)
 {
     MC_OP("SimaiParser::buildValidationReport");
     _mc_op_.note(QStringLiteral("text_len=%1 locale=%2")
                      .arg(text.size())
                      .arg(static_cast<int>(locale)));
-    // The lenient pass is now exclusively a chart-preview vehicle (see
-    // parseForTimeline) and must not influence diagnostics. Validation severity
-    // is whatever the strict parser emits — full stop. The legacy parameter is
-    // retained for ABI/source compatibility with cached-result call sites; it
-    // is intentionally unused here.
-    Q_UNUSED(lenientResult);
-
     SimaiValidationReport report;
 
     if (text.trimmed().isEmpty()) {
@@ -1567,11 +1554,6 @@ SimaiValidationReport SimaiParser::buildValidationReport(
 
     const SimaiParseResult strictResult = validateSyntax(text, timingMetadata);
 
-    // Lenient-side counters are kept in the report struct for ABI compatibility
-    // with downstream consumers (MainWindow validation entries, etc.) but are
-    // no longer populated — preview parsing is an entirely separate flow.
-    report.lenientNoteCount = 0;
-    report.lenientErrorCount = 0;
     report.strictNoteCount = strictResult.noteMarkers.size();
     report.strictErrorCount = strictResult.errors.size();
 

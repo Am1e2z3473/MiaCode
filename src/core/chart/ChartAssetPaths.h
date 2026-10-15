@@ -201,7 +201,7 @@ inline bool hasBackgroundMedia(const QString& chartPath, bool includeVideoCandid
     return !resolveBackgroundMediaPath(chartPath, includeVideoCandidates).isEmpty();
 }
 
-// Phase 4c — chart-format `&video=` extension. Resolves the chart's
+// Chart-format `&video=` extension. Resolves the chart's
 // preferred video path with `chartVideoFieldValue` (the raw value
 // from `SimaiDocument::videoPath`) taking priority, and falls back to
 // the existing sibling-filename heuristic (`bg.mp4`, `pv.mp4`) when
@@ -218,13 +218,6 @@ inline bool hasBackgroundMedia(const QString& chartPath, bool includeVideoCandid
 // directory; absolute paths are used as-is. Returns empty string when
 // neither override nor fallback yields an existing supported file.
 //
-// Single source of truth — used by:
-//   - Live preview (`PreviewStageMediaHost::setChartPath`)
-//   - Warmup pre-resolution (`MainWindow.PreviewWarmupAndSettings.cpp`)
-//   - Export pipeline (`MainWindow.ExportSnapshot.cpp`,
-//     `VideoExportController.cpp`)
-//   - Outline auto-variant (`hasBackgroundMedia` is the OK path; this
-//     helper handles the explicit override).
 inline QString resolveChartVideoPath(
     const QString& chartPath,
     const QString& chartVideoFieldValue)

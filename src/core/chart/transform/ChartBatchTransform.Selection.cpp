@@ -597,9 +597,6 @@ QString transformCompleteElementsInSelection(
             parenDepth = 0;
         }
         if (commentStart >= lineStart && i >= commentStart) {
-            // TODO: Ctrl+Q intentionally skips comment text for now. If comment
-            // editing later needs this shortcut, add a separate comment-aware
-            // grammar instead of reusing chart-token clearing.
             appendRawThrough(qMin(nextLineStart, boundedEnd));
             i = segmentStart - 1;
             continue;
@@ -929,9 +926,6 @@ QString clearCompleteElementsInSelection(
             parenDepth = 0;
         }
         if (commentStart >= lineStart && i >= commentStart) {
-            // TODO: Ctrl+Q intentionally skips comment text for now. If comment
-            // editing later needs this shortcut, add a separate comment-aware
-            // grammar instead of reusing chart-token clearing.
             appendRawThrough(qMin(nextLineStart, boundedEnd));
             i = segmentStart - 1;
             continue;

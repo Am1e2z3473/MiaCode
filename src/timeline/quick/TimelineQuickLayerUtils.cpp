@@ -15,7 +15,6 @@
 #include <QtMath>
 
 #include <cstring>
-#include <new>
 
 #include <atomic>
 
@@ -256,137 +255,6 @@ void TimelineQuickFlatColorBatchBuilder::flush()
 }
 
 // ---------------------------------------------------------------------
-// TimelineQuickGeometryPool
-//
-// Recycles the CPU heap allocation of QSGGeometry across rebuilds, but
-// fully destructs and re-constructs the object in place each claim.
-//
-// WHY DESTRUCT + PLACEMENT NEW (not just allocate())?
-// QSGGeometry has a private member `QSGGeometryData *m_server_data`
-// that the QSG batch renderer attaches via
-// QSGGeometryData::install(). install() asserts that m_server_data is
-// currently null:
-//
-//   static inline void install(const QSGGeometry *g, QSGGeometryData *data) {
-//       Q_ASSERT(!g->m_server_data);
-//       const_cast<QSGGeometry *>(g)->m_server_data = data;
-//   }
-//
-// In RelWithDebInfo, Q_ASSERT is a no-op. If we reuse the same
-// QSGGeometry across frames WITHOUT clearing m_server_data, the
-// renderer's next install() call silently overwrites the previous
-// pointer — leaking the old QSGGeometryData. Worse, Qt's batch
-// tracking can hold lingering references to the old QSGGeometryData,
-// leading to free-list corruption when those references get torn down
-// later. Crash dump signature for that path:
-//   ntdll!RtlpHeapHandleError       (heap entry corruption, code 0x0F)
-//   ntdll!RtlpLowFragHeapAllocFromContext+0x32c
-//   ucrtbase!malloc_base+0x39
-//   MiaCode!operator new+0x1f
-//   MiaCode!buildTimelineLineNode+0x1c3   ← detected here, far from cause
-//
-// Calling ~QSGGeometry() in claim() invokes Qt's destructor, which
-// (we believe — Qt source not shipped, but design implies)
-// `delete`s m_server_data. Placement-new then constructs a fresh
-// QSGGeometry with m_server_data=nullptr, m_data freshly malloc'd.
-// From the renderer's perspective each claim looks identical to a
-// brand-new geometry — exactly what install() expects.
-//
-// PERFORMANCE TRADE-OFF
-// Saved per claim: the QSGGeometry CPU object's heap allocation
-// (~160 bytes; LFH-fast). The m_data buffer is still freshly
-// malloc'd by the constructor. Net win: one ~160-byte alloc avoided
-// per batch per rebuild. Modest, but the pool architecture also
-// keeps the door open for further wins (e.g. reusing
-// QSGGeometryNode skeletons) without changing call sites.
-
-TimelineQuickGeometryPool::~TimelineQuickGeometryPool()
-{
-    qDeleteAll(available_);
-    available_.clear();
-}
-
-QSGGeometry* TimelineQuickGeometryPool::claim(int vertexCount)
-{
-    if (vertexCount <= 0) {
-        vertexCount = 1;
-    }
-    if (!available_.isEmpty()) {
-        QSGGeometry* geometry = available_.takeLast();
-        // Destruct in place — invokes ~QSGGeometry which (per Qt
-        // design) `delete`s m_server_data, free()s m_data when
-        // m_owns_data is set. After this call the storage at
-        // `geometry` holds a properly-destroyed object; the heap
-        // allocation under it is ours to reuse.
-        geometry->~QSGGeometry();
-        // Re-construct in place at the same address. m_server_data
-        // is set to nullptr by the constructor, m_data is freshly
-        // allocated. From Qt's perspective this is indistinguishable
-        // from a `new QSGGeometry(...)`.
-        new (geometry) QSGGeometry(
-            QSGGeometry::defaultAttributes_TexturedPoint2D(),
-            vertexCount);
-        geometry->setDrawingMode(QSGGeometry::DrawTriangles);
-        return geometry;
-    }
-    auto* geometry = new QSGGeometry(
-        QSGGeometry::defaultAttributes_TexturedPoint2D(),
-        vertexCount);
-    geometry->setDrawingMode(QSGGeometry::DrawTriangles);
-    return geometry;
-}
-
-void TimelineQuickGeometryPool::release(QSGGeometry* geometry)
-{
-    if (geometry == nullptr) {
-        return;
-    }
-    available_.append(geometry);
-}
-
-// Walks `parent`'s direct children and harvests QSGGeometry instances
-// from any QSGGeometryNode whose OwnsGeometry flag is cleared. The
-// flag is cleared by the sprite batch builders when emitting pool-
-// owned nodes, so this function only reclaims geometries that were
-// originally claimed from the pool — pure-Qt nodes (text, line,
-// QSGSimpleRectNode for orthogonal lines, fallback geometry) are
-// left untouched and freed by the subsequent clearChildren().
-//
-// CRASH HISTORY: an earlier version called
-// `geometryNode->setGeometry(nullptr)` here to "detach" the geometry
-// before clearChildren deleted the node. That triggered
-// QSGBasicGeometryNode::setGeometry → markDirty(DirtyGeometry) →
-// the renderer's nodeChanged callback, which dereferences the
-// just-NULLed geometry and crashes (AV at [NULL+0x18]).
-// Detaching is BOTH unnecessary AND fatal:
-//  * Unnecessary because ~QSGGeometryNode only frees the geometry
-//    when OwnsGeometry is set; we cleared that flag at emit time.
-//    Node deletion already preserves the geometry.
-//  * Fatal because of the markDirty → nodeChanged chain above.
-// Now we just record the pointer; clearChildren deletes the node
-// without touching the geometry.
-void reclaimGeometriesFromTree(QSGNode* parent, TimelineQuickGeometryPool* pool)
-{
-    if (parent == nullptr || pool == nullptr) {
-        return;
-    }
-    for (QSGNode* child = parent->firstChild(); child != nullptr; child = child->nextSibling()) {
-        if (child->type() != QSGNode::GeometryNodeType) {
-            continue;
-        }
-        auto* geometryNode = static_cast<QSGGeometryNode*>(child);
-        if (geometryNode->flags().testFlag(QSGNode::OwnsGeometry)) {
-            continue;
-        }
-        QSGGeometry* geometry = geometryNode->geometry();
-        if (geometry == nullptr) {
-            continue;
-        }
-        pool->release(geometry);
-    }
-}
-
-// ---------------------------------------------------------------------
 // TimelineQuickSpriteBatchBuilder
 //
 // Coalesces consecutive textured quads sharing a texture into a single
@@ -394,10 +262,8 @@ void reclaimGeometriesFromTree(QSGNode* parent, TimelineQuickGeometryPool* pool)
 // quad). On a texture transition, finishes the current batch as a node
 // and starts a new accumulator.
 
-TimelineQuickSpriteBatchBuilder::TimelineQuickSpriteBatchBuilder(QSGNode* parent,
-                                                                  TimelineQuickGeometryPool* pool)
+TimelineQuickSpriteBatchBuilder::TimelineQuickSpriteBatchBuilder(QSGNode* parent)
     : parent_(parent)
-    , pool_(pool)
 {
     // Reserve a generous starting capacity so the typical chart's hot
     // batch (e.g. all track-segment sprites of one type) never re-
@@ -457,27 +323,16 @@ void TimelineQuickSpriteBatchBuilder::flush()
         return;
     }
 
-    QSGGeometry* geometry = nullptr;
-    bool ownsGeometry = false;
-    if (pool_ != nullptr) {
-        geometry = pool_->claim(pendingVertices_.size());
-        ownsGeometry = false;
-    } else {
-        geometry = new QSGGeometry(
-            QSGGeometry::defaultAttributes_TexturedPoint2D(),
-            pendingVertices_.size());
-        g_timelineGeometryCreateTotal.fetch_add(1, std::memory_order_relaxed);
-        geometry->setDrawingMode(QSGGeometry::DrawTriangles);
-        ownsGeometry = true;
-    }
+    auto* geometry = new QSGGeometry(
+        QSGGeometry::defaultAttributes_TexturedPoint2D(),
+        pendingVertices_.size());
+    g_timelineGeometryCreateTotal.fetch_add(1, std::memory_order_relaxed);
+    geometry->setDrawingMode(QSGGeometry::DrawTriangles);
     QSGGeometry::TexturedPoint2D* dst = geometry->vertexDataAsTexturedPoint2D();
     std::memcpy(dst,
                 pendingVertices_.constData(),
                 static_cast<size_t>(pendingVertices_.size())
                     * sizeof(QSGGeometry::TexturedPoint2D));
-    // Tell QSG the vertex data has changed so the renderer re-uploads
-    // the GPU buffer this frame. Required even for fresh-allocated
-    // geometries when sharing the pool path; harmless when not.
     geometry->markVertexDataDirty();
 
     // QSGTextureMaterial honours per-pixel alpha (chart sprites have
@@ -495,9 +350,7 @@ void TimelineQuickSpriteBatchBuilder::flush()
     auto* node = new QSGGeometryNode();
     node->setGeometry(geometry);
     node->setMaterial(material);
-    if (ownsGeometry) {
-        node->setFlag(QSGNode::OwnsGeometry);
-    }
+    node->setFlag(QSGNode::OwnsGeometry);
     node->setFlag(QSGNode::OwnsMaterial);
     parent_->appendChildNode(node);
 
@@ -516,10 +369,8 @@ void TimelineQuickSpriteBatchBuilder::flush()
 // reordering is fine. Hold spans use the ordered builder above.
 
 TimelineQuickGroupedSpriteBatchBuilder::TimelineQuickGroupedSpriteBatchBuilder(
-    QSGNode* parent,
-    TimelineQuickGeometryPool* pool)
+    QSGNode* parent)
     : parent_(parent)
-    , pool_(pool)
 {
     textureOrder_.reserve(32);
     buckets_.reserve(32);
@@ -580,19 +431,11 @@ void TimelineQuickGroupedSpriteBatchBuilder::flush()
         }
         const QVector<QSGGeometry::TexturedPoint2D>& verts = it.value();
 
-        QSGGeometry* geometry = nullptr;
-        bool ownsGeometry = false;
-        if (pool_ != nullptr) {
-            geometry = pool_->claim(verts.size());
-            ownsGeometry = false;
-        } else {
-            geometry = new QSGGeometry(
-                QSGGeometry::defaultAttributes_TexturedPoint2D(),
-                verts.size());
-            g_timelineGeometryCreateTotal.fetch_add(1, std::memory_order_relaxed);
-            geometry->setDrawingMode(QSGGeometry::DrawTriangles);
-            ownsGeometry = true;
-        }
+        auto* geometry = new QSGGeometry(
+            QSGGeometry::defaultAttributes_TexturedPoint2D(),
+            verts.size());
+        g_timelineGeometryCreateTotal.fetch_add(1, std::memory_order_relaxed);
+        geometry->setDrawingMode(QSGGeometry::DrawTriangles);
         QSGGeometry::TexturedPoint2D* dst = geometry->vertexDataAsTexturedPoint2D();
         std::memcpy(dst,
                     verts.constData(),
@@ -610,9 +453,7 @@ void TimelineQuickGroupedSpriteBatchBuilder::flush()
         auto* node = new QSGGeometryNode();
         node->setGeometry(geometry);
         node->setMaterial(material);
-        if (ownsGeometry) {
-            node->setFlag(QSGNode::OwnsGeometry);
-        }
+        node->setFlag(QSGNode::OwnsGeometry);
         node->setFlag(QSGNode::OwnsMaterial);
         parent_->appendChildNode(node);
         ++totalBatches_;

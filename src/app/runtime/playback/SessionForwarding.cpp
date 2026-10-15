@@ -158,6 +158,6 @@ void Session::updatePreviewObjectStats(double second)
 
 void Session::invalidateDocumentValidationRevision()
 {
-    ++state_.timelineRevision_;
+    ++state_.timeline_.timelineRevision_;
     emit documentValidationChanged();
 }

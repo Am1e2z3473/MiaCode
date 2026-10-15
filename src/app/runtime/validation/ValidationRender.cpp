@@ -57,7 +57,7 @@ const QVector<MuriStaticReference>& alignedMuriStaticReferencesForTimeline(
 const MuriAnalysisReport& miacode::runtime::ValidationHost::alignedMuriAnalysisReportForPreview() const
 {
     static const MuriAnalysisReport kEmptyReport;
-    if (state_.latestTimelineNoteMarkerSignature_ != state_.muriAnalysisReportNoteMarkerSignature_) {
+    if (state_.timeline_.latestTimelineNoteMarkerSignature_ != state_.muriAnalysisReportNoteMarkerSignature_) {
         return kEmptyReport;
     }
     return state_.muriAnalysisReport_;
@@ -68,14 +68,14 @@ void miacode::runtime::ValidationHost::applyAlignedMuriAnalysisReportToViews()
     static const MuriAnalysisReport kEmptyReport;
     const MuriAnalysisReport& alignedReport = alignedMuriAnalysisReportForPreview();
     const QVector<MuriStaticReference>& alignedStaticReferences = alignedMuriStaticReferencesForTimeline(
-        state_.latestTimelineNoteMarkerSignature_,
+        state_.timeline_.latestTimelineNoteMarkerSignature_,
         state_.muriAnalysisReportNoteMarkerSignature_,
         state_.muriStaticReferences_);
     const MuriAnalysisReport timelinePromptReport = state_.ignoreMuriIssuePrompts_
         ? MuriAnalysisReport()
         : muriPromptReportForTimelineDots(alignedReport, alignedStaticReferences);
-    if (state_.timelineQuickStateBridge_ != nullptr) {
-        state_.timelineQuickStateBridge_->setMuriAnalysisReport(timelinePromptReport);
+    if (state_.timeline_.timelineQuickStateBridge_ != nullptr) {
+        state_.timeline_.timelineQuickStateBridge_->setMuriAnalysisReport(timelinePromptReport);
     }
     if (state_.scene_ != nullptr) {
         state_.scene_->setMuriAnalysisReport(
@@ -104,8 +104,8 @@ void miacode::runtime::ValidationHost::applyMuriRenderOptions()
     state_.muriRenderOptions_.showJudgeMarkers = state_.showJudgeMarkers_;
     state_.muriRenderOptions_.showTouchTrail = state_.showTouchTrail_;
 
-    if (state_.timelineQuickStateBridge_ != nullptr) {
-        state_.timelineQuickStateBridge_->setShowSlideTracks(state_.muriRenderOptions_.showSlideTracks);
+    if (state_.timeline_.timelineQuickStateBridge_ != nullptr) {
+        state_.timeline_.timelineQuickStateBridge_->setShowSlideTracks(state_.muriRenderOptions_.showSlideTracks);
     }
     if (state_.scene_ != nullptr) {
         state_.scene_->setMuriRenderOptions(state_.muriRenderOptions_);

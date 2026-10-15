@@ -71,16 +71,11 @@ bool miacode::runtime::PlaybackCoordinator::preparePreviewStartState()
         return ensureAuditionSceneReady();
     }
 
-    const bool chartFieldVisible = state_.activeOutlineKey_ == QLatin1String("chart");
-    if (state_.currentFieldDirty_ && !chartFieldVisible && !documents_.applyCurrentFieldToDocument()) {
-        return false;
-    }
-
     if (!hasActiveDifficulty()) {
         return false;
     }
 
-    if (state_.latestTimelinePreviewSnapshotReady_ && state_.latestTimelinePreviewRevision_ == state_.timelineRevision_) {
+    if (state_.timeline_.latestTimelinePreviewSnapshotReady_ && state_.timeline_.latestTimelinePreviewRevision_ == state_.timeline_.timelineRevision_) {
         return true;
     }
 

@@ -384,13 +384,13 @@ Session::Session(miacode::ApplicationServices& services, QObject* parent)
     });
     logStartupStage("preview_runtime_ready");
 
-    timelineQuickStateBridge_ = new TimelineQuickStateBridge(this, editorFont());
-    timelineQuickStateBridge_->setShowSlideTracks(true);
-    timelineQuickStateBridge_->setSkinDirectory(resolvePreviewSkinDir());
-    timelineQuickStateBridge_->setViewportLockEnabled(previewViewportLockEnabled_);
-    timelineQuickStateBridge_->setFollowProgressEnabled(previewProgressFollowEnabled_);
-    timelineQuickStateBridge_->setTimelineSyncEnabled(timelineSyncEnabled_);
-    timelineQuickStateBridge_->setZoomWheelShortcuts(
+    state_.timeline_.timelineQuickStateBridge_ = new TimelineQuickStateBridge(this, editorFont());
+    state_.timeline_.timelineQuickStateBridge_->setShowSlideTracks(true);
+    state_.timeline_.timelineQuickStateBridge_->setSkinDirectory(resolvePreviewSkinDir());
+    state_.timeline_.timelineQuickStateBridge_->setViewportLockEnabled(previewViewportLockEnabled_);
+    state_.timeline_.timelineQuickStateBridge_->setFollowProgressEnabled(previewProgressFollowEnabled_);
+    state_.timeline_.timelineQuickStateBridge_->setTimelineSyncEnabled(state_.timeline_.timelineSyncEnabled_);
+    state_.timeline_.timelineQuickStateBridge_->setZoomWheelShortcuts(
         {miacode::ui::ShortcutRegistry::instance().shortcutText(
             QStringLiteral("timeline.zoom_in"),
             QStringLiteral("Ctrl+WheelUp"))},
@@ -398,17 +398,17 @@ Session::Session(miacode::ApplicationServices& services, QObject* parent)
             QStringLiteral("timeline.zoom_out"),
             QStringLiteral("Ctrl+WheelDown"))});
     playback_->refreshTimelineWaveformPhaseCompensation();
-    connect(timelineQuickStateBridge_,
+    connect(state_.timeline_.timelineQuickStateBridge_,
             &TimelineQuickStateBridge::renderCadenceTick,
             this,
             &Session::onTimelineRenderCadenceTick);
-    connect(timelineQuickStateBridge_, &TimelineQuickStateBridge::zoomScaleChanged, this, [this](double) {
+    connect(state_.timeline_.timelineQuickStateBridge_, &TimelineQuickStateBridge::zoomScaleChanged, this, [this](double) {
         savePortableState();
     });
-    connect(timelineQuickStateBridge_, &TimelineQuickStateBridge::waveformBrightnessChanged, this, [this](double) {
+    connect(state_.timeline_.timelineQuickStateBridge_, &TimelineQuickStateBridge::waveformBrightnessChanged, this, [this](double) {
         savePortableState();
     });
-    connect(timelineQuickStateBridge_, &TimelineQuickStateBridge::measureLineBrightnessChanged, this, [this](double) {
+    connect(state_.timeline_.timelineQuickStateBridge_, &TimelineQuickStateBridge::measureLineBrightnessChanged, this, [this](double) {
         savePortableState();
     });
     logStartupStage("timeline_ready");

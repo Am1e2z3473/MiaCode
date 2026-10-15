@@ -42,7 +42,6 @@
     );
     void finishFrameBootstrap(const std::function<void(const QString&)>& logStartupStage);
     void setPreviewFixedTimerHighResolutionActive(bool active);
-    bool applyCurrentFieldToDocument();
     bool saveToPath(const QString& path);
     void runAutosaveCheck(bool allowHistory = true);
     QString resolveAutosaveDirectoryPath() const;
@@ -65,8 +64,6 @@
     void updateWindowTitle();
     void updatePauseButtonAppearance();
     void updateDirtyState();
-    void refreshCurrentFieldDirtyState();
-    void markCurrentFieldDirty();
     bool undoDeletedDifficultyField();
     void clearDeletedDifficultyUndoState();
     // Export-page intro lead-in: returns true (and fills *outSpec) when the

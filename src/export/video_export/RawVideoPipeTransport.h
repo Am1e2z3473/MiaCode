@@ -124,13 +124,7 @@ bool enqueueRawVideoFrame(
 // heap allocation + memcpy of the entire frame (~8 MB for 1080p) — at 60 fps
 // that is ~480 MB/s of churn the producer thread no longer pays.
 //
-// Caveat: VideoExportController routes frame 0 through the QByteArray
-// overload as a workaround for a not-yet-identified corruption that affects
-// only the very first exported frame when this overload is used (a 250×26 px
-// black region matching the playfield outline's top arc). Frames 1+ are
-// safe. See the comment block in VideoExportController's processReadyFrame
-// for the full investigation. Once the root cause is found, the carve-out
-// can be removed and this overload used unconditionally.
+// VideoExportPreparedTask uses the byte-owning overload for frame 0.
 bool enqueueRawVideoFrame(
     RawVideoPipePump* pump,
     QImage frame,

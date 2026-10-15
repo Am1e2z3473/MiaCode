@@ -40,14 +40,14 @@ void miacode::runtime::PlaybackCoordinator::applyQtPreviewPosition(double second
 {
     const bool playingAtEntry = state_.playing_;
     const bool quickTimelineBridgeReady =
-        !state_.uiFocusBridgeMode_ || state_.timelineReady_;
+        !state_.uiFocusBridgeMode_ || state_.timeline_.timelineReady_;
     const double timelineCadenceSeconds =
         static_cast<double>(qMax<qint64>(1, timelineTargetFrameIntervalNs())) / 1000000000.0;
     miacode::runtime::shared::writePreviewPauseSecond(
         playbackState_.pauseSecond_, second, playbackState_.playing_, "apply_qt_preview_position");
     const bool timelineShouldCenter = centerView && (!state_.playing_ || state_.previewProgressFollowEnabled_);
     if (!state_.playing_
-        && state_.timelineQuickStateBridge_ != nullptr
+        && state_.timeline_.timelineQuickStateBridge_ != nullptr
         && (state_.qtPreviewLastTimelineSecond_ < 0.0
             || qAbs(second - state_.qtPreviewLastTimelineSecond_) >= timelineCadenceSeconds)) {
         state_.qtPreviewPendingTimelineSecond_ = second;
@@ -148,10 +148,10 @@ void miacode::runtime::PlaybackCoordinator::flushQtPreviewTimelinePosition()
         // this cadence. Update QSG state whenever the bridge is usable; run
         // the editor follow independently so tab visibility never suppresses
         // it.
-        if (state_.timelineQuickStateBridge_ != nullptr && quickTimelineBridgeReady()) {
-            state_.timelineQuickStateBridge_->setPlayheadSeconds(
+        if (state_.timeline_.timelineQuickStateBridge_ != nullptr && quickTimelineBridgeReady()) {
+            state_.timeline_.timelineQuickStateBridge_->setPlayheadSeconds(
                 second, state_.previewProgressFollowEnabled_);
-            state_.timelineQuickStateBridge_->focusPlayhead(false);
+            state_.timeline_.timelineQuickStateBridge_->focusPlayhead(false);
         }
         state_.qtPreviewLastTimelineSecond_ = second;
         // Follow-preview cursor sync runs on the timeline tick (throttled to timeline target
@@ -162,16 +162,16 @@ void miacode::runtime::PlaybackCoordinator::flushQtPreviewTimelinePosition()
         }
         return;
     }
-    if (state_.timelineQuickStateBridge_ == nullptr || !quickTimelineBridgeReady()) {
+    if (state_.timeline_.timelineQuickStateBridge_ == nullptr || !quickTimelineBridgeReady()) {
         return;
     }
     if (!state_.qtPreviewTimelineDirty_) {
         return;
     }
-    state_.timelineQuickStateBridge_->setPlayheadSeconds(
+    state_.timeline_.timelineQuickStateBridge_->setPlayheadSeconds(
         state_.qtPreviewPendingTimelineSecond_,
         state_.qtPreviewPendingTimelineCenterView_);
-    state_.timelineQuickStateBridge_->focusPlayhead(state_.qtPreviewPendingTimelineCenterView_);
+    state_.timeline_.timelineQuickStateBridge_->focusPlayhead(state_.qtPreviewPendingTimelineCenterView_);
     state_.qtPreviewLastTimelineSecond_ = state_.qtPreviewPendingTimelineSecond_;
     state_.qtPreviewPendingTimelineCenterView_ = false;
     state_.qtPreviewTimelineDirty_ = false;

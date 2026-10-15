@@ -75,6 +75,7 @@ public:
     // difficultyIds()). This backs the "manage per-difficulty designers"
     // dialog, which can set a name for a slot the user hasn't charted.
     QString designerForSlot(int id) const;
+    QString effectiveDesignerForSlot(int id) const;
     // Sets `&des_N` for the slot. When difficulty `id` exists, writes its
     // .designer. Otherwise a non-empty name is stored as a standalone designer
     // (no difficulty is created); an empty name clears any standalone entry.

@@ -194,7 +194,6 @@ TimelineAnalysisRefreshResult buildTimelineAnalysisRefreshResult(const TimelineA
     result.validationReport = SimaiParser::buildValidationReport(
         request.chartText,
         request.validationLocale,
-        &request.parseResult,
         request.timingMetadata);
     miacode::task::CancellationScope::check();
     result.noteMarkerSignature = request.noteMarkerSignature;

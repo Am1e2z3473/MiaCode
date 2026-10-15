@@ -83,10 +83,6 @@ function Read-VersionInfoFromCMake {
     if (![string]::IsNullOrWhiteSpace($prerelease)) {
         $version = "$version-$prerelease"
     }
-    # Beta20+ unifies version display: package filename and About-dialog
-    # version are always identical (CMakeLists used to keep them split via
-    # MIACODE_DISPLAY_PRERELEASE; they drifted in practice and beta20
-    # collapsed them).
     return [PSCustomObject]@{
         PackageVersion = $version
         DisplayVersion = $version
@@ -112,6 +108,26 @@ function Read-VersionInfoFromGeneratedHeader {
     }
 }
 
+function Invoke-NativeCommand {
+    param(
+        [string]$FilePath,
+        [string[]]$Arguments
+    )
+
+    # PowerShell 5.1 maps native stderr to errors; command success follows its exit code.
+    $previousErrorActionPreference = $ErrorActionPreference
+    $ErrorActionPreference = "Continue"
+    try {
+        & $FilePath @Arguments
+        $exitCode = $LASTEXITCODE
+        if ($exitCode -ne 0) {
+            throw "$FilePath failed with exit code $exitCode"
+        }
+    } finally {
+        $ErrorActionPreference = $previousErrorActionPreference
+    }
+}
+
 function Invoke-MiaCodeBuild {
     param(
         [string]$BuildDir,
@@ -120,15 +136,13 @@ function Invoke-MiaCodeBuild {
     )
 
     Write-Host "Precheck: building MiaCode ($Config) in $BuildDir with --parallel $BuildJobs ..."
-    & cmake --build $BuildDir --target MiaCode --config $Config --parallel $BuildJobs | Out-Host
-    if ($LASTEXITCODE -ne 0) {
-        throw "cmake --build failed with exit code $LASTEXITCODE"
-    }
+    Invoke-NativeCommand -FilePath "cmake" -Arguments @(
+        "--build", $BuildDir, "--target", "MiaCode", "--config", $Config, "--parallel", $BuildJobs
+    ) | Out-Host
     Write-Host "Precheck: building MiaCodeLauncher ($Config) ..."
-    & cmake --build $BuildDir --target MiaCodeLauncher --config $Config --parallel $BuildJobs | Out-Host
-    if ($LASTEXITCODE -ne 0) {
-        throw "cmake --build MiaCodeLauncher failed with exit code $LASTEXITCODE"
-    }
+    Invoke-NativeCommand -FilePath "cmake" -Arguments @(
+        "--build", $BuildDir, "--target", "MiaCodeLauncher", "--config", $Config, "--parallel", $BuildJobs
+    ) | Out-Host
 }
 
 function Invoke-MiaCodeConfigure {
@@ -138,21 +152,7 @@ function Invoke-MiaCodeConfigure {
     )
 
     Write-Host "Precheck: reconfiguring CMake in $BuildDir ..."
-    # CMake prints qsb shader-compile diagnostics to stderr even on
-    # success; PS 5.1's `$ErrorActionPreference = Stop` (set at the top
-    # of this script) treats those as terminating errors and aborts the
-    # configure with NativeCommandError. Relax around the call and gate
-    # success on the exit code instead. Mirrors the windeployqt block.
-    $prevErrorActionPreference = $ErrorActionPreference
-    $ErrorActionPreference = "Continue"
-    try {
-        & cmake -S $RepoRoot -B $BuildDir | Out-Host
-        if ($LASTEXITCODE -ne 0) {
-            throw "cmake configure failed with exit code $LASTEXITCODE"
-        }
-    } finally {
-        $ErrorActionPreference = $prevErrorActionPreference
-    }
+    Invoke-NativeCommand -FilePath "cmake" -Arguments @("-S", $RepoRoot, "-B", $BuildDir) | Out-Host
 }
 
 function Ensure-PackageBuildReady {
@@ -442,28 +442,14 @@ if ($Config -eq "Debug") {
     $deployMode = "--release"
 }
 
-# windeployqt routinely warns to stderr (e.g. "Cannot find any version of
-# the dxcompiler.dll and dxil.dll" — D3D12 shader compilation is not part of
-# this package). PS 5.1 treats native-command stderr as a
-# terminating error under `$ErrorActionPreference = Stop`, which would
-# abort the package right after windeployqt with no real failure. Drop
-# to Continue around the call and verify success via $LASTEXITCODE.
-$prevErrorActionPreference = $ErrorActionPreference
-$ErrorActionPreference = "Continue"
-try {
-    & $deployTool `
-        --dir $appDir `
-        $deployMode `
-        --compiler-runtime `
-        --no-translations `
-        --qmldir (Join-Path $repoRoot "src") `
-        (Join-Path $appDir "MiaCode.exe")
-    if ($LASTEXITCODE -ne 0) {
-        throw "windeployqt failed with exit code $LASTEXITCODE"
-    }
-} finally {
-    $ErrorActionPreference = $prevErrorActionPreference
-}
+Invoke-NativeCommand -FilePath $deployTool -Arguments @(
+    "--dir", $appDir,
+    $deployMode,
+    "--compiler-runtime",
+    "--no-translations",
+    "--qmldir", (Join-Path $repoRoot "src"),
+    (Join-Path $appDir "MiaCode.exe")
+) | Out-Host
 
 $requiredQtRuntimeDllBaseNames = $toolchainData.Package.QtRuntimeDllBaseNames
 if ($IncludeDevTools) {
@@ -501,29 +487,18 @@ foreach ($unusedRelativePath in $unusedQmlRelativePaths) {
     }
 }
 
-# Beta49: app-local VC++ runtime to bypass user-system MSVCP140/VCRUNTIME140
-# version mismatch. Confirmed root cause for the Win10-22H2 AMD Renoir
-# silent-crash report — fault at MSVCP140.dll+0x12EB0 in 4 independent code
-# paths, all from the first std::mutex lock of the process. Loader pulls
-# the system32 copy if no app-local copy exists; bundling our build-machine
-# version next to MiaCode.exe makes the loader find app/ first (default
-# DLL search order: directory of the EXE → System32 → ...).
+# The Windows DLL search order loads the app-local CRT before the system copy.
 $vcRuntimeSrc = $null
-# Probe the Visual Studio redist layouts that ship the CRT. Version layout
-# and install root both vary by Visual Studio release (2022 uses
-# Microsoft.VC143.CRT, 2026 uses Microsoft.VC145.CRT; roots moved from the
-# hard-coded 2022 paths to version-agnostic ones), so discovery cannot hard
-# code either. We still can't rely on $env:VCToolsRedistDir because
-# package-win.ps1 is normally invoked from a plain PowerShell session, not
-# VsDevCmd — but when the variable is present it names the exact versioned
-# root and is preferred.
+# VCToolsRedistDir names the exact toolset; plain PowerShell sessions discover VS roots.
 $vsRedistRoots = New-Object System.Collections.Generic.List[string]
 if (![string]::IsNullOrWhiteSpace($env:VCToolsRedistDir)) {
     $vsRedistRoots.Add($env:VCToolsRedistDir.TrimEnd('\'))
 }
 $vsWhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer\vswhere.exe'
 if (Test-Path $vsWhere) {
-    $installPaths = & $vsWhere -all -products * -property installationPath 2>$null
+    $installPaths = Invoke-NativeCommand -FilePath $vsWhere -Arguments @(
+        "-all", "-products", "*", "-property", "installationPath"
+    )
     foreach ($installPath in @($installPaths)) {
         if (![string]::IsNullOrWhiteSpace($installPath)) {
             $vsRedistRoots.Add((Join-Path $installPath.Trim() 'VC\Redist\MSVC'))
@@ -591,14 +566,7 @@ foreach ($runtimeDll in $requiredBassRuntimeDlls) {
     Copy-Item $srcDll (Join-Path $appDir $runtimeDll) -Force
 }
 
-# FFmpeg shared runtime for the QtAVPlayer preview decode backend.
-# PreviewStageMediaHost decodes PV/BG via QtAVPlayer; these
-# av*.dll must sit next to MiaCode.exe. avfilter is NET-NEW vs the older
-# package (Qt never shipped it; avdevice is dropped — capture-device only); the
-# other five overlap with what windeployqt stages for Qt
-# Multimedia's ffmpeg plugin, so we copy our own build AFTER windeployqt
-# (-Force overwrite) to keep the runtime matched to the import libs MiaCode
-# linked against.
+# Copy the FFmpeg runtime after windeployqt so DLLs match MiaCode's import libraries.
 $ffmpegDevBin = Join-Path $repoRoot (Join-Path $toolchainData.FFmpeg.DevDirByArch.$Arch "bin")
 $requiredFfmpegRuntimeDlls = $toolchainData.FFmpeg.RuntimeDllsByArch.$Arch
 foreach ($runtimeDll in $requiredFfmpegRuntimeDlls) {
@@ -609,11 +577,6 @@ foreach ($runtimeDll in $requiredFfmpegRuntimeDlls) {
     }
     Copy-Item $srcDll (Join-Path $appDir $runtimeDll) -Force
 }
-
-# (libmpv removed in beta20 — chart-preview video backgrounds decode via
-# QtAVPlayer (FFmpeg) on Windows through PreviewStageMediaHost, not the planned
-# MpvVideoSource that never landed. libmpv-2.dll was 113 MB of dead weight just
-# to log a startup probe version line.)
 
 if ($IncludeDevTools) {
     foreach ($toolName in @("miacode_simai_dump.exe")) {
@@ -709,10 +672,9 @@ foreach ($archiveFormat in $archiveFormats) {
             if ($null -ne $sevenZip) {
                 Push-Location $archiveParentDir
                 try {
-                    $sevenZipOutput = & $sevenZip.Source a -t7z -mx=9 -mmt=on -bso0 -bsp0 $archivePath $archiveFolderName 2>&1
-                    if ($LASTEXITCODE -ne 0) {
-                        throw "7z failed with exit code $LASTEXITCODE`n$sevenZipOutput"
-                    }
+                    Invoke-NativeCommand -FilePath $sevenZip.Source -Arguments @(
+                        "a", "-t7z", "-mx=9", "-mmt=on", "-bso0", "-bsp0", $archivePath, $archiveFolderName
+                    ) | Out-Host
                 } finally {
                     Pop-Location
                 }
@@ -731,10 +693,9 @@ foreach ($archiveFormat in $archiveFormats) {
                 # its relative name, as the 7z branch does.
                 Push-Location $archiveParentDir
                 try {
-                    & $pythonCommand.Source -m py7zr c $archivePath $archiveFolderName
-                    if ($LASTEXITCODE -ne 0) {
-                        throw "py7zr failed with exit code $LASTEXITCODE"
-                    }
+                    Invoke-NativeCommand -FilePath $pythonCommand.Source -Arguments @(
+                        "-m", "py7zr", "c", $archivePath, $archiveFolderName
+                    ) | Out-Host
                 } finally {
                     Pop-Location
                 }

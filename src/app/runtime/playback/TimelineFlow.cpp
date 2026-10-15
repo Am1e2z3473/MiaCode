@@ -1,4 +1,4 @@
-﻿#include "app/runtime/playback/PlaybackCoordinator.h"
+#include "app/runtime/playback/PlaybackCoordinator.h"
 #include "app/runtime/Shared.h"
 #include "app/runtime/media/MediaJobsHost.h"
 #include "app/runtime/document/DocumentSessionHost.h"
@@ -87,25 +87,25 @@ bool miacode::runtime::PlaybackCoordinator::timelineTabIsForeground() const
 
 bool miacode::runtime::PlaybackCoordinator::quickTimelineBridgeReady() const
 {
-    return !state_.uiFocusBridgeMode_ || state_.timelineReady_;
+    return !state_.uiFocusBridgeMode_ || state_.timeline_.timelineReady_;
 }
 
 void miacode::runtime::PlaybackCoordinator::queueTimelineCursorBridgeUpdate(double second, bool centerView)
 {
-    if (state_.timelineQuickStateBridge_ == nullptr) {
+    if (state_.timeline_.timelineQuickStateBridge_ == nullptr) {
         return;
     }
-    state_.pendingQuickTimelineCursorSync_ = true;
-    state_.pendingQuickTimelineCursorSecond_ = second;
-    state_.pendingQuickTimelineCursorCenterView_ =
-        state_.pendingQuickTimelineCursorCenterView_ || centerView;
+    state_.timeline_.pendingQuickTimelineCursorSync_ = true;
+    state_.timeline_.pendingQuickTimelineCursorSecond_ = second;
+    state_.timeline_.pendingQuickTimelineCursorCenterView_ =
+        state_.timeline_.pendingQuickTimelineCursorCenterView_ || centerView;
 }
 
 void miacode::runtime::PlaybackCoordinator::scheduleDeferredTimelineBridgeFlush()
 {
-    const quint64 generation = ++state_.deferredTimelineBridgeFlushGeneration_;
+    const quint64 generation = ++state_.timeline_.deferredTimelineBridgeFlushGeneration_;
     QTimer::singleShot(0, &owner_, [this, generation]() {
-        if (generation != state_.deferredTimelineBridgeFlushGeneration_) {
+        if (generation != state_.timeline_.deferredTimelineBridgeFlushGeneration_) {
             return;
         }
         flushDeferredTimelineBridgeState();
@@ -120,23 +120,23 @@ void miacode::runtime::PlaybackCoordinator::deferTimelineCursorBridgeUpdate(doub
 
 void miacode::runtime::PlaybackCoordinator::flushDeferredTimelineBridgeState()
 {
-    if (state_.timelineQuickStateBridge_ == nullptr
+    if (state_.timeline_.timelineQuickStateBridge_ == nullptr
         || !quickTimelineBridgeReady()
         || !timelineTabIsForeground()) {
         return;
     }
 
     flushQtPreviewTimelinePosition();
-    if (!state_.pendingQuickTimelineCursorSync_) {
+    if (!state_.timeline_.pendingQuickTimelineCursorSync_) {
         return;
     }
 
-    state_.timelineQuickStateBridge_->setCursorSeconds(
-        state_.pendingQuickTimelineCursorSecond_,
-        state_.pendingQuickTimelineCursorCenterView_);
-    state_.pendingQuickTimelineCursorSync_ = false;
-    state_.pendingQuickTimelineCursorSecond_ = 0.0;
-    state_.pendingQuickTimelineCursorCenterView_ = false;
+    state_.timeline_.timelineQuickStateBridge_->setCursorSeconds(
+        state_.timeline_.pendingQuickTimelineCursorSecond_,
+        state_.timeline_.pendingQuickTimelineCursorCenterView_);
+    state_.timeline_.pendingQuickTimelineCursorSync_ = false;
+    state_.timeline_.pendingQuickTimelineCursorSecond_ = 0.0;
+    state_.timeline_.pendingQuickTimelineCursorCenterView_ = false;
 }
 
 namespace {
@@ -260,11 +260,11 @@ void miacode::runtime::PlaybackCoordinator::applyWaveformData(
 {
     const double previousTrackDurationSeconds = state_.previewTrackDurationSeconds_;
     state_.previewTrackDurationSeconds_ = waveformData ? qMax(0.0, waveformData->durationSeconds) : 0.0;
-    if (state_.timelineQuickStateBridge_ != nullptr) {
-        state_.timelineQuickStateBridge_->setWaveformData(waveformData);
+    if (state_.timeline_.timelineQuickStateBridge_ != nullptr) {
+        state_.timeline_.timelineQuickStateBridge_->setWaveformData(waveformData);
     }
-    const double chartDurationSeconds = state_.timelineQuickStateBridge_ != nullptr
-        ? state_.timelineQuickStateBridge_->durationSeconds()
+    const double chartDurationSeconds = state_.timeline_.timelineQuickStateBridge_ != nullptr
+        ? state_.timeline_.timelineQuickStateBridge_->durationSeconds()
         : 0.0;
     if (state_.playing_ && state_.qtPreviewPlaybackEndSecond_ > 0.0
         && state_.previewTrackDurationSeconds_ > 0.0) {
@@ -281,14 +281,14 @@ void miacode::runtime::PlaybackCoordinator::applyWaveformData(
     appendPreviewWaveformLog(
         QStringLiteral("apply"),
         QStringLiteral("generation=%1 current_track_id=%2 old_track_duration=%3 new_track_duration=%4 chart_duration=%5 preview_duration=%6 bridge=%7 %8")
-            .arg(state_.waveformRefreshGeneration_)
+            .arg(state_.timeline_.waveformRefreshGeneration_)
             .arg(miacode::waveform::waveformTrackDebugId(
                 miacode::waveform::normalizeTrackPath(state_.lastTrackPath_)))
             .arg(previousTrackDurationSeconds, 0, 'f', 6)
             .arg(state_.previewTrackDurationSeconds_, 0, 'f', 6)
             .arg(chartDurationSeconds, 0, 'f', 6)
             .arg(previewDurationSeconds(), 0, 'f', 6)
-            .arg(state_.timelineQuickStateBridge_ != nullptr ? 1 : 0)
+            .arg(state_.timeline_.timelineQuickStateBridge_ != nullptr ? 1 : 0)
             .arg(summary));
     if (previousTrackDurationSeconds != state_.previewTrackDurationSeconds_) {
         // Audio length is a discrete transport-state change. Notify the QML
@@ -305,12 +305,12 @@ void miacode::runtime::PlaybackCoordinator::refreshWaveformCache()
 void miacode::runtime::PlaybackCoordinator::refreshWaveformCache(double knownDurationSeconds)
 {
     resetPreviewTrackTimelineOffsets();
-    if (state_.timelineQuickStateBridge_ == nullptr) {
+    if (state_.timeline_.timelineQuickStateBridge_ == nullptr) {
         return;
     }
 
-    ++state_.waveformRefreshGeneration_;
-    const quint64 generation = state_.waveformRefreshGeneration_;
+    ++state_.timeline_.waveformRefreshGeneration_;
+    const quint64 generation = state_.timeline_.waveformRefreshGeneration_;
     const QString trackPath = state_.lastTrackPath_;
     const QString normalizedTrackPath = miacode::waveform::normalizeTrackPath(trackPath);
     appendPreviewWaveformLog(
@@ -363,12 +363,12 @@ void miacode::runtime::PlaybackCoordinator::refreshWaveformCache(double knownDur
         trackPath,
         cacheDirectoryPath,
         [this, generation, trackPath](miacode::waveform::WaveformDataPtr waveformData) {
-            if (generation != state_.waveformRefreshGeneration_ || state_.lastTrackPath_ != trackPath) {
+            if (generation != state_.timeline_.waveformRefreshGeneration_ || state_.lastTrackPath_ != trackPath) {
                 appendPreviewWaveformLog(
                     QStringLiteral("callback_discard"),
                     QStringLiteral("reason=stale generation=%1 current_generation=%2 callback_track_id=%3 current_track_id=%4")
                         .arg(generation)
-                        .arg(state_.waveformRefreshGeneration_)
+                        .arg(state_.timeline_.waveformRefreshGeneration_)
                         .arg(miacode::waveform::waveformTrackDebugId(
                             miacode::waveform::normalizeTrackPath(trackPath)))
                         .arg(miacode::waveform::waveformTrackDebugId(
@@ -640,7 +640,7 @@ void miacode::runtime::PlaybackCoordinator::updateWindowTitle()
     }
     const QFontMetrics metrics(QGuiApplication::font());
     const QString elided = metrics.elidedText(titleText, Qt::ElideRight, 420);
-    const bool dirty = state_.documentDirty_ || state_.currentFieldDirty_;
+    const bool dirty = state_.documentDirty_;
     state_.titleText_ = QString("MiaCode - %1%2").arg(elided, dirty ? QStringLiteral("[*]") : QString());
 }
 
@@ -657,8 +657,8 @@ void miacode::runtime::PlaybackCoordinator::scheduleTimelineRefresh()
     if (!hasActiveDifficulty() || state_.latencySandboxAuditionActive_) {
         return;
     }
-    if (state_.timelineQuickStateBridge_ != nullptr && !refreshTimelineQuickModelFromCurrentText()) return;
-    ++state_.timelineRevision_;
+    if (state_.timeline_.timelineQuickStateBridge_ != nullptr && !refreshTimelineQuickModelFromCurrentText()) return;
+    ++state_.timeline_.timelineRevision_;
     requestTimelineSlowRefresh();
 }
 
@@ -768,8 +768,8 @@ void miacode::runtime::PlaybackCoordinator::onTimelineDragFinished(double second
 void miacode::runtime::PlaybackCoordinator::onTimelineFollowPreviewToggled(bool enabled)
 {
     state_.previewFollowEnabled_ = enabled;
-    if (state_.timelineQuickStateBridge_ != nullptr) {
-        state_.timelineQuickStateBridge_->setFollowPreviewEnabled(enabled);
+    if (state_.timeline_.timelineQuickStateBridge_ != nullptr) {
+        state_.timeline_.timelineQuickStateBridge_->setFollowPreviewEnabled(enabled);
     }
     invalidatePreviewFollowBindingCache();
     preferences_.savePortableState();
@@ -787,8 +787,8 @@ void miacode::runtime::PlaybackCoordinator::onTimelineFollowPreviewToggled(bool 
 void miacode::runtime::PlaybackCoordinator::onTimelineViewportLockToggled(bool enabled)
 {
     state_.previewViewportLockEnabled_ = enabled;
-    if (state_.timelineQuickStateBridge_ != nullptr) {
-        state_.timelineQuickStateBridge_->setViewportLockEnabled(enabled);
+    if (state_.timeline_.timelineQuickStateBridge_ != nullptr) {
+        state_.timeline_.timelineQuickStateBridge_->setViewportLockEnabled(enabled);
     }
     preferences_.savePortableState();
     if (!enabled || !hasActiveDifficulty()) {
@@ -803,17 +803,17 @@ void miacode::runtime::PlaybackCoordinator::onTimelineViewportLockToggled(bool e
 void miacode::runtime::PlaybackCoordinator::onTimelineFollowProgressToggled(bool enabled)
 {
     state_.previewProgressFollowEnabled_ = enabled;
-    if (state_.timelineQuickStateBridge_ != nullptr) {
-        state_.timelineQuickStateBridge_->setFollowProgressEnabled(enabled);
+    if (state_.timeline_.timelineQuickStateBridge_ != nullptr) {
+        state_.timeline_.timelineQuickStateBridge_->setFollowProgressEnabled(enabled);
     }
     preferences_.savePortableState();
 }
 
 void miacode::runtime::PlaybackCoordinator::onTimelineSyncToggled(bool enabled)
 {
-    state_.timelineSyncEnabled_ = enabled;
-    if (state_.timelineQuickStateBridge_ != nullptr) {
-        state_.timelineQuickStateBridge_->setTimelineSyncEnabled(enabled);
+    state_.timeline_.timelineSyncEnabled_ = enabled;
+    if (state_.timeline_.timelineQuickStateBridge_ != nullptr) {
+        state_.timeline_.timelineQuickStateBridge_->setTimelineSyncEnabled(enabled);
     }
     preferences_.savePortableState();
 }
@@ -825,22 +825,22 @@ void miacode::runtime::PlaybackCoordinator::applyLatestTimelinePreviewStateToPau
     }
 
     miacode::diag::MemoryStageScope memScope("preview/mem_stage", "preview_state_push");
-    const bool noteMarkersChanged = state_.latestTimelineNoteMarkerSignature_ != state_.lastPreviewNoteMarkerSignature_;
+    const bool noteMarkersChanged = state_.timeline_.latestTimelineNoteMarkerSignature_ != state_.lastPreviewNoteMarkerSignature_;
     if (state_.previewSfxRuntime_ != nullptr) {
         state_.previewSfxRuntime_->applyPausedPreviewState(
-            state_.latestTimelineNoteMarkers_,
+            state_.timeline_.latestTimelineNoteMarkers_,
             noteMarkersChanged,
             state_.pauseSecond_,
             state_.previewPlaybackRate_,
             state_.previewTimingSettings_);
     }
 
-    refreshPreviewObjectStatsTotals(state_.latestTimelineNoteMarkers_);
+    refreshPreviewObjectStatsTotals(state_.timeline_.latestTimelineNoteMarkers_);
     if (state_.scene_ != nullptr && noteMarkersChanged) {
-        state_.scene_->setNoteMarkers(state_.latestTimelineNoteMarkers_);
+        state_.scene_->setNoteMarkers(state_.timeline_.latestTimelineNoteMarkers_);
     }
     validation_.applyAlignedMuriAnalysisReportToViews();
-    state_.lastPreviewNoteMarkerSignature_ = state_.latestTimelineNoteMarkerSignature_;
+    state_.lastPreviewNoteMarkerSignature_ = state_.timeline_.latestTimelineNoteMarkerSignature_;
 }
 
 void miacode::runtime::PlaybackCoordinator::requestTimelineSlowRefresh()
@@ -849,15 +849,15 @@ void miacode::runtime::PlaybackCoordinator::requestTimelineSlowRefresh()
         return;
     }
 
-    state_.pendingTimelineSlowRefresh_.revision = state_.timelineRevision_;
-    state_.pendingTimelineSlowRefresh_.difficultyId = activeDifficultyId();
-    state_.pendingTimelineSlowRefresh_.chartText = activeChartText();
-    state_.pendingTimelineSlowRefresh_.firstSeconds = parsedFirstSeconds();
-    state_.pendingTimelineSlowRefresh_.timingMetadata = currentTimingMetadata();
-    state_.pendingTimelineSlowRefresh_.validationLocale = uiValidationLocale();
-    state_.timelineSlowRequestedRevision_ = state_.pendingTimelineSlowRefresh_.revision;
+    state_.timeline_.pendingTimelineSlowRefresh_.revision = state_.timeline_.timelineRevision_;
+    state_.timeline_.pendingTimelineSlowRefresh_.difficultyId = activeDifficultyId();
+    state_.timeline_.pendingTimelineSlowRefresh_.chartText = activeChartText();
+    state_.timeline_.pendingTimelineSlowRefresh_.firstSeconds = parsedFirstSeconds();
+    state_.timeline_.pendingTimelineSlowRefresh_.timingMetadata = currentTimingMetadata();
+    state_.timeline_.pendingTimelineSlowRefresh_.validationLocale = uiValidationLocale();
+    state_.timeline_.timelineSlowRequestedRevision_ = state_.timeline_.pendingTimelineSlowRefresh_.revision;
     if (state_.pendingPreviewPlaybackStart_) {
-        state_.pendingPreviewPlaybackRevision_ = state_.timelineRevision_;
+        state_.pendingPreviewPlaybackRevision_ = state_.timeline_.timelineRevision_;
         state_.pendingPreviewPlaybackDifficultyId_ = activeDifficultyId();
     }
     dispatchTimelineSlowRefresh();
@@ -865,17 +865,17 @@ void miacode::runtime::PlaybackCoordinator::requestTimelineSlowRefresh()
 
 void miacode::runtime::PlaybackCoordinator::dispatchTimelineSlowRefresh()
 {
-    if (state_.pendingTimelineSlowRefresh_.revision == 0) return;
-    const TimelineSlowRefreshRequest request = state_.pendingTimelineSlowRefresh_;
+    if (state_.timeline_.pendingTimelineSlowRefresh_.revision == 0) return;
+    const TimelineSlowRefreshRequest request = state_.timeline_.pendingTimelineSlowRefresh_;
     const miacode::ParsedChartSnapshot& parsed = services_.analysis().parsedSnapshot();
     if (!parsed.available || parsed.revision != services_.workspace().snapshot().revision
         || parsed.difficultyId != request.difficultyId || parsed.chartText != request.chartText
         || parsed.timingMetadata != request.timingMetadata || parsed.firstSeconds != request.firstSeconds) {
         return;
     }
-    state_.pendingTimelineSlowRefresh_ = TimelineSlowRefreshRequest();
-    if (request.revision != state_.timelineSlowRequestedRevision_
-        || request.revision != state_.timelineRevision_ || !hasActiveDifficulty()
+    state_.timeline_.pendingTimelineSlowRefresh_ = TimelineSlowRefreshRequest();
+    if (request.revision != state_.timeline_.timelineSlowRequestedRevision_
+        || request.revision != state_.timeline_.timelineRevision_ || !hasActiveDifficulty()
         || state_.latencySandboxAuditionActive_ || request.difficultyId != activeDifficultyId()
         || request.chartText != activeChartText() || request.timingMetadata != currentTimingMetadata()
         || request.firstSeconds != parsedFirstSeconds()) {
@@ -884,14 +884,14 @@ void miacode::runtime::PlaybackCoordinator::dispatchTimelineSlowRefresh()
     // Keep a shared value across consumer callbacks that may replace the workspace.
     const SimaiParseResult parseResult = parsed.parseResult;
     const TimelinePreviewRefreshState previewState = parsed.previewState;
-    state_.lastTimelineParseDifficultyId_ = request.difficultyId;
-    state_.lastTimelineParseChartText_ = request.chartText;
-    state_.lastTimelineParseTimingMetadata_ = request.timingMetadata;
-    state_.lastTimelineParseResult_ = parseResult;
-    state_.latestTimelineNoteMarkers_ = previewState.shiftedNoteMarkers;
-    state_.latestTimelineNoteMarkerSignature_ = previewState.noteMarkerSignature;
-    state_.latestTimelinePreviewRevision_ = request.revision;
-    state_.latestTimelinePreviewSnapshotReady_ = true;
+    state_.timeline_.lastTimelineParseDifficultyId_ = request.difficultyId;
+    state_.timeline_.lastTimelineParseChartText_ = request.chartText;
+    state_.timeline_.lastTimelineParseTimingMetadata_ = request.timingMetadata;
+    state_.timeline_.lastTimelineParseResult_ = parseResult;
+    state_.timeline_.latestTimelineNoteMarkers_ = previewState.shiftedNoteMarkers;
+    state_.timeline_.latestTimelineNoteMarkerSignature_ = previewState.noteMarkerSignature;
+    state_.timeline_.latestTimelinePreviewRevision_ = request.revision;
+    state_.timeline_.latestTimelinePreviewSnapshotReady_ = true;
     if (!state_.playing_) {
         applyLatestTimelinePreviewStateToPausedPreview();
     }
@@ -937,9 +937,9 @@ void miacode::runtime::PlaybackCoordinator::rebuildStaticMuriReferences(const QV
     state_.muriStaticReferences_ = miacode::muri::buildStaticMuriReferences(
         noteMarkers,
         static_cast<double>(state_.staticTapOnSlideThresholdMs_) / 1000.0);
-    state_.muriStaticReferencesNoteMarkerSignature_ = state_.latestTimelineNoteMarkerSignature_;
+    state_.muriStaticReferencesNoteMarkerSignature_ = state_.timeline_.latestTimelineNoteMarkerSignature_;
     state_.muriStaticReferencesDifficultyId_ = hasActiveDifficulty() ? activeDifficultyId() : 0;
-    state_.muriStaticReferencesTimelineRevision_ = state_.timelineRevision_;
+    state_.muriStaticReferencesTimelineRevision_ = state_.timeline_.timelineRevision_;
     state_.muriStaticReferencesAvailable_ = !state_.muriStaticReferencesNoteMarkerSignature_.isEmpty();
 }
 
@@ -947,7 +947,7 @@ double miacode::runtime::PlaybackCoordinator::timelineSecondForCursor(int line, 
 {
     QElapsedTimer timer;
     timer.start();
-    const double second = state_.timelineQuickModel_.timelineSecondForCursor(line, col);
+    const double second = state_.timeline_.timelineQuickModel_.timelineSecondForCursor(line, col);
     if (state_.runtimeDebugOutputEnabled_) {
         miacode::debug_log::appendLine(
             miacode::debug_log::Channel::Runtime,
@@ -964,23 +964,23 @@ double miacode::runtime::PlaybackCoordinator::timelineSecondForCursor(int line, 
 
 bool miacode::runtime::PlaybackCoordinator::resolveTimelineSecondForCursor(int line, int col, double* second) const
 {
-    return state_.timelineQuickModel_.resolveTimelineSecondForCursor(line, col, second);
+    return state_.timeline_.timelineQuickModel_.resolveTimelineSecondForCursor(line, col, second);
 }
 
 void miacode::runtime::PlaybackCoordinator::updateTimelineCursorFromEditorLocation(
     int line, int col, bool centerView)
 {
-    if (state_.timelineQuickStateBridge_ == nullptr) {
+    if (state_.timeline_.timelineQuickStateBridge_ == nullptr) {
         return;
     }
     const double second = timelineSecondForCursor(line, col);
     const bool bridgeCenterView = !state_.playing_ && centerView;
-    if (state_.timelineQuickStateBridge_ != nullptr) {
+    if (state_.timeline_.timelineQuickStateBridge_ != nullptr) {
         if (quickTimelineBridgeReady() && timelineTabIsForeground()) {
-            state_.pendingQuickTimelineCursorSync_ = false;
-            state_.pendingQuickTimelineCursorSecond_ = 0.0;
-            state_.pendingQuickTimelineCursorCenterView_ = false;
-            state_.timelineQuickStateBridge_->setCursorSeconds(second, bridgeCenterView);
+            state_.timeline_.pendingQuickTimelineCursorSync_ = false;
+            state_.timeline_.pendingQuickTimelineCursorSecond_ = 0.0;
+            state_.timeline_.pendingQuickTimelineCursorCenterView_ = false;
+            state_.timeline_.timelineQuickStateBridge_->setCursorSeconds(second, bridgeCenterView);
         } else {
             queueTimelineCursorBridgeUpdate(second, bridgeCenterView);
         }
@@ -989,7 +989,7 @@ void miacode::runtime::PlaybackCoordinator::updateTimelineCursorFromEditorLocati
 
 void miacode::runtime::PlaybackCoordinator::navigateTimelineToSecond(double second, bool focusEditor)
 {
-    if (state_.timelineQuickStateBridge_ == nullptr) {
+    if (state_.timeline_.timelineQuickStateBridge_ == nullptr) {
         return;
     }
 
@@ -997,7 +997,7 @@ void miacode::runtime::PlaybackCoordinator::navigateTimelineToSecond(double seco
     int line = 1;
     int col = 1;
     double cursorSecond = 0.0;
-    state_.timelineQuickModel_.resolveTimelineNavigateCursor(clampedSecond, &line, &col, &cursorSecond);
+    state_.timeline_.timelineQuickModel_.resolveTimelineNavigateCursor(clampedSecond, &line, &col, &cursorSecond);
     const bool previousSuppressState = state_.suppressTimelineCursorSync_;
     state_.suppressTimelineCursorSync_ = true;
 
@@ -1007,7 +1007,7 @@ void miacode::runtime::PlaybackCoordinator::navigateTimelineToSecond(double seco
         ui_.previewSeekDebounceTimer_->stop();
     }
     seekPreviewDiscreteToSecond(clampedSecond, true);
-    if (state_.timelineQuickStateBridge_ != nullptr) {
+    if (state_.timeline_.timelineQuickStateBridge_ != nullptr) {
         deferTimelineCursorBridgeUpdate(cursorSecond, false);
     }
 
@@ -1018,13 +1018,13 @@ void miacode::runtime::PlaybackCoordinator::navigateTimelineToSecond(double seco
 
 bool miacode::runtime::PlaybackCoordinator::resolveNearestTimelineNote(double second, int lane, int* line, int* col, double* noteSecond) const
 {
-    return state_.timelineQuickModel_.resolveNearestTimelineNote(second, lane, line, col, noteSecond);
+    return state_.timeline_.timelineQuickModel_.resolveNearestTimelineNote(second, lane, line, col, noteSecond);
 }
 
 bool miacode::runtime::PlaybackCoordinator::resolveExportRangeForSelection(
     int selectionStart, int selectionEnd, double* startSecond, double* endSecond) const
 {
-    const TimelineExportRange range = state_.timelineQuickModel_.resolveExportRangeForSelection(
+    const TimelineExportRange range = state_.timeline_.timelineQuickModel_.resolveExportRangeForSelection(
         activeChartText(),
         selectionStart,
         selectionEnd,
@@ -1064,7 +1064,7 @@ bool miacode::runtime::PlaybackCoordinator::moveEditorCursorToTimelineLocation(
     int startColumn = col;
     int endColumn = col;
     if (selectToken) {
-        state_.timelineQuickModel_.resolvePreviewFollowSelectionRange(
+        state_.timeline_.timelineQuickModel_.resolvePreviewFollowSelectionRange(
             line, col, &startColumn, &endColumn);
     }
     return documents_.requestEditorNavigation(

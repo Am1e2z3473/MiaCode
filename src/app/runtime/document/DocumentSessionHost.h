@@ -23,7 +23,6 @@ public:
     // the prompt itself is a QML dialog. `onDecided(true)` means "the document
     // may be left behind".
     void requestLeaveDocument(std::function<void(bool)> onDecided) override;
-    bool applyCurrentFieldToDocument() override;
     QString documentField(Session::DocumentField field) const;
     QString difficultyField(int difficultyId, Session::DifficultyField field) const;
     bool updateDocumentField(Session::DocumentField field, const QString& value);
@@ -79,10 +78,6 @@ public:
     // The workspace revision QML last committed — see PlaybackDocumentPort.h
     // for why this is a query rather than a relocation of the field.
     quint64 appliedWorkspaceRevision() const override;
-    bool currentFieldHasUndoChanges() const;
-    void anchorCurrentFieldCleanState();
-    void refreshCurrentFieldDirtyState();
-    void markCurrentFieldDirty();
     // The per-edit autosave safety net: restart the 2s debounce that writes
     // latest.bak, and push the document into the crash handler's snapshot
     // mailbox so an abnormal exit in the next moments still leaves something

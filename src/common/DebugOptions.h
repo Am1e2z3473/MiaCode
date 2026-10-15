@@ -4,7 +4,6 @@
 #include <QStringList>
 
 #include <atomic>
-#include <limits>
 #include <optional>
 
 #ifdef Q_OS_WIN
@@ -243,14 +242,6 @@ inline int uiHangIdleHeartbeatMs()
     return value > 0 ? value : 5000;
 }
 
-// The watchdog must never deliberately terminate the process. Keep the value at the
-// largest representable duration so the old call site remains inert while preserving
-// the non-destructive hang/stall reporting path.
-inline int uiHangCrashAfterMs()
-{
-    return std::numeric_limits<int>::max();
-}
-
 inline bool previewFixedTimerHighResolutionEnabled()
 {
     return envFlagEnabled("MIACODE_PREVIEW_FIXED_TIMER_HIGH_RES");
@@ -332,10 +323,6 @@ inline int previewDumpHwFrameBudget()
     // resolved value reaches the decoder via qavSetPreviewHwFrameDumpConfig (mirroring
     // qavSetSharedRenderD3D11Device). Set MIACODE_PREVIEW_DUMP_HWFRAMES=15.
     //
-    // ⚠ Repro precondition: on an integrated GPU the buggy D3D11VA path is NOT the
-    // default (previewVideoDecodePreference() Auto => software), so launch with
-    // MIACODE_PREVIEW_FORCE_SOFTWARE_VIDEO=0 (ForceHardware) [+ optionally
-    // MIACODE_PREVIEW_SINGLE_D3D11_DEVICE=1 for the H2 single-device path] + --debug.
     if (!runtimeDebugOutputEnabled()) {
         return 0;
     }

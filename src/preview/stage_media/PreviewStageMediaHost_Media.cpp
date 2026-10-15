@@ -60,7 +60,6 @@ bool PreviewStageMediaHost::hasResolvedMedia() const
     return mediaKind_ != MediaKind::None;
 }
 
-
 bool PreviewStageMediaHost::hasVideoMedia() const
 {
     return mediaKind_ == MediaKind::Video;
@@ -127,17 +126,6 @@ void PreviewStageMediaHost::reloadCurrentMediaPreservingPlayback()
     }
 }
 
-QImage PreviewStageMediaHost::currentBackgroundImage() const
-{
-    // Phase 4c-8 (image) + 4c-9 (video) — return the cached bg image
-    // for both kinds. For Image: loadImageMedia() seeds it once at
-    // chart-load. Video frames update the cached image as they arrive.
-    if (mediaKind_ != MediaKind::Image && mediaKind_ != MediaKind::Video) {
-        return QImage();
-    }
-    return loadedBackgroundImage_;
-}
-
 
 QString PreviewStageMediaHost::resolvedVideoPath() const
 {
@@ -147,12 +135,10 @@ QString PreviewStageMediaHost::resolvedVideoPath() const
     return mediaPath_;
 }
 
-
 int PreviewStageMediaHost::backgroundScaleMode() const
 {
     return static_cast<int>(backgroundScaleMode_);
 }
-
 
 void PreviewStageMediaHost::setBackgroundScaleModeValue(int mode)
 {
@@ -170,7 +156,6 @@ void PreviewStageMediaHost::setBackgroundScaleModeValue(int mode)
             : PreviewBackgroundScaleMode::FillCrop
     );
 }
-
 
 void PreviewStageMediaHost::setBackgroundScaleMode(PreviewBackgroundScaleMode mode)
 {
@@ -238,7 +223,6 @@ void PreviewStageMediaHost::setLayoutSquareScale(double scale)
     emit layoutSquareScaleChanged();
 }
 
-
 void PreviewStageMediaHost::setChartPath(const QString& chartPath,
                                          const QString& chartVideoOverridePath)
 {
@@ -297,7 +281,6 @@ void PreviewStageMediaHost::setChartPath(const QString& chartPath,
     );
 }
 
-
 void PreviewStageMediaHost::clearMedia()
 {
     clearPvMemorySource();
@@ -334,10 +317,6 @@ void PreviewStageMediaHost::clearMedia()
         player_->stop();
         player_->setSource(QString());
     }
-    // Phase 4c-8 — clear the cached image so a chart switch from
-    // image→video doesn't leave the old image visible behind the
-    // new video.
-    loadedBackgroundImage_ = QImage();
     ++videoSourceGeneration_;
     mediaKind_ = MediaKind::None;
     // A paused seek can be in flight when the media route is cleared (e.g.
@@ -392,7 +371,6 @@ void PreviewStageMediaHost::clearMedia()
     emit diagnosticsChanged();
 }
 
-
 bool PreviewStageMediaHost::releaseDecoderForFileReplace()
 {
     MC_OP("PreviewStageMediaHost::releaseDecoderForFileReplace");
@@ -421,13 +399,8 @@ bool PreviewStageMediaHost::releaseDecoderForFileReplace()
     return player_ == nullptr && !hasResolvedMedia() && mediaPath_.isEmpty();
 }
 
-
 QString PreviewStageMediaHost::resolveMediaPath(const QString& chartPath) const
 {
-    // Resolved-media warmup cache removed (2026-06-03). It keyed on the chart-path
-    // string only and never re-validated, so a same-named bg/pv with new content
-    // was shadowed by the stale cached path. Always resolve live; same-content
-    // re-decode is avoided by the content-stamp check in setChartPath().
     return miacode::chart_assets::resolveBackgroundMediaPath(chartPath);
 }
 
@@ -457,15 +430,6 @@ QString PreviewStageMediaHost::resolveStageMediaPath(
 void PreviewStageMediaHost::loadImageMedia(const QString& path)
 {
     imageSource_ = miacode::chart_assets::displayBackgroundImageUrl(path);
-    // Also keep a decoded QImage copy alongside the QML
-    // PreviewStageMediaItem's imageSource_ binding, exposed via
-    // currentBackgroundImage().
-    loadedBackgroundImage_ = QImage(path);
-    if (loadedBackgroundImage_.isNull()) {
-        appendPreviewStageMediaLog(
-            QStringLiteral("load_image_failed"),
-            QStringLiteral("path=%1").arg(path));
-    }
     mediaKind_ = MediaKind::Image;
     ++videoSourceGeneration_;
     pausedSeekCompletionPending_ = false;
@@ -492,7 +456,6 @@ void PreviewStageMediaHost::loadImageMedia(const QString& path)
     emit diagnosticsChanged();
 }
 
-
 void PreviewStageMediaHost::loadVideoMedia(const QString& path)
 {
     MC_OP("PreviewStageMediaHost::loadVideoMedia");
@@ -502,10 +465,6 @@ void PreviewStageMediaHost::loadVideoMedia(const QString& path)
     }
 
     imageSource_ = QUrl();
-    // Clear stale bg + arm the toImage() throttle so the first decoded frame
-    // after this chart switch is captured immediately.
-    loadedBackgroundImage_ = QImage();
-    videoFrameToImageThrottle_.invalidate();
     mediaKind_ = MediaKind::Video;
     softwareDecodeFallbackTried_ = false;
     videoBackendLoaded_ = false;
@@ -564,7 +523,6 @@ void PreviewStageMediaHost::loadVideoMedia(const QString& path)
     emit diagnosticsChanged();
     return;
 }
-
 
 void PreviewStageMediaHost::bindVideoOutput()
 {

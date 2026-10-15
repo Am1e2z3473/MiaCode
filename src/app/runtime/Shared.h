@@ -111,6 +111,13 @@ qint64 fileLastModifiedMs(const QFileInfo& fileInfo);
 double probeAudioDurationSeconds(const QString& trackPath);
 
 void ensurePreviewSfxRuntimePrepared(RuntimeContext::State& state);
+bool previewStageMediaRouteHasVideo(const RuntimeContext::State& state);
+void pausePreviewStageMediaRoutePlayback(RuntimeContext::State& state);
+void syncPreviewStageMediaRoutePlayback(RuntimeContext::State& state, double second);
+void setPreviewStageMediaRouteObservedPlayheadSecond(RuntimeContext::State& state, double second);
+void resetPreviewStageMediaRouteTimelineOffset(RuntimeContext::State& state);
+void submitPreviewStageMediaRoutePausedSeek(RuntimeContext::State& state, double second, quint64 generation);
+void seekPreviewStageMediaRouteWhilePaused(RuntimeContext::State& state, double second);
 void applyPreviewStageMediaRouteVisualSettings(RuntimeContext::State& state);
 void applyPreviewStageMediaRoutePlaybackRate(RuntimeContext::State& state, double rate, const char* site = nullptr);
 // owner is only used as the QuickShellPreviewCompositeSurface's QObject

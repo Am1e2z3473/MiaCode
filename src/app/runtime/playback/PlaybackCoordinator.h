@@ -156,7 +156,6 @@ public:
     qint64 targetFrameIntervalNsForFrameRateMode(PreviewCanvasFrameRateMode mode) const;
     qint64 timelineTargetFrameIntervalNs() const;
     void refreshTimelineWaveformPhaseCompensation();
-    void applyPreviewStageMediaFrameRateMode();
     void resetQtPreviewFixedFramePacing();
     void scheduleNextQtPreviewTick();
     void requestNextDisplayRefreshPreviewFrame();

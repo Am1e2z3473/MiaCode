@@ -64,7 +64,6 @@ bool miacode::runtime::DocumentSessionHost::deleteDifficultyField(int difficulty
     state_.documentDirty_ = true;
 
     if (deletingActiveDifficulty) {
-        state_.currentFieldDirty_ = false;
         const QVector<int> remainingIds = session_.applicationServices_.workspace().document().difficultyIds();
         if (remainingIds.isEmpty()) {
             state_.activeDifficultyId_ = 0;
@@ -147,7 +146,6 @@ bool miacode::runtime::DocumentSessionHost::switchToLatencyField()
     }
     session_.refreshWaveformCache();
     session_.clearValidationDecorations();
-    state_.currentFieldDirty_ = false;
     updateDirtyState();
     session_.updateWindowTitle();
     if (auto* sandbox = session_.latencySandboxController(); sandbox != nullptr) {
@@ -185,7 +183,6 @@ void miacode::runtime::DocumentSessionHost::performSwitchToExportField()
     state_.activeOutlineKey_ = "export";
     setChartBottomTabsMode(false);
     session_.clearValidationDecorations();
-    state_.currentFieldDirty_ = false;
     updateDirtyState();
     session_.updateWindowTitle();
     if (ui_.qmlExportSession_ != nullptr) {
@@ -221,7 +218,6 @@ bool miacode::runtime::DocumentSessionHost::switchToMetadataField()
     state_.activeOutlineKey_ = "metadata";
     setChartBottomTabsMode(false);
     session_.clearValidationDecorations();
-    state_.currentFieldDirty_ = false;
     updateDirtyState();
     session_.updateWindowTitle();
     return true;
@@ -245,7 +241,6 @@ bool miacode::runtime::DocumentSessionHost::switchToWelcomePage()
     state_.activeOutlineKey_ = "welcome";
     setChartBottomTabsMode(false);
     session_.clearValidationDecorations();
-    state_.currentFieldDirty_ = false;
     updateDirtyState();
     session_.updateWindowTitle();
     return true;
@@ -266,7 +261,6 @@ bool miacode::runtime::DocumentSessionHost::clearEditorPresentation()
     state_.pendingDifficultySwitchPreviewRestoreSecond_ = 0.0;
     setChartBottomTabsMode(false);
     session_.clearValidationDecorations();
-    state_.currentFieldDirty_ = false;
     clearTimelineAndPreview();
     updateDirtyState();
     session_.updateWindowTitle();
@@ -339,7 +333,7 @@ bool miacode::runtime::DocumentSessionHost::switchToDifficultyField(int difficul
     }
     const double previousPreviewTrackDurationSeconds = state_.previewTrackDurationSeconds_;
     const std::shared_ptr<const miacode::waveform::WaveformData> previousWaveformData =
-        state_.timelineQuickStateBridge_ != nullptr ? state_.timelineQuickStateBridge_->waveformData() : nullptr;
+        state_.timeline_.timelineQuickStateBridge_ != nullptr ? state_.timeline_.timelineQuickStateBridge_->waveformData() : nullptr;
     clearTimelineAndPreview(restoreSwitchView);
     if (restoreSwitchView) {
         // 同一工程内切换难度时保留播放时间与时间轴位置，目标谱面解析完成后替换内容。
@@ -349,8 +343,8 @@ bool miacode::runtime::DocumentSessionHost::switchToDifficultyField(int difficul
         state_.pendingDifficultySwitchPreviewRestore_ = true;
         state_.pendingDifficultySwitchPreviewRestoreDifficultyId_ = difficultyId;
         state_.pendingDifficultySwitchPreviewRestoreSecond_ = restorePreviewSecond;
-        if (state_.timelineQuickStateBridge_ != nullptr) {
-            state_.timelineQuickStateBridge_->setPlayheadSeconds(restorePreviewSecond, false);
+        if (state_.timeline_.timelineQuickStateBridge_ != nullptr) {
+            state_.timeline_.timelineQuickStateBridge_->setPlayheadSeconds(restorePreviewSecond, false);
         }
         if (state_.scene_ != nullptr) {
             state_.scene_->setPlayheadSeconds(restorePreviewSecond, false);
@@ -378,8 +372,8 @@ bool miacode::runtime::DocumentSessionHost::switchToDifficultyField(int difficul
             session_.applicationServices_.workspace().document().videoPath);  // Phase 4c — &video= override
     }
     setChartBottomTabsMode(true);
-    if (state_.timelineQuickStateBridge_ != nullptr) {
-        state_.timelineQuickStateBridge_->setFollowPreviewEnabled(state_.previewFollowEnabled_);
+    if (state_.timeline_.timelineQuickStateBridge_ != nullptr) {
+        state_.timeline_.timelineQuickStateBridge_->setFollowPreviewEnabled(state_.previewFollowEnabled_);
     }
     // Entering a difficulty re-asserts the correct preview levels. With the latency
     // audition torn down above (onPageLeft), the mode is Normal, so the single
@@ -387,7 +381,6 @@ bool miacode::runtime::DocumentSessionHost::switchToDifficultyField(int difficul
     // applyPreviewAudioSettingsToRuntime) — not a special-cased override.
     session_.applyPreviewAudioSettingsToRuntime();
     session_.publishPreviewPlayhead();
-    state_.currentFieldDirty_ = false;
     updateDirtyState();
     QTimer::singleShot(0, &session_, [this, difficultyId]() {
         if (state_.activeDifficultyId_ != difficultyId || !difficultyPageActive()) {
@@ -442,7 +435,6 @@ void miacode::runtime::DocumentSessionHost::loadDocument()
         session_.applicationServices_.workspace().snapshot();
     resetAutosaveState(snapshot.sourceText);
     state_.documentDirty_ = snapshot.dirty;
-    state_.currentFieldDirty_ = false;
     state_.activeDifficultyId_ = snapshot.activeDifficultyId;
     if (SimaiDocument::isDifficultyId(state_.activeDifficultyId_)) {
         state_.projectLastOpenedDifficultyId_ = state_.activeDifficultyId_;
@@ -456,11 +448,11 @@ void miacode::runtime::DocumentSessionHost::loadDocument()
 void miacode::runtime::DocumentSessionHost::clearTimelineAndPreview(bool preservePresentation, bool releaseStorage)
 {
     releaseStorage |= !session_.applicationServices_.workspace().snapshot().hasDocument;
-    state_.timelineQuickModel_.clear(releaseStorage);
-    state_.pendingTimelineSlowRefresh_ = TimelineSlowRefreshRequest();
-    state_.pendingTimelineAnalysisRefresh_ = TimelineSlowRefreshRequest();
-    state_.timelineSlowRequestedRevision_ = 0;
-    state_.timelineAnalysisRequestedRevision_ = 0;
+    state_.timeline_.timelineQuickModel_.clear(releaseStorage);
+    state_.timeline_.pendingTimelineSlowRefresh_ = TimelineSlowRefreshRequest();
+    state_.timeline_.pendingTimelineAnalysisRefresh_ = TimelineSlowRefreshRequest();
+    state_.timeline_.timelineSlowRequestedRevision_ = 0;
+    state_.timeline_.timelineAnalysisRequestedRevision_ = 0;
     // The signature describes the markers still installed in the scene. A
     // preserved scene keeps its outgoing markers until the incoming parse is
     // ready, including when that parse produces an empty marker set.
@@ -468,17 +460,17 @@ void miacode::runtime::DocumentSessionHost::clearTimelineAndPreview(bool preserv
         state_.lastPreviewNoteMarkerSignature_.clear();
     }
     if (releaseStorage) {
-        state_.latestTimelineNoteMarkers_ = QVector<TimelineNoteMarker>();
+        state_.timeline_.latestTimelineNoteMarkers_ = QVector<TimelineNoteMarker>();
     } else {
-        state_.latestTimelineNoteMarkers_.clear();
+        state_.timeline_.latestTimelineNoteMarkers_.clear();
     }
-    state_.latestTimelineNoteMarkerSignature_.clear();
-    state_.latestTimelinePreviewRevision_ = 0;
-    state_.latestTimelinePreviewSnapshotReady_ = false;
-    state_.lastTimelineParseDifficultyId_ = 0;
-    state_.lastTimelineParseChartText_.clear();
-    state_.lastTimelineParseTimingMetadata_ = miacode::simai::SimaiTimingMetadata();
-    state_.lastTimelineParseResult_ = SimaiParseResult();
+    state_.timeline_.latestTimelineNoteMarkerSignature_.clear();
+    state_.timeline_.latestTimelinePreviewRevision_ = 0;
+    state_.timeline_.latestTimelinePreviewSnapshotReady_ = false;
+    state_.timeline_.lastTimelineParseDifficultyId_ = 0;
+    state_.timeline_.lastTimelineParseChartText_.clear();
+    state_.timeline_.lastTimelineParseTimingMetadata_ = miacode::simai::SimaiTimingMetadata();
+    state_.timeline_.lastTimelineParseResult_ = SimaiParseResult();
     state_.muriAnalysisReport_ = MuriAnalysisReport();
     state_.muriAnalysisReport_.revision = ++state_.muriAnalysisReportRevisionCounter_;
     state_.muriAnalysisReportNoteMarkerSignature_.clear();
@@ -504,9 +496,9 @@ void miacode::runtime::DocumentSessionHost::clearTimelineAndPreview(bool preserv
     state_.qtPreviewPendingTimelineCenterView_ = true;
     state_.previewFollowBindingCacheValid_ = false;
     state_.previewFollowBindingCache_ = TimelineQuickModel::PreviewFollowBinding();
-    state_.pendingQuickTimelineCursorSync_ = false;
-    state_.pendingQuickTimelineCursorSecond_ = 0.0;
-    state_.pendingQuickTimelineCursorCenterView_ = false;
+    state_.timeline_.pendingQuickTimelineCursorSync_ = false;
+    state_.timeline_.pendingQuickTimelineCursorSecond_ = 0.0;
+    state_.timeline_.pendingQuickTimelineCursorCenterView_ = false;
     state_.pendingPreviewPlaybackStart_ = false;
     state_.pendingPreviewPlaybackResumeFromPause_ = false;
     state_.pendingPreviewPlaybackRevision_ = 0;
@@ -520,11 +512,11 @@ void miacode::runtime::DocumentSessionHost::clearTimelineAndPreview(bool preserv
         state_.previewSfxRuntime_->clearTimeline();
     }
     session_.stopQtPreviewPlayback(preservePresentation);
-    if (state_.timelineQuickStateBridge_ != nullptr) {
+    if (state_.timeline_.timelineQuickStateBridge_ != nullptr) {
         if (!preservePresentation) {
-            state_.timelineQuickStateBridge_->clear();
+            state_.timeline_.timelineQuickStateBridge_->clear();
         }
-        state_.timelineQuickStateBridge_->setMuriAnalysisReport(state_.muriAnalysisReport_);
+        state_.timeline_.timelineQuickStateBridge_->setMuriAnalysisReport(state_.muriAnalysisReport_);
     }
     if (state_.scene_ != nullptr) {
         if (!preservePresentation) {

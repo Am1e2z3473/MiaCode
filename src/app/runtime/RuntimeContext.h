@@ -95,8 +95,6 @@ public:
         bool ok = true;
         int errorCount = 0;
         int warningCount = 0;
-        int lenientNoteCount = 0;
-        int lenientErrorCount = 0;
         int strictNoteCount = 0;
         int strictErrorCount = 0;
         QVector<ValidationCachedIssue> issues;
@@ -110,9 +108,6 @@ public:
     };
 
 
-    // Timeline projection and refresh state has a separate storage owner. The
-    // legacy State record below exposes references during this incremental
-    // migration, but it no longer owns these values.
     struct TimelineState {
         TimelineQuickStateBridge* timelineQuickStateBridge_ = nullptr;
         bool timelineReady_ = false;

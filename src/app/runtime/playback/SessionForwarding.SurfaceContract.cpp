@@ -11,10 +11,10 @@ void Session::setBackendActive(bool active)
     }
     backendActive_ = active;
     uiFocusBridgeMode_ = active;
-    timelineReady_ = false;
-    pendingQuickTimelineCursorSync_ = false;
-    pendingQuickTimelineCursorSecond_ = 0.0;
-    pendingQuickTimelineCursorCenterView_ = false;
+    state_.timeline_.timelineReady_ = false;
+    state_.timeline_.pendingQuickTimelineCursorSync_ = false;
+    state_.timeline_.pendingQuickTimelineCursorSecond_ = 0.0;
+    state_.timeline_.pendingQuickTimelineCursorCenterView_ = false;
 }
 
 miacode::chart_transform::ChartNormalizationOptions Session::chartNormalizeOptions() const

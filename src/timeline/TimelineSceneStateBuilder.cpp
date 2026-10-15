@@ -621,11 +621,7 @@ TimelineSceneState TimelineSceneStateBuilder::build(const TimelineSceneBuildRequ
                 if (qAbs(column.max - column.min) <= 1e-5f) {
                     continue;
                 }
-                // Hard waveform phase compensation: logs from multiple devices
-                // (60 Hz and 120 Hz) show the authoritative audio clock leading
-                // the timeline-rendered playhead by about one frame. The root
-                // cause is still unclear, so keep this as an explicit rendering
-                // compensation rather than folding it into waveform cache data.
+                // Shift waveform presentation by the host-provided frame interval; cache times stay in audio seconds.
                 const double columnStartSecond =
                     waveformLevel->secondsPerColumn * static_cast<double>(index) - phaseCompensationSeconds;
                 const double columnEndSecond = columnStartSecond + waveformLevel->secondsPerColumn;

@@ -93,7 +93,7 @@ ChartWorkspacePreflightResult ChartWorkspace::preflightSource(
         const SimaiDifficultyData* difficulty = result.candidate.difficulty(difficultyId);
         if (difficulty == nullptr) continue;
         const SimaiValidationReport report = SimaiParser::buildValidationReport(
-            difficulty->chart, locale, nullptr, timing);
+            difficulty->chart, locale, timing);
         const SourceFieldSpan span = spans.forDifficulty(difficultyId);
         for (const SimaiValidationIssue& issue : report.issues) {
             const int line = span.valueLine + issue.line - 1;

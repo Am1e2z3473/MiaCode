@@ -192,9 +192,7 @@ void miacode::runtime::StageMediaHost::applyPreviewMediaWarmupToStageMediaRoute(
 
 void miacode::runtime::StageMediaHost::resetPreviewStageMediaRouteTimelineOffset()
 {
-    if (state_.previewStageMediaHost_ != nullptr) {
-        state_.previewStageMediaHost_->setTimelineOffsetSeconds(0.0);
-    }
+    miacode::runtime::shared::resetPreviewStageMediaRouteTimelineOffset(state_);
 }
 
 void miacode::runtime::StageMediaHost::applyPreviewStageMediaRoutePlaybackRate(double rate, const char* site)
@@ -204,7 +202,7 @@ void miacode::runtime::StageMediaHost::applyPreviewStageMediaRoutePlaybackRate(d
 
 bool miacode::runtime::StageMediaHost::previewStageMediaRouteHasVideo() const
 {
-    return state_.previewStageMediaHost_ != nullptr && state_.previewStageMediaHost_->hasVideoMedia();
+    return miacode::runtime::shared::previewStageMediaRouteHasVideo(state_);
 }
 
 double miacode::runtime::StageMediaHost::previewStageMediaRouteCurrentPlaybackSecond() const
@@ -221,58 +219,27 @@ void miacode::runtime::StageMediaHost::startPreviewStageMediaRoutePlayback(doubl
 
 void miacode::runtime::StageMediaHost::syncPreviewStageMediaRoutePlayback(double second)
 {
-    if (!previewStageMediaRouteHasVideo()) {
-        return;
-    }
-
-    if (state_.previewStageMediaHost_ != nullptr) {
-        state_.previewStageMediaHost_->syncPlayback(second);
-    }
+    miacode::runtime::shared::syncPreviewStageMediaRoutePlayback(state_, second);
 }
 
 void miacode::runtime::StageMediaHost::pausePreviewStageMediaRoutePlayback()
 {
-    if (state_.previewStageMediaHost_ != nullptr) {
-        state_.previewStageMediaHost_->pausePlayback();
-    }
+    miacode::runtime::shared::pausePreviewStageMediaRoutePlayback(state_);
 }
 
 void miacode::runtime::StageMediaHost::seekPreviewStageMediaRouteWhilePaused(double second)
 {
-    const double clampedSecond = qBound(0.0, second, session_.previewDurationSeconds());
-    if (!previewStageMediaRouteHasVideo()) {
-        state_.pausedPreviewMediaSeekPending_ = false;
-        return;
-    }
-
-    state_.pausedPreviewMediaSeekPending_ = true;
-    state_.pausedPreviewMediaSeekSecond_ = clampedSecond;
-    if (state_.previewStageMediaHost_ != nullptr) {
-        state_.previewStageMediaHost_->setPlayheadSeconds(clampedSecond);
-    }
+    miacode::runtime::shared::seekPreviewStageMediaRouteWhilePaused(state_, qBound(0.0, second, session_.previewDurationSeconds()));
 }
 
 void miacode::runtime::StageMediaHost::submitPreviewStageMediaRoutePausedSeek(double second, quint64 generation)
 {
-    const double clampedSecond = qBound(0.0, second, session_.previewDurationSeconds());
-    if (!previewStageMediaRouteHasVideo()) {
-        state_.pausedPreviewMediaSeekPending_ = false;
-        return;
-    }
-
-    state_.pausedPreviewMediaSeekPending_ = true;
-    state_.pausedPreviewMediaSeekSecond_ = clampedSecond;
-    if (state_.previewStageMediaHost_ != nullptr) {
-        state_.previewStageMediaHost_->submitPausedSeek(clampedSecond, generation);
-    }
+    miacode::runtime::shared::submitPreviewStageMediaRoutePausedSeek(state_, qBound(0.0, second, session_.previewDurationSeconds()), generation);
 }
 
 void miacode::runtime::StageMediaHost::setPreviewStageMediaRouteObservedPlayheadSecond(double second)
 {
-    if (!previewUsesStageMediaHostRoute() || state_.previewStageMediaHost_ == nullptr) {
-        return;
-    }
-    state_.previewStageMediaHost_->setObservedPlayheadSecond(second);
+    miacode::runtime::shared::setPreviewStageMediaRouteObservedPlayheadSecond(state_, second);
 }
 
 void miacode::runtime::StageMediaHost::ensureQuickShellPreviewCompositeSurfaceInitialized()

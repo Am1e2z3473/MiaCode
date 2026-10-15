@@ -6,7 +6,6 @@
 #include "preview/stage_media/PvMemoryDiagnostics.h"
 
 #include <QElapsedTimer>
-#include <QImage>
 #include <QMetaObject>
 #include <QObject>
 #include <QPointer>
@@ -83,14 +82,6 @@ public:
     void setChartPath(const QString& chartPath,
                       const QString& chartVideoOverridePath = QString());
 
-    // Phase 4c-8 / 4d — fallback path for legacy LWA composition mode
-    // (when MIACODE_PREVIEW_DCOMP_PER_PIXEL_ALPHA=0): returns a copy
-    // of the currently-loaded image-mode background. With per-pixel
-    // alpha (the default), QML's PreviewStageMediaItem renders the
-    // bg natively and this getter returns null. The CPU detour
-    // exists only for the env-disabled-NRB fallback case.
-    QImage currentBackgroundImage() const;
-
     void setPlaybackRate(double rate);
     void setTimelineOffsetSeconds(double seconds);
     void setPlaybackTransactionId(quint64 transactionId);
@@ -138,7 +129,7 @@ public:
                                       qint64 presentWaitMs,
                                       double visualSecond,
                                       double audioSecond);
-    void setVideoFrameToImageMaxFps(double fps);
+    Q_INVOKABLE void reportImageLoadFailure(const QUrl& source);
     void setObservedPlayheadSecond(double second);
     QString debugMediaTypeName() const;
 
@@ -258,20 +249,6 @@ private:
     // unchanged — a same-named clip with new bytes still forces a reload.
     QString mediaStamp_;
     QUrl imageSource_;
-    // Phase 4c-8 — cached QImage of the loaded image-mode background.
-    // Populated in loadImageMedia(); cleared in clearMedia/loadVideoMedia/
-    // loadDcompVideoMedia. Surface reads this via currentBackgroundImage()
-    // and pushes into PreviewBuildContext for StageBackgroundSource.
-    QImage loadedBackgroundImage_;
-    // Phase 4c-9 throttle — caps QVideoFrame::toImage() conversions
-    // to ~30Hz to keep the GUI thread under per-tick budget. Each
-    // conversion is ~5–10ms (YUV→RGB + 2.5+ MB allocation) for a
-    // 1080p source; without throttling, a 30fps video produces
-    // 30 conversions/sec on the GUI thread, which pushes the
-    // 60Hz chart-preview tick into stutter territory (HUD stutter
-    // count climbed to ~20 during ECHO playback before throttling).
-    QElapsedTimer videoFrameToImageThrottle_;
-    double videoFrameToImageMaxFps_ = 30.0;
     bool mediaVisible_ = true;
     bool hidePv_ = false;
     bool missingMediaFallbackEnabled_ = false;
