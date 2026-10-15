@@ -26,6 +26,57 @@
 
 namespace miacode::runtime::shared {
 
+bool previewStageMediaRouteHasVideo(const RuntimeContext::State& state)
+{
+    return state.previewStageMediaHost_ != nullptr && state.previewStageMediaHost_->hasVideoMedia();
+}
+
+void pausePreviewStageMediaRoutePlayback(RuntimeContext::State& state)
+{
+    if (state.previewStageMediaHost_ != nullptr) {
+        state.previewStageMediaHost_->pausePlayback();
+    }
+}
+
+void syncPreviewStageMediaRoutePlayback(RuntimeContext::State& state, double second)
+{
+    if (previewStageMediaRouteHasVideo(state)) {
+        state.previewStageMediaHost_->syncPlayback(second);
+    }
+}
+
+void setPreviewStageMediaRouteObservedPlayheadSecond(RuntimeContext::State& state, double second)
+{
+    if (state.previewStageMediaHost_ != nullptr) {
+        state.previewStageMediaHost_->setObservedPlayheadSecond(second);
+    }
+}
+
+void resetPreviewStageMediaRouteTimelineOffset(RuntimeContext::State& state)
+{
+    if (state.previewStageMediaHost_ != nullptr) {
+        state.previewStageMediaHost_->setTimelineOffsetSeconds(0.0);
+    }
+}
+
+void submitPreviewStageMediaRoutePausedSeek(RuntimeContext::State& state, double second, quint64 generation)
+{
+    state.pausedPreviewMediaSeekPending_ = previewStageMediaRouteHasVideo(state);
+    if (state.pausedPreviewMediaSeekPending_) {
+        state.pausedPreviewMediaSeekSecond_ = second;
+        state.previewStageMediaHost_->submitPausedSeek(second, generation);
+    }
+}
+
+void seekPreviewStageMediaRouteWhilePaused(RuntimeContext::State& state, double second)
+{
+    state.pausedPreviewMediaSeekPending_ = previewStageMediaRouteHasVideo(state);
+    if (state.pausedPreviewMediaSeekPending_) {
+        state.pausedPreviewMediaSeekSecond_ = second;
+        state.previewStageMediaHost_->setPlayheadSeconds(second);
+    }
+}
+
 namespace {
 
 // Retired name for the standard skin directory; normalizePreviewSkinDirectoryName

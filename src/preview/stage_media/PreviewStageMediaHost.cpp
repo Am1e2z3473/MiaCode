@@ -134,14 +134,6 @@ void PreviewStageMediaHost::setMediaVisible(bool visible)
         return;
     }
     mediaVisible_ = visible;
-    // Phase 4c-9 — invalidate the toImage() throttle so the first
-    // QVideoSink frame after a visibility-on transition is captured
-    // immediately (bg shouldn't ghost between hide→show with stale
-    // content, especially at scrub time). Only used by the legacy
-    // CPU detour; ignored under per-pixel alpha mode.
-    if (visible) {
-        videoFrameToImageThrottle_.invalidate();
-    }
     emit mediaVisibilityChanged();
 }
 

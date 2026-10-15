@@ -1,4 +1,4 @@
-﻿#include "app/runtime/document/DocumentSessionHost.h"
+#include "app/runtime/document/DocumentSessionHost.h"
 #include "app/services/UiRequestService.h"
 #include "app/runtime/Shared.h"
 #include "app/runtime/export/VideoExportHost.h"
@@ -39,16 +39,6 @@ miacode::runtime::DocumentSessionHost::DocumentSessionHost(
     , state_(state)
 {}
 
-bool miacode::runtime::DocumentSessionHost::applyCurrentFieldToDocument()
-{
-    // QML already commits into ChartWorkspace. Flushing hidden widget fields
-    // would overwrite that. This path only clears the widget dirty latch.
-    anchorCurrentFieldCleanState();
-    state_.currentFieldDirty_ = false;
-    updateDirtyState();
-    return true;
-}
-
 void miacode::runtime::DocumentSessionHost::cancelPendingStartupRestore()
 {
     if (!state_.startupRestorePending_) {
@@ -56,11 +46,6 @@ void miacode::runtime::DocumentSessionHost::cancelPendingStartupRestore()
     }
     state_.startupRestorePending_ = false;
     ++state_.startupRestoreGeneration_;
-}
-
-bool Session::applyCurrentFieldToDocument()
-{
-    return documents_->applyCurrentFieldToDocument();
 }
 
 void Session::onOpenCurrentFolder()
@@ -262,16 +247,6 @@ void Session::updatePauseButtonAppearance()
 void Session::updateDirtyState()
 {
     documents_->updateDirtyState();
-}
-
-void Session::refreshCurrentFieldDirtyState()
-{
-    documents_->refreshCurrentFieldDirtyState();
-}
-
-void Session::markCurrentFieldDirty()
-{
-    documents_->markCurrentFieldDirty();
 }
 
 void Session::clearDeletedDifficultyUndoState()

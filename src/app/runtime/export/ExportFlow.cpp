@@ -287,7 +287,7 @@ VideoExportTask miacode::runtime::VideoExportHost::buildVideoExportSeedTask(int 
     // timeline parse instead: workspace → export of the chart already on
     // screen must not parse and run muri again.
     if (liveTimelineCoversDifficulty(resolvedDifficultyId)) {
-        seedMarkers = session_.latestTimelineNoteMarkers_;
+        seedMarkers = session_.state_.timeline_.latestTimelineNoteMarkers_;
         seedMuriReport = session_.muriAnalysisReport_;
     } else {
         seedMarkers = parseAndPublishTimelineForDifficulty(resolvedDifficultyId);
@@ -358,18 +358,11 @@ VideoExportTask miacode::runtime::VideoExportHost::buildVideoExportSeedTask(int 
 
     const QFileInfo chartInfo(session_.currentFilePath_);
     QString chartTitle = session_.applicationServices_.workspace().document().title;
-    // Per-difficulty designer overrides the document-level &des field when
-    // populated; otherwise we fall back so projects using the shared-designer
-    // convention still surface a name in the HUD. The trimmed() gate is the
-    // export-side fallback contract (feature-index §3) — keep all five sites
-    // aligned.
-    QString chartDesigner = session_.applicationServices_.workspace().document().designer;
+    const QString chartDesigner = session_.applicationServices_.workspace().document()
+        .effectiveDesignerForSlot(resolvedDifficultyId);
     QString chartDifficultyLabel;
     const SimaiDifficultyData* resolvedDifficulty = session_.applicationServices_.workspace().document().difficulty(resolvedDifficultyId);
     if (resolvedDifficulty != nullptr) {
-        if (!resolvedDifficulty->designer.trimmed().isEmpty()) {
-            chartDesigner = resolvedDifficulty->designer;
-        }
         const QString diffShort = SimaiDocument::difficultyShortName(resolvedDifficultyId);
         const QString diffLevel = resolvedDifficulty->level.trimmed();
         if (!diffShort.isEmpty() || !diffLevel.isEmpty()) {
@@ -692,18 +685,18 @@ void miacode::runtime::VideoExportHost::ensureExportTrackDuration()
 
 bool miacode::runtime::VideoExportHost::liveTimelineCoversDifficulty(int difficultyId) const
 {
-    if (difficultyId <= 0 || !session_.latestTimelinePreviewSnapshotReady_
-        || session_.lastTimelineParseDifficultyId_ != difficultyId) {
+    if (difficultyId <= 0 || !session_.state_.timeline_.latestTimelinePreviewSnapshotReady_
+        || session_.state_.timeline_.lastTimelineParseDifficultyId_ != difficultyId) {
         return false;
     }
     const SimaiDifficultyData* difficulty =
         session_.applicationServices_.workspace().document().difficulty(difficultyId);
-    if (difficulty == nullptr || session_.lastTimelineParseChartText_ != difficulty->chart) {
+    if (difficulty == nullptr || session_.state_.timeline_.lastTimelineParseChartText_ != difficulty->chart) {
         return false;
     }
     const miacode::simai::SimaiTimingMetadata timingMetadata =
         miacode::simai::buildTimingMetadata(session_.applicationServices_.workspace().document());
-    return session_.lastTimelineParseTimingMetadata_ == timingMetadata;
+    return session_.state_.timeline_.lastTimelineParseTimingMetadata_ == timingMetadata;
 }
 
 VideoExportTask miacode::runtime::VideoExportHost::buildVideoExportSeedTaskPublic(int difficultyId)

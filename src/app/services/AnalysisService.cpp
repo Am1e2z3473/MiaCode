@@ -185,7 +185,6 @@ AnalysisSnapshot AnalysisService::diagnose(
     request.chartText = parsed.chartText;
     request.validationLocale = locale;
     request.timingMetadata = parsed.timingMetadata;
-    request.parseResult = parsed.parseResult;
     request.noteMarkerSignature = parsed.previewState.noteMarkerSignature;
     request.noteMarkers = parsed.previewState.shiftedNoteMarkers;
     request.renderOptions = renderOptions;

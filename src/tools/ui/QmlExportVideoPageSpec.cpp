@@ -501,12 +501,6 @@ bool verifyRealExportPageControls(QTextStream& err)
     return ok;
 }
 
-// The batch-only inputs (difficulty switches, output folder, chart folders) used
-// to sit above the settings tab row and eat the height the tab body needed, so
-// batch mode rendered the shared settings form in a sliver. They own a settings
-// tab of their own now: batch mode hands the tab body exactly the viewport that
-// single-export mode gets, and a long chart-folder list scrolls in the same
-// viewport instead of pushing the form out of the way.
 bool verifyBatchInputsOwnASettingsTab(QTextStream& err)
 {
     QQmlEngine engine;
@@ -822,10 +816,6 @@ bool verifyVisualRangeSelectorSeparatesPointerTargetsAndLayout(QTextStream& err)
                                  "(start=%1 end=%2)")
                       .arg(shiftedStart, 0, 'f', 3)
                       .arg(shiftedEnd, 0, 'f', 3), err);
-    // The readout follows the range's start, not the point that was grabbed.
-    // Grabbing the middle and pushing left used to leave the timestamp on an
-    // interior second that means nothing to anyone — the start is the edge the
-    // range is being placed by.
     ok &= require(qAbs(preview->property("positionSeconds").toDouble() - shiftedStart) < 0.001,
                   QStringLiteral("body dragging reads out the range start "
                                  "(preview=%1 start=%2)")
@@ -945,11 +935,6 @@ bool verifyRequestHostLoop(QTextStream& err)
                               Q_ARG(QString, QStringLiteral("notice-1")),
                               Q_ARG(QVariant, QVariant(notice)));
     QCoreApplication::processEvents();
-    // The notice dialog became a ChoiceDialog upstream, which names the same two
-    // slots `message` and `details` where MessageDialog called them `text` and
-    // `informativeText`. Title, body and detail block all still render — only the
-    // property names moved — so this follows the rename without loosening: it
-    // still fails if any of the three stops reaching the dialog.
     ok &= require(noticeDialog->property("title").toString() == QStringLiteral("Batch export")
                       && noticeDialog->property("message").toString()
                           == QStringLiteral("2 of 3 exported")
@@ -1037,8 +1022,7 @@ int main(int argc, char** argv)
 {
 #ifdef Q_OS_WIN
     // Qt 6.8's offscreen/minimal QPA initialization can hang before main-loop
-    // entry on Windows. This harness creates no QQuickWindow, so the native
-    // platform plugin remains headless while allowing the real controls to load.
+    // entry on Windows; use the native platform plugin for these controls.
     qputenv("QT_QPA_PLATFORM", "windows");
 #else
     qputenv("QT_QPA_PLATFORM", "offscreen");

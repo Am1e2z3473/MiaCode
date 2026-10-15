@@ -236,7 +236,7 @@ bool Session::seekPreviewToEditorLocation(int difficultyId, int line, int column
     const bool previousSuppressTimelineCursorSync = suppressTimelineCursorSync_;
     suppressTimelineCursorSync_ = true;
     seekPreviewDiscreteToSecond(second, true);
-    if (timelineQuickStateBridge_ != nullptr) {
+    if (state_.timeline_.timelineQuickStateBridge_ != nullptr) {
         deferTimelineCursorBridgeUpdate(second, false);
     }
     suppressTimelineCursorSync_ = previousSuppressTimelineCursorSync;

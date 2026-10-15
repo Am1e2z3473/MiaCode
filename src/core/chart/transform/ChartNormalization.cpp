@@ -1474,7 +1474,6 @@ ChartNormalizationResult normalizeChartFragment(
     const SimaiValidationReport report = SimaiParser::buildValidationReport(
         input,
         SimaiValidationLocale::English,
-        nullptr,
         timingMetadata);
     if (report.errorCount > 0) {
         result.errorMessage = summarizeValidationError(report);

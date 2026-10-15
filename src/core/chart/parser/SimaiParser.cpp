@@ -23,7 +23,6 @@ constexpr int kDefaultMeterDenominator = 4;
 constexpr double kTouchCanvasCenter = 270.0;
 constexpr double kLaneAngleBaseDegrees = -67.5;
 constexpr double kLaneAngleStepDegrees = 45.0;
-constexpr double kOuterLaneRadius = 430.0;
 // Match MajdataPlay's NoteHelper.GetTouchAreaDistance (world units A 4.0, B 2.2, D 4.1,
 // E 3.1) at the canvas's 50x world->logical scale (cf. tap ring 4.8->240, 1.225->61.25 in
 // PreviewGameplayConfig). A = 4.0 * 50 = 200 == 540 * 400 / 1080; B/D/E follow by ratio.
@@ -32,7 +31,6 @@ constexpr double kTouchDistanceA = 540.0 * 400.0 / 1080.0;
 constexpr double kTouchDistanceB = kTouchDistanceA * 2.2 / 4.0;
 constexpr double kTouchDistanceD = kTouchDistanceA * 4.1 / 4.0;
 constexpr double kTouchDistanceE = kTouchDistanceA * 3.1 / 4.0;
-constexpr int kPathSampleCount = 33;
 constexpr double kJudgeTps = 180.0;
 constexpr double kTapOnSlideThresholdSeconds = 1.0 / kJudgeTps;
 constexpr double kTouchOnSlideThresholdSeconds = 24.0 / kJudgeTps;
@@ -58,7 +56,6 @@ struct ParseState {
     // while this is N have their hsMultiplier frozen at N.
     double hs = 1.0;
     bool strictMode = false;
-    bool allowInvalidStarFallback = false;
     SimaiParseResult result;
 };
 
@@ -527,13 +524,6 @@ double polylineLength(const QVector<QPointF>& points)
     return length;
 }
 
-QPointF polarPoint(double radius, int lane)
-{
-    const double angleDeg = kLaneAngleBaseDegrees + (lane - 1) * kLaneAngleStepDegrees;
-    const double angleRad = qDegreesToRadians(angleDeg);
-    return QPointF(std::cos(angleRad) * radius, std::sin(angleRad) * radius);
-}
-
 double touchAngleDegrees(QChar ring, int lane)
 {
     if (ring == QChar('D') || ring == QChar('E')) {
@@ -751,52 +741,6 @@ bool parseSlideWaitAndDuration(const QString& signature, double bpm, double* wai
 
     *waitSecond = 60.0 / qMax(1.0, bpm);
     return parsePositiveFraction(signature, bpm);
-}
-
-double slideAngleDegrees(const QPointF& start, const QPointF& end)
-{
-    const QPointF delta = end - start;
-    if (qFuzzyIsNull(delta.x()) && qFuzzyIsNull(delta.y())) {
-        return 0.0;
-    }
-    return qRadiansToDegrees(std::atan2(delta.y(), delta.x()));
-}
-
-void buildLinearSamples(const QPointF& start, const QPointF& end, QVector<QPointF>* points, QVector<double>* angles)
-{
-    if (points == nullptr || angles == nullptr) {
-        return;
-    }
-    points->clear();
-    angles->clear();
-    points->reserve(kPathSampleCount);
-    angles->reserve(kPathSampleCount);
-    const double angle = slideAngleDegrees(start, end);
-    for (int i = 0; i < kPathSampleCount; ++i) {
-        miacode::task::CancellationScope::checkpoint();
-        const double t = static_cast<double>(i) / static_cast<double>(kPathSampleCount - 1);
-        const QPointF point(start.x() + (end.x() - start.x()) * t, start.y() + (end.y() - start.y()) * t);
-        points->append(point);
-        angles->append(angle);
-    }
-}
-
-QVector<QPointF> buildTrackArrowPoints(const QPointF& start, const QPointF& end, bool reverseOrder)
-{
-    const QPointF delta = end - start;
-    const double length = std::hypot(delta.x(), delta.y());
-    const int arrowCount = qMax(6, static_cast<int>(std::floor(length / 52.0)));
-    QVector<QPointF> points;
-    points.reserve(arrowCount);
-    for (int i = 0; i < arrowCount; ++i) {
-        miacode::task::CancellationScope::checkpoint();
-        const double t = static_cast<double>(i + 1) / static_cast<double>(arrowCount + 1);
-        points.append(QPointF(start.x() + delta.x() * t, start.y() + delta.y() * t));
-    }
-    if (reverseOrder) {
-        std::reverse(points.begin(), points.end());
-    }
-    return points;
 }
 
 void finalizeEachGroup(ParseState* state, const QVector<int>& groupIndices)

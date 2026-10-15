@@ -69,7 +69,7 @@ void miacode::runtime::PlaybackCoordinator::scheduleDeferredPreviewUiTail(
             if (applyDeferredAnalysis) {
                 validation_.applyDeferredAnalysisUiUpdates();
             }
-            if (dispatchTimelineAnalysis && state_.pendingTimelineAnalysisRefresh_.revision != 0) {
+            if (dispatchTimelineAnalysis && state_.timeline_.pendingTimelineAnalysisRefresh_.revision != 0) {
                 requestTimelineAnalysisDispatch(0);
             }
             if (writeProfilingSummary && state_.runtimeDebugOutputEnabled_ && state_.scene_ != nullptr) {
@@ -195,8 +195,8 @@ void miacode::runtime::PlaybackCoordinator::applyPausedPreviewVisualSecond(doubl
     state_.qtPreviewPendingTimelineSecond_ = clampedSecond;
     state_.qtPreviewPendingTimelineCenterView_ = centerView;
     state_.qtPreviewTimelineDirty_ = true;
-    if (state_.timelineQuickStateBridge_ != nullptr) {
-        state_.timelineQuickStateBridge_->setPlayheadUpperLimitSeconds(previewDurationSeconds());
+    if (state_.timeline_.timelineQuickStateBridge_ != nullptr) {
+        state_.timeline_.timelineQuickStateBridge_->setPlayheadUpperLimitSeconds(previewDurationSeconds());
     }
     applyQtPreviewPosition(clampedSecond, centerView);
     state_.pausedSeekAppliedVisualSecond_ = clampedSecond;

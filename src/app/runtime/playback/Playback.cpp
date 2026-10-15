@@ -330,10 +330,10 @@ void miacode::runtime::PlaybackCoordinator::applyPreviewPlaybackRate(double rate
             miacode::oplog::appendStartupBeaconLine("ui/rate/bass_paused_returned");
             if (!state_.previewStartupSyncPending_
                 && !state_.previewLateVideoStartPending_
-                && !state_.latestTimelineNoteMarkers_.isEmpty()) {
+                && !state_.timeline_.latestTimelineNoteMarkers_.isEmpty()) {
                 miacode::oplog::appendStartupBeaconLine("ui/rate/bass_apply_paused_about_to_call");
                 state_.previewSfxRuntime_->applyPausedPreviewState(
-                    state_.latestTimelineNoteMarkers_,
+                    state_.timeline_.latestTimelineNoteMarkers_,
                     false,
                     state_.pauseSecond_,
                     state_.previewPlaybackRate_,
@@ -423,7 +423,7 @@ bool miacode::runtime::PlaybackCoordinator::startQtPreviewPlayback(double second
     if (!preparePreviewStartState()) {
         state_.pendingPreviewPlaybackStart_ = hasActiveDifficulty();
         state_.pendingPreviewPlaybackResumeFromPause_ = resumeFromPause;
-        state_.pendingPreviewPlaybackRevision_ = state_.timelineRevision_;
+        state_.pendingPreviewPlaybackRevision_ = state_.timeline_.timelineRevision_;
         state_.pendingPreviewPlaybackDifficultyId_ = activeDifficultyId();
         state_.pendingPreviewPlaybackSecond_ = qBound(0.0, second, previewDurationSeconds());
         return false;
@@ -458,7 +458,7 @@ bool miacode::runtime::PlaybackCoordinator::startQtPreviewPlayback(double second
     }
     const double startSecond = (!resumeFromPause && requestedSecond <= kTimelineZeroSecondTolerance)
         ? previewVisualLeadInStartSecond(
-              state_.latestTimelineNoteMarkers_,
+              state_.timeline_.latestTimelineNoteMarkers_,
               requestedSecond,
               state_.previewTapFlowSpeed_,
               state_.previewTouchFlowSpeed_)
@@ -626,10 +626,10 @@ bool miacode::runtime::PlaybackCoordinator::startQtPreviewPlayback(double second
     state_.qtPreviewPendingTimelineCenterView_ = true;
     state_.qtPreviewTimelineDirty_ = true;
     state_.qtPreviewLastTimelineSecond_ = -1.0;
-    if (state_.timelineQuickStateBridge_ != nullptr) {
-        state_.timelineQuickStateBridge_->setPlaybackEntrySeconds(state_.qtPreviewPlaybackReturnSecond_);
-        state_.timelineQuickStateBridge_->setPlayheadUpperLimitSeconds(state_.qtPreviewPlaybackEndSecond_);
-        state_.timelineQuickStateBridge_->setPlayheadSeconds(visualStartSecond, false);
+    if (state_.timeline_.timelineQuickStateBridge_ != nullptr) {
+        state_.timeline_.timelineQuickStateBridge_->setPlaybackEntrySeconds(state_.qtPreviewPlaybackReturnSecond_);
+        state_.timeline_.timelineQuickStateBridge_->setPlayheadUpperLimitSeconds(state_.qtPreviewPlaybackEndSecond_);
+        state_.timeline_.timelineQuickStateBridge_->setPlayheadSeconds(visualStartSecond, false);
     }
     if (state_.scene_ != nullptr) {
         if (!resumeFromPause) {

@@ -1,6 +1,7 @@
 #include <QByteArray>
 #include <QDebug>
 #include <QEvent>
+#include <QGuiApplication>
 #include <QPointer>
 #include <QTimer>
 #include <QVariant>
@@ -129,7 +130,7 @@ private:
 
 void attachPetNativeWindow(QWindow* window)
 {
-    if (window == nullptr)
+    if (window == nullptr || QGuiApplication::platformName() != QStringLiteral("cocoa"))
         return;
     if (window->property("_miacodePetNativeAttached").toBool()) {
         applyPetNativeWindow(window);

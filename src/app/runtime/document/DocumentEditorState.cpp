@@ -50,7 +50,7 @@ void miacode::runtime::DocumentSessionHost::updatePauseButtonAppearance()
 
 void miacode::runtime::DocumentSessionHost::updateDirtyState()
 {
-    const bool dirty = state_.documentDirty_ || state_.currentFieldDirty_;
+    const bool dirty = state_.documentDirty_;
     if (dirty) {
         if (state_.autosaveDirtySinceMs_ < 0) {
             state_.autosaveDirtySinceMs_ = QDateTime::currentDateTimeUtc().toMSecsSinceEpoch();
@@ -70,32 +70,9 @@ void miacode::runtime::DocumentSessionHost::updateDirtyState()
     session_.updateWindowTitle();
 }
 
-// See PlaybackDocumentPort.h: this is a read-only query, not a relocation of
-// appliedQmlWorkspaceRevision_ — the field stays on Session, whose write site
-// is DocumentFileFlow.cpp:748.
 quint64 miacode::runtime::DocumentSessionHost::appliedWorkspaceRevision() const
 {
     return session_.appliedQmlWorkspaceRevision_;
-}
-
-bool miacode::runtime::DocumentSessionHost::currentFieldHasUndoChanges() const
-{
-    // QML commits document fields directly into ChartWorkspace. The chart
-    // body's dirty state is likewise workspace-owned, so there is no longer
-    // a hidden editor undo stack to inspect here.
-    return false;
-}
-
-void miacode::runtime::DocumentSessionHost::anchorCurrentFieldCleanState()
-{
-    // Kept as a compatibility hook for document-page transitions. QML has no
-    // per-widget clean anchor; ChartWorkspace owns the document save point.
-}
-
-void miacode::runtime::DocumentSessionHost::refreshCurrentFieldDirtyState()
-{
-    state_.currentFieldDirty_ = currentFieldHasUndoChanges();
-    updateDirtyState();
 }
 
 void miacode::runtime::DocumentSessionHost::noteDocumentEditedForAutosave()
@@ -117,12 +94,6 @@ void miacode::runtime::DocumentSessionHost::noteDocumentEditedForAutosave()
     }
 }
 
-void miacode::runtime::DocumentSessionHost::markCurrentFieldDirty()
-{
-    noteDocumentEditedForAutosave();
-    refreshCurrentFieldDirtyState();
-}
-
 void miacode::runtime::DocumentSessionHost::clearDeletedDifficultyUndoState()
 {
     state_.deletedDifficultyUndoState_ = Session::DeletedDifficultyUndoState{};
@@ -131,9 +102,6 @@ void miacode::runtime::DocumentSessionHost::clearDeletedDifficultyUndoState()
 bool miacode::runtime::DocumentSessionHost::undoDeletedDifficultyField()
 {
     if (!state_.deletedDifficultyUndoState_.valid) {
-        return false;
-    }
-    if (!applyCurrentFieldToDocument()) {
         return false;
     }
 
@@ -169,7 +137,6 @@ bool miacode::runtime::DocumentSessionHost::undoDeletedDifficultyField()
         designer);
     state_.validationCacheByDifficulty_.remove(deletedState.difficultyId);
     state_.documentDirty_ = true;
-    state_.currentFieldDirty_ = false;
     updateDirtyState();
 
     const bool shouldActivateRestoredDifficulty = deletedState.wasActive || !session_.hasActiveDifficulty();

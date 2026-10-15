@@ -296,14 +296,13 @@ bool PreviewStageMediaHost::videoFrameStalled() const
 }
 
 
-void PreviewStageMediaHost::setVideoFrameToImageMaxFps(double fps)
+void PreviewStageMediaHost::reportImageLoadFailure(const QUrl& source)
 {
-    const double normalized = qBound(1.0, qIsFinite(fps) ? fps : 30.0, 1000.0);
-    if (qAbs(videoFrameToImageMaxFps_ - normalized) <= 0.001) {
-        return;
+    if (mediaKind_ == MediaKind::Image && source == imageSource_) {
+        appendPreviewStageMediaLog(
+            QStringLiteral("load_image_failed"),
+            QStringLiteral("path=%1").arg(source.toLocalFile()));
     }
-    videoFrameToImageMaxFps_ = normalized;
-    videoFrameToImageThrottle_.invalidate();
 }
 
 

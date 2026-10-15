@@ -466,6 +466,12 @@ QString SimaiDocument::designerForSlot(int id) const
     return standaloneDesigners_.value(id);
 }
 
+QString SimaiDocument::effectiveDesignerForSlot(int id) const
+{
+    const QString slotDesigner = designerForSlot(id);
+    return slotDesigner.trimmed().isEmpty() ? designer : slotDesigner;
+}
+
 void SimaiDocument::setDesignerForSlot(int id, const QString& name)
 {
     if (!isDifficultyId(id)) {

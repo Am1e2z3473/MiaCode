@@ -110,8 +110,7 @@ IntroBannerSpec buildIntroBannerSpec(
     const QString chartBody = (difficulty != nullptr) ? difficulty->chart : QString();
     intro.mode = detectIntroBannerModeForChart(document, chartBody);
     intro.level = (difficulty != nullptr) ? difficulty->level : QString();
-    const QString perDifficultyDesigner = (difficulty != nullptr) ? difficulty->designer : QString();
-    intro.designer = perDifficultyDesigner.trimmed().isEmpty() ? document.designer : perDifficultyDesigner;
+    intro.designer = document.effectiveDesignerForSlot(difficultyId);
     intro.bpm = introBpmString(miacode::chart_clock::clockBpmForChart(document, chartBody));
     intro.jacketPath = chartPath.isEmpty()
         ? QString()
@@ -337,13 +336,13 @@ QVector<TimelineNoteMarker> miacode::runtime::VideoExportHost::parseAndPublishTi
         parsedDocumentFirstSeconds(session_.applicationServices_.workspace().document().first, &firstOk);
     const TimelinePreviewRefreshState previewState =
         buildTimelinePreviewRefreshState(parseResult, firstOk ? firstSeconds : 0.0);
-    session_.lastTimelineParseDifficultyId_ = difficultyId;
-    session_.lastTimelineParseChartText_ = difficulty->chart;
-    session_.lastTimelineParseTimingMetadata_ = timingMetadata;
-    session_.lastTimelineParseResult_ = parseResult;
-    session_.latestTimelineNoteMarkers_ = previewState.shiftedNoteMarkers;
-    session_.latestTimelineNoteMarkerSignature_ = previewState.noteMarkerSignature;
-    session_.latestTimelinePreviewSnapshotReady_ = true;
+    session_.state_.timeline_.lastTimelineParseDifficultyId_ = difficultyId;
+    session_.state_.timeline_.lastTimelineParseChartText_ = difficulty->chart;
+    session_.state_.timeline_.lastTimelineParseTimingMetadata_ = timingMetadata;
+    session_.state_.timeline_.lastTimelineParseResult_ = parseResult;
+    session_.state_.timeline_.latestTimelineNoteMarkers_ = previewState.shiftedNoteMarkers;
+    session_.state_.timeline_.latestTimelineNoteMarkerSignature_ = previewState.noteMarkerSignature;
+    session_.state_.timeline_.latestTimelinePreviewSnapshotReady_ = true;
     return previewState.shiftedNoteMarkers;
 }
 
@@ -377,20 +376,20 @@ void miacode::runtime::VideoExportHost::installExportPreviewAuditionScene(int di
     if (!liveTimelineCoversDifficulty(difficultyId)) {
         parseAndPublishTimelineForDifficulty(difficultyId);
     }
-    previewState.shiftedNoteMarkers = session_.latestTimelineNoteMarkers_;
-    previewState.noteMarkerSignature = session_.latestTimelineNoteMarkerSignature_;
-    session_.timelineQuickModel_.rebuildFromText(difficulty->chart, effectiveFirst, timingMetadata);
-    if (session_.timelineQuickStateBridge_ != nullptr) {
-        session_.timelineQuickStateBridge_->setTimelineData(session_.timelineQuickModel_.snapshot());
+    previewState.shiftedNoteMarkers = session_.state_.timeline_.latestTimelineNoteMarkers_;
+    previewState.noteMarkerSignature = session_.state_.timeline_.latestTimelineNoteMarkerSignature_;
+    session_.state_.timeline_.timelineQuickModel_.rebuildFromText(difficulty->chart, effectiveFirst, timingMetadata);
+    if (session_.state_.timeline_.timelineQuickStateBridge_ != nullptr) {
+        session_.state_.timeline_.timelineQuickStateBridge_->setTimelineData(session_.state_.timeline_.timelineQuickModel_.snapshot());
     }
-    session_.latestTimelinePreviewRevision_ = session_.timelineRevision_;
-    session_.latestTimelinePreviewSnapshotReady_ = true;
+    session_.state_.timeline_.latestTimelinePreviewRevision_ = session_.state_.timeline_.timelineRevision_;
+    session_.state_.timeline_.latestTimelinePreviewSnapshotReady_ = true;
     session_.scene_->setNoteMarkers(previewState.shiftedNoteMarkers);
     session_.lastPreviewNoteMarkerSignature_ = previewState.noteMarkerSignature;
 
     const double durationSeconds = session_.previewPlaybackEndSeconds();
-    if (session_.timelineQuickStateBridge_ != nullptr) {
-        session_.timelineQuickStateBridge_->setPlayheadUpperLimitSeconds(durationSeconds);
+    if (session_.state_.timeline_.timelineQuickStateBridge_ != nullptr) {
+        session_.state_.timeline_.timelineQuickStateBridge_->setPlayheadUpperLimitSeconds(durationSeconds);
     }
     const auto clampToDuration = [durationSeconds](double second) {
         return durationSeconds > 0.0 ? qBound(0.0, second, durationSeconds) : qMax(0.0, second);
@@ -413,8 +412,8 @@ void miacode::runtime::VideoExportHost::installExportPreviewAuditionScene(int di
     if (auto* authority = session_.applicationServices_.playbackStateAuthority(); authority != nullptr) {
         authority->repositionSilently(startSecond, "install_export_preview_audition_scene");
     }
-    if (session_.timelineQuickStateBridge_ != nullptr) {
-        session_.timelineQuickStateBridge_->setPlayheadSeconds(startSecond, false);
+    if (session_.state_.timeline_.timelineQuickStateBridge_ != nullptr) {
+        session_.state_.timeline_.timelineQuickStateBridge_->setPlayheadSeconds(startSecond, false);
     }
     session_.scene_->setPlayheadSeconds(startSecond, true);
     session_.refreshPreviewObjectStatsTotals(previewState.shiftedNoteMarkers);
@@ -490,7 +489,7 @@ void miacode::runtime::VideoExportHost::teardownExportPreviewAuditionScene()
     // Invalidate the snapshot so the next difficulty switch rebuilds its own
     // preview from scratch (we deliberately don't cache/restore — leaving the
     // page reinstalls the destination field's preview anyway).
-    session_.latestTimelinePreviewSnapshotReady_ = false;
+    session_.state_.timeline_.latestTimelinePreviewSnapshotReady_ = false;
 }
 
 bool miacode::runtime::VideoExportHost::buildVideoExportSnapshot(
@@ -511,12 +510,6 @@ bool miacode::runtime::VideoExportHost::buildVideoExportSnapshot(
         || session_.applicationServices_.workspace().document().difficulty(resolvedDifficultyId) == nullptr) {
         if (errorMessage != nullptr) {
             *errorMessage = qtTrId("dialog.video_export.error.no_difficulty");
-        }
-        return false;
-    }
-    if (!session_.applyCurrentFieldToDocument()) {
-        if (errorMessage != nullptr) {
-            *errorMessage = qtTrId("dialog.video_export.error.sync_failed");
         }
         return false;
     }
@@ -678,7 +671,7 @@ bool miacode::runtime::VideoExportHost::buildVideoExportSnapshotForChartDirector
     const SimaiValidationLocale validationLocale = uiValidationLocale();
     const miacode::simai::SimaiTimingMetadata timingMetadata = miacode::simai::buildTimingMetadata(document);
     const SimaiValidationReport report =
-        SimaiParser::buildValidationReport(difficulty->chart, validationLocale, nullptr, timingMetadata);
+        SimaiParser::buildValidationReport(difficulty->chart, validationLocale, timingMetadata);
     if (report.errorCount > 0) {
         QString issueSummary;
         if (!report.issues.isEmpty()) {
@@ -944,7 +937,7 @@ bool miacode::runtime::VideoExportHost::exportPreviewVideoFromCli(
         return qMax(0.0, markerEnd);
     };
     double lastMarkerEndSecond = 0.0;
-    for (const TimelineNoteMarker& marker : session_.latestTimelineNoteMarkers_) {
+    for (const TimelineNoteMarker& marker : session_.state_.timeline_.latestTimelineNoteMarkers_) {
         lastMarkerEndSecond = qMax(lastMarkerEndSecond, previewMarkerEndSecond(marker));
     }
     ensureExportTrackDuration();
@@ -972,7 +965,7 @@ bool miacode::runtime::VideoExportHost::exportPreviewVideoFromCli(
     task.chartPath = session_.currentFilePath_;
     task.trackPath = session_.resolveDefaultTrackPath();
     task.skinDirectory = previewSkinDir;
-    task.noteMarkers = session_.latestTimelineNoteMarkers_;
+    task.noteMarkers = session_.state_.timeline_.latestTimelineNoteMarkers_;
     task.muriAnalysisReport = session_.muriAnalysisReport_;
     task.muriRenderOptions = session_.muriRenderOptions_;
     task.staticTapOnSlideThresholdSeconds = static_cast<double>(session_.staticTapOnSlideThresholdMs_) / 1000.0;
@@ -1001,10 +994,9 @@ bool miacode::runtime::VideoExportHost::exportPreviewVideoFromCli(
     task.showChartInfoHud = request.showChartInfoHud;
     task.chartTitle = session_.applicationServices_.workspace().document().title;
     task.chartArtist = session_.applicationServices_.workspace().document().artist;
+    task.chartDesigner = session_.applicationServices_.workspace().document()
+        .effectiveDesignerForSlot(difficultyId);
     if (const SimaiDifficultyData* difficulty = session_.applicationServices_.workspace().document().difficulty(difficultyId)) {
-        task.chartDesigner = !difficulty->designer.trimmed().isEmpty()
-            ? difficulty->designer
-            : session_.applicationServices_.workspace().document().designer;
         const QString diffShort = SimaiDocument::difficultyShortName(difficultyId);
         const QString diffLevel = difficulty->level.trimmed();
         if (!diffShort.isEmpty() || !diffLevel.isEmpty()) {
@@ -1012,8 +1004,6 @@ bool miacode::runtime::VideoExportHost::exportPreviewVideoFromCli(
                 .arg(diffShort, diffLevel)
                 .trimmed();
         }
-    } else {
-        task.chartDesigner = session_.applicationServices_.workspace().document().designer;
     }
     task.centerDisplayMode = request.centerDisplayMode;
     task.outputPath = outputPath;
@@ -1047,7 +1037,7 @@ bool miacode::runtime::VideoExportHost::exportPreviewVideoFromCli(
         detailLines << QStringLiteral("chart=%1").arg(chartPath);
         detailLines << QStringLiteral("difficulty=%1").arg(SimaiDocument::difficultyShortName(difficultyId));
         detailLines << QStringLiteral("encoding=%1").arg(usedSystemEncoding ? QStringLiteral("system") : QStringLiteral("utf8"));
-        detailLines << QStringLiteral("noteCount=%1").arg(session_.latestTimelineNoteMarkers_.size());
+        detailLines << QStringLiteral("noteCount=%1").arg(session_.state_.timeline_.latestTimelineNoteMarkers_.size());
         detailLines << QStringLiteral("trackPath=%1").arg(task.trackPath.isEmpty() ? QStringLiteral("(none)") : task.trackPath);
         detailLines << QStringLiteral("skinLoaded=%1").arg(previewSkinDir.isEmpty() ? 0 : 1);
         *details = detailLines.join('\n');

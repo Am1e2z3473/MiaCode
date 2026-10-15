@@ -154,8 +154,6 @@ void miacode::runtime::DocumentSessionHost::flushPendingUnifiedDesignerPreferenc
 void miacode::runtime::DocumentSessionHost::refreshAfterDesignerTransaction()
 {
     state_.documentDirty_ = session_.applicationServices_.workspace().snapshot().dirty;
-    anchorCurrentFieldCleanState();
-    state_.currentFieldDirty_ = false;
     updateDirtyState();
     session_.updateWindowTitle();
 }

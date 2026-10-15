@@ -77,8 +77,8 @@ void miacode::runtime::PlaybackCoordinator::setPlaybackRangeEnabled(
     }
     rangePlaybackStartSeconds_ = enabled ? qMax(0.0, startSecond) : 0.0;
     rangePlaybackEndSeconds_ = enabled ? endSecond : 0.0;
-    if (state_.timelineQuickStateBridge_ != nullptr) {
-        state_.timelineQuickStateBridge_->setPlayheadUpperLimitSeconds(
+    if (state_.timeline_.timelineQuickStateBridge_ != nullptr) {
+        state_.timeline_.timelineQuickStateBridge_->setPlayheadUpperLimitSeconds(
             enabled ? endSecond : previewContentDurationSeconds());
     }
     if (state_.playing_) {
@@ -257,84 +257,39 @@ QObject* miacode::runtime::PlaybackCoordinator::stageMediaHostObject() const
     return state_.previewStageMediaHost_;
 }
 
-// Bodies mirror miacode::runtime::StageMediaHost
-// (runtime/preview/StageMediaRoute.cpp), which still owns the primary
-// implementation; these are independent copies operating on the same
-// state_.previewStageMediaHost_ pointer the coordinator already holds.
-
 bool miacode::runtime::PlaybackCoordinator::previewStageMediaRouteHasVideo() const
 {
-    return state_.previewStageMediaHost_ != nullptr && state_.previewStageMediaHost_->hasVideoMedia();
+    return miacode::runtime::shared::previewStageMediaRouteHasVideo(state_);
 }
 
 void miacode::runtime::PlaybackCoordinator::pausePreviewStageMediaRoutePlayback()
 {
-    if (state_.previewStageMediaHost_ != nullptr) {
-        state_.previewStageMediaHost_->pausePlayback();
-    }
+    miacode::runtime::shared::pausePreviewStageMediaRoutePlayback(state_);
 }
 
 void miacode::runtime::PlaybackCoordinator::syncPreviewStageMediaRoutePlayback(double second)
 {
-    if (!previewStageMediaRouteHasVideo()) {
-        return;
-    }
-    if (state_.previewStageMediaHost_ != nullptr) {
-        state_.previewStageMediaHost_->syncPlayback(second);
-    }
+    miacode::runtime::shared::syncPreviewStageMediaRoutePlayback(state_, second);
 }
 
 void miacode::runtime::PlaybackCoordinator::setPreviewStageMediaRouteObservedPlayheadSecond(double second)
 {
-    // StageMediaHost::previewUsesStageMediaHostRoute() is a hardcoded
-    // `return true;` (not state-dependent, not virtual) — folded into this guard.
-    if (state_.previewStageMediaHost_ == nullptr) {
-        return;
-    }
-    state_.previewStageMediaHost_->setObservedPlayheadSecond(second);
+    miacode::runtime::shared::setPreviewStageMediaRouteObservedPlayheadSecond(state_, second);
 }
 
 void miacode::runtime::PlaybackCoordinator::resetPreviewStageMediaRouteTimelineOffset()
 {
-    if (state_.previewStageMediaHost_ != nullptr) {
-        state_.previewStageMediaHost_->setTimelineOffsetSeconds(0.0);
-    }
+    miacode::runtime::shared::resetPreviewStageMediaRouteTimelineOffset(state_);
 }
 
 void miacode::runtime::PlaybackCoordinator::submitPreviewStageMediaRoutePausedSeek(double second, quint64 generation)
 {
-    // The original body reads Session's previewDurationSeconds() through its
-    // session_ member, which is a self-referential hop: that Session method just
-    // forwards to playback_->previewDurationSeconds(), and playback_ IS this
-    // coordinator (the only miacode::runtime::PlaybackCoordinator instance for
-    // this Session — see SessionBootstrap.cpp). Call the coordinator's own
-    // method directly instead.
-    const double clampedSecond = qBound(0.0, second, previewDurationSeconds());
-    if (!previewStageMediaRouteHasVideo()) {
-        state_.pausedPreviewMediaSeekPending_ = false;
-        return;
-    }
-    state_.pausedPreviewMediaSeekPending_ = true;
-    state_.pausedPreviewMediaSeekSecond_ = clampedSecond;
-    if (state_.previewStageMediaHost_ != nullptr) {
-        state_.previewStageMediaHost_->submitPausedSeek(clampedSecond, generation);
-    }
+    miacode::runtime::shared::submitPreviewStageMediaRoutePausedSeek(state_, qBound(0.0, second, previewDurationSeconds()), generation);
 }
 
 void miacode::runtime::PlaybackCoordinator::seekPreviewStageMediaRouteWhilePaused(double second)
 {
-    // See submitPreviewStageMediaRoutePausedSeek above for why previewDurationSeconds()
-    // is called directly instead of through the session_ member reference.
-    const double clampedSecond = qBound(0.0, second, previewDurationSeconds());
-    if (!previewStageMediaRouteHasVideo()) {
-        state_.pausedPreviewMediaSeekPending_ = false;
-        return;
-    }
-    state_.pausedPreviewMediaSeekPending_ = true;
-    state_.pausedPreviewMediaSeekSecond_ = clampedSecond;
-    if (state_.previewStageMediaHost_ != nullptr) {
-        state_.previewStageMediaHost_->setPlayheadSeconds(clampedSecond);
-    }
+    miacode::runtime::shared::seekPreviewStageMediaRouteWhilePaused(state_, qBound(0.0, second, previewDurationSeconds()));
 }
 
 double miacode::runtime::PlaybackCoordinator::canvasAspectRatio() const
@@ -561,7 +516,7 @@ void miacode::runtime::PlaybackCoordinator::restoreAudioSettingsFromSoftwareDefa
 
 QObject* miacode::runtime::PlaybackCoordinator::timelineStateBridge() const
 {
-    return static_cast<QObject*>(state_.timelineQuickStateBridge_);
+    return static_cast<QObject*>(state_.timeline_.timelineQuickStateBridge_);
 }
 
 void miacode::runtime::PlaybackCoordinator::navigateToSecond(double second)
@@ -704,18 +659,18 @@ bool miacode::runtime::PlaybackCoordinator::ignoreMuriIssuePrompts() const
 
 void miacode::runtime::PlaybackCoordinator::noteTimelineSurfaceReady()
 {
-    if (state_.timelineReady_) {
+    if (state_.timeline_.timelineReady_) {
         return;
     }
-    state_.timelineReady_ = true;
+    state_.timeline_.timelineReady_ = true;
     if (state_.runtimeDebugOutputEnabled_) {
         miacode::debug_log::appendLine(
             miacode::debug_log::Channel::Runtime,
             QStringLiteral("quick_shell/backend"),
             QStringLiteral("action=quick_timeline_ready pending_cursor_sync=%1 second=%2 center=%3")
-                .arg(state_.pendingQuickTimelineCursorSync_ ? 1 : 0)
-                .arg(state_.pendingQuickTimelineCursorSecond_, 0, 'f', 6)
-                .arg(state_.pendingQuickTimelineCursorCenterView_ ? 1 : 0)
+                .arg(state_.timeline_.pendingQuickTimelineCursorSync_ ? 1 : 0)
+                .arg(state_.timeline_.pendingQuickTimelineCursorSecond_, 0, 'f', 6)
+                .arg(state_.timeline_.pendingQuickTimelineCursorCenterView_ ? 1 : 0)
         );
     }
     flushDeferredTimelineBridgeState();

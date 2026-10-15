@@ -1,6 +1,7 @@
 #include "app/ui/chrome/WindowChrome.h"
 
 #include <QRectF>
+#include <QGuiApplication>
 #include <QVariantMap>
 #include <QWindow>
 #include <QQuickWindow>
@@ -99,6 +100,14 @@
 @end
 
 namespace {
+NSView* cocoaView(QWindow* window)
+{
+    if (window == nullptr || QGuiApplication::platformName() != QStringLiteral("cocoa")) {
+        return nil;
+    }
+    return (__bridge NSView*)reinterpret_cast<void*>(window->winId());
+}
+
 void pinMaterialContent(NSView* content, NSView* owner)
 {
     content.translatesAutoresizingMaskIntoConstraints = NO;
@@ -156,7 +165,7 @@ void WindowChrome::refreshMacOsMaterial(QWindow* window)
     if (window == nullptr) {
         return;
     }
-    NSView* view = (__bridge NSView*)reinterpret_cast<void*>(window->winId());
+    NSView* view = cocoaView(window);
     NSWindow* nativeWindow = view.window;
     if (nativeWindow == nil) {
         return;
@@ -282,7 +291,7 @@ void WindowChrome::handleTitleBarDoubleClick()
         return;
     }
 
-    NSView* view = (__bridge NSView*)reinterpret_cast<void*>(window_->winId());
+    NSView* view = cocoaView(window_.data());
     NSWindow* nativeWindow = view.window;
     if (nativeWindow == nil) {
         return;
@@ -305,7 +314,10 @@ void WindowChrome::observeMacOsWindow(QWindow* window)
     if (macViewWindowObserver_ != nullptr) {
         return;
     }
-    NSView* view = (__bridge NSView*)reinterpret_cast<void*>(window->winId());
+    NSView* view = cocoaView(window);
+    if (view == nil) {
+        return;
+    }
     MiaCodeWindowBindingObserver* observer = [[MiaCodeWindowBindingObserver alloc]
         initWithView:view callback:^(NSWindow* nativeWindow) {
             if (nativeWindow == nil || window_.isNull()) {
@@ -345,7 +357,7 @@ void WindowChrome::stopObservingMacOsWindow()
 
 void WindowChrome::updateMacOsTitleBarMetrics(QWindow* window)
 {
-    NSView* view = (__bridge NSView*)reinterpret_cast<void*>(window->winId());
+    NSView* view = cocoaView(window);
     NSWindow* nativeWindow = view.window;
     NSView* contentView = nativeWindow.contentView;
     if (contentView == nil) {
@@ -405,7 +417,7 @@ void WindowChrome::observeMacOsFullScreen(QWindow* window)
 {
     stopObservingMacOsFullScreen();
 
-    NSView* view = (__bridge NSView*)reinterpret_cast<void*>(window->winId());
+    NSView* view = cocoaView(window);
     NSWindow* nativeWindow = (view != nil) ? view.window : nil;
     if (nativeWindow == nil) {
         return;

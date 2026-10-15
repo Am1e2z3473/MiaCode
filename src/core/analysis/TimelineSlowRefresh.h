@@ -42,7 +42,6 @@ struct TimelineAnalysisRefreshRequest {
     QString chartText;
     SimaiValidationLocale validationLocale = SimaiValidationLocale::English;
     miacode::simai::SimaiTimingMetadata timingMetadata;
-    SimaiParseResult parseResult;
     QByteArray noteMarkerSignature;
     QVector<TimelineNoteMarker> noteMarkers;
     MuriRenderOptions renderOptions;

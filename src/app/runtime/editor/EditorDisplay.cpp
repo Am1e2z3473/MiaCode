@@ -155,28 +155,28 @@ void miacode::runtime::EditorHost::loadPortableState()
         state_.showSlideTracks_ = app.value("show_slide_tracks").toBool(state_.showSlideTracks_);
     }
     applyPortablePreviewSettings(preview);
-    if (state_.timelineQuickStateBridge_ != nullptr) {
+    if (state_.timeline_.timelineQuickStateBridge_ != nullptr) {
         if (preview.value("timeline_zoom_scale").isDouble()) {
-            state_.timelineQuickStateBridge_->setZoomScale(
-                preview.value("timeline_zoom_scale").toDouble(state_.timelineQuickStateBridge_->zoomScale())
+            state_.timeline_.timelineQuickStateBridge_->setZoomScale(
+                preview.value("timeline_zoom_scale").toDouble(state_.timeline_.timelineQuickStateBridge_->zoomScale())
             );
         }
         if (preview.value("timeline_waveform_brightness").isDouble()) {
-            state_.timelineQuickStateBridge_->setWaveformBrightness(
+            state_.timeline_.timelineQuickStateBridge_->setWaveformBrightness(
                 preview.value("timeline_waveform_brightness").toDouble(
                     miacode::timeline::kTimelineWaveformBrightnessDefault)
             );
         }
         if (preview.value("timeline_measure_line_brightness").isDouble()) {
-            state_.timelineQuickStateBridge_->setMeasureLineBrightness(
+            state_.timeline_.timelineQuickStateBridge_->setMeasureLineBrightness(
                 preview.value("timeline_measure_line_brightness").toDouble(
                     miacode::timeline::kTimelineMeasureLineBrightnessDefault)
             );
         }
-        state_.timelineQuickStateBridge_->setFollowPreviewEnabled(state_.previewFollowEnabled_);
-        state_.timelineQuickStateBridge_->setViewportLockEnabled(state_.previewViewportLockEnabled_);
-        state_.timelineQuickStateBridge_->setFollowProgressEnabled(state_.previewProgressFollowEnabled_);
-        state_.timelineQuickStateBridge_->setTimelineSyncEnabled(state_.timelineSyncEnabled_);
+        state_.timeline_.timelineQuickStateBridge_->setFollowPreviewEnabled(state_.previewFollowEnabled_);
+        state_.timeline_.timelineQuickStateBridge_->setViewportLockEnabled(state_.previewViewportLockEnabled_);
+        state_.timeline_.timelineQuickStateBridge_->setFollowProgressEnabled(state_.previewProgressFollowEnabled_);
+        state_.timeline_.timelineQuickStateBridge_->setTimelineSyncEnabled(state_.timeline_.timelineSyncEnabled_);
     }
     // Re-apply the restored bottom-tabs divider height. The constructor already
     session_.refreshPreviewFrameRateTimers();
@@ -201,10 +201,10 @@ void miacode::runtime::EditorHost::resetPortablePreviewSettingsToDefaults()
     state_.showSlideTracks_ = true;
     state_.showJudgeMarkers_ = false;
     state_.showTouchTrail_ = false;
-    state_.previewFollowEnabled_ = false;
+    state_.previewFollowEnabled_ = true;
     state_.previewViewportLockEnabled_ = true;
     state_.previewProgressFollowEnabled_ = true;
-    state_.timelineSyncEnabled_ = false;
+    state_.timeline_.timelineSyncEnabled_ = false;
     state_.muriRenderOptions_ = MuriRenderOptions();
     state_.staticTapOnSlideThresholdMs_ = miacode::muri::kStaticTapOnSlideThresholdDefaultMs;
     state_.previewBackgroundBrightnessOuter_ = miacode::preview_video::kBackgroundBrightnessDefault;
@@ -222,7 +222,7 @@ void miacode::runtime::EditorHost::resetPortablePreviewSettingsToDefaults()
     state_.previewCanvasFrameRateMode_ = PreviewCanvasFrameRateMode::DisplayRefresh;
     state_.previewStageMediaFrameRateMode_ = PreviewCanvasFrameRateMode::Fps30;
     state_.videoDecodePrefersSoftware_ = false;
-    state_.timelineFrameRateMode_ = PreviewCanvasFrameRateMode::DisplayRefresh;
+    state_.timeline_.timelineFrameRateMode_ = PreviewCanvasFrameRateMode::DisplayRefresh;
     state_.previewCanvasAspectRatio_ = 1.0;
     state_.previewAutoRestoreSquareAfterExport_ = false;
     state_.previewForceLabeledJudgeLineWhenPaused_ = true;
@@ -422,11 +422,11 @@ void miacode::runtime::EditorHost::applyPortablePreviewSettings(const QJsonObjec
             preview.value("video_decode_prefers_software").toBool(state_.videoDecodePrefersSoftware_);
     }
     if (preview.value("timeline_frame_rate_mode").isString()) {
-        state_.timelineFrameRateMode_ = session_.previewFrameRateModeFromStorageValue(
+        state_.timeline_.timelineFrameRateMode_ = session_.previewFrameRateModeFromStorageValue(
             preview.value("timeline_frame_rate_mode").toString(),
             state_.previewCanvasFrameRateMode_);
     } else {
-        state_.timelineFrameRateMode_ = state_.previewCanvasFrameRateMode_;
+        state_.timeline_.timelineFrameRateMode_ = state_.previewCanvasFrameRateMode_;
     }
     if (preview.value("force_labeled_judge_line_when_paused").isBool()) {
         state_.previewForceLabeledJudgeLineWhenPaused_ =
@@ -478,7 +478,7 @@ void miacode::runtime::EditorHost::applyPortablePreviewSettings(const QJsonObjec
     state_.previewViewportLockEnabled_ = true;
     state_.previewProgressFollowEnabled_ = true;
     if (preview.value("timeline_sync").isBool()) {
-        state_.timelineSyncEnabled_ = preview.value("timeline_sync").toBool(false);
+        state_.timeline_.timelineSyncEnabled_ = preview.value("timeline_sync").toBool(false);
     }
     const miacode::chart_transform::ChartNormalizationOptions normalizationOptions =
         miacode::app_preferences::chartNormalizationOptionsFromPreferences(
@@ -630,21 +630,21 @@ void miacode::runtime::EditorHost::savePortableState() const
     preview.insert("follow_preview", state_.previewFollowEnabled_);
     preview.insert("viewport_lock", true);
     preview.insert("follow_progress", true);
-    preview.insert("timeline_sync", state_.timelineSyncEnabled_);
+    preview.insert("timeline_sync", state_.timeline_.timelineSyncEnabled_);
     preview.insert(
         "timeline_zoom_scale",
-        state_.timelineQuickStateBridge_ != nullptr ? state_.timelineQuickStateBridge_->zoomScale() : 0.5
+        state_.timeline_.timelineQuickStateBridge_ != nullptr ? state_.timeline_.timelineQuickStateBridge_->zoomScale() : 0.5
     );
     preview.insert(
         "timeline_waveform_brightness",
-        state_.timelineQuickStateBridge_ != nullptr
-            ? state_.timelineQuickStateBridge_->waveformBrightness()
+        state_.timeline_.timelineQuickStateBridge_ != nullptr
+            ? state_.timeline_.timelineQuickStateBridge_->waveformBrightness()
             : miacode::timeline::kTimelineWaveformBrightnessDefault
     );
     preview.insert(
         "timeline_measure_line_brightness",
-        state_.timelineQuickStateBridge_ != nullptr
-            ? state_.timelineQuickStateBridge_->measureLineBrightness()
+        state_.timeline_.timelineQuickStateBridge_ != nullptr
+            ? state_.timeline_.timelineQuickStateBridge_->measureLineBrightness()
             : miacode::timeline::kTimelineMeasureLineBrightnessDefault
     );
     miacode::app_preferences::saveChartNormalizationOptionsToPreferences(

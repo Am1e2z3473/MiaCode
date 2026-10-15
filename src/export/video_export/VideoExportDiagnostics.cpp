@@ -59,12 +59,6 @@
 #endif
 #include "export/video_export/VideoExportControllerInternal.h"
 
-// VideoExportDiagnostics.cpp — render-backend fallback detail, diagnostic tap/slide sampling, visible-object trace, per-layer activity estimation, FNV hashing, and frame-signature / mean-abs-diff comparisons.
-//
-// Definitions extracted verbatim from the original VideoExportController.cpp
-// during the god-file split. All helpers live in the shared
-// miacode::video_export::detail namespace (declared in
-// VideoExportControllerInternal.h).
 using namespace miacode::video_export::detail;
 
 namespace miacode::video_export::detail {

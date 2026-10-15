@@ -1,4 +1,4 @@
-﻿#include "app/runtime/playback/PlaybackCoordinator.h"
+#include "app/runtime/playback/PlaybackCoordinator.h"
 
 #include "app/services/ApplicationServices.h"
 #include "common/ProcessDiagnostics.h"
@@ -14,38 +14,38 @@ using namespace miacode::runtime::preview_timeline_detail;
 void miacode::runtime::PlaybackCoordinator::scheduleTimelineAnalysisRefresh(
     const TimelineSlowRefreshRequest& request)
 {
-    state_.pendingTimelineAnalysisRefresh_ = request;
-    state_.timelineAnalysisRequestedRevision_ = request.revision;
+    state_.timeline_.pendingTimelineAnalysisRefresh_ = request;
+    state_.timeline_.timelineAnalysisRequestedRevision_ = request.revision;
     requestTimelineAnalysisDispatch();
 }
 
 bool miacode::runtime::PlaybackCoordinator::scheduleTimelineAnalysisRefreshFromLatestPreviewState(int delayMs)
 {
     if (!hasActiveDifficulty()
-        || !state_.latestTimelinePreviewSnapshotReady_
-        || state_.lastTimelineParseDifficultyId_ != activeDifficultyId()
-        || state_.lastTimelineParseChartText_ != activeChartText()
-        || state_.lastTimelineParseTimingMetadata_ != currentTimingMetadata()) {
+        || !state_.timeline_.latestTimelinePreviewSnapshotReady_
+        || state_.timeline_.lastTimelineParseDifficultyId_ != activeDifficultyId()
+        || state_.timeline_.lastTimelineParseChartText_ != activeChartText()
+        || state_.timeline_.lastTimelineParseTimingMetadata_ != currentTimingMetadata()) {
         return false;
     }
 
     TimelineSlowRefreshRequest request;
-    request.revision = state_.latestTimelinePreviewRevision_;
+    request.revision = state_.timeline_.latestTimelinePreviewRevision_;
     request.difficultyId = activeDifficultyId();
-    request.chartText = state_.lastTimelineParseChartText_;
-    request.timingMetadata = state_.lastTimelineParseTimingMetadata_;
+    request.chartText = state_.timeline_.lastTimelineParseChartText_;
+    request.timingMetadata = state_.timeline_.lastTimelineParseTimingMetadata_;
     request.validationLocale = uiValidationLocale();
 
     request.firstSeconds = parsedFirstSeconds();
-    state_.pendingTimelineAnalysisRefresh_ = request;
-    state_.timelineAnalysisRequestedRevision_ = request.revision;
+    state_.timeline_.pendingTimelineAnalysisRefresh_ = request;
+    state_.timeline_.timelineAnalysisRequestedRevision_ = request.revision;
     requestTimelineAnalysisDispatch(delayMs);
     return true;
 }
 
 void miacode::runtime::PlaybackCoordinator::requestTimelineAnalysisDispatch(int delayMs)
 {
-    if (state_.pendingTimelineAnalysisRefresh_.revision == 0 || state_.playing_) return;
+    if (state_.timeline_.pendingTimelineAnalysisRefresh_.revision == 0 || state_.playing_) return;
     if (delayMs > 0) {
         QTimer::singleShot(delayMs, &owner_, [this]() {
             if (identity_.active()) dispatchTimelineAnalysisRefresh();
@@ -58,18 +58,18 @@ void miacode::runtime::PlaybackCoordinator::requestTimelineAnalysisDispatch(int 
 void miacode::runtime::PlaybackCoordinator::dispatchTimelineAnalysisRefresh()
 {
     if (!hasActiveDifficulty() || state_.playing_ || state_.latencySandboxAuditionActive_
-        || state_.pendingTimelineAnalysisRefresh_.revision == 0) return;
-    const TimelineSlowRefreshRequest request = state_.pendingTimelineAnalysisRefresh_;
+        || state_.timeline_.pendingTimelineAnalysisRefresh_.revision == 0) return;
+    const TimelineSlowRefreshRequest request = state_.timeline_.pendingTimelineAnalysisRefresh_;
     const miacode::AnalysisSnapshot snapshot = services_.analysis().snapshot();
     const miacode::ParsedChartSnapshot& parsed = services_.analysis().parsedSnapshot();
     if (!snapshot.available || snapshot.pending || snapshot.revision != services_.workspace().snapshot().revision
         || snapshot.difficultyId != request.difficultyId || !parsed.available
         || parsed.revision != snapshot.revision || parsed.chartText != request.chartText
         || parsed.timingMetadata != request.timingMetadata || parsed.firstSeconds != request.firstSeconds
-        || snapshot.noteMarkerSignature != state_.latestTimelineNoteMarkerSignature_) return;
-    state_.pendingTimelineAnalysisRefresh_ = TimelineSlowRefreshRequest();
-    if (request.revision != state_.timelineAnalysisRequestedRevision_
-        || request.revision != state_.timelineRevision_ || request.difficultyId != activeDifficultyId()
+        || snapshot.noteMarkerSignature != state_.timeline_.latestTimelineNoteMarkerSignature_) return;
+    state_.timeline_.pendingTimelineAnalysisRefresh_ = TimelineSlowRefreshRequest();
+    if (request.revision != state_.timeline_.timelineAnalysisRequestedRevision_
+        || request.revision != state_.timeline_.timelineRevision_ || request.difficultyId != activeDifficultyId()
         || request.chartText != activeChartText() || request.timingMetadata != currentTimingMetadata()
         || request.firstSeconds != parsedFirstSeconds()) return;
 
@@ -94,8 +94,6 @@ void miacode::runtime::PlaybackCoordinator::dispatchTimelineAnalysisRefresh()
     entry.ok = result.validationReport.ok;
     entry.errorCount = result.validationReport.errorCount;
     entry.warningCount = result.validationReport.warningCount;
-    entry.lenientNoteCount = result.validationReport.lenientNoteCount;
-    entry.lenientErrorCount = result.validationReport.lenientErrorCount;
     entry.strictNoteCount = result.validationReport.strictNoteCount;
     entry.strictErrorCount = result.validationReport.strictErrorCount;
     entry.issues.reserve(result.validationReport.issues.size());

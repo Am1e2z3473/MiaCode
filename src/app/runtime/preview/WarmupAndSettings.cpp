@@ -1043,8 +1043,8 @@ void Session::applyPreviewSkinDirectoryToSurfaces()
     if (scene_ != nullptr) {
         scene_->setSkinDirectory(skinDir);
     }
-    if (timelineQuickStateBridge_ != nullptr) {
-        timelineQuickStateBridge_->setSkinDirectory(skinDir);
+    if (state_.timeline_.timelineQuickStateBridge_ != nullptr) {
+        state_.timeline_.timelineQuickStateBridge_->setSkinDirectory(skinDir);
     }
     emit previewSkinDirectoryChanged();
 }

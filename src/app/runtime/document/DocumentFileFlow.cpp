@@ -1,4 +1,4 @@
-﻿#include "common/LocalizedText.h"
+#include "common/LocalizedText.h"
 
 #include "app/runtime/document/DocumentSessionHost.h"
 #include "app/services/UiRequestService.h"
@@ -125,7 +125,7 @@ void miacode::runtime::DocumentSessionHost::requestLeaveDocument(std::function<v
     }
 
     // 缺少处理器时，未保存的文档保留在窗口内。
-    decide(!state_.documentDirty_ && !state_.currentFieldDirty_);
+    decide(!state_.documentDirty_);
 }
 
 bool miacode::runtime::DocumentSessionHost::openFileAtPath(const QString& path, bool showErrors)
@@ -385,7 +385,6 @@ void miacode::runtime::DocumentSessionHost::syncRuntimeFromWorkspace()
 
     if (!snapshot.hasDocument) {
         state_.documentDirty_ = false;
-        state_.currentFieldDirty_ = false;
         state_.activeDifficultyId_ = 0;
         session_.setCurrentFilePath(QString(), true);
         if (resetInheritedWorkingPosition) {
@@ -438,7 +437,6 @@ void miacode::runtime::DocumentSessionHost::syncRuntimeFromWorkspace()
     }
 
     state_.documentDirty_ = snapshot.dirty;
-    state_.currentFieldDirty_ = false;
     if (snapshot.dirty) {
         noteDocumentEditedForAutosave();
     }

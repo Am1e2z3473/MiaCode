@@ -47,8 +47,6 @@ struct SimaiValidationReport {
     bool ok = true;
     int errorCount = 0;
     int warningCount = 0;
-    int lenientNoteCount = 0;
-    int lenientErrorCount = 0;
     int strictNoteCount = 0;
     int strictErrorCount = 0;
     QVector<SimaiValidationIssue> issues;
@@ -72,7 +70,6 @@ public:
     static SimaiValidationReport buildValidationReport(
         const QString& text,
         SimaiValidationLocale locale,
-        const SimaiParseResult* lenientResult = nullptr,
         const miacode::simai::SimaiTimingMetadata& timingMetadata = miacode::simai::SimaiTimingMetadata()
     );
 };

@@ -787,6 +787,7 @@ int main(int argc, char** argv)
         // separator. The reference repro spans a line break: line 1 ends on a
         // bare note, line 2 opens with the next {beats} block.
         const QString missingCommaPrefix = QStringLiteral("Missing ',' between note and directive: ");
+        const QString missingSubdivisionMessage = QStringLiteral("Note subdivision is unspecified");
         const SimaiParseResult strictBeatDirective = SimaiParser::validateSyntax(
             QStringLiteral("{16}1,1,1,1,1\n{16},,,\nE"));
         expect(strictBeatDirective.ok && strictBeatDirective.errors.isEmpty(),
@@ -810,11 +811,15 @@ int main(int argc, char** argv)
         const SimaiParseResult strictBpmDirective = SimaiParser::validateSyntax(
             QStringLiteral("1(120)2,\nE"));
         expect(
-            strictBpmDirective.warnings.size() == 1
+            strictBpmDirective.warnings.size() == 2
                 && strictBpmDirective.warnings.constFirst().message == missingCommaPrefix + QStringLiteral("(120)")
                 && strictBpmDirective.warnings.constFirst().line == 1
-                && strictBpmDirective.warnings.constFirst().col == 1,
-            QStringLiteral("note directly before (bpm) directive emits missing-comma warning"));
+                && strictBpmDirective.warnings.constFirst().col == 1
+                && strictBpmDirective.warnings.at(1).message == missingSubdivisionMessage
+                && strictBpmDirective.warnings.at(1).line == 1
+                && strictBpmDirective.warnings.at(1).col == 2
+                && strictBpmDirective.warnings.at(1).endCol == 6,
+            QStringLiteral("note before BPM emits missing-comma and subdivision warnings at their source spans"));
 
         const SimaiParseResult strictHsDirective = SimaiParser::validateSyntax(
             QStringLiteral("1<HS*2>2,\nE"));
@@ -829,10 +834,15 @@ int main(int argc, char** argv)
         const SimaiParseResult strictDirectiveRun = SimaiParser::validateSyntax(
             QStringLiteral("1{16}(120)2,\nE"));
         expect(
-            strictDirectiveRun.warnings.size() == 1
+            strictDirectiveRun.warnings.size() == 2
+                && strictDirectiveRun.warnings.constFirst().message == missingCommaPrefix + QStringLiteral("{16}")
                 && strictDirectiveRun.warnings.constFirst().line == 1
-                && strictDirectiveRun.warnings.constFirst().col == 1,
-            QStringLiteral("directive run after a note emits one missing-comma warning at the note"));
+                && strictDirectiveRun.warnings.constFirst().col == 1
+                && strictDirectiveRun.warnings.at(1).message == missingSubdivisionMessage
+                && strictDirectiveRun.warnings.at(1).line == 1
+                && strictDirectiveRun.warnings.at(1).col == 6
+                && strictDirectiveRun.warnings.at(1).endCol == 10,
+            QStringLiteral("directive run emits one missing-comma warning and requests subdivision after BPM"));
 
         // Lenient (timeline) parsing stays quiet.
         const SimaiParseResult lenientBeatDirective = SimaiParser::parseForTimeline(
@@ -938,8 +948,17 @@ int main(int argc, char** argv)
         expect(strictInlineTerminalWithComment.ok, QStringLiteral("validate accepts inline terminal marker followed by comment"));
         expect(terminalCommentReport.ok && terminalCommentReport.warningCount == 0,
                QStringLiteral("validation report does not warn for terminal marker followed by comment"));
-        expect(terminalCommentWithControlReport.ok && terminalCommentWithControlReport.warningCount == 0,
-               QStringLiteral("validation report does not warn for control-prefixed terminal marker followed by comment"));
+        expect(terminalCommentWithControlReport.ok
+                   && terminalCommentWithControlReport.errorCount == 0
+                   && terminalCommentWithControlReport.warningCount == 1
+                   && terminalCommentWithControlReport.issues.size() == 1
+                   && terminalCommentWithControlReport.issues.constFirst().severity == SimaiValidationSeverity::Warning
+                   && terminalCommentWithControlReport.issues.constFirst().rawMessage
+                       == QStringLiteral("Note subdivision is unspecified")
+                   && terminalCommentWithControlReport.issues.constFirst().line == 1
+                   && terminalCommentWithControlReport.issues.constFirst().col == 1
+                   && terminalCommentWithControlReport.issues.constFirst().endCol == 5,
+               QStringLiteral("BPM-prefixed terminal with comment accepts the terminal and reports the BPM subdivision span"));
         expect(!strictTerminalWithComma.ok, QStringLiteral("validate rejects terminal marker followed by comma"));
         expect(!strictTerminalWithTrailingText.ok, QStringLiteral("validate rejects non-comment trailing text after terminal marker"));
 

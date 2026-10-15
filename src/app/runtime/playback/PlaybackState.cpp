@@ -539,8 +539,8 @@ void miacode::runtime::PlaybackCoordinator::stopQtPreviewTimers()
     // Dropping the cadence flag also lets the timeline window go idle again when paused.
     state_.qtPreviewLastTimelineCadenceMs_ = -1;
     state_.qtPreviewLastTimelineCadenceFlushNs_ = -1;
-    if (state_.timelineQuickStateBridge_ != nullptr) {
-        state_.timelineQuickStateBridge_->setPlaybackCadenceActive(false);
+    if (state_.timeline_.timelineQuickStateBridge_ != nullptr) {
+        state_.timeline_.timelineQuickStateBridge_->setPlaybackCadenceActive(false);
     }
     setPreviewFixedTimerHighResolutionActive(state_, false);
 }
@@ -600,8 +600,8 @@ void miacode::runtime::PlaybackCoordinator::finalizeQtPreviewPlaybackStart(doubl
     // Start on the watchdog: the first afterAnimating tick claims the sampling phase.
     state_.qtPreviewLastTimelineCadenceMs_ = -1;
     state_.qtPreviewLastTimelineCadenceFlushNs_ = -1;
-    if (state_.timelineQuickStateBridge_ != nullptr) {
-        state_.timelineQuickStateBridge_->setPlaybackCadenceActive(true);
+    if (state_.timeline_.timelineQuickStateBridge_ != nullptr) {
+        state_.timeline_.timelineQuickStateBridge_->setPlaybackCadenceActive(true);
     }
     if (ui_.qtPreviewTimelineTimer_ != nullptr && !ui_.qtPreviewTimelineTimer_->isActive()) {
         ui_.qtPreviewTimelineTimer_->start();
@@ -728,9 +728,9 @@ void miacode::runtime::PlaybackCoordinator::pauseQtPreviewPlaybackExact(PauseSec
     state_.qtPreviewFixedTickOriginNs_ = -1;
     resetVisualClockSmoothing();
     flushQtPreviewTimelinePosition();
-    if (state_.timelineQuickStateBridge_ != nullptr) {
-        state_.timelineQuickStateBridge_->focusPlayhead(false);
-        state_.timelineQuickStateBridge_->setPlayheadUpperLimitSeconds(previewDurationSeconds());
+    if (state_.timeline_.timelineQuickStateBridge_ != nullptr) {
+        state_.timeline_.timelineQuickStateBridge_->focusPlayhead(false);
+        state_.timeline_.timelineQuickStateBridge_->setPlayheadUpperLimitSeconds(previewDurationSeconds());
     }
     publishPreviewPlayhead();
     // beta4 leak gauge (LOW-FREQUENCY — once per user pause, never per frame): sample
@@ -1104,8 +1104,8 @@ void miacode::runtime::PlaybackCoordinator::pauseQtPreviewPlaybackForReanchor()
     state_.qtPreviewLastVisualTickNs_ = -1;
     state_.qtPreviewNextFixedTickDueNs_ = -1;
     state_.qtPreviewFixedTickOriginNs_ = -1;
-    if (state_.timelineQuickStateBridge_ != nullptr) {
-        state_.timelineQuickStateBridge_->setPlayheadUpperLimitSeconds(previewDurationSeconds());
+    if (state_.timeline_.timelineQuickStateBridge_ != nullptr) {
+        state_.timeline_.timelineQuickStateBridge_->setPlayheadUpperLimitSeconds(previewDurationSeconds());
     }
     appendPreviewPlaybackLog(
         QStringLiteral("pause_for_reanchor"),

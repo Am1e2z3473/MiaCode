@@ -84,7 +84,7 @@ QString miacode::runtime::PlaybackCoordinator::previewStageMediaFrameRateModeSto
 
 QString miacode::runtime::PlaybackCoordinator::timelineFrameRateModeStorageValue() const
 {
-    return previewFrameRateModeStorageValue(state_.timelineFrameRateMode_);
+    return previewFrameRateModeStorageValue(state_.timeline_.timelineFrameRateMode_);
 }
 
 
@@ -100,7 +100,7 @@ bool miacode::runtime::PlaybackCoordinator::currentVideoDecodePrefersSoftware() 
 
 Session::PreviewCanvasFrameRateMode miacode::runtime::PlaybackCoordinator::currentTimelineFrameRateMode() const
 {
-    return state_.timelineFrameRateMode_;
+    return state_.timeline_.timelineFrameRateMode_;
 }
 
 double miacode::runtime::PlaybackCoordinator::currentPreviewCanvasRefreshRate() const
@@ -190,18 +190,18 @@ qint64 miacode::runtime::PlaybackCoordinator::targetFrameIntervalNsForFrameRateM
 qint64 miacode::runtime::PlaybackCoordinator::timelineTargetFrameIntervalNs() const
 {
     const double timelineTargetFps =
-        qMin(targetRefreshRateForFrameRateMode(state_.timelineFrameRateMode_),
+        qMin(targetRefreshRateForFrameRateMode(state_.timeline_.timelineFrameRateMode_),
              miacode::runtime::shared::kTimelineMaxUiUpdateFps);
     return qMax<qint64>(1LL, qRound64(1000000000.0 / qMax(1.0, timelineTargetFps)));
 }
 
 void miacode::runtime::PlaybackCoordinator::refreshTimelineWaveformPhaseCompensation()
 {
-    if (state_.timelineQuickStateBridge_ == nullptr) {
+    if (state_.timeline_.timelineQuickStateBridge_ == nullptr) {
         return;
     }
     const qint64 frameIntervalNs = qMax<qint64>(1, previewCanvasTargetFrameIntervalNs());
-    state_.timelineQuickStateBridge_->setWaveformPhaseCompensationSeconds(
+    state_.timeline_.timelineQuickStateBridge_->setWaveformPhaseCompensationSeconds(
         static_cast<double>(frameIntervalNs) / 1000000000.0);
 }
 
@@ -404,7 +404,6 @@ void miacode::runtime::PlaybackCoordinator::refreshPreviewFrameRateTimers()
     if (ui_.qtPreviewTimelineTimer_ != nullptr) {
         ui_.qtPreviewTimelineTimer_->setInterval(std::chrono::nanoseconds(qMax<qint64>(1, timelineIntervalNs)));
     }
-    applyPreviewStageMediaFrameRateMode();
     if (state_.scene_ != nullptr) {
         state_.scene_->setFramePacingDebugState(
             previewCanvasUsesFrameSwappedPacing(),
@@ -413,15 +412,6 @@ void miacode::runtime::PlaybackCoordinator::refreshPreviewFrameRateTimers()
         );
     }
     refreshTimelineWaveformPhaseCompensation();
-}
-
-void miacode::runtime::PlaybackCoordinator::applyPreviewStageMediaFrameRateMode()
-{
-    if (state_.previewStageMediaHost_ == nullptr) {
-        return;
-    }
-    state_.previewStageMediaHost_->setVideoFrameToImageMaxFps(
-        targetRefreshRateForFrameRateMode(state_.previewStageMediaFrameRateMode_));
 }
 
 void miacode::runtime::PlaybackCoordinator::setPreviewCanvasFrameRateMode(PreviewCanvasFrameRateMode mode, bool persistState)
@@ -467,7 +457,6 @@ void miacode::runtime::PlaybackCoordinator::setPreviewCanvasFrameRateMode(Previe
 void miacode::runtime::PlaybackCoordinator::setPreviewStageMediaFrameRateMode(PreviewCanvasFrameRateMode mode, bool persistState)
 {
     state_.previewStageMediaFrameRateMode_ = mode;
-    applyPreviewStageMediaFrameRateMode();
     if (persistState) {
         preferences_.savePortableState();
     }
@@ -491,7 +480,7 @@ void miacode::runtime::PlaybackCoordinator::setVideoDecodePrefersSoftware(bool p
 
 void miacode::runtime::PlaybackCoordinator::setTimelineFrameRateMode(PreviewCanvasFrameRateMode mode, bool persistState)
 {
-    state_.timelineFrameRateMode_ = mode;
+    state_.timeline_.timelineFrameRateMode_ = mode;
     refreshPreviewFrameRateTimers();
     if (persistState) {
         preferences_.savePortableState();
