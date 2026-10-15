@@ -77,6 +77,8 @@ private:
     double bpm_ = 120.0;
     double offsetSeconds_ = 0.0;
     int clockCount_ = 4;
+    quint64 documentOpenGeneration_ = 0;
+    bool hasDocumentOpenGeneration_ = false;
     QString bpmDetectResult_;
     QString offsetDetectResult_;
 

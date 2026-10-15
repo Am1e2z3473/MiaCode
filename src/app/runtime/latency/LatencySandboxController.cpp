@@ -363,6 +363,12 @@ int LatencySandboxController::documentClockCount() const
     return owner_->parsedClockCount();
 }
 
+quint64 LatencySandboxController::documentOpenGeneration() const
+{
+    return owner_.isNull() ? 0
+        : owner_->applicationServices_.workspace().snapshot().documentOpenGeneration;
+}
+
 QString LatencySandboxController::trackPath() const
 {
     if (owner_.isNull()) {

@@ -79,6 +79,8 @@ ApplicationContext::ApplicationContext(miacode::ApplicationServices& services,
             &analysis_, &AnalysisModel::refreshPreferences);
     connect(&document_, &DocumentModel::metadataChanged,
             this, [this] { editor_.setWholeBpm(document_.wholeBpm()); });
+    connect(&document_, &DocumentModel::documentReplaced,
+            &latency_, &LatencyModel::refreshFromDocument);
     applyEditorSettings();
     editor_.setWholeBpm(document_.wholeBpm());
 }

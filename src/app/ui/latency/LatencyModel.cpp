@@ -49,6 +49,20 @@ void LatencyModel::refreshFromDocument()
     if (engine() == nullptr) {
         return;
     }
+    const quint64 openGeneration = engine()->documentOpenGeneration();
+    const bool documentChanged = !hasDocumentOpenGeneration_
+        || openGeneration != documentOpenGeneration_;
+    if (documentChanged) {
+        documentOpenGeneration_ = openGeneration;
+        hasDocumentOpenGeneration_ = true;
+        bpmDetectResult_.clear();
+        offsetDetectResult_.clear();
+        lastDetectedMeterId_ = QStringLiteral("4/4");
+        lastDetectedMeterPhase_ = 0.0;
+        hasLastDetectedMeterPhase_ = false;
+        clearAudioEnvelopeCache();
+        emit detectionChanged();
+    }
     const double documentBpm = engine()->documentWholeBpm();
     bpm_ = documentBpm > 0.0 ? documentBpm : 120.0;
     offsetSeconds_ = engine()->documentOffsetSeconds();
@@ -62,7 +76,10 @@ void LatencyModel::refreshFromDocument()
 
 void LatencyModel::setBpm(double value)
 {
-    if (engine() == nullptr || !(value > 0.0) || qFuzzyCompare(value, bpm_)) {
+    if (engine() == nullptr || !qIsFinite(value) || !(value > 0.0)) {
+        return;
+    }
+    if (qFuzzyCompare(value, bpm_)) {
         return;
     }
     bpm_ = value;
@@ -183,6 +200,11 @@ void LatencyModel::detectBpm()
         bpmDetectResult_ = qtTrId("latency.bpm_not_detected");
         emit detectionChanged();
         return;
+    }
+    // Detection is an explicit document edit even when its value equals the
+    // displayed fallback BPM and no &wholebpm field exists yet.
+    if (qFuzzyCompare(result.bpm, bpm_)) {
+        engine()->applyDetectorBpm(result.bpm);
     }
     lastDetectedMeterId_ = result.meterId;
     lastDetectedMeterPhase_ = result.meterPhaseSeconds;

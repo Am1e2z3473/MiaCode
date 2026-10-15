@@ -64,7 +64,7 @@ Item {
                         const parsed = parseFloat(text)
                         if (!isNaN(parsed) && parsed > 0)
                             root.latency.bpm = parsed
-                        text = root.latency.bpm.toFixed(3)
+                        text = Qt.binding(function() { return root.latency.bpm.toFixed(3) })
                     }
                 }
                 AppButton {
@@ -96,7 +96,7 @@ Item {
                         const parsed = parseInt(text)
                         if (!isNaN(parsed) && parsed > 0)
                             root.latency.clockCount = parsed
-                        text = String(root.latency.clockCount)
+                        text = Qt.binding(function() { return String(root.latency.clockCount) })
                     }
                 }
             }
@@ -117,7 +117,7 @@ Item {
                         const parsed = parseFloat(text)
                         if (!isNaN(parsed))
                             root.latency.offsetSeconds = parsed
-                        text = root.latency.offsetSeconds.toFixed(3)
+                        text = Qt.binding(function() { return root.latency.offsetSeconds.toFixed(3) })
                     }
                 }
                 AppButton {
