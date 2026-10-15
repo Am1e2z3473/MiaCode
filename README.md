@@ -9,7 +9,7 @@
   <a href="https://github.com/Team-MiaCode/MiaCode/releases/latest"><img src="https://img.shields.io/github/v/release/Team-MiaCode/MiaCode?style=for-the-badge&amp;label=Release&amp;logo=github&amp;color=24292F" alt="Latest release"></a>
   <a href="https://github.com/Team-MiaCode/MiaCode/actions/workflows/package.yml?query=branch%3Adev"><img src="https://img.shields.io/badge/Nightly-CI-2088FF?style=for-the-badge&amp;logo=githubactions&amp;logoColor=white" alt="Nightly CI"></a>
   <a href="https://github.com/Team-MiaCode/MiaCode/stargazers"><img src="https://img.shields.io/github/stars/Team-MiaCode/MiaCode?style=for-the-badge&amp;label=Stars" alt="GitHub stars"></a>
-  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue?style=for-the-badge" alt="Source code license: MIT"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-GPLv3-blue?style=for-the-badge" alt="Source code license: GPLv3"></a>
 </p>
 
 <p align="center">
@@ -234,9 +234,7 @@ cmake --build build --target MiaCode --parallel 4
 <details>
 <summary><h2 id="许可证">许可证</h2></summary>
 
-自有代码使用 MIT 协议，随仓库分发的 Release 构建产物为非商业使用，具体边界见 [LICENSE_SCOPE.md](LICENSE_SCOPE.md)。
-
-第三方库、字体、音效、图片、FFmpeg、BASS、Qt 以及参考实现的各自许可证或分发限制参考 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
+项目代码采用 [GPLv3](LICENSE)，第三方授权见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
 
 </details>
 
