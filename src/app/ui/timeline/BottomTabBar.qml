@@ -110,31 +110,8 @@ Item {
 
         Item { Layout.fillWidth: true }
 
-        AppDropDownButton {
-            id: zoomButton
-            compact: true
-            Layout.alignment: Qt.AlignVCenter
-            Layout.preferredWidth: implicitWidth
-            visible: root.timelineSession.currentTabId === "timeline"
-            text: qsTrId("qml.1").arg(Math.round(root.timelineSession.stateBridge
-                ? root.timelineSession.stateBridge.zoomScale * 100
-                : 50))
-            sizeToLabels: zoomMenu.zoomLabels
-            tooltip: qsTrId("qml.timeline_zoom")
-            expanded: zoomMenu.active
-            Accessible.description: qsTrId("qml.open_timeline_zoom_presets")
-            onClicked: {
-                if (zoomMenu.active) {
-                    zoomMenu.close()
-                    return
-                }
-                zoomMenu.openAt(zoomButton)
-            }
-        }
-
         AppCheckBox {
             Layout.alignment: Qt.AlignVCenter
-            Layout.leftMargin: 4
             compact: true
             font.pixelSize: Theme.uiFontSize
             visible: root.timelineSession.currentTabId === "timeline"
@@ -145,37 +122,5 @@ Item {
             Accessible.description: qsTrId("qml.follow_current_chart_source_position")
             onClicked: root.timelineSession.followPreviewToggled(checked)
         }
-
-        IconButton {
-            id: settingsButton
-            stateColors: Theme.chromeStateColors
-
-            Layout.alignment: Qt.AlignVCenter
-            visible: root.timelineSession.currentTabId === "timeline"
-            iconSource: Qt.resolvedUrl("icons/sliders-horizontal.svg")
-            filledIconSource: Qt.resolvedUrl("icons/sliders-horizontal-fill.svg")
-            tooltip: qsTrId("qml.timeline_settings")
-            active: settingsMenu.active
-            Accessible.description: qsTrId("qml.open_timeline_settings")
-            onClicked: {
-                if (settingsMenu.active) {
-                    settingsMenu.close()
-                    return
-                }
-                settingsMenu.openAt(settingsButton)
-            }
-        }
-
     }
-
-    TimelineZoomMenu {
-        id: zoomMenu
-        stateBridge: root.timelineSession.stateBridge
-    }
-
-    TimelineSettingsMenu {
-        id: settingsMenu
-        stateBridge: root.timelineSession.stateBridge
-    }
-
 }

@@ -149,6 +149,10 @@ Item {
         visible: root.timelineSession.currentTabId === "timeline"
         enabled: visible
         stateBridge: root.timelineSession.stateBridge
+        headerLeftLimit: zoomButton.x + zoomButton.width + 2
+        headerRightLimit: Math.max(0, brightnessButton.x - 2)
+        headerMarkerLeftLimit: zoomButton.x + zoomButton.width + 2
+        headerMarkerRightLimit: Math.max(0, brightnessButton.x - 2)
         onHeaderNavigateRequested: second => root.timelineSession.headerNavigate(second)
         onTimelineWheelNavigateRequested: second => root.timelineSession.wheelNavigate(second)
         onCenterNavigateRequested: second => root.timelineSession.centerNavigate(second)
@@ -172,6 +176,63 @@ Item {
             const position = timelineItem.mapToItem(parent, timelineItem.hoverTooltipPosition)
             return position.y + 16
         }
+    }
+
+    AppDropDownButton {
+        id: zoomButton
+        compact: true
+
+        x: Theme.panelPadding - Theme.chromeInsetX
+        y: timelineItem.y + Math.max(0, (timelineItem.timelineTop - height) / 2)
+        height: implicitHeight
+        visible: timelineItem.visible
+        text: qsTrId("qml.1").arg(Math.round(root.timelineSession.stateBridge
+            ? root.timelineSession.stateBridge.zoomScale * 100
+            : 50))
+        sizeToLabels: zoomMenu.zoomLabels
+        tooltip: qsTrId("qml.timeline_zoom")
+        expanded: zoomMenu.active
+        Accessible.description: qsTrId("qml.open_timeline_zoom_presets")
+        onClicked: {
+            if (zoomMenu.active) {
+                zoomMenu.close()
+                return
+            }
+            zoomMenu.openAt(zoomButton)
+        }
+    }
+
+    IconButton {
+        id: brightnessButton
+        compact: true
+
+        width: implicitWidth
+        height: implicitHeight
+        x: root.width - Theme.panelPadding - width + horizontalInset
+        y: timelineItem.y + Math.max(0, (timelineItem.timelineTop - height) / 2)
+        visible: timelineItem.visible
+        iconSource: Qt.resolvedUrl("icons/sliders-horizontal.svg")
+        filledIconSource: Qt.resolvedUrl("icons/sliders-horizontal-fill.svg")
+        tooltip: qsTrId("qml.timeline_settings")
+        active: settingsMenu.active
+        Accessible.description: qsTrId("qml.open_timeline_settings")
+        onClicked: {
+            if (settingsMenu.active) {
+                settingsMenu.close()
+                return
+            }
+            settingsMenu.openAt(brightnessButton)
+        }
+    }
+
+    TimelineZoomMenu {
+        id: zoomMenu
+        stateBridge: root.timelineSession.stateBridge
+    }
+
+    TimelineSettingsMenu {
+        id: settingsMenu
+        stateBridge: root.timelineSession.stateBridge
     }
 
     Item {
