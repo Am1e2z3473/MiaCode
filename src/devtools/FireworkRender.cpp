@@ -32,6 +32,7 @@ int main(int argc, char** argv)
     parser.addOption({"output", "Frame output directory.", "path"});
     parser.addOption({"size", "Square side in pixels.", "pixels", "720"});
     parser.addOption({"fps", "Frames per second.", "fps", "60"});
+    parser.addOption({"times", "Comma-separated frame times in seconds.", "seconds"});
     parser.process(app);
     const int side = parser.value("size").toInt();
     const int fps = parser.value("fps").toInt();
@@ -83,8 +84,21 @@ int main(int argc, char** argv)
         QTextStream(stderr) << error << Qt::endl;
         return 1;
     }
-    for (int frame = 0; frame < 2 * fps; ++frame) {
-        renderer.applyExportFrameTick(double(frame) / fps, false, false, true, 0, fps);
+    QList<double> frameTimes;
+    if (parser.isSet("times")) {
+        for (const QString& value : parser.value("times").split(',')) {
+            bool valid = false;
+            const double second = value.toDouble(&valid);
+            if (!valid) return 1;
+            frameTimes.append(second);
+        }
+    } else {
+        for (int frame = 0; frame < 2 * fps; ++frame) {
+            frameTimes.append(double(frame) / fps);
+        }
+    }
+    for (qsizetype frame = 0; frame < frameTimes.size(); ++frame) {
+        renderer.applyExportFrameTick(frameTimes[frame], false, false, true, 0, fps);
         const QImage image = renderer.renderFrame(&error);
         if (image.isNull()) {
             QTextStream(stderr) << error << Qt::endl;

@@ -40,9 +40,10 @@ constexpr int kFireworkRenderFlagUseTexture = 0x8;
 constexpr int kFireworkRenderFlagDrawFallbackBall = 0x10;
 constexpr int kFireworkRenderFlagWarmup = 0x20;
 
-float nextFireworkStarAngleSeed()
+float fireworkStarAngleSeed(qreal triggerSecond)
 {
-    return static_cast<float>(QRandomGenerator::global()->generateDouble() * 4096.0);
+    QRandomGenerator random(static_cast<quint32>(qHash(triggerSecond, size_t{0})));
+    return static_cast<float>(random.generateDouble() * 4096.0);
 }
 
 float fireworkSmoothStep(float value)
@@ -545,7 +546,6 @@ class PreviewQuickJudgeFireworkNode final : public QSGNode
 {
 public:
     explicit PreviewQuickJudgeFireworkNode(QQuickWindow* window)
-        : starAngleSeed_(nextFireworkStarAngleSeed())
     {
         geometry_ = new QSGGeometry(previewQuickJudgeFireworkVertexAttributes(), 4);
         geometry_->setDrawingMode(QSGGeometry::DrawTriangleStrip);
@@ -567,16 +567,10 @@ public:
         QSGTexture* texture, QSGTexture* brightBlockTexture, QSGTexture* bigBallTexture,
         bool useTexture, const QRectF& normalizedSourceRect, float sourceAspect, float smoothBlendStart)
     {
-        const bool triggerChanged = hasPreviousFrame_
-            && !qFuzzyCompare(layerState.triggerSecond + 1.0, previousTriggerSecond_ + 1.0);
-        const bool clipRestarted = hasPreviousFrame_
-            && layerState.clipTimeSeconds + 0.0001 < previousClipTimeSeconds_;
-        if (triggerChanged || clipRestarted) {
-            starAngleSeed_ = nextFireworkStarAngleSeed();
+        if (layerState.triggerSecond != previousTriggerSecond_) {
+            starAngleSeed_ = fireworkStarAngleSeed(layerState.triggerSecond);
+            previousTriggerSecond_ = layerState.triggerSecond;
         }
-        previousTriggerSecond_ = layerState.triggerSecond;
-        previousClipTimeSeconds_ = layerState.clipTimeSeconds;
-        hasPreviousFrame_ = true;
 
         // The hole is a mask, not visible content; only drawn layers set the bounds.
         const qreal contentRadius = qMax(layerState.outerRadius,
@@ -668,9 +662,7 @@ private:
     QSGGeometryNode* sourceNode_ = nullptr;
     QRectF previousBounds_;
     float starAngleSeed_ = 0.0f;
-    qreal previousTriggerSecond_ = 0.0;
-    qreal previousClipTimeSeconds_ = 0.0;
-    bool hasPreviousFrame_ = false;
+    qreal previousTriggerSecond_ = -1.0;
 };
 
 class PreviewQuickJudgeFireworkRootNode final : public QSGNode
