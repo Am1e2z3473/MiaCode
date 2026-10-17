@@ -64,21 +64,27 @@ AppDialog {
     }
 
     title: qsTrId("action.audio_settings")
-    preferredWidth: 720
-    preferredHeight: Theme.dialogHeight + 140
-    leftPadding: 0
-    rightPadding: 0
-    topPadding: 0
+    preferredWidth: 560
+    preferredHeight: dialogContent.implicitHeight + topPadding + defaultActions.implicitHeight
+    leftPadding: Theme.dialogPadding
+    rightPadding: Theme.dialogPadding
+    topPadding: 24
     bottomPadding: 0
     header: null
-    footer: null
+    footer: DialogFooter {
+        id: defaultActions
+        choices: [
+            { id: "save_default", label: qsTrId("qml.set_as_local_default") },
+            { id: "restore_default", label: qsTrId("qml.restore_local_defaults") }
+        ]
+        onChosen: function(choiceId) {
+            if (choiceId === "save_default") root.audioSettings.saveAsSoftwareDefault()
+            else if (choiceId === "restore_default") root.audioSettings.restoreSoftwareDefault()
+        }
+    }
 
     contentItem: ColumnLayout {
-        anchors.fill: parent
-        anchors.leftMargin: 32
-        anchors.rightMargin: 32
-        anchors.topMargin: 24
-        anchors.bottomMargin: 24
+        id: dialogContent
         spacing: 2 * Theme.settingsRowSpacing
 
         RowLayout {
@@ -106,12 +112,14 @@ AppDialog {
             id: pageViewport
             Layout.fillWidth: true
             Layout.fillHeight: true
+            implicitHeight: channelColumn.implicitHeight
             contentWidth: availableWidth
             clip: true
             ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
             ScrollBar.vertical: AppScrollBar {}
 
             ColumnLayout {
+                id: channelColumn
                 width: pageViewport.availableWidth
                 spacing: Theme.settingsRowSpacing
 
@@ -186,18 +194,6 @@ AppDialog {
                     onToggled: root.audioSettings.breakSlideTailCheerMuted = checked
                 }
 
-                RowLayout {
-                    Layout.fillWidth: true
-                    spacing: 8
-                    AppButton {
-                        text: qsTrId("qml.set_as_local_default")
-                        onClicked: root.audioSettings.saveAsSoftwareDefault()
-                    }
-                    AppButton {
-                        text: qsTrId("qml.restore_local_defaults")
-                        onClicked: root.audioSettings.restoreSoftwareDefault()
-                    }
-                }
             }
         }
     }
