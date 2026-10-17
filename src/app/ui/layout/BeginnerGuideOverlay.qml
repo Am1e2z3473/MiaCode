@@ -320,6 +320,8 @@ Popup {
                                 delegate: Item {
                                     id: feature
                                     required property var modelData
+                                    readonly property var icons: modelData.icons
+                                        || (modelData.icon ? [modelData.icon] : [])
                                     Layout.fillWidth: true
                                     Layout.fillHeight: true
                                     Layout.columnSpan: modelData.span || 1
@@ -341,18 +343,26 @@ Popup {
                                         spacing: Theme.panelPadding
 
                                         Item {
-                                            visible: !!feature.modelData.icon || sample.visible
-                                            Layout.preferredWidth: sample.visible
-                                                ? Math.max(root.iconSize, sample.implicitWidth) : root.iconSize
+                                            visible: feature.icons.length > 0 || sample.visible
+                                            Layout.preferredWidth: Math.max(root.iconSize,
+                                                featureIcons.implicitWidth,
+                                                sample.visible ? sample.implicitWidth : 0)
                                             Layout.preferredHeight: root.iconSize
-                                            ControlsImpl.IconImage {
+                                            Row {
+                                                id: featureIcons
                                                 anchors.centerIn: parent
-                                                width: root.iconSize
-                                                height: width
-                                                sourceSize: Theme.iconSourceSize(width, height)
-                                                source: feature.modelData.icon || ""
-                                                color: Theme.colors.text.active
-                                                visible: feature.modelData.icon !== undefined
+                                                spacing: Theme.chromePadding
+                                                Repeater {
+                                                    model: feature.icons
+                                                    delegate: ControlsImpl.IconImage {
+                                                        required property url modelData
+                                                        width: root.iconSize
+                                                        height: width
+                                                        sourceSize: Theme.iconSourceSize(width, height)
+                                                        source: modelData
+                                                        color: Theme.colors.text.active
+                                                    }
+                                                }
                                             }
                                             Text {
                                                 id: sample

@@ -710,12 +710,19 @@ Item {
             {
                 id: "workspace-actions",
                 target: mainToolBar.workspaceActionsItem,
+                secondaryTarget: splitView.renderModeItem,
                 title: qsTrId("guide.workspace_actions.title"),
                 features: [
                     { icon: Qt.resolvedUrl("icons/audio-settings.svg"), label: qsTrId("action.audio_settings") },
                     { icon: Qt.resolvedUrl("icons/preview-settings.svg"), label: qsTrId("action.video_settings") },
-                    { icon: Qt.resolvedUrl("icons/panel-left.svg"), label: qsTrId("guide.sidebar_panel") },
-                    { icon: Qt.resolvedUrl("icons/panel-bottom.svg"), label: qsTrId("guide.bottom_panel") }
+                    {
+                        icons: [Qt.resolvedUrl("icons/panel-left.svg"), Qt.resolvedUrl("icons/panel-bottom.svg")],
+                        label: qsTrId("guide.panel_toggle")
+                    },
+                    {
+                        icons: [Qt.resolvedUrl("icons/circle.svg"), Qt.resolvedUrl("icons/important.svg")],
+                        label: qsTrId("guide.render_mode")
+                    }
                 ],
                 placement: "below",
                 alignment: "end"

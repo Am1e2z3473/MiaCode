@@ -4635,13 +4635,13 @@ Error: %1</source>
         <source>Detach preview: move the preview to a separate window.</source>
         <translation>分离预览：将预览移到独立窗口。</translation>
     </message>
-    <message id="guide.sidebar_panel">
-        <source>Sidebar</source>
-        <translation>侧栏</translation>
+    <message id="guide.panel_toggle">
+        <source>Expand/collapse</source>
+        <translation>展开/收起</translation>
     </message>
-    <message id="guide.bottom_panel">
-        <source>Bottom panel</source>
-        <translation>底部面板</translation>
+    <message id="guide.render_mode">
+        <source>Normal/Muri</source>
+        <translation>常规/无理</translation>
     </message>
     <message id="guide.navigation.chart">
         <source>Chart editing: the main chart-writing features are here.</source>

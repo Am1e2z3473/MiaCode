@@ -4635,13 +4635,13 @@ Error: %1</translation>
         <source>Detach preview: move the preview to a separate window.</source>
         <translation>Detach preview: move the preview to a separate window.</translation>
     </message>
-    <message id="guide.sidebar_panel">
-        <source>Sidebar</source>
-        <translation>Sidebar</translation>
+    <message id="guide.panel_toggle">
+        <source>Expand/collapse</source>
+        <translation>Expand/collapse</translation>
     </message>
-    <message id="guide.bottom_panel">
-        <source>Bottom panel</source>
-        <translation>Bottom panel</translation>
+    <message id="guide.render_mode">
+        <source>Normal/Muri</source>
+        <translation>Normal/Muri</translation>
     </message>
     <message id="guide.navigation.chart">
         <source>Chart editing: the main chart-writing features are here.</source>

@@ -34,6 +34,7 @@ Item {
     readonly property Item sourceEditorItem: editorPane.sourceEditorItem
     readonly property Item difficultyFieldsItem: editorPane.difficultyFieldsItem
     readonly property Item transportItem: preview.transportItem
+    readonly property Item renderModeItem: preview.renderModeItem
     readonly property bool previewDetached: root.preferences.previewDetached
     readonly property Item settingsDialogParent: root.previewDetached
         ? detachedPreviewWindow.Overlay.overlay : root.Overlay.overlay

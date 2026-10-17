@@ -4635,13 +4635,13 @@ Error: %1</source>
         <source>Detach preview: move the preview to a separate window.</source>
         <translation>プレビューを分離：別のウィンドウに移動します。</translation>
     </message>
-    <message id="guide.sidebar_panel">
-        <source>Sidebar</source>
-        <translation>サイドバー</translation>
+    <message id="guide.panel_toggle">
+        <source>Expand/collapse</source>
+        <translation>展開/折りたたみ</translation>
     </message>
-    <message id="guide.bottom_panel">
-        <source>Bottom panel</source>
-        <translation>下部パネル</translation>
+    <message id="guide.render_mode">
+        <source>Normal/Muri</source>
+        <translation>通常/無理</translation>
     </message>
     <message id="guide.navigation.chart">
         <source>Chart editing: the main chart-writing features are here.</source>

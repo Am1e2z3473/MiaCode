@@ -765,6 +765,8 @@ set(MIACODE_UI_ICON_FILES
     src/app/ui/resources/icons/redo.svg
     src/app/ui/resources/icons/play.svg
     src/app/ui/resources/icons/circle-play.svg
+    src/app/ui/resources/icons/circle.svg
+    src/app/ui/resources/icons/important.svg
     src/app/ui/resources/icons/pause.svg
     src/app/ui/resources/icons/stop.svg
     src/app/ui/resources/icons/preview-detach.svg

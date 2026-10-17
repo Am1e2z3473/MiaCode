@@ -23,6 +23,7 @@ Rectangle {
     signal dockRequested()
     readonly property alias cornerSourceItem: heading
     readonly property Item transportItem: transport
+    readonly property Item renderModeItem: renderModeButton
 
     // Export page still uses the backend ratio. Edit mode defaults to 1:1;
     // free aspect sizes the surface to the live stage geometry.
