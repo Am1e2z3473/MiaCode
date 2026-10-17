@@ -3,6 +3,48 @@
 <TS version="2.1" language="en_US">
 <context>
     <name></name>
+    <message id="setup.completion_hint">
+        <source>Customize completion candidates in Preferences.</source>
+        <translation>Customize completion candidates in Preferences.</translation>
+    </message>
+    <message id="setup.skip">
+        <source>Skip</source>
+        <translation>Skip</translation>
+    </message>
+    <message id="setup.navigation_hint">
+        <source>Standard mode: Sidebar tabs are grouped by function.
+Classic mode: All functions are on one page, similar to the layout in earlier versions.</source>
+        <translation>Standard mode: Sidebar tabs are grouped by function.
+Classic mode: All functions are on one page, similar to the layout in earlier versions.</translation>
+    </message>
+    <message id="setup.finish">
+        <source>Finish setup</source>
+        <translation>Finish setup</translation>
+    </message>
+    <message id="setup.welcome">
+        <source>Welcome to MiaCode</source>
+        <translation>Welcome to MiaCode</translation>
+    </message>
+    <message id="setup.configure">
+        <source>Set up appearance, layout, navigation and the editor. You can change these later in Preferences.</source>
+        <translation>Set up appearance, layout, navigation and the editor. You can change these later in Preferences.</translation>
+    </message>
+    <message id="setup.imported">
+        <source>Settings from the previous version are in place. Confirm appearance, layout, navigation and the editor; you can change them later in Preferences.</source>
+        <translation>Settings from the previous version are in place. Confirm appearance, layout, navigation and the editor; you can change them later in Preferences.</translation>
+    </message>
+    <message id="setup.import_pending">
+        <source>Settings from the previous version were loaded, but saving failed. Check the configuration directory permissions and confirm appearance, layout, navigation and the editor.</source>
+        <translation>Settings from the previous version were loaded, but saving failed. Check the configuration directory permissions and confirm appearance, layout, navigation and the editor.</translation>
+    </message>
+    <message id="setup.wizard">
+        <source>Setup wizard</source>
+        <translation>Setup wizard</translation>
+    </message>
+    <message id="setup.save_failed">
+        <source>Settings could not be saved. Check configuration directory permissions and try again.</source>
+        <translation>Settings could not be saved. Check configuration directory permissions and try again.</translation>
+    </message>
     <message id="about.version">
         <source>Version: %1</source>
         <translation>Version: %1</translation>
@@ -68,8 +110,8 @@
         <translation>Standard</translation>
     </message>
     <message id="dialog.preferences.sidebar_mode.efficient">
-        <source>Classic</source>
-        <translation>Classic</translation>
+        <source>Classic (1.x)</source>
+        <translation>Classic (1.x)</translation>
     </message>
     <message id="about.build_type">
         <source>Release Channel</source>
@@ -1268,12 +1310,12 @@ Failed: %2</translation>
         <translation>Dark theme</translation>
     </message>
     <message id="dialog.preferences.theme.legacy">
-        <source>Legacy</source>
-        <translation>Dark (Legacy)</translation>
+        <source>Classic Dark</source>
+        <translation>Classic Dark</translation>
     </message>
     <message id="dialog.preferences.theme.legacy_light">
-        <source>Legacy Light</source>
-        <translation>Light (Legacy)</translation>
+        <source>Classic Light</source>
+        <translation>Classic Light</translation>
     </message>
     <message id="dialog.preferences.theme.light">
         <source>Light</source>
@@ -4530,10 +4572,6 @@ Error: %1</translation>
     <message id="net.sort_status_descending">
         <source>Status: descending</source>
         <translation>Status: descending</translation>
-    </message>
-    <message id="guide.title">
-        <source>Getting started</source>
-        <translation>Getting started</translation>
     </message>
     <message id="guide.page_one">
         <source>Getting started · Page 1</source>

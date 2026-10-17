@@ -170,6 +170,31 @@ WorkbenchSettings::WorkbenchSettings(QObject* parent)
     reloadEditorSettings();
 }
 
+bool WorkbenchSettings::setupCompleted() const
+{
+    return loadUiObject().value(QStringLiteral("setup_completed")).toBool(false);
+}
+
+QString WorkbenchSettings::preferenceMigrationStatus() const
+{
+    return PreferenceDocument::migrationStatus();
+}
+
+bool WorkbenchSettings::completeSetup()
+{
+    const QJsonObject previous = PreferenceDocument::loadPreferencesObject();
+    QJsonObject root = previous;
+    QJsonObject ui = root.value(QLatin1String(kUiSection)).toObject();
+    ui.insert(QStringLiteral("setup_completed"), true);
+    root.insert(QLatin1String(kUiSection), ui);
+    if (!PreferenceDocument::savePreferencesObject(root)) {
+        PreferenceDocument::savePreferencesObject(previous);
+        return false;
+    }
+    emit setupCompletedChanged();
+    return true;
+}
+
 void WorkbenchSettings::setBlurMaterialsEnabled(bool enabled)
 {
     if (blurMaterialsEnabled_ == enabled) {

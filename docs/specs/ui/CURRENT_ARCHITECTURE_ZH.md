@@ -50,6 +50,10 @@ QML 控件、弹层和表单优先复用 `src/app/ui/components/`；主题在 `t
 （再缺失时为程序目录旧版 `.miacode_preferences.json`），此后两版各写各的文件；
 下层库只经 `common/PreferenceProvider.h` 的端口读写各自的 `app.<section>`，生产实现为
 `app/runtime/settings/PreferenceDocumentProvider`。
+首次设置由 `SetupWizard` 管理，复用首选项的配色、预览位置、侧栏模式和输入方式；
+完成后保存 `ui.setup_completed`，随即进入 `BeginnerGuideOverlay`，引导作为向导的收尾阶段；
+“附加”菜单的“启动设置向导”可重新打开向导。
+欢迎页的旧版导入提示取自偏好仓库的本次导入结果，配置 schema 与向导完成状态独立。
 共享请求/进度复用 UiRequestService 和 JobProgressService；文件与资源解析复用现有领域服务。
 
 整体界面缩放由 `WorkbenchSettings.uiScalePercent` 管理，保存到

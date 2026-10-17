@@ -3,6 +3,48 @@
 <TS version="2.1" language="zh_CN">
 <context>
     <name></name>
+    <message id="setup.completion_hint">
+        <source>Customize completion candidates in Preferences.</source>
+        <translation>可在首选项中自定义补全候选列表。</translation>
+    </message>
+    <message id="setup.skip">
+        <source>Skip</source>
+        <translation>跳过</translation>
+    </message>
+    <message id="setup.navigation_hint">
+        <source>Standard mode: Sidebar tabs are grouped by function.
+Classic mode: All functions are on one page, similar to the layout in earlier versions.</source>
+        <translation>标准模式：按功能分类侧边栏标签。
+经典模式：所有功能在同一页，与旧版本布局相似。</translation>
+    </message>
+    <message id="setup.finish">
+        <source>Finish setup</source>
+        <translation>完成设置</translation>
+    </message>
+    <message id="setup.welcome">
+        <source>Welcome to MiaCode</source>
+        <translation>欢迎使用 MiaCode</translation>
+    </message>
+    <message id="setup.configure">
+        <source>Set up appearance, layout, navigation and the editor. You can change these later in Preferences.</source>
+        <translation>接下来设置外观、布局、导航与编辑器，之后可在首选项中修改。</translation>
+    </message>
+    <message id="setup.imported">
+        <source>Settings from the previous version are in place. Confirm appearance, layout, navigation and the editor; you can change them later in Preferences.</source>
+        <translation>旧版设置已迁入。接下来确认外观、布局、导航与编辑器，之后可在首选项中修改。</translation>
+    </message>
+    <message id="setup.import_pending">
+        <source>Settings from the previous version were loaded, but saving failed. Check the configuration directory permissions and confirm appearance, layout, navigation and the editor.</source>
+        <translation>旧版设置已读取，保存失败。请检查配置目录权限，并确认外观、布局、导航与编辑器。</translation>
+    </message>
+    <message id="setup.wizard">
+        <source>Setup wizard</source>
+        <translation>启动设置向导</translation>
+    </message>
+    <message id="setup.save_failed">
+        <source>Settings could not be saved. Check configuration directory permissions and try again.</source>
+        <translation>设置保存失败，请检查配置目录权限后重试。</translation>
+    </message>
     <message id="about.version">
         <source>Version: %1</source>
         <translation>版本号：%1</translation>
@@ -68,8 +110,8 @@
         <translation>标准</translation>
     </message>
     <message id="dialog.preferences.sidebar_mode.efficient">
-        <source>Classic</source>
-        <translation>经典</translation>
+        <source>Classic (1.x)</source>
+        <translation>经典（1.x）</translation>
     </message>
     <message id="about.build_type">
         <source>Release Channel</source>
@@ -1268,12 +1310,12 @@ Failed: %2</source>
         <translation>深色主题</translation>
     </message>
     <message id="dialog.preferences.theme.legacy">
-        <source>Legacy</source>
-        <translation>深色（旧）</translation>
+        <source>Classic Dark</source>
+        <translation>经典深色</translation>
     </message>
     <message id="dialog.preferences.theme.legacy_light">
-        <source>Legacy Light</source>
-        <translation>浅色（旧）</translation>
+        <source>Classic Light</source>
+        <translation>经典浅色</translation>
     </message>
     <message id="dialog.preferences.theme.light">
         <source>Light</source>
@@ -4530,10 +4572,6 @@ Error: %1</source>
     <message id="net.sort_status_descending">
         <source>Status: descending</source>
         <translation>状态：降序</translation>
-    </message>
-    <message id="guide.title">
-        <source>Getting started</source>
-        <translation>新手指引</translation>
     </message>
     <message id="guide.page_one">
         <source>Getting started · Page 1</source>

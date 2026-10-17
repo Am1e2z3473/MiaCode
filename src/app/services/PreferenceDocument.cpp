@@ -14,9 +14,7 @@
 
 namespace {
 
-// v4 (2026-06-19): re-runs first-run onboarding so existing users see the
-// welcome dialog's new IME-block choice. Bump this whenever onboarding gains a
-// setting whose default should be re-confirmed by users with stored prefs.
+// Document schema and setup completion are independent.
 constexpr auto kPreferencesSchema = "miacode_preferences_v4";
 constexpr auto kUiSectionKey = "ui";
 constexpr auto kAppSectionKey = "app";
@@ -668,6 +666,7 @@ void PreferenceDocument::Repository::initializeLocked()
             QStringLiteral("unsupported-schema read-only-for-session"), miacode::debug_log::Level::Warn);
     }
     if (primary.status == ReadStatus::Missing && source.status == ReadStatus::Valid) {
+        migrationStatus_ = QStringLiteral("pending");
         miacode::preference_json_file::log(path_,
             QStringLiteral("imported-from=%1").arg(sourcePath), miacode::debug_log::Level::Info);
     }
@@ -694,6 +693,13 @@ QString PreferenceDocument::Repository::storedSchema()
     const QMutexLocker lock(&mutex_);
     initializeLocked();
     return storedSchema_;
+}
+
+QString PreferenceDocument::Repository::migrationStatus()
+{
+    const QMutexLocker lock(&mutex_);
+    initializeLocked();
+    return migrationStatus_;
 }
 
 bool PreferenceDocument::Repository::replace(const QJsonObject& root)
@@ -741,6 +747,9 @@ bool PreferenceDocument::Repository::flushLocked()
         return false;
     }
     dirty_ = false;
+    if (migrationStatus_ == QLatin1String("pending")) {
+        migrationStatus_ = QStringLiteral("imported");
+    }
     return true;
 }
 
@@ -754,6 +763,11 @@ bool PreferenceDocument::Repository::isDirty()
 QString PreferenceDocument::storedPreferencesSchema()
 {
     return preferencesRepository().storedSchema();
+}
+
+QString PreferenceDocument::migrationStatus()
+{
+    return preferencesRepository().migrationStatus();
 }
 
 QJsonObject PreferenceDocument::loadPreferencesObject()

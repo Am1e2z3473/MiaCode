@@ -654,9 +654,9 @@ Item {
             id: extrasMenu
             title: root.menuTitle(qsTrId("menu.extras"))
             AppMenuAction {
-                text: qsTrId("guide.title")
+                text: qsTrId("setup.wizard")
                 enabled: root.commandsEnabled
-                onTriggered: root.commands.beginnerGuideRequested()
+                onTriggered: root.commands.setupWizardRequested()
             }
             AppMenuSeparator {}
             AppMenuAction {

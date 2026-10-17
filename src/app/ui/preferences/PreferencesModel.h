@@ -34,6 +34,8 @@ public:
     Q_PROPERTY(QVariantList themeModeOptions READ themeModeOptions NOTIFY interfaceChanged)
     Q_PROPERTY(QString themeModeToken READ themeModeToken WRITE setThemeModeToken NOTIFY interfaceChanged)
     Q_PROPERTY(QVariantList themePaletteOptions READ themePaletteOptions NOTIFY interfaceChanged)
+    Q_PROPERTY(QVariantList sidebarModeOptions READ sidebarModeOptions NOTIFY interfaceChanged)
+    Q_PROPERTY(QVariantList inputHandlingOptions READ inputHandlingOptions NOTIFY interfaceChanged)
     Q_PROPERTY(QString lightThemeToken READ lightThemeToken WRITE setLightThemeToken NOTIFY interfaceChanged)
     Q_PROPERTY(QString darkThemeToken READ darkThemeToken WRITE setDarkThemeToken NOTIFY interfaceChanged)
     Q_PROPERTY(bool previewOnLeft READ previewOnLeft WRITE setPreviewOnLeft NOTIFY interfaceChanged)
@@ -85,6 +87,8 @@ public:
     QString themeModeToken() const;
     void setThemeModeToken(const QString& token);
     QVariantList themePaletteOptions() const;
+    QVariantList sidebarModeOptions() const;
+    QVariantList inputHandlingOptions() const;
     QString lightThemeToken() const;
     void setLightThemeToken(const QString& token);
     QString darkThemeToken() const;

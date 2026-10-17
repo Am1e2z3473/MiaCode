@@ -3,6 +3,48 @@
 <TS version="2.1" language="ja_JP">
 <context>
     <name></name>
+    <message id="setup.completion_hint">
+        <source>Customize completion candidates in Preferences.</source>
+        <translation>補完候補リストは環境設定でカスタマイズできます。</translation>
+    </message>
+    <message id="setup.skip">
+        <source>Skip</source>
+        <translation>スキップ</translation>
+    </message>
+    <message id="setup.navigation_hint">
+        <source>Standard mode: Sidebar tabs are grouped by function.
+Classic mode: All functions are on one page, similar to the layout in earlier versions.</source>
+        <translation>標準モード：機能別にサイドバーのタブを分類します。
+クラシックモード：すべての機能を同じページに表示し、旧バージョンに近いレイアウトです。</translation>
+    </message>
+    <message id="setup.finish">
+        <source>Finish setup</source>
+        <translation>設定を完了</translation>
+    </message>
+    <message id="setup.welcome">
+        <source>Welcome to MiaCode</source>
+        <translation>MiaCode へようこそ</translation>
+    </message>
+    <message id="setup.configure">
+        <source>Set up appearance, layout, navigation and the editor. You can change these later in Preferences.</source>
+        <translation>外観、レイアウト、ナビゲーション、エディターを設定します。設定は環境設定で変更できます。</translation>
+    </message>
+    <message id="setup.imported">
+        <source>Settings from the previous version are in place. Confirm appearance, layout, navigation and the editor; you can change them later in Preferences.</source>
+        <translation>旧バージョンの設定を引き継ぎました。外観、レイアウト、ナビゲーション、エディターを確認します。設定は環境設定で変更できます。</translation>
+    </message>
+    <message id="setup.import_pending">
+        <source>Settings from the previous version were loaded, but saving failed. Check the configuration directory permissions and confirm appearance, layout, navigation and the editor.</source>
+        <translation>旧バージョンの設定を読み込みました。保存に失敗しました。設定フォルダーの権限を確認し、外観、レイアウト、ナビゲーション、エディターを確認してください。</translation>
+    </message>
+    <message id="setup.wizard">
+        <source>Setup wizard</source>
+        <translation>セットアップウィザード</translation>
+    </message>
+    <message id="setup.save_failed">
+        <source>Settings could not be saved. Check configuration directory permissions and try again.</source>
+        <translation>設定の保存に失敗しました。設定フォルダーの権限を確認して、やり直してください。</translation>
+    </message>
     <message id="about.version">
         <source>Version: %1</source>
         <translation>バージョン：%1</translation>
@@ -68,8 +110,8 @@
         <translation>標準</translation>
     </message>
     <message id="dialog.preferences.sidebar_mode.efficient">
-        <source>Classic</source>
-        <translation>クラシック</translation>
+        <source>Classic (1.x)</source>
+        <translation>クラシック（1.x）</translation>
     </message>
     <message id="about.build_type">
         <source>Release Channel</source>
@@ -1268,12 +1310,12 @@ Failed: %2</source>
         <translation>ダークテーマ</translation>
     </message>
     <message id="dialog.preferences.theme.legacy">
-        <source>Legacy</source>
-        <translation>ダーク（旧）</translation>
+        <source>Classic Dark</source>
+        <translation>クラシックダーク</translation>
     </message>
     <message id="dialog.preferences.theme.legacy_light">
-        <source>Legacy Light</source>
-        <translation>ライト（旧）</translation>
+        <source>Classic Light</source>
+        <translation>クラシックライト</translation>
     </message>
     <message id="dialog.preferences.theme.light">
         <source>Light</source>
@@ -4530,10 +4572,6 @@ Error: %1</source>
     <message id="net.sort_status_descending">
         <source>Status: descending</source>
         <translation>状態：降順</translation>
-    </message>
-    <message id="guide.title">
-        <source>Getting started</source>
-        <translation>初心者ガイド</translation>
     </message>
     <message id="guide.page_one">
         <source>Getting started · Page 1</source>

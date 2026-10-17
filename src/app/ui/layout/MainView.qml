@@ -37,7 +37,7 @@ Item {
             ? baseTitle + " — " + documentSession.currentDifficultyLabel
             : baseTitle
     }
-    readonly property bool beginnerGuideActive: beginnerGuide.visible
+    readonly property bool beginnerGuideActive: beginnerGuide.visible || setupWizard.visible
     readonly property bool editorActive: state.hasActiveEditor && !pages.overlayActive
         && !beginnerGuideActive
     readonly property bool currentEditorSaveEnabled: editorActive
@@ -157,7 +157,7 @@ Item {
                 root.pages.openNormalizeWholeChart()
         }
         onAboutRequested: preferencesDialog.openPage("about")
-        onBeginnerGuideRequested: beginnerGuide.open()
+        onSetupWizardRequested: setupWizard.open()
         onPreferencesRequested: preferencesDialog.open()
         onNewDocumentRequested: root.commands.newDocument()
         onOpenRecentRequested: path => root.commands.openRecentDocument(path)
@@ -288,6 +288,8 @@ Item {
         state.sidebarVisible = root.preferences.sidebarVisible
         state.bottomPanelVisible = root.preferences.bottomPanelVisible
         state.resetEditorTabs(root.documentSession.currentDifficultyId)
+        if (!root.preferences.setupCompleted)
+            Qt.callLater(setupWizard.open)
     }
 
     onCompactChanged: state.compactPanel = ""
@@ -641,6 +643,14 @@ Item {
         anchors.fill: parent
         progress: root.jobProgress
         imageResources: root.imageResources
+    }
+
+    SetupWizard {
+        id: setupWizard
+        objectName: "setupWizard"
+        preferences: root.preferences
+        preferencesModel: root.preferencesModel
+        onFinished: beginnerGuide.open()
     }
 
     BeginnerGuideOverlay {

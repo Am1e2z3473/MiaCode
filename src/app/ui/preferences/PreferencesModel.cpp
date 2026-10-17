@@ -127,6 +127,23 @@ QVariantList PreferencesModel::themePaletteOptions() const
     };
 }
 
+QVariantList PreferencesModel::sidebarModeOptions() const
+{
+    return {
+        option(false, qtTrId("dialog.preferences.sidebar_mode.standard")),
+        option(true, qtTrId("dialog.preferences.sidebar_mode.efficient")),
+    };
+}
+
+QVariantList PreferencesModel::inputHandlingOptions() const
+{
+    return {
+        option(CorrectFullWidthOnly, qtTrId("preferences.correct_full_width_only")),
+        option(BlockInputMethodsAndCorrectFullWidth, qtTrId("preferences.block_input_methods_and_correct_full_width")),
+        option(LeaveInputUnchanged, qtTrId("preferences.leave_input_unchanged")),
+    };
+}
+
 QString PreferencesModel::lightThemeToken() const
 {
     return settings_ != nullptr ? settings_->lightThemeToken() : QStringLiteral("light");

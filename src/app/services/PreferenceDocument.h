@@ -46,6 +46,7 @@ public:
     explicit Repository(QString path, QStringList migrationSources = {});
     QJsonObject snapshot();
     QString storedSchema();
+    QString migrationStatus();
     bool replace(const QJsonObject& root);
     bool flush();
     bool isDirty();
@@ -57,6 +58,7 @@ private:
     QString path_;
     QStringList migrationSources_;
     QString storedSchema_;
+    QString migrationStatus_;
     QJsonObject root_;
     bool initialized_ = false;
     bool dirty_ = false;
@@ -88,6 +90,7 @@ bool themePaletteIsDark(ThemePalette palette);
 QString preferencesFilePath();
 QString currentPreferencesSchema();
 QString storedPreferencesSchema();
+QString migrationStatus();
 QJsonObject loadPreferencesObject();
 // Applies the new runtime value even if disk persistence returns false.
 bool savePreferencesObject(const QJsonObject& root);
