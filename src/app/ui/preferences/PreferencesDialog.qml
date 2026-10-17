@@ -596,20 +596,6 @@ AppDialog {
                             onPicked: function(value) { root.preferencesModel.darkThemeToken = value }
                         }
 
-                        PreferenceSwitch {
-                            objectName: "preferencesBlurMaterialsSwitch"
-                            text: qsTrId("dialog.preferences.blur_materials")
-                            checked: root.preferencesModel.blurMaterialsEnabled
-                            onToggled: root.preferencesModel.blurMaterialsEnabled = checked
-                        }
-
-                        PreferenceCombo {
-                            objectName: "preferencesUiScaleCombo"
-                            label: qsTrId("dialog.preferences.ui_scale")
-                            options: root.preferencesModel.uiScaleOptions
-                            currentValue: root.preferencesModel.uiScalePercent
-                            onPicked: value => root.preferencesModel.uiScalePercent = value
-                        }
                     }
 
                     PreferenceGroup {
@@ -635,6 +621,14 @@ AppDialog {
                             ]
                             currentValue: root.preferences.efficientSidebarEnabled
                             onPicked: value => root.preferences.efficientSidebarEnabled = value
+                        }
+
+                        PreferenceCombo {
+                            objectName: "preferencesUiScaleCombo"
+                            label: qsTrId("dialog.preferences.ui_scale")
+                            options: root.preferencesModel.uiScaleOptions
+                            currentValue: root.preferencesModel.uiScalePercent
+                            onPicked: value => root.preferencesModel.uiScalePercent = value
                         }
 
                         RowLayout {
@@ -958,6 +952,13 @@ AppDialog {
 
                     PreferenceGroup {
                         title: qsTrId("dialog.preferences.group.rendering")
+
+                        PreferenceSwitch {
+                            objectName: "preferencesBlurMaterialsSwitch"
+                            text: qsTrId("dialog.preferences.blur_materials")
+                            checked: root.preferencesModel.blurMaterialsEnabled
+                            onToggled: root.preferencesModel.blurMaterialsEnabled = checked
+                        }
 
                         PreferenceCombo {
                             objectName: "preferencesCanvasFrameRateCombo"
