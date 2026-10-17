@@ -775,22 +775,22 @@ AppDialog {
                                 checked: root.preferencesModel.editorAutoCompletion
                                 onToggled: root.preferencesModel.editorAutoCompletion = checked
                             }
-                        }
 
-                        CompletionCandidatesEditor {
-                            id: completionCustomizer
-                            Layout.fillWidth: true
-                            visible: root.preferencesModel.editorAutoCompletion
-                            preferencesModel: root.preferencesModel
-                            scrollViewport: editorViewport.scrollViewport
-                            onExpandedChanged: {
-                                if (!completionCustomizer.expanded)
-                                    editorViewport.completionTopAligned = false
+                            CompletionCandidatesEditor {
+                                id: completionCustomizer
+                                Layout.fillWidth: true
+                                visible: root.preferencesModel.editorAutoCompletion
+                                preferencesModel: root.preferencesModel
+                                scrollViewport: editorViewport.scrollViewport
+                                onExpandedChanged: {
+                                    if (!completionCustomizer.expanded)
+                                        editorViewport.completionTopAligned = false
+                                }
+                                onEnsureVisibleRequested: function(item, alignment) {
+                                    root.ensureCompletionItemVisible(item, alignment)
+                                }
+                                onScrollRequested: function(distance) { root.scrollCompletionBy(distance) }
                             }
-                            onEnsureVisibleRequested: function(item, alignment) {
-                                root.ensureCompletionItemVisible(item, alignment)
-                            }
-                            onScrollRequested: function(distance) { root.scrollCompletionBy(distance) }
                         }
 
                         PreferenceGroup {

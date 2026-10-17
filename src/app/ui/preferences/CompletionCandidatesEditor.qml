@@ -4,7 +4,7 @@ import QtQuick.Controls.impl as ControlsImpl
 import QtQuick.Layouts
 import MiaCode.UI
 
-Rectangle {
+Item {
     id: root
     required property var preferencesModel
     property bool expanded: false
@@ -12,10 +12,6 @@ Rectangle {
     signal ensureVisibleRequested(Item item, string alignment)
     signal scrollRequested(real distance)
     implicitHeight: heading.height + (root.expanded ? contents.height : 0)
-    radius: Theme.popupRadius
-    color: Theme.surfaceColor(Theme.colors.background.surface)
-    border.width: Theme.controlBorderWidth
-    border.color: Theme.colors.border.normal
     clip: true
 
     onExpandedChanged: {
@@ -35,6 +31,7 @@ Rectangle {
         durations.ensureContentLayout()
         divisions.ensureContentLayout()
         groups.ensurePolished()
+        contentColumn.ensurePolished()
     }
     function releaseInputFocusOutside(origin, position) {
         durations.releaseInputFocusOutside(origin, position)
@@ -54,61 +51,34 @@ Rectangle {
         })
     }
 
-    Item {
+    ChromeRow {
         id: heading
+        objectName: "completionCustomizeToggle"
         width: parent.width
-        height: Theme.controlMinHeight + 10
-        AbstractButton {
-            id: toggle
-            anchors.fill: parent
-            Accessible.name: qsTrId("preferences.completion.customize")
-            onClicked: root.expanded = !root.expanded
-            contentItem: Item {
-                Row {
-                    x: 12
-                    anchors.verticalCenter: parent.verticalCenter
-                    spacing: 7
-                    ControlsImpl.IconImage {
-                        anchors.verticalCenter: parent.verticalCenter
-                        width: 16
-                        height: 16
-                        source: Qt.resolvedUrl(root.expanded ? "icons/chevron-down.svg" : "icons/chevron-right.svg")
-                        sourceSize: Theme.iconSourceSize(16, 16)
-                        color: Theme.colors.text.secondary
-                    }
-                    Text {
-                        text: qsTrId("preferences.completion.customize")
-                        color: Theme.colors.text.primary
-                        font.family: Theme.uiFont
-                        font.pixelSize: Theme.uiFontSize + 1
-                    }
-                }
+        implicitHeight: Theme.controlMinHeight + 10
+        leftPadding: 0
+        rightPadding: 6
+        text: qsTrId("preferences.completion.customize")
+        Accessible.checkable: true
+        Accessible.checked: root.expanded
+        onClicked: root.expanded = !root.expanded
+        contentItem: RowLayout {
+            spacing: Theme.settingsRowSpacing
+            Text {
+                Layout.fillWidth: true
+                text: heading.text
+                color: heading.hovered || heading.visualFocus
+                    ? Theme.colors.text.active : Theme.colors.text.secondary
+                font: heading.labelFont
+                elide: Text.ElideRight
+                verticalAlignment: Text.AlignVCenter
             }
-            background: Rectangle {
-                color: "transparent"
-                radius: Theme.popupRadius
-                border.width: toggle.visualFocus ? Theme.controlBorderWidth : 0
-                border.color: Theme.colors.accent.focus
-            }
-        }
-        AppButton {
-            id: resetButton
-            anchors.right: parent.right
-            anchors.rightMargin: 8
-            anchors.verticalCenter: parent.verticalCenter
-            visible: root.expanded
-            text: qsTrId("preferences.completion.reset")
-            Accessible.description: qsTrId("preferences.completion.reset_hint")
-            onClicked: resetDialog.open()
-            Tooltip {
-                visible: resetButton.visible && resetButton.hovered
-                text: qsTrId("preferences.completion.reset_hint")
-            }
-            background: Rectangle {
-                color: "transparent"
-                radius: Theme.controlRadius
-                border.width: resetButton.visualFocus ? Theme.controlBorderWidth : 0
-                border.color: Theme.colors.accent.focus
+            ControlsImpl.IconImage {
+                Layout.preferredWidth: 16
+                Layout.preferredHeight: 16
+                source: Qt.resolvedUrl(root.expanded ? "icons/chevron-down.svg" : "icons/chevron-right.svg")
+                sourceSize: Theme.iconSourceSize(16, 16)
+                color: Theme.colors.text.secondary
             }
         }
     }
@@ -122,44 +92,66 @@ Rectangle {
         }
     }
 
-    Item {
+    Rectangle {
         id: contents
         y: heading.height
         width: parent.width
-        height: groups.implicitHeight + 24
+        height: contentColumn.implicitHeight + 24
+        radius: Theme.controlRadius
+        color: Theme.surfaceColor(Theme.colors.background.surface)
+        border.width: Theme.controlBorderWidth
+        border.color: Theme.colors.border.normal
         visible: root.expanded
         enabled: root.expanded
-        RowLayout {
-            id: groups
+        ColumnLayout {
+            id: contentColumn
             x: 12
             y: 12
             width: Math.max(0, parent.width - 24)
-            spacing: 20
-            CompletionCandidateList {
-                id: durations
+            spacing: 12
+
+            RowLayout {
+                id: groups
                 Layout.fillWidth: true
-                Layout.preferredWidth: 1
-                Layout.minimumWidth: 0
-                Layout.alignment: Qt.AlignTop
-                candidateModel: root.preferencesModel.completionDurations
-                title: qsTrId("preferences.completion.duration")
-                inputHint: qsTrId("preferences.completion.duration_hint")
-                scrollViewport: root.scrollViewport
-                onEnsureVisibleRequested: function(item) { root.ensureVisibleRequested(item, "contain") }
-                onScrollRequested: function(distance) { root.scrollRequested(distance) }
+                spacing: 20
+                CompletionCandidateList {
+                    id: durations
+                    Layout.fillWidth: true
+                    Layout.preferredWidth: 1
+                    Layout.minimumWidth: 0
+                    Layout.alignment: Qt.AlignTop
+                    candidateModel: root.preferencesModel.completionDurations
+                    title: qsTrId("preferences.completion.duration")
+                    inputHint: qsTrId("preferences.completion.duration_hint")
+                    scrollViewport: root.scrollViewport
+                    onEnsureVisibleRequested: function(item) { root.ensureVisibleRequested(item, "contain") }
+                    onScrollRequested: function(distance) { root.scrollRequested(distance) }
+                }
+                CompletionCandidateList {
+                    id: divisions
+                    Layout.fillWidth: true
+                    Layout.preferredWidth: 1
+                    Layout.minimumWidth: 0
+                    Layout.alignment: Qt.AlignTop
+                    candidateModel: root.preferencesModel.completionDivisions
+                    title: qsTrId("preferences.completion.division")
+                    inputHint: qsTrId("preferences.completion.division_hint")
+                    scrollViewport: root.scrollViewport
+                    onEnsureVisibleRequested: function(item) { root.ensureVisibleRequested(item, "contain") }
+                    onScrollRequested: function(distance) { root.scrollRequested(distance) }
+                }
             }
-            CompletionCandidateList {
-                id: divisions
-                Layout.fillWidth: true
-                Layout.preferredWidth: 1
-                Layout.minimumWidth: 0
-                Layout.alignment: Qt.AlignTop
-                candidateModel: root.preferencesModel.completionDivisions
-                title: qsTrId("preferences.completion.division")
-                inputHint: qsTrId("preferences.completion.division_hint")
-                scrollViewport: root.scrollViewport
-                onEnsureVisibleRequested: function(item) { root.ensureVisibleRequested(item, "contain") }
-                onScrollRequested: function(distance) { root.scrollRequested(distance) }
+
+            AppButton {
+                id: resetButton
+                Layout.alignment: Qt.AlignRight
+                text: qsTrId("preferences.completion.reset")
+                Accessible.description: qsTrId("preferences.completion.reset_hint")
+                onClicked: resetDialog.open()
+                Tooltip {
+                    visible: resetButton.hovered
+                    text: qsTrId("preferences.completion.reset_hint")
+                }
             }
         }
     }
