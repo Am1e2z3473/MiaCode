@@ -2705,6 +2705,10 @@ The file may be open in preview, a media player, File Explorer preview pane, or 
         <source>No PV</source>
         <translation>暂无PV</translation>
     </message>
+    <message id="metadata.no_difficulty_card">
+        <source>Add a difficulty to preview its card.</source>
+        <translation>添加难度后显示难度卡</translation>
+    </message>
     <message id="metadata.no_cover">
         <source>No cover</source>
         <translation>暂无曲绘</translation>

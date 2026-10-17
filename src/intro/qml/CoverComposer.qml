@@ -126,20 +126,6 @@ Item {
         return denom > 0 ? cardNativeW(t) / denom : (420.0 / 690.0)
     }
 
-    readonly property var cardTemplate: {
-        var t = coverTemplate
-        if (!t || !t.card) return t
-        var c = JSON.parse(JSON.stringify(t))
-        var tabTop = tabTopNative(c)
-        var contentH = c.card.nativeHeight - tabTop
-        if (contentH > 0) {
-            c.card.heightRatio = c.card.nativeHeight / contentH
-            c.card.topMargin = (-tabTop) / contentH
-        }
-        c.transparentBackground = true   // card layer is always transparent; bg is its own layer
-        return c
-    }
-
     // ---- background helpers (read from template, defaults match the card) ----
     function dimColor() {
         return (coverTemplate && coverTemplate.background && coverTemplate.background.dimColor)
@@ -794,7 +780,8 @@ Item {
             anchors.fill: parent
             cacheStaticImages: true
             cacheDynamicImages: false
-            externalTemplate: canvas.cardTemplate
+            externalTemplate: canvas.coverTemplate
+            fitToContent: true
             trackOverrides: canvas.trackOverrides
             jacketImage: canvas.jacketImage
             revealStartFrame: -1

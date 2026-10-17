@@ -44,6 +44,7 @@ class DocumentModel final : public QObject
     Q_PROPERTY(QString metadataVideoPath READ metadataVideoPath WRITE setMetadataVideoPath NOTIFY metadataChanged)
     Q_PROPERTY(QString metadataCoverPath READ metadataCoverPath NOTIFY metadataMediaChanged)
     Q_PROPERTY(QUrl metadataCoverSource READ metadataCoverSource NOTIFY metadataMediaChanged)
+    Q_PROPERTY(QVariantMap difficultyCardTemplate READ difficultyCardTemplate CONSTANT)
     Q_PROPERTY(QString metadataResolvedVideoPath READ metadataResolvedVideoPath NOTIFY metadataMediaChanged)
     Q_PROPERTY(bool metadataHasVideo READ metadataHasVideo NOTIFY metadataMediaChanged)
     Q_PROPERTY(QString metadataClockCount READ metadataClockCount WRITE setMetadataClockCount NOTIFY metadataChanged)
@@ -104,6 +105,8 @@ public:
     QString metadataVideoPath() const;
     QString metadataCoverPath() const;
     QUrl metadataCoverSource() const;
+    QVariantMap difficultyCardTemplate() const;
+    Q_INVOKABLE QVariantMap difficultyCardTrack(int difficultyId) const;
     QString metadataResolvedVideoPath() const;
     bool metadataHasVideo() const;
     QString metadataClockCount() const;
@@ -316,6 +319,10 @@ private:
     QString metadataMediaVideoField_;
     QString metadataCoverPath_;
     QUrl metadataCoverSource_;
+    mutable quint64 difficultyCardRevision_ = ~quint64(0);
+    mutable qulonglong difficultyCardGeneration_ = 0;
+    mutable int difficultyCardId_ = 0;
+    mutable QVariantMap difficultyCardTrack_;
     QString metadataResolvedVideoPath_;
     // Rejected form input stays outside the valid workspace but still owns a
     // dirty metadata tab and blocks saving until corrected or discarded.

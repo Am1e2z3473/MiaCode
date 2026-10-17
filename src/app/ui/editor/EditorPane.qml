@@ -1,6 +1,5 @@
 import QtQuick
 import QtQuick.Controls
-import QtQuick.Effects
 import QtQuick.Layouts
 import MiaCode.UI
 
@@ -421,7 +420,7 @@ Item {
                 wrapMode: Text.WordWrap
             }
 
-            // The four text rows on the left, the cover with its own actions on
+            // Metadata and jacket actions on the left, the difficulty card on
             // the right. Cell widths come from the page width so content never
             // pushes a column out; narrow pages stack the two halves.
             GridLayout {
@@ -479,111 +478,57 @@ Item {
                             onCommitted: value => root.documentSession.metadataClockCount = value
                         }
                     }
-                }
-
-                ColumnLayout {
-                    id: coverColumn
-                    // The two columns keep an even split, so the field column holds
-                    // the left half and the cover block centers inside the right
-                    // one instead of hugging its edge.
-                    Layout.alignment: Qt.AlignTop
-                    Layout.preferredWidth: metadataHeader.cellWidth
-                    Layout.maximumWidth: metadataHeader.cellWidth
-                    // The block ends on the same bottom edge as the field column
-                    // beside it, so the square takes what the heading and the
-                    // action row leave.
-                    readonly property real chromeHeight: coverHeading.implicitHeight
-                        + coverActions.implicitHeight + coverActions.Layout.topMargin
-                        + 2 * coverColumn.spacing
-                    // Square capped by the cell width; stacked layout uses a fixed size.
-                    readonly property real side: Math.max(0, Math.min(metadataHeader.cellWidth,
-                        metadataHeader.twoColumns
-                            ? fieldsColumn.implicitHeight - coverColumn.chromeHeight : 160))
-                    spacing: Theme.settingsLabelSpacing
-
-                    // The heading shares the field labels' left edge; the cover
-                    // centers in the half with its actions on the half's right edge.
-                    Label {
-                        id: coverHeading
-                        text: qsTrId("metadata.field.cover")
-                        color: Theme.colors.text.secondary
-                        font.family: Theme.uiFont
-                        font.pixelSize: Theme.uiFontSize
-                    }
-
-                    Rectangle {
-                        Layout.alignment: Qt.AlignHCenter
-                        Layout.preferredWidth: coverColumn.side
-                        Layout.preferredHeight: coverColumn.side
-                        radius: Theme.controlRadius
-                        color: metadataCover.status === Image.Ready ? "transparent"
-                            : Theme.overlayColor(Theme.colors.background.control)
-
-                        Image {
-                            id: metadataCover
-                            anchors.fill: parent
-                            source: root.documentSession.metadataCoverSource
-                            sourceSize.width: 320
-                            sourceSize.height: 320
-                            fillMode: Image.PreserveAspectFit
-                            cache: false
-                            layer.enabled: status === Image.Ready
-                            layer.effect: MultiEffect {
-                                autoPaddingEnabled: false
-                                maskEnabled: true
-                                maskSource: coverMask
-                            }
-
-                            Item {
-                                id: coverMask
-                                width: metadataCover.width
-                                height: metadataCover.height
-                                visible: false
-                                layer.enabled: true
-
-                                Rectangle {
-                                    anchors.centerIn: parent
-                                    width: metadataCover.paintedWidth
-                                    height: metadataCover.paintedHeight
-                                    radius: Theme.controlRadius
-                                    color: "white"
-                                }
-                            }
-                        }
-                        Text {
-                            anchors.fill: parent
-                            anchors.margins: Theme.panelPadding
-                            visible: metadataCover.status !== Image.Ready
-                            text: qsTrId("metadata.no_cover")
-                            font.family: Theme.uiFont
-                            font.pixelSize: Theme.secondaryFontSize
-                            color: Theme.colors.text.secondary
-                            horizontalAlignment: Text.AlignHCenter
-                            verticalAlignment: Text.AlignVCenter
-                            wrapMode: Text.WordWrap
-                        }
-                    }
                     RowLayout {
-                        id: coverActions
-                        // One shared width for both labels, capped so the pair still
-                        // fits the half; the buttons never clip for translated text.
-                        readonly property real buttonWidth: Math.min(metadataColumn.actionWidth,
-                            (metadataHeader.cellWidth - spacing) / 2)
-                        Layout.alignment: Qt.AlignRight
+                        id: coverRow
+                        Layout.fillWidth: true
                         Layout.topMargin: Theme.panelPadding
                         spacing: Theme.panelPadding
 
-                        AppButton {
-                            Layout.preferredWidth: coverActions.buttonWidth
-                            text: qsTrId("metadata.import")
-                            onClicked: root.documentSession.importChartBackgroundImage()
+                        Label {
+                            id: coverHeading
+                            Layout.fillWidth: true
+                            Layout.minimumWidth: implicitWidth
+                            text: qsTrId("metadata.field.cover")
+                            color: Theme.colors.text.secondary
+                            font.family: Theme.uiFont
+                            font.pixelSize: Theme.uiFontSize
                         }
-                        AppButton {
-                            Layout.preferredWidth: coverActions.buttonWidth
-                            text: qsTrId("metadata.load_audio_info")
-                            onClicked: root.documentSession.loadAudioInfoFromFile()
+                        GridLayout {
+                            id: coverActions
+                            readonly property real availableWidth: Math.max(0,
+                                metadataHeader.cellWidth - coverHeading.implicitWidth - coverRow.spacing)
+                            readonly property real buttonWidth: Math.min(availableWidth,
+                                Math.max(metadataColumn.actionWidth, importCoverButton.implicitWidth,
+                                    loadAudioInfoButton.implicitWidth))
+                            Layout.alignment: Qt.AlignRight
+                            columns: 2 * buttonWidth + columnSpacing <= availableWidth ? 2 : 1
+                            columnSpacing: Theme.panelPadding
+                            rowSpacing: Theme.panelPadding
+
+                            AppButton {
+                                id: importCoverButton
+                                Layout.preferredWidth: coverActions.buttonWidth
+                                text: qsTrId("metadata.import")
+                                onClicked: root.documentSession.importChartBackgroundImage()
+                            }
+                            AppButton {
+                                id: loadAudioInfoButton
+                                Layout.preferredWidth: coverActions.buttonWidth
+                                text: qsTrId("metadata.load_audio_info")
+                                onClicked: root.documentSession.loadAudioInfoFromFile()
+                            }
                         }
                     }
+                }
+
+                MetadataDifficultyCard {
+                    Layout.alignment: Qt.AlignTop
+                    Layout.preferredWidth: metadataHeader.cellWidth
+                    Layout.maximumWidth: metadataHeader.cellWidth
+                    documentSession: root.documentSession
+                    preferredCardHeight: metadataHeader.twoColumns
+                        ? Math.max(160, fieldsColumn.implicitHeight
+                            - Theme.controlMinHeight - spacing) : 260
                 }
             }
 

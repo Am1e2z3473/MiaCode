@@ -536,6 +536,7 @@ add_executable(MiaCode WIN32 MACOSX_BUNDLE
     src/app/services/Id3TagReader.cpp
     src/app/services/ProjectPreferences.h
     src/app/services/ProjectPreferences.cpp
+    src/app/services/ChartBannerData.h
     src/app/services/ExportIntroPreferences.h
     src/app/services/ExportIntroPreferences.cpp
     src/app/runtime/latency/LatencyAnalysis.h
@@ -688,6 +689,7 @@ set(MIACODE_UI_QML_FILES
     src/app/ui/export/CoverLayerList.qml
     src/app/ui/export/CoverExportWindow.qml
     src/app/ui/editor/EditorPane.qml
+    src/app/ui/editor/MetadataDifficultyCard.qml
     src/app/ui/editor/EditorTabBar.qml
     src/app/ui/editor/SourceEditor.qml
     src/app/ui/editor/CompletionPopup.qml

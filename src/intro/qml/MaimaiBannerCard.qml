@@ -37,7 +37,19 @@ Item {
     property url logoImage: "qrc:/icons/app-original.png"
     property var trackOverrides: ({})
     property var externalTemplate: null
-    readonly property var template: externalTemplate || defaultTemplate()
+    property bool fitToContent: false
+    readonly property var sourceTemplate: externalTemplate || defaultTemplate()
+    readonly property real contentTop: sourceTemplate.layout && sourceTemplate.layout.mbaseTab
+        ? Math.min(0, sourceTemplate.layout.mbaseTab.y || 0) : 0
+    readonly property var template: {
+        if (!fitToContent) return sourceTemplate
+        const fitted = JSON.parse(JSON.stringify(sourceTemplate))
+        const contentHeight = fitted.card.nativeHeight - contentTop
+        fitted.card.heightRatio = fitted.card.nativeHeight / contentHeight
+        fitted.card.topMargin = -contentTop / contentHeight
+        fitted.transparentBackground = true
+        return fitted
+    }
 
     // When true, the outer blurred-jacket backdrop + dim + black base are skipped,
     // leaving only the card (rounded frame + tab) with alpha around it. Used to

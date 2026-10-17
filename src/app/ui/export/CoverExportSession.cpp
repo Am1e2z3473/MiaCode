@@ -10,6 +10,7 @@
 #include "app/services/PlaybackControl.h"
 #include "export/cover_export/CoverCompositionState.h"
 #include "app/services/CoverExportPreferences.h"
+#include "app/services/ChartBannerData.h"
 #include "app/services/ProjectPreferences.h"
 #include "export/cover_export/CoverFramePlaybackController.h"
 #include "export/cover_export/CoverFrameExportPlan.h"
@@ -52,16 +53,6 @@ constexpr CoverResolutionPreset kCoverResolutionPresets[] = {
     {1920, 1440, "1920×1440 (4:3)"}, {2560, 1440, "2560×1440 (16:9)"},
 };
 
-QVariantMap loadBannerTemplate()
-{
-    QFile file(QStringLiteral(":/intro/templates/maimai_banner.json"));
-    if (!file.open(QIODevice::ReadOnly)) {
-        return {};
-    }
-    const QJsonDocument document = QJsonDocument::fromJson(file.readAll());
-    return document.isObject() ? document.object().toVariantMap() : QVariantMap{};
-}
-
 // Where a relative output file is read against: the chart folder.
 QString coverOutputBaseDirectory(const QString& chartPath)
 {
@@ -84,7 +75,7 @@ CoverExportSession::CoverExportSession(miacode::ExportEngine& exportEngine,
     , playback_(std::make_unique<miacode::cover_export::CoverFramePlaybackController>(this))
     , sceneBinder_(std::make_unique<miacode::cover_export::CoverFrameSceneBinder>(this))
     , pvFrames_(std::make_unique<miacode::cover_export::CoverPvFrameSource>())
-    , bannerTemplate_(loadBannerTemplate())
+    , bannerTemplate_(miacode::chart_banner::loadTemplate())
 {
 
     compositionSaveTimer_.setSingleShot(true);
@@ -144,14 +135,8 @@ QVariantMap CoverExportSession::templateMap() const
 
 QVariantMap CoverExportSession::trackOverrides() const
 {
-    QVariantMap track;
     const IntroBannerSpec& banner = task_.intro;
-    track.insert(QStringLiteral("title"), banner.title);
-    track.insert(QStringLiteral("artist"), banner.artist);
-    track.insert(QStringLiteral("designer"), banner.designer);
-    track.insert(QStringLiteral("level"), banner.level);
-    track.insert(QStringLiteral("difficulty"), banner.difficulty);
-    track.insert(QStringLiteral("bpm"), banner.bpm);
+    QVariantMap track = introBannerTrackMap(banner);
     track.insert(QStringLiteral("mode"), resolvedIntroBannerMode(cardMode_, banner.mode));
     track.insert(QStringLiteral("lvRenderMode"), levelTextRender_ ? QStringLiteral("text")
                                                                      : QStringLiteral("atlas"));

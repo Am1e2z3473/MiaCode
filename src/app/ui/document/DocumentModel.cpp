@@ -10,6 +10,7 @@
 #include "editor/BookmarkCommentSyntax.h"
 
 #include "app/services/UiRequestService.h"
+#include "app/services/ChartBannerData.h"
 #include "core/chart/ChartAssetPaths.h"
 #include "common/DebugLog.h"
 #include "app/services/Id3TagReader.h"
@@ -316,6 +317,26 @@ QString DocumentModel::metadataVideoPath() const
 }
 QString DocumentModel::metadataCoverPath() const { return metadataCoverPath_; }
 QUrl DocumentModel::metadataCoverSource() const { return metadataCoverSource_; }
+
+QVariantMap DocumentModel::difficultyCardTemplate() const
+{
+    return miacode::chart_banner::loadTemplate();
+}
+
+QVariantMap DocumentModel::difficultyCardTrack(int difficultyId) const
+{
+    if (!hasDocument() || workspace_->document().difficulty(difficultyId) == nullptr) return {};
+    const auto snapshot = workspace_->snapshot();
+    if (difficultyCardId_ != difficultyId || difficultyCardRevision_ != snapshot.revision
+        || difficultyCardGeneration_ != snapshot.documentOpenGeneration) {
+        difficultyCardTrack_ = introBannerTrackMap(
+            miacode::chart_banner::forDifficulty(workspace_->document(), difficultyId));
+        difficultyCardId_ = difficultyId;
+        difficultyCardRevision_ = snapshot.revision;
+        difficultyCardGeneration_ = snapshot.documentOpenGeneration;
+    }
+    return difficultyCardTrack_;
+}
 QString DocumentModel::metadataResolvedVideoPath() const { return metadataResolvedVideoPath_; }
 bool DocumentModel::metadataHasVideo() const { return !metadataResolvedVideoPath_.isEmpty(); }
 

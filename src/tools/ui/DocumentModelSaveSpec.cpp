@@ -48,6 +48,51 @@ QByteArray read(const QString& path)
     return file.open(QIODevice::ReadOnly) ? file.readAll() : QByteArray();
 }
 
+bool verifyDifficultyCardProjection()
+{
+    miacode::ChartWorkspace workspace;
+    miacode::ChartWorkspaceFileService files(workspace);
+    workspace.openSource("&title=Song\n&artist=Artist\n&des=Shared\n"
+                         "&lv_4=12\n&des_4=Expert designer\n&inote_4=(174.5){4}1,E\n"
+                         "&lv_5=14+\n&inote_5=(200){4}A1,E\n", {}, 5);
+    miacode::AnalysisService analysis(workspace);
+    analysis.setDiagnosticsDeferred(true);
+    miacode::ShellNotifications notifications;
+    miacode::UiRequestService requests;
+    FakeBridge fake;
+    miacode::DocumentBridge* bridge = &fake;
+    miacode::PreviewSurface* preview = nullptr;
+    miacode::ui::DocumentModel model(notifications, workspace, files, analysis, requests, bridge, preview);
+    const auto revision = workspace.snapshot().revision;
+    const auto expert = model.difficultyCardTrack(4);
+    const auto master = model.difficultyCardTrack(5);
+    bool ok = expect(expert.value("difficulty") == "EXPERT" && expert.value("level") == "12"
+        && expert.value("designer") == "Expert designer" && expert.value("bpm") == "174.5"
+        && expert.value("mode") == "Standard" && master.value("difficulty") == "MASTER"
+        && master.value("level") == "14+" && master.value("designer") == "Shared"
+        && master.value("bpm") == "200" && master.value("mode") == "DX",
+        "card projection uses the requested difficulty's level, designer, BPM and chart type");
+    ok &= expect(model.currentDifficultyId() == 5 && workspace.snapshot().revision == revision
+        && !workspace.snapshot().dirty && model.difficultyCardTrack(7).isEmpty(),
+        "previewing a card neither selects an editor difficulty nor changes the document");
+    workspace.updateDocumentField(miacode::ChartWorkspaceDocumentField::Title, "Renamed");
+    workspace.updateDifficultyField(5, miacode::ChartWorkspaceDifficultyField::Level, "15");
+    workspace.replaceDifficultyChart(5, "(180){4}1,E");
+    const auto updated = model.difficultyCardTrack(5);
+    ok &= expect(updated.value("title") == "Renamed" && updated.value("level") == "15"
+        && updated.value("bpm") == "180" && updated.value("mode") == "Standard",
+        "metadata and chart edits invalidate the card cache");
+    workspace.openSource("&title=Next\n&wholebpm=150\n&lv_5=8\n&inote_5=(100){4}1,E\n", {}, 5);
+    const auto replacement = model.difficultyCardTrack(5);
+    ok &= expect(replacement.value("title") == "Next" && replacement.value("level") == "8"
+        && replacement.value("bpm") == "150",
+        "replacement documents refresh the card and preserve the whole-BPM priority");
+    workspace.removeDifficulty(5);
+    ok &= expect(model.difficultyCardTrack(5).isEmpty(), "deleted difficulties have no stale card");
+    analysis.shutdown();
+    return ok;
+}
+
 bool verifyRejectedDraftBlocksPersistenceAndLeave()
 {
     QTemporaryDir directory;
@@ -139,5 +184,5 @@ int main(int argc, char** argv)
 {
     QCoreApplication app(argc, argv);
     QStandardPaths::setTestModeEnabled(true);
-    return verifyRejectedDraftBlocksPersistenceAndLeave() ? 0 : 1;
+    return verifyDifficultyCardProjection() && verifyRejectedDraftBlocksPersistenceAndLeave() ? 0 : 1;
 }
