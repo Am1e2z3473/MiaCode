@@ -33,6 +33,7 @@ public:
 
     void attach(QWindow* window, const QString& stateKey = QStringLiteral("main_window"));
     Q_INVOKABLE void showRestored();
+    Q_INVOKABLE void setAlwaysOnTop(bool enabled);
     Q_INVOKABLE void minimize();
     Q_INVOKABLE void toggleMaximized();
     Q_INVOKABLE void handleTitleBarDoubleClick();
@@ -59,6 +60,7 @@ private:
     void refreshNativeMaterial();
 #ifdef Q_OS_MACOS
     void refreshMaterialAfterPresentation();
+    void setMacOsAlwaysOnTop(bool enabled);
 #endif
     bool extendDwmFrame() const;
     void observeMacOsWindow(QWindow* window);

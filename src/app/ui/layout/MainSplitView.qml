@@ -255,6 +255,9 @@ Item {
         objectName: "detachedPreviewWindow"
         readonly property Item backdropSource: detachedSceneContent
         property var windowChrome: null
+        property bool alwaysOnTop: true
+        onAlwaysOnTopChanged: if (windowChrome) windowChrome.setAlwaysOnTop(alwaysOnTop)
+        onWindowChromeChanged: if (windowChrome) windowChrome.setAlwaysOnTop(alwaysOnTop)
         readonly property bool settingsInTitleBar: Qt.platform.os !== "windows"
         readonly property bool nativeMaterialActive: windowChrome
             && windowChrome.nativeMaterialAvailable && Theme.blurMaterialsEnabled
@@ -382,6 +385,21 @@ Item {
                         label: qsTrId("action.video_settings")
                         tooltip: qsTrId("action.video_settings")
                         onClicked: root.previewSettingsRequested()
+                    }
+
+                    IconButton {
+                        objectName: "detachedPreviewAlwaysOnTopButton"
+                        height: Math.min(implicitHeight, detachedSettingsActions.height)
+                        anchors.verticalCenter: parent.verticalCenter
+                        stateColors: Theme.chromeStateColorsFor(detachedPreviewWindow.nativeMaterialActive)
+                        iconSource: Qt.resolvedUrl("icons/pin.svg")
+                        filledIconSource: Qt.resolvedUrl("icons/pin-filled.svg")
+                        checkable: true
+                        checked: detachedPreviewWindow.alwaysOnTop
+                        tooltip: checked ? qsTrId("preview.window.disable_always_on_top")
+                                         : qsTrId("preview.window.always_on_top")
+                        Accessible.name: qsTrId("preview.window.always_on_top")
+                        onToggled: detachedPreviewWindow.alwaysOnTop = checked
                     }
                 }
             }

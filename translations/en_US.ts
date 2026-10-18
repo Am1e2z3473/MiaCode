@@ -3171,6 +3171,14 @@ The file may be open in preview, a media player, File Explorer preview pane, or 
         <source>Preview</source>
         <translation>Preview</translation>
     </message>
+    <message id="preview.window.always_on_top">
+        <source>Keep Preview on Top</source>
+        <translation>Keep Preview on Top</translation>
+    </message>
+    <message id="preview.window.disable_always_on_top">
+        <source>Restore Normal Window Order</source>
+        <translation>Restore Normal Window Order</translation>
+    </message>
     <message id="preview.pause">
         <source>Pause</source>
         <translation>Pause</translation>

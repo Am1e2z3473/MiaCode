@@ -776,6 +776,8 @@ set(MIACODE_UI_ICON_FILES
     src/app/ui/resources/icons/stop.svg
     src/app/ui/resources/icons/preview-detach.svg
     src/app/ui/resources/icons/preview-dock.svg
+    src/app/ui/resources/icons/pin.svg
+    src/app/ui/resources/icons/pin-filled.svg
     src/app/ui/resources/icons/panel-left.svg
     src/app/ui/resources/icons/panel-bottom.svg
     src/app/ui/resources/icons/panel-right.svg

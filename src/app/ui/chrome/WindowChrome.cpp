@@ -173,6 +173,24 @@ void WindowChrome::showRestored()
     window_->showNormal();
 }
 
+void WindowChrome::setAlwaysOnTop(bool enabled)
+{
+    if (window_.isNull()) {
+        return;
+    }
+#ifdef Q_OS_WIN
+    // Change only z-order. QWindow::setFlags reapplies native window styles,
+    // overwriting the frame and material configured by WindowChrome.
+    SetWindowPos(reinterpret_cast<HWND>(window_->winId()),
+        enabled ? HWND_TOPMOST : HWND_NOTOPMOST, 0, 0, 0, 0,
+        SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_NOOWNERZORDER);
+#elif defined(Q_OS_MACOS)
+    setMacOsAlwaysOnTop(enabled);
+#else
+    window_->setFlag(Qt::WindowStaysOnTopHint, enabled);
+#endif
+}
+
 void WindowChrome::minimize()
 {
     if (window_.isNull()) {
