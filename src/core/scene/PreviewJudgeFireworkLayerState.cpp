@@ -15,6 +15,7 @@ constexpr qreal kJudgeEffectFireworkTouchTriggerDelaySeconds =
 constexpr qreal kJudgeEffectFireworkDurationSeconds =
     miacode::preview_gameplay::kJudgeEffectFireworkDurationSeconds;
 constexpr qreal kFireworkRotationDegreesPerSecond = 35.0;
+constexpr qreal kFireworkFrontLoad = 0.16;
 
 struct ScalarCurveKey {
     qreal time = 0.0;
@@ -61,11 +62,11 @@ const std::array<ScalarCurveKey, 9> kJudgeEffectFireworkColorBallBigScaleKeys = 
 
 const std::array<ScalarCurveKey, 7> kJudgeEffectFireworkColorBallBigAlphaKeys = {{
     {0, 0.95},
-    {0.033, 0.95},
-    {0.10, 0.66},
-    {0.15, 0.64},
-    {0.4, 0.52},
-    {0.7, 0.30},
+    {0.017, 0.70},
+    {0.050, 0.44},
+    {0.15, 0.42},
+    {0.4, 0.32},
+    {0.7, 0.18},
     {1.05, 0},
 }};
 
@@ -162,7 +163,10 @@ PreviewJudgeFireworkLayerState buildPreviewJudgeFireworkLayerState(
     const qreal clipRadius = qMax<qreal>(1.0, mapLogicalLengthToRect(kLogicalCanvasCenter, playfieldRect));
 
     const qreal elapsedSeconds = static_cast<qreal>(state.playheadSeconds) - latestTriggerSecond;
-    const qreal clipTime = qBound<qreal>(0.0, elapsedSeconds, kJudgeEffectFireworkDurationSeconds);
+    const qreal elapsedClipTime = qBound<qreal>(0.0, elapsedSeconds, kJudgeEffectFireworkDurationSeconds);
+    // Advance the middle of the animation and preserve its start and end times.
+    const qreal clipTime = elapsedClipTime + kFireworkFrontLoad * elapsedClipTime
+        * (1.0 - elapsedClipTime / kJudgeEffectFireworkDurationSeconds);
     const qreal life01 = qBound<qreal>(0.0, clipTime / kJudgeEffectFireworkDurationSeconds, 1.0);
     const qreal animationTime = miacode::preview_gameplay::judgeEffectFireworkAnimationTime(clipTime);
     const qreal fireworkScale = sampleScalarCurve(kJudgeEffectFireworkScaleKeys, clipTime);
