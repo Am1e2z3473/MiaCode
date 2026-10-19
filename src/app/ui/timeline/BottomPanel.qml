@@ -149,9 +149,9 @@ Item {
         visible: root.timelineSession.currentTabId === "timeline"
         enabled: visible
         stateBridge: root.timelineSession.stateBridge
-        headerLeftLimit: zoomButton.x + zoomButton.width + 2
+        headerLeftLimit: zoomControls.x + zoomControls.width + 2
         headerRightLimit: Math.max(0, brightnessButton.x - 2)
-        headerMarkerLeftLimit: zoomButton.x + zoomButton.width + 2
+        headerMarkerLeftLimit: zoomControls.x + zoomControls.width + 2
         headerMarkerRightLimit: Math.max(0, brightnessButton.x - 2)
         onHeaderNavigateRequested: second => root.timelineSession.headerNavigate(second)
         onTimelineWheelNavigateRequested: second => root.timelineSession.wheelNavigate(second)
@@ -179,26 +179,48 @@ Item {
     }
 
     // Header controls share the tab row's edge inset, measured on their chrome.
-    AppDropDownButton {
-        id: zoomButton
+    // The zoom control keeps the preset menu; hovering it also steps presets
+    // on a plain (unmodified) wheel.
+    Item {
+        id: zoomControls
 
         x: tabs.edgePadding - Theme.chromeInsetX + Theme.chromeHighlightOutset
         y: timelineItem.y + Math.max(0, (timelineItem.timelineTop - height) / 2)
+        width: zoomButton.width
         height: Theme.controlHighlightHeight + 2 * (Theme.chromeInsetY - Theme.chromeHighlightOutset)
         visible: timelineItem.visible
-        text: qsTrId("qml.1").arg(Math.round(root.timelineSession.stateBridge
-            ? root.timelineSession.stateBridge.zoomScale * 100
-            : 50))
-        sizeToLabels: zoomMenu.zoomLabels
-        tooltip: qsTrId("qml.timeline_zoom")
-        expanded: zoomMenu.active
-        Accessible.description: qsTrId("qml.open_timeline_zoom_presets")
-        onClicked: {
-            if (zoomMenu.active) {
-                zoomMenu.close()
-                return
+
+        AppDropDownButton {
+            id: zoomButton
+            height: parent.height
+            text: qsTrId("qml.1").arg(Math.round(root.timelineSession.stateBridge
+                ? root.timelineSession.stateBridge.zoomScale * 100
+                : 50))
+            sizeToLabels: zoomMenu.zoomLabels
+            tooltip: qsTrId("qml.timeline_zoom")
+            expanded: zoomMenu.active
+            Accessible.description: qsTrId("qml.open_timeline_zoom_presets")
+            onClicked: {
+                if (zoomMenu.active) {
+                    zoomMenu.close()
+                    return
+                }
+                zoomMenu.openAt(zoomButton)
             }
-            zoomMenu.openAt(zoomButton)
+        }
+
+        MouseArea {
+            anchors.fill: parent
+            acceptedButtons: Qt.NoButton
+            onWheel: function(wheel) {
+                if (wheel.modifiers !== Qt.NoModifier)
+                    return
+                if (wheel.angleDelta.y > 0)
+                    root.timelineSession.stateBridge.stepZoomIn()
+                else if (wheel.angleDelta.y < 0)
+                    root.timelineSession.stateBridge.stepZoomOut()
+                wheel.accepted = true
+            }
         }
     }
 

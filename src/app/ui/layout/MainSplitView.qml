@@ -240,6 +240,7 @@ Item {
         documentAvailable: root.documentSession.hasDocument
         surfaceActive: !root.previewSurfaceMoving && (root.previewDetached || !root.viewState.netEditorActive)
         detached: root.previewDetached
+        transportMirrored: root.preferencesModel.previewOnLeft && !root.previewDetached
         previewSession: root.previewSession
         preferences: root.preferences
         exportSession: root.pages.exportSession

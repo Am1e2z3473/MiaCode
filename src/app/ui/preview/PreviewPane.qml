@@ -16,6 +16,10 @@ Rectangle {
     // Suspend the scene subscription while moving the pane between windows.
     property bool surfaceActive: true
     property bool detached: false
+    // Mirrors the transport row when the preview sits left of the editor; set
+    // by the workspace layout, kept separate from `detached` so the detached
+    // window always renders the default order.
+    property bool transportMirrored: false
     readonly property real minimumHeight: heading.implicitHeight + transport.implicitHeight
                                           + statistics.implicitHeight + 64
     readonly property real minimumWidth: transport.minimumWidth
@@ -150,6 +154,7 @@ Rectangle {
         exportSession: root.exportSession
         exportPageActive: root.exportPageActive
         detached: root.detached
+        transportMirrored: root.transportMirrored
         dataAvailable: root.documentAvailable
         enabled: root.documentAvailable
         onDetachRequested: root.detachRequested()
