@@ -174,6 +174,7 @@ QJsonObject VideoExportSnapshot::toJson() const
     render.insert(QStringLiteral("background_brightness_outer"), backgroundBrightnessOuter);
     render.insert(QStringLiteral("background_brightness_inner"), backgroundBrightnessInner);
     render.insert(QStringLiteral("layout_square_scale"), layoutSquareScale);
+    render.insert(QStringLiteral("firework_brightness"), fireworkBrightness);
     render.insert(QStringLiteral("smooth_brightness"), smoothBrightness);
     render.insert(QStringLiteral("outline_variant"), outlineVariantToken(outlineVariant));
     render.insert(QStringLiteral("background_scale_mode"), QString::fromLatin1(backgroundScaleModeToken(backgroundScaleMode)));
@@ -311,6 +312,8 @@ bool VideoExportSnapshot::fromJson(
         render.value(QStringLiteral("background_brightness_inner")).toDouble(parsed.backgroundBrightnessInner);
     parsed.layoutSquareScale =
         render.value(QStringLiteral("layout_square_scale")).toDouble(parsed.layoutSquareScale);
+    parsed.fireworkBrightness = miacode::preview_video::normalizedFireworkBrightness(
+        render.value(QStringLiteral("firework_brightness")).toDouble(parsed.fireworkBrightness));
     parsed.smoothBrightness =
         render.value(QStringLiteral("smooth_brightness")).toBool(parsed.smoothBrightness);
     parsed.outlineVariant =
@@ -504,6 +507,7 @@ bool buildVideoExportTaskFromSnapshot(
     built.backgroundBrightnessOuter = snapshot.backgroundBrightnessOuter;
     built.backgroundBrightnessInner = snapshot.backgroundBrightnessInner;
     built.layoutSquareScale = snapshot.layoutSquareScale;
+    built.fireworkBrightness = snapshot.fireworkBrightness;
     built.smoothBrightness = snapshot.smoothBrightness;
     built.outlineVariant = snapshot.outlineVariant;
     built.outlineImagePath = snapshot.outlineImagePath;

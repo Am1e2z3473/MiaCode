@@ -228,6 +228,7 @@ void copyVideoExportUserSettings(const VideoExportTask& source, VideoExportTask*
     target->backgroundBrightnessOuter = source.backgroundBrightnessOuter;
     target->backgroundBrightnessInner = source.backgroundBrightnessInner;
     target->layoutSquareScale = source.layoutSquareScale;
+    target->fireworkBrightness = source.fireworkBrightness;
     target->smoothBrightness = source.smoothBrightness;
     target->backgroundScaleMode = source.backgroundScaleMode;
     target->tapFlowSpeed = source.tapFlowSpeed;

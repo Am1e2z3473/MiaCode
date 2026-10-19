@@ -30,7 +30,7 @@ struct FireworkGlowField {
     float axisX, axisY, inverseReach, inverseWidth;
     float centerX, centerY, weight, padding;
 };
-constexpr int kFireworkMaterialUniformBufferSize = 176 + kFireworkGlowFieldCount * sizeof(FireworkGlowField);
+constexpr int kFireworkMaterialUniformBufferSize = 192 + kFireworkGlowFieldCount * sizeof(FireworkGlowField);
 constexpr qreal kFireworkQuadRadiusMin = 1.0;
 constexpr int kFireworkClipSegments = 64;
 constexpr int kFireworkRenderFlagDrawStripe = 0x1;
@@ -109,7 +109,8 @@ std::array<FireworkGlowField, kFireworkGlowFieldCount> fireworkGlowFields(float 
         return values;
     }();
     const float lightRetirement = qBound(0.0f, (time + 1.0f / 30.0f - .567f) / .433f, 1.0f);
-    const float dispersion = fireworkSmoothStep(time / 1.067f / .100f) * (1.0f - std::pow(lightRetirement, 4.0f));
+    const float dispersion = fireworkSmoothStep((time + 1.0f / 30.0f) / .050f)
+        * (1.0f - std::pow(lightRetirement, 4.0f));
     std::array<FireworkGlowField, kFireworkGlowFieldCount> fields{};
     for (int i = 0; i < kFireworkGlowFieldCount; ++i) {
         const auto& shape = shapes[i];
@@ -290,6 +291,7 @@ public:
             && qFuzzyCompare(clipRadius_ + 1.0f, otherMaterial->clipRadius_ + 1.0f)
             && qFuzzyCompare(outerRadius_ + 1.0f, otherMaterial->outerRadius_ + 1.0f)
             && qFuzzyCompare(fireworkAlpha_ + 1.0f, otherMaterial->fireworkAlpha_ + 1.0f)
+            && qFuzzyCompare(fireworkBrightness_ + 1.0f, otherMaterial->fireworkBrightness_ + 1.0f)
             && qFuzzyCompare(fireworkRotationDegrees_ + 1.0f, otherMaterial->fireworkRotationDegrees_ + 1.0f)
             && qFuzzyCompare(holeRadius_ + 1.0f, otherMaterial->holeRadius_ + 1.0f)
             && qFuzzyCompare(holeMaskRadius_ + 1.0f, otherMaterial->holeMaskRadius_ + 1.0f)
@@ -320,6 +322,7 @@ public:
         float clipRadius,
         float outerRadius,
         float fireworkAlpha,
+        float fireworkBrightness,
         float fireworkRotationDegrees,
         float holeRadius,
         float holeMaskRadius,
@@ -346,6 +349,7 @@ public:
         clipRadius_ = clipRadius;
         outerRadius_ = outerRadius;
         fireworkAlpha_ = fireworkAlpha;
+        fireworkBrightness_ = fireworkBrightness;
         fireworkRotationDegrees_ = fireworkRotationDegrees;
         holeRadius_ = holeRadius;
         holeMaskRadius_ = holeMaskRadius;
@@ -375,6 +379,7 @@ public:
     float clipRadius() const { return clipRadius_; }
     float outerRadius() const { return outerRadius_; }
     float fireworkAlpha() const { return fireworkAlpha_; }
+    float fireworkBrightness() const { return fireworkBrightness_; }
     float fireworkRotationDegrees() const { return fireworkRotationDegrees_; }
     float holeRadius() const { return holeRadius_; }
     float holeMaskRadius() const { return holeMaskRadius_; }
@@ -402,6 +407,7 @@ private:
     float clipRadius_ = 0.0f;
     float outerRadius_ = 0.0f;
     float fireworkAlpha_ = 0.0f;
+    float fireworkBrightness_ = 1.0f;
     float fireworkRotationDegrees_ = 0.0f;
     float holeRadius_ = 0.0f;
     float holeMaskRadius_ = 0.0f;
@@ -489,6 +495,9 @@ bool PreviewQuickJudgeFireworkMaterialShader::updateUniformData(
         sizeof(FireworkGlowField) * kFireworkGlowFieldCount);
     std::memcpy(uniformData->data() + 160 + sizeof(FireworkGlowField) * kFireworkGlowFieldCount,
         material->starsUvTransform.data(), sizeof(float) * 4);
+    const float brightnessControls[4] = {material->fireworkBrightness(), 0.0f, 0.0f, 0.0f};
+    std::memcpy(uniformData->data() + 176 + sizeof(FireworkGlowField) * kFireworkGlowFieldCount,
+        brightnessControls, sizeof(brightnessControls));
     return true;
 }
 
@@ -634,6 +643,7 @@ public:
             static_cast<float>(layerState.clipRadius),
             static_cast<float>(layerState.outerRadius),
             static_cast<float>(layerState.fireworkAlpha),
+            static_cast<float>(layerState.fireworkBrightness),
             static_cast<float>(layerState.fireworkRotationDegrees),
             static_cast<float>(layerState.holeRadius),
             static_cast<float>(layerState.holeMaskRadius),

@@ -179,6 +179,7 @@ public:
     void setBackgroundBrightnessOuter(double brightness);
     void setBackgroundBrightnessInner(double brightness);
     void setLayoutSquareScale(double scale);
+    void setFireworkBrightness(double brightness);
     void setSmoothBrightness(bool smooth);
     void setBackgroundScaleMode(PreviewBackgroundScaleMode mode);
     void setTapFlowSpeed(double flowSpeed);

@@ -740,6 +740,12 @@ void PreviewRuntime::setLayoutSquareScale(double scale)
     update();
 }
 
+void PreviewRuntime::setFireworkBrightness(double brightness)
+{
+    frameState_.render.fireworkBrightness = miacode::preview_video::normalizedFireworkBrightness(brightness);
+    update();
+}
+
 void PreviewRuntime::setSmoothBrightness(bool smooth)
 {
     frameState_.render.smoothBrightness = smooth;

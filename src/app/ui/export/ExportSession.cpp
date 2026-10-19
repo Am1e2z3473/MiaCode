@@ -691,6 +691,7 @@ void ExportSession::adoptPreviewRenderSettings()
     task_.layoutSquareScale = fromPercent("layoutSquareScale", task_.layoutSquareScale);
     task_.backgroundScaleMode = static_cast<PreviewBackgroundScaleMode>(
         values.value(QStringLiteral("scaleMode"), static_cast<int>(task_.backgroundScaleMode)).toInt());
+    task_.fireworkBrightness = miacode::preview_video::normalizedFireworkBrightness(fromPercent("fireworkBrightness", task_.fireworkBrightness));
     task_.smoothBrightness = values.value(QStringLiteral("smoothBrightness"), task_.smoothBrightness).toBool();
     task_.showTimestamp = values.value(QStringLiteral("showTimestamp"), task_.showTimestamp).toBool();
     task_.tapFlowSpeed = values.value(QStringLiteral("tapFlowSpeed"), task_.tapFlowSpeed).toDouble();

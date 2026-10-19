@@ -49,28 +49,24 @@ const std::array<ScalarCurveKey, 13> kJudgeEffectFireworkAlphaKeys = {{
 
 const std::array<ScalarCurveKey, 9> kJudgeEffectFireworkColorBallBigScaleKeys = {{
     {0, 0.44},
-    {0.1, 0.429},
+    {0.1, 0.445},
     {0.233, 0.457},
     {0.3, 0.48},
-    {0.4, 0.48},
+    {0.4, 0.485},
     {0.6, 0.5},
     {0.733, 0.51},
     {0.867, 0.518},
     {0.95, 0.52},
 }};
 
-const std::array<ScalarCurveKey, 11> kJudgeEffectFireworkColorBallBigAlphaKeys = {{
-    {0, 0},
+const std::array<ScalarCurveKey, 7> kJudgeEffectFireworkColorBallBigAlphaKeys = {{
+    {0, 0.95},
     {0.033, 0.95},
-    {0.1, 0.9},
-    {0.133, 0.8},
-    {0.167, 0.60},
-    {0.2, 0.52},
-    {0.233, 0.50},
-    {0.3, 0.50},
-    {0.4, 0.50},
-    {0.6, 0.46},
-    {1.2, 0.46},
+    {0.10, 0.66},
+    {0.15, 0.64},
+    {0.4, 0.52},
+    {0.7, 0.30},
+    {1.05, 0},
 }};
 
 const std::array<ScalarCurveKey, 9> kJudgeEffectFireworkHoleKeys = {{
@@ -174,12 +170,10 @@ PreviewJudgeFireworkLayerState buildPreviewJudgeFireworkLayerState(
     const qreal fireworkRotationDegrees = animationTime * kFireworkRotationDegreesPerSecond;
     const qreal smallGrowth = qBound<qreal>(0.0, (clipTime - 1.0 / 30.0) / (0.333 - 1.0 / 30.0), 1.0);
     const qreal smallRetirement = qBound<qreal>(0.0, clipTime / 0.150, 1.0);
-    const qreal bigRetirement = qBound<qreal>(0.0, (clipTime - 0.700) / 0.350, 1.0);
     const qreal colorBallScale = 0.200 + 0.040 * smallGrowth;
-    const qreal colorBallBigScale = 1.12 * sampleScalarCurve(kJudgeEffectFireworkColorBallBigScaleKeys, clipTime);
+    const qreal colorBallBigScale = sampleScalarCurve(kJudgeEffectFireworkColorBallBigScaleKeys, clipTime);
     const qreal colorBallAlpha = 0.90 * (1.0 - smallRetirement * smallRetirement);
-    const qreal colorBallBigAlpha = sampleScalarCurve(kJudgeEffectFireworkColorBallBigAlphaKeys, clipTime)
-        * (1.0 - bigRetirement * bigRetirement);
+    const qreal colorBallBigAlpha = sampleScalarCurve(kJudgeEffectFireworkColorBallBigAlphaKeys, clipTime);
     const qreal holeRadius = clipRadius * sampleScalarCurve(kJudgeEffectFireworkHoleKeys, clipTime);
     const qreal holeMaskRadius = holeRadius + clipRadius * 0.50;
     const bool warmup = isFireworkWarmupMarker(*latestTriggerMarker);
@@ -230,6 +224,7 @@ PreviewJudgeFireworkLayerState buildPreviewJudgeFireworkLayerState(
     layerState.fireworkScale = fireworkScale;
     layerState.outerRadius = outerRadius;
     layerState.fireworkAlpha = fireworkAlpha;
+    layerState.fireworkBrightness = state.render.fireworkBrightness;
     layerState.fireworkRotationDegrees = fireworkRotationDegrees;
     layerState.holeRadius = holeRadius;
     layerState.holeMaskRadius = holeMaskRadius;

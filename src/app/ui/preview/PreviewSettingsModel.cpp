@@ -111,6 +111,7 @@ QVariantMap PreviewSettingsModel::labels() const
     return QVariantMap{
         {QStringLiteral("brightnessOuter"), text("dialog.render_settings.video.brightness_outer")},
         {QStringLiteral("brightnessInner"), text("dialog.render_settings.video.brightness_inner")},
+        {QStringLiteral("fireworkBrightness"), text("dialog.render_settings.video.firework_brightness")},
         {QStringLiteral("layoutSquareScale"), text("dialog.render_settings.video.layout_square_scale")},
         {QStringLiteral("scaleMode"), text("dialog.render_settings.video.scale_mode")},
         {QStringLiteral("smoothBrightness"), text("dialog.render_settings.video.smooth_brightness")},
