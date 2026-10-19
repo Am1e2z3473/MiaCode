@@ -712,6 +712,7 @@ set(MIACODE_UI_QML_FILES
     src/app/ui/editor/BookmarkList.qml
     src/app/ui/timeline/BottomPanel.qml
     src/app/ui/timeline/BottomTabBar.qml
+    src/app/ui/timeline/TimelineZoomControl.qml
     src/app/ui/timeline/TimelineZoomMenu.qml
     src/app/ui/timeline/TimelineSettingsMenu.qml
     src/app/ui/preview/PreviewPane.qml

@@ -3743,6 +3743,14 @@ The file may be open in preview, a media player, File Explorer preview pane, or 
         <source>Timeline zoom</source>
         <translation>时间轴缩放</translation>
     </message>
+    <message id="qml.zoom_in">
+        <source>Zoom in</source>
+        <translation>放大</translation>
+    </message>
+    <message id="qml.zoom_out">
+        <source>Zoom out</source>
+        <translation>缩小</translation>
+    </message>
     <message id="qml.title_font_preview">
         <source>Title-font preview</source>
         <translation>标题字体预览</translation>
